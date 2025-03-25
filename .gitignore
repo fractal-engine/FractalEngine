@@ -1,0 +1,10 @@
+# vscode
+.vscode
+
+# build systems
+compile_commands.json
+.xmake/
+vsxmake2022/
+
+# generated binary file
+build/

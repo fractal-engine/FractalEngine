@@ -1,0 +1,289 @@
+#include "editor_gui.h"
+
+#include <SDL.h>
+
+#include "backends/imgui_impl_sdl2.h"
+#include "backends/imgui_impl_sdlrenderer2.h"
+
+#include <chrono>
+#include <thread>
+#include "base/logger.h"
+#include "imgui.h"
+
+#include "subsystem/input/key_map_sdl.h"
+#include "subsystem/renderer_gui.h"
+#include "subsystem/subsystem_manager.h"
+
+EditorGUI::EditorGUI(std::unique_ptr<RendererBase>& renderer)
+    : renderer_(renderer),
+      quit_(false),
+      is_game_started_(false)  // Track if game is started
+{}
+
+EditorGUI::~EditorGUI() {}
+
+void EditorGUI::Run() {
+  Logger::getInstance().Log(LogLevel::INFO, "EditorGUI main loop start");
+
+  // Expect a RendererGUI pointer to use SDL window/renderer
+  RendererGUI* sdlRenderer = dynamic_cast<RendererGUI*>(renderer_.get());
+  if (!sdlRenderer) {
+    Logger::getInstance().Log(LogLevel::ERROR,
+                              "Renderer is not of type RendererGUI.");
+    return;
+  }
+
+  // Get SDL window and renderer
+  SDL_Window* window = sdlRenderer->GetWindow();
+  SDL_Renderer* sdl_renderer = sdlRenderer->GetSDLRenderer();
+
+  // ------------------------------------------------------------
+  // 1 - Initialize ImGui
+  // ------------------------------------------------------------
+  IMGUI_CHECKVERSION();
+  ImGui::CreateContext();
+  ImGuiIO& io = ImGui::GetIO();
+  (void)io;
+  ImGui::StyleColorsDark();
+
+  // Setup Platform/Renderer backends
+  ImGui_ImplSDL2_InitForSDLRenderer(window, sdl_renderer);
+  ImGui_ImplSDLRenderer2_Init(sdl_renderer);
+
+  // ----------------------------------------------------------
+  // 2 - Main editor loop
+  // ----------------------------------------------------------
+  SDL_Event event;
+  while (!quit_) {
+    // Handle SDL events
+    while (SDL_PollEvent(&event)) {
+      // Let ImGui process the event first
+      ImGui_ImplSDL2_ProcessEvent(&event);
+
+      // Check for key down
+      if (event.type == SDL_KEYDOWN) {
+        // Convert SDL event to Key enum
+        Key key = sdl_key_to_key(event);
+        if (key != Key::NONE) {
+          // pass event along key handling function
+          game_inputed(key);  // Forward key to function
+        }
+      }
+
+      // Close window
+      if (event.type == SDL_QUIT) {
+        Logger::getInstance().Log(LogLevel::INFO, "SDL_QUIT event received");
+        quit_ = true;
+        editor_exit_pressed();  // Signal game to terminate
+        break;
+      }
+    }
+
+    if (quit_)
+      break;  // Exit render loop immediately when quitting
+
+    // ----------------------------------------------------------
+    // 3 - Start ImGui frame
+    // ----------------------------------------------------------
+    ImGui_ImplSDLRenderer2_NewFrame();
+    ImGui_ImplSDL2_NewFrame();
+    ImGui::NewFrame();
+
+    // ----------------------------------------------------------
+    // 4 - ImGui content
+    // ----------------------------------------------------------
+
+    // Main window position
+    ImGui::SetNextWindowPos(ImVec2(0, 0));
+
+    // Set IMGUI window size
+    ImGui::SetNextWindowSize(ImVec2(1280, 720));  // 1280x720
+    ImGui::Begin("Fractal Engine", nullptr,
+                 ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
+                     ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse);
+
+    // Calculate screen space available:
+    float totalHeight = ImGui::GetContentRegionAvail().y;
+
+    // 70% for game canvas, 30% for log:
+    float canvasHeight = totalHeight * 0.7f;
+    float logHeight = totalHeight - canvasHeight;
+
+    /*****************************BUTTONS AREA*****************************/
+    // -- Top row: Buttons (Start, Stop, Add, Remove, Quit)
+    if (ImGui::Button("Start")) {
+      Logger::getInstance().Log(LogLevel::INFO, "Editor start game thread");
+      is_game_started_ = true;
+      game_start_pressed();
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Stop")) {
+      Logger::getInstance().Log(LogLevel::INFO, "Editor stop game thread");
+      is_game_started_ = false;
+      game_end_pressed();
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Add GameObject")) {
+      // Logic to add a game object
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Remove GameObject")) {
+      // Logic to remove a game object
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Quit")) {
+      Logger::getInstance().Log(LogLevel::INFO, "Editor exit on user input");
+      quit_ = true;
+      editor_exit_pressed();
+    }
+
+    ImGui::Separator();
+
+    /*****************************GAME CANVAS AREA*****************************/
+    ImGui::BeginChild("GameCanvas", ImVec2(0, canvasHeight), true);
+    {
+      // -- Game Canvas area
+      ImGui::Text("Game Canvas");
+      ImGui::Separator();
+
+      if (is_game_started_) {
+        sdlRenderer->RenderGameContent();  // Update game content with latest
+                                           // game output
+        // Get an SDL_Texture* from RendererGUI.
+        SDL_Texture* texture = sdlRenderer->GetGameTexture();
+        if (texture) {
+          // Convert SDL_Texture* to ImTextureID
+          ImTextureID tex_id = (ImTextureID)texture;
+          int tex_w, tex_h;  // Texture width and height
+
+          // Query texture dimensions
+          SDL_QueryTexture(texture, NULL, NULL, &tex_w, &tex_h);
+          ImGui::Image(tex_id, ImVec2((float)tex_w, (float)tex_h));
+        } else {
+          ImGui::Text("No game texture available");
+        }
+      } else {
+        ImGui::Text("The game is not started");
+      }
+    }
+    ImGui::EndChild();  // End Game Canvas area
+
+    // Store game canvas state for input processing
+    gameCanvasPos_ = ImGui::GetItemRectMin();
+    gameCanvasSize_ = ImGui::GetItemRectSize();
+    gameCanvasHovered_ = ImGui::IsItemHovered();
+
+    /*****************************LOG REGION AREA*****************************/
+    // -- Debug Log area (scrollable)
+    ImGui::BeginChild("LogRegion", ImVec2(0, 0), true);
+    {
+      ImGui::Text("Debug Log");
+      ImGui::Separator();
+
+      /************** SCROLLABLE REGION **************/
+      ImGui::BeginChild("LogScrollingRegion", ImVec2(0, 0), true,
+                        ImGuiWindowFlags_HorizontalScrollbar);
+
+      // Grab log entries from Logger
+      std::vector<std::string> log_entries =
+          Logger::getInstance().GetLogEntries();
+      for (auto& line : log_entries) {
+        ImGui::TextUnformatted(line.c_str());
+      }
+      ImGui::EndChild();  // End LogScrollingRegion
+    }
+    ImGui::EndChild();  // End Debug Log area
+
+    ImGui::End();  // End main window
+
+    // ----------------------------------------------------------
+    // 5 - Render ImGui
+    // ----------------------------------------------------------
+    ImGui::Render();
+    SDL_SetRenderDrawColor(sdl_renderer, 30, 30, 30, 255);
+    SDL_RenderClear(sdl_renderer);
+    ImGui_ImplSDLRenderer2_RenderDrawData(ImGui::GetDrawData(), sdl_renderer);
+    SDL_RenderPresent(sdl_renderer);
+
+    // TODO: Add a delay or vsync depending on FPS cap
+    std::this_thread::sleep_for(std::chrono::milliseconds(20));
+  }
+
+  // ------------------------------------------------------------
+  // 6 - Cleanup ImGui
+  // ------------------------------------------------------------
+  ImGui_ImplSDLRenderer2_Shutdown();
+  ImGui_ImplSDL2_Shutdown();
+  ImGui::DestroyContext();
+
+  Logger::getInstance().Log(LogLevel::INFO, "EditorGUI main loop exited");
+}
+
+void EditorGUI::RequestUpdate() {
+  /* In SDL, we redraw continuously.
+  This can be left empty or used to post a custom event. */
+}
+
+// -----------------------------------------------------------------
+//  This function receives the Key from sdl_key_to_key() and either
+//  handles 0/1/2 or forwards WASD to input system, so that game_test can see
+//  it.
+// -----------------------------------------------------------------
+// Handles keyboard input
+void EditorGUI::game_inputed(Key key) {
+  Logger::getInstance().Log(
+      LogLevel::DEBUG,
+      "[EditorGUI] Key pressed: " + std::to_string(static_cast<int>(key)));
+
+  // Bypass WantCaptureKeyboard if game is active and canvas is hovered
+  if (ImGui::GetIO().WantCaptureKeyboard && !gameCanvasHovered_) {
+    return;
+  }
+
+  // Handle numeric shortcuts for Start/Stop/Quit
+  switch (key) {
+    case Key::DIGIT_0:  // '0' for Quit
+      Logger::getInstance().Log(LogLevel::INFO,
+                                "[EditorGUI] Received '0' => Quit");
+      quit_ = true;
+      editor_exit_pressed();
+      return;
+    case Key::DIGIT_1:  // '1' for Start Game
+      Logger::getInstance().Log(LogLevel::INFO,
+                                "[EditorGUI] Received '1' => Start game");
+      if (!is_game_started_) {
+        is_game_started_ = true;
+        game_start_pressed();
+      }
+      return;
+    case Key::DIGIT_2:  // '2' for Stop Game
+      Logger::getInstance().Log(LogLevel::INFO,
+                                "[EditorGUI] Received '2' => Stop game");
+      if (is_game_started_) {
+        is_game_started_ = false;
+        game_end_pressed();
+      }
+      return;
+    default:
+      break;
+  }
+
+  // Early return if game is not started
+  if (!is_game_started_)
+    return;
+
+  // For keys such as WASD (or others) used to move the game object,
+  // forward them to the input system so that the game update (GameTest::Update)
+  // can detect them via IsJustPressed.
+  Logger::getInstance().Log(LogLevel::DEBUG,
+                            "[EditorGUI] Forwarding key to game system");
+
+  InputEvent input_event(key);
+  // Set the frame count from the Game Manager.
+  if (auto* gm = SubsystemManager::GetGameManager().get()) {
+    input_event.pressed_frame_ = gm->GetFrameCount();
+  }
+  // Forward event to the centralized input system.
+  SubsystemManager::GetInput()->FowardInputEvent(input_event,
+                                                 input_event.pressed_frame_);
+}
