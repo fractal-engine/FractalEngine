@@ -4,7 +4,7 @@
 
 Use 
 ```bash
-xmake build
+xmake build fractal
 ```
 to build the project, and
 ```bash
