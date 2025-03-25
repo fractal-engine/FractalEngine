@@ -24,31 +24,25 @@ xmake f -m debug
 ```
 To change to debug mode.
 
-## Project Architecture
+## Important Note
 
-### DisplayText
+The SDL editor and the FTXUI editor are implemented separately and both show different functionality
+- SDL editor has the input system implementation
+- FTXUI editor has the physics system implementation
 
-We are using `ftxui` as third party tui library.
+We plan to integrate them at a later stage but both form part of the unified Fractal architecture.
 
-## Now investigating into the original shard.
 
-The singleton are 
-```text
-Debug, Base functionality
-```
+## Third Party Libraries used
 
-Abstract base class [interface] are:
-```text
-Game, Display, TextDisplay:Display, Sould, SouldBeep: Sound
-```
+We wish to thank and acknowledge the following libraries and their creators:
 
-We may want the following singleton:
-```text
-DisplayEngine, SoundEngine, Logger.
-```
-For the inheritance part, we need composition instead of inheritance.
+- FTXUI - Copyright (c) 2019 Arthur Sonzogni under MIT license
+- PortAudio Portable Real-Time Audio Library - Copyright (c) 1999-2011 Ross Bencina and Phil Burk
+- dr_wav - Copyright 2020 David Reid under MIT license
 
-- DisplayEngine will include DisplayBase. We can inheriting that DisplayText: DisplayBase.
-  - Use example: DisplayBase* displayer = DisplayEngine::GetInstance().displayEngine()...
-  - Also for SouldEngine....
-  - Never inheritance a Singleton Child,,, I will find a way to solve that problem maybe? I think there need to be more meta programming and I'm not really familiar with that......
+Full licensing statement available at LICENSE.md
+
+
+
+
