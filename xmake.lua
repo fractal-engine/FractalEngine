@@ -11,7 +11,7 @@ if is_mode("debug") then -- Enable Debug mode
 end
 
 -- Define 'shard-cpp' target
-target("shard-cpp")
+target("fractal")
     set_kind("binary")
 
     add_includedirs("src/")
