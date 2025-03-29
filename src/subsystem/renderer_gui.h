@@ -12,13 +12,12 @@ class RendererGUI : public RendererBase {
 public:
   // The constructor takes a mutex reference
   RendererGUI();
-  virtual ~RendererGUI(); // Virtual destructor
+  virtual ~RendererGUI();  // Virtual destructor
 
   // RendererBase interface
   void ClearDisplay() override;
   void ShowText(const std::string& text, int x, int y) override;
-  void ShowText(const std::vector<std::string>& text_area, int x,
-                int y) override;
+  void ShowText(const std::vector<std::string>& text_area, int x, int y) override;
 
   void RenderGameContent();
 
@@ -43,8 +42,8 @@ private:
   std::string current_game_content_;
 
   // Default position for rendering
-  int pos_x_ = 0;
-  int pos_y_ = 0;
+  // int pos_x_ = 0;
+  // int pos_y_ = 0;
 };
 
 #endif  // RENDERER_GUI_H

@@ -79,33 +79,18 @@ RendererGUI::~RendererGUI() {
 }
 
 // Store single-line text as shared game content.
-void RendererGUI::ShowText(const std::string& text, int x, int y) {
-  std::lock_guard<std::mutex> lock(canvas_mutex_);
-  current_game_content_ = text;
-  pos_x_ = x;
-  pos_y_ = y;
-}
+void RendererGUI::ShowText(const std::string& text, int x, int y) {}
 
 /* Convert vector of text lines into single multi-line string
 and store it as shared game content for rendering. */
 void RendererGUI::ShowText(const std::vector<std::string>& text_area, int x,
-                           int y) {
-  if (!text_area.empty()) {
-    std::string combined;
-    for (const auto& line : text_area) {
-      combined += line + "\n";  // Append newline to combined string
-    }
-    std::lock_guard<std::mutex> lock(canvas_mutex_);
-    current_game_content_ = combined;  // Store combined string
-    pos_x_ = x;
-    pos_y_ = y;
-  }
-}
+                           int y) {}
 
+/*
 std::string RendererGUI::GetCurrentGameContent() {
   std::lock_guard<std::mutex> lock(canvas_mutex_);
   return current_game_content_;
-}
+}*/
 
 void RendererGUI::RenderGameContent() {
   // Render to off-screen texture
@@ -113,67 +98,7 @@ void RendererGUI::RenderGameContent() {
   SDL_SetRenderDrawColor(sdl_renderer_, 0, 0, 0, 0);  // Transparent
   SDL_RenderClear(sdl_renderer_);                     // Clear texture
 
-  // Retrieve the current game content
-  std::string asciiArt = GetCurrentGameContent();
-
-  // Debug - show game content in log
-  // Logger::getInstance().Log(LogLevel::DEBUG, "ASCII Art: " + asciiArt);
-
-  // fixed-width font
-  TTF_Font* font = TTF_OpenFont("NotoSansMono_Regular.ttf", 12);
-  if (!font) {
-    Logger::getInstance().Log(
-        LogLevel::ERROR, "TTF_OpenFont failed: " + std::string(SDL_GetError()));
-    SDL_SetRenderTarget(sdl_renderer_, NULL);  // handle error
-    return;
-  }
-
-  // Split ASCII into lines
-  std::vector<std::string> lines;
-  {
-    std::istringstream iss(asciiArt);
-    for (std::string line; std::getline(iss, line);) {
-      lines.push_back(line);
-    }
-  }
-
-  SDL_Color textColor = {255, 255, 255, 255};
-  int yPos = 0;  // Where we draw the next line
-  for (auto& line : lines) {
-    if (line.empty()) {
-      // Move down by a small skip if the line is blank
-      yPos += TTF_GetFontLineSkip(font);
-      continue;
-    }
-
-    // Render this single line
-    SDL_Surface* surf =
-        TTF_RenderText_Blended(font, line.c_str(), 0, textColor);
-    if (!surf) {
-      // handle error
-      continue;
-    }
-
-    SDL_Texture* lineTexture =
-        SDL_CreateTextureFromSurface(sdl_renderer_, surf);
-    if (lineTexture) {
-
-      // Members of SDL_FRect should be initialized as float values
-      SDL_FRect destFRect = {
-          static_cast<float>(pos_x_), static_cast<float>(yPos + pos_y_),
-          static_cast<float>(surf->w), static_cast<float>(surf->h)};
-
-      SDL_RenderTexture(sdl_renderer_, lineTexture, NULL, &destFRect);
-
-      SDL_DestroySurface(surf);
-    }
-
-    // Move down by the line's height
-    yPos += surf->h;
-    SDL_DestroySurface(surf);
-  }
-
-  TTF_CloseFont(font);
+  // Render game content here
 
   // Reset render target to default window
   SDL_SetRenderTarget(sdl_renderer_, NULL);

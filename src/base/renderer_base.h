@@ -27,7 +27,6 @@ protected:
   RendererBase() = default;
 
 public:
-
   // virtual destructor
   virtual ~RendererBase() = default;
 
@@ -44,4 +43,3 @@ public:
 };
 
 #endif  // RENDERER_BASE_H
-
