@@ -1,7 +1,7 @@
 #include "subsystem/renderer_gui.h"
 
-#include <SDL.h>
-#include <SDL2/SDL_ttf.h>
+#include <SDL3/SDL.h>
+#include <SDL3_ttf/SDL_ttf.h>
 
 #include <cstdlib>
 #include <iostream>
@@ -12,23 +12,22 @@
 
 RendererGUI::RendererGUI()
     : window_(nullptr), sdl_renderer_(nullptr), game_texture_(nullptr) {
-  if (SDL_Init(SDL_INIT_VIDEO) < 0) {
+  if (!SDL_Init(SDL_INIT_VIDEO)) {
     Logger::getInstance().Log(
         LogLevel::ERROR, std::string("SDL_Init failed: ") + SDL_GetError());
     std::exit(1);
   }
 
   // Initialize SDL_ttf
-  if (TTF_Init() == -1) {
+  if (!TTF_Init()) {
     Logger::getInstance().Log(
-        LogLevel::ERROR, "TTF_Init failed: " + std::string(TTF_GetError()));
+        LogLevel::ERROR, "TTF_Init failed: " + std::string(SDL_GetError()));
     std::exit(1);
   }
 
   /* SDL window: title, centered position, resizable. */
-  window_ = SDL_CreateWindow("Fractal Engine", SDL_WINDOWPOS_CENTERED,
-                             SDL_WINDOWPOS_CENTERED, 1280, 720,  // 1280x720
-                             SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
+  window_ = SDL_CreateWindow("Fractal Engine", 1280, 720, SDL_WINDOW_RESIZABLE);
+
   if (!window_) {
     Logger::getInstance().Log(
         LogLevel::ERROR,
@@ -36,8 +35,8 @@ RendererGUI::RendererGUI()
     SDL_Quit();
     std::exit(1);
   }
-  sdl_renderer_ = SDL_CreateRenderer(
-      window_, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+
+  sdl_renderer_ = SDL_CreateRenderer(window_, nullptr);
   if (!sdl_renderer_) {
     Logger::getInstance().Log(
         LogLevel::ERROR,
@@ -46,6 +45,7 @@ RendererGUI::RendererGUI()
     SDL_Quit();
     std::exit(1);
   }
+
   // Set initial size in RendererBase
   SetSize(800, 600);
 
@@ -82,8 +82,8 @@ RendererGUI::~RendererGUI() {
 void RendererGUI::ShowText(const std::string& text, int x, int y) {
   std::lock_guard<std::mutex> lock(canvas_mutex_);
   current_game_content_ = text;
-  pos_x_ = x; 
-  pos_y_ = y; 
+  pos_x_ = x;
+  pos_y_ = y;
 }
 
 /* Convert vector of text lines into single multi-line string
@@ -123,7 +123,7 @@ void RendererGUI::RenderGameContent() {
   TTF_Font* font = TTF_OpenFont("NotoSansMono_Regular.ttf", 12);
   if (!font) {
     Logger::getInstance().Log(
-        LogLevel::ERROR, "TTF_OpenFont failed: " + std::string(TTF_GetError()));
+        LogLevel::ERROR, "TTF_OpenFont failed: " + std::string(SDL_GetError()));
     SDL_SetRenderTarget(sdl_renderer_, NULL);  // handle error
     return;
   }
@@ -142,12 +142,13 @@ void RendererGUI::RenderGameContent() {
   for (auto& line : lines) {
     if (line.empty()) {
       // Move down by a small skip if the line is blank
-      yPos += TTF_FontLineSkip(font);
+      yPos += TTF_GetFontLineSkip(font);
       continue;
     }
 
     // Render this single line
-    SDL_Surface* surf = TTF_RenderText_Blended(font, line.c_str(), textColor);
+    SDL_Surface* surf =
+        TTF_RenderText_Blended(font, line.c_str(), 0, textColor);
     if (!surf) {
       // handle error
       continue;
@@ -156,14 +157,20 @@ void RendererGUI::RenderGameContent() {
     SDL_Texture* lineTexture =
         SDL_CreateTextureFromSurface(sdl_renderer_, surf);
     if (lineTexture) {
-      SDL_Rect destRect{ pos_x_, yPos + pos_y_, surf->w, surf->h };
-      SDL_RenderCopy(sdl_renderer_, lineTexture, NULL, &destRect);
-      SDL_DestroyTexture(lineTexture);
+
+      // Members of SDL_FRect should be initialized as float values
+      SDL_FRect destFRect = {
+          static_cast<float>(pos_x_), static_cast<float>(yPos + pos_y_),
+          static_cast<float>(surf->w), static_cast<float>(surf->h)};
+
+      SDL_RenderTexture(sdl_renderer_, lineTexture, NULL, &destFRect);
+
+      SDL_DestroySurface(surf);
     }
 
-    // Move down by the line's height or by TTF_FontLineSkip if you prefer
+    // Move down by the line's height
     yPos += surf->h;
-    SDL_FreeSurface(surf);
+    SDL_DestroySurface(surf);
   }
 
   TTF_CloseFont(font);
@@ -188,7 +195,7 @@ void RendererGUI::Render() {
 void RendererGUI::ProcessEvents(bool& quit) {
   SDL_Event event;
   while (SDL_PollEvent(&event)) {
-    if (event.type == SDL_QUIT) {
+    if (event.type == SDL_EVENT_QUIT) {
       quit = true;
     }
   }

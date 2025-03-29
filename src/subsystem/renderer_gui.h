@@ -1,7 +1,7 @@
 #ifndef RENDERER_GUI_H
 #define RENDERER_GUI_H
 
-#include <SDL.h>
+#include <SDL3/SDL.h>
 #include <mutex>
 #include <string>
 #include <vector>

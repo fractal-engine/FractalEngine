@@ -1,7 +1,7 @@
 set_languages("c++17")
 
-add_requires("ftxui", "boost", "libsdl", "libsdl_ttf", "portaudio")
-add_requires("imgui", {configs = {sdl2 = true, sdl2_renderer = true}})
+add_requires("ftxui", "boost", "libsdl3", "libsdl3_ttf", "portaudio")
+add_requires("imgui", {configs = {sdl3 = true, sdl3_renderer = true}})
 
 add_rules("mode.release")
 
@@ -38,7 +38,7 @@ target("fractal")
             target:add("includedirs", pkg:installdir() .. "/include", {public = true})
         end
     end)
-    add_packages("ftxui", "boost", "libsdl", "libsdl_ttf", "imgui", "portaudio")
+    add_packages("ftxui", "boost", "libsdl3", "libsdl3_ttf", "imgui", "portaudio")
     after_build(function (target)
         os.cp("audio_lib", target:targetdir()) -- Copy audio folder to build directory
         os.cp("resources/NotoSansMono_Regular.ttf", target:targetdir())

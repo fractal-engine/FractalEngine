@@ -40,7 +40,7 @@ Follow these steps to set up and run the project:
 
 > [!NOTE] The SDL editor and the FTXUI editor are implemented separately and both show different functionality
 >
-> - GUI editor (SDL2) has the input system implementation
+> - GUI editor (SDL3) has the input system implementation
 > - FTXUI editor has the physics system implementation
 > We plan to integrate them at a later stage but both form part of the unified Fractal architecture.
 

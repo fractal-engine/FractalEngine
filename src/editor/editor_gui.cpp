@@ -1,9 +1,9 @@
 #include "editor_gui.h"
 
-#include <SDL.h>
+#include <SDL3/SDL.h>
 
-#include "backends/imgui_impl_sdl2.h"
-#include "backends/imgui_impl_sdlrenderer2.h"
+#include "backends/imgui_impl_sdl3.h"
+#include "backends/imgui_impl_sdlrenderer3.h"
 
 #include <chrono>
 #include <thread>
@@ -47,21 +47,24 @@ void EditorGUI::Run() {
   ImGui::StyleColorsDark();
 
   // Setup Platform/Renderer backends
-  ImGui_ImplSDL2_InitForSDLRenderer(window, sdl_renderer);
-  ImGui_ImplSDLRenderer2_Init(sdl_renderer);
+  ImGui_ImplSDL3_InitForSDLRenderer(window, sdl_renderer);
+  ImGui_ImplSDLRenderer3_Init(sdl_renderer);
 
   // ----------------------------------------------------------
   // 2 - Main editor loop
   // ----------------------------------------------------------
+  // Start accepting text input
+  SDL_StartTextInput(window);
+
   SDL_Event event;
   while (!quit_) {
     // Handle SDL events
     while (SDL_PollEvent(&event)) {
       // Let ImGui process the event first
-      ImGui_ImplSDL2_ProcessEvent(&event);
+      ImGui_ImplSDL3_ProcessEvent(&event);
 
       // Check for key down
-      if (event.type == SDL_KEYDOWN) {
+      if (event.type == SDL_EVENT_KEY_DOWN) {
         // Convert SDL event to Key enum
         Key key = sdl_key_to_key(event);
         if (key != Key::NONE) {
@@ -71,8 +74,9 @@ void EditorGUI::Run() {
       }
 
       // Close window
-      if (event.type == SDL_QUIT) {
-        Logger::getInstance().Log(LogLevel::INFO, "SDL_QUIT event received");
+      if (event.type == SDL_EVENT_QUIT) {
+        Logger::getInstance().Log(LogLevel::INFO,
+                                  "SDL_EVENT_QUIT event received");
         quit_ = true;
         editor_exit_pressed();  // Signal game to terminate
         break;
@@ -85,8 +89,8 @@ void EditorGUI::Run() {
     // ----------------------------------------------------------
     // 3 - Start ImGui frame
     // ----------------------------------------------------------
-    ImGui_ImplSDLRenderer2_NewFrame();
-    ImGui_ImplSDL2_NewFrame();
+    ImGui_ImplSDLRenderer3_NewFrame();
+    ImGui_ImplSDL3_NewFrame();
     ImGui::NewFrame();
 
     // ----------------------------------------------------------
@@ -154,11 +158,12 @@ void EditorGUI::Run() {
         if (texture) {
           // Convert SDL_Texture* to ImTextureID
           ImTextureID tex_id = (ImTextureID)texture;
-          int tex_w, tex_h;  // Texture width and height
 
           // Query texture dimensions
-          SDL_QueryTexture(texture, NULL, NULL, &tex_w, &tex_h);
-          ImGui::Image(tex_id, ImVec2((float)tex_w, (float)tex_h));
+          float tex_w, tex_h;  // Texture width and height
+          SDL_GetTextureSize(texture, &tex_w, &tex_h);
+
+          ImGui::Image(tex_id, ImVec2(tex_w, tex_h));
         } else {
           ImGui::Text("No game texture available");
         }
@@ -202,18 +207,21 @@ void EditorGUI::Run() {
     ImGui::Render();
     SDL_SetRenderDrawColor(sdl_renderer, 30, 30, 30, 255);
     SDL_RenderClear(sdl_renderer);
-    ImGui_ImplSDLRenderer2_RenderDrawData(ImGui::GetDrawData(), sdl_renderer);
+    ImGui_ImplSDLRenderer3_RenderDrawData(ImGui::GetDrawData(), sdl_renderer);
     SDL_RenderPresent(sdl_renderer);
 
     // TODO: Add a delay or vsync depending on FPS cap
     std::this_thread::sleep_for(std::chrono::milliseconds(20));
   }
 
+  // Stop accepting text input
+  SDL_StopTextInput(window);
+
   // ------------------------------------------------------------
   // 6 - Cleanup ImGui
   // ------------------------------------------------------------
-  ImGui_ImplSDLRenderer2_Shutdown();
-  ImGui_ImplSDL2_Shutdown();
+  ImGui_ImplSDLRenderer3_Shutdown();
+  ImGui_ImplSDL3_Shutdown();
   ImGui::DestroyContext();
 
   Logger::getInstance().Log(LogLevel::INFO, "EditorGUI main loop exited");

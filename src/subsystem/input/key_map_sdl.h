@@ -1,17 +1,17 @@
 #ifndef KEY_MAP_SDL_H
 #define KEY_MAP_SDL_H
 
-#include <SDL.h>
+#include <SDL3/SDL.h>
 #include "key.h"
 
 inline Key sdl_key_to_key(const SDL_Event& event) {
   // Only handle KEYDOWN or KEYUP. If it's something else, return NONE.
-  if (event.type != SDL_KEYDOWN && event.type != SDL_KEYUP) {
+  if (event.type != SDL_EVENT_KEY_DOWN && event.type != SDL_EVENT_KEY_UP) {
     return Key::NONE;
   }
 
   // scancode is hardware-level code
-  SDL_Scancode sc = event.key.keysym.scancode;
+  SDL_Scancode sc = event.key.scancode;
   switch (sc) {
     // --- WASD movement keys ---
     case SDL_SCANCODE_W:
@@ -36,12 +36,11 @@ inline Key sdl_key_to_key(const SDL_Event& event) {
       // Add more scancodes here if needed
 
     default:
-
       break;
   }
 
   // If the above didn’t match, we fallback to checking keysym.sym
-  SDL_Keycode keycode = event.key.keysym.sym;
+  SDL_Keycode keycode = event.key.key;
   switch (keycode) {
     // --- Digits '0'..'9' ---
     case SDLK_0:
@@ -70,9 +69,9 @@ inline Key sdl_key_to_key(const SDL_Event& event) {
       return Key::SPACE;
     case SDLK_EXCLAIM:
       return Key::EXCLAMATION;
-    case SDLK_QUOTE:
+    case SDLK_APOSTROPHE:
       return Key::SINGLE_QUOTE;
-    case SDLK_QUOTEDBL:
+    case SDLK_DBLAPOSTROPHE:
       return Key::DOUBLE_QUOTE;
     case SDLK_HASH:
       return Key::HASH;
@@ -122,7 +121,7 @@ inline Key sdl_key_to_key(const SDL_Event& event) {
       return Key::CARET;
     case SDLK_UNDERSCORE:
       return Key::UNDERSCORE;
-    case SDLK_BACKQUOTE:
+    case SDLK_GRAVE:
       return Key::BACKTICK;
     case '{':
       return Key::LEFT_CURLY;
