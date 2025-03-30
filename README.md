@@ -37,6 +37,10 @@ Follow these steps to set up and run the project:
    ```bash
    xmake f -m debug
    ```
+5. **To build with Visual Studio Debugger**
+    ```bash
+    xmake project -k vsxmake -m "debug"
+    ```
 
 > [!NOTE] The SDL editor and the FTXUI editor are implemented separately and both show different functionality
 >
