@@ -1,0 +1,36 @@
+name: Windows CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        arch: [x64, x86]
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: true
+
+      - name: Setup Xmake
+        uses: xmake-io/github-action-setup-xmake@v1
+
+      - name: Configure & Build
+        shell: bash
+        run: |
+          xmake f -p windows --toolchain=clang -a ${{ matrix.arch }} -y -v
+          xmake
+
+      - name: Package executable
+        shell: bash
+        run: |
+          target=$(grep 'target' xmake.lua | cut -d'"' -f2)
+          mkdir -p artifacts
+          cp "build/windows/${{ matrix.arch }}/release/${target}.exe" artifacts/

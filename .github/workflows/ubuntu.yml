@@ -1,0 +1,31 @@
+name: Ubuntu CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: true
+
+      - name: Setup Xmake
+        uses: xmake-io/github-action-setup-xmake@v1
+
+      - name: Configure & Build
+        run: |
+          xmake f -p linux --toolchain=clang -y -v
+          xmake
+
+      - name: Package executable
+        run: |
+          target=$(grep 'target' xmake.lua | cut -d'"' -f2)
+          mkdir -p artifacts
+          cp "build/linux/x86_64/release/${target}" artifacts/
