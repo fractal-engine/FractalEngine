@@ -1,28 +1,25 @@
 #ifndef GAME_TEST_H
 #define GAME_TEST_H
+
+#include <thirdparty/bgfx.cmake/bgfx/include/bgfx/bgfx.h>
 #include "base/game_base.h"
 
-#include <string>
-#include <vector>
-
+// A minimal game class that just displays "Hello World".
 class GameTest : public Game {
-  int interval = 0;
-  int pos_x = 0;
-  int pos_y = 0;
-  std::vector<std::string> asciiArt = {
-      R"(==============================)",  //
-      R"(       _                   _  )",  //
-      R"(   ___| |__   __ _ _ __ __| | )",  //
-      R"(  / __| '_ \ / _` | '__/ _` | )",  //
-      R"(  \__ \ | | | (_| | | | (_| | )",  //
-      R"(  |___/_| |_|\__,_|_|  \__,_| )",  //
-      R"(                              )",  //
-      R"(          It Works!           )",  //
-      R"(                              )",  //
-      R"(==============================)",  //
-  };
-
 public:
+  GameTest();
+  virtual ~GameTest();
+
+  // Initialize the shader program (and any minimal resources)
+  // that will be used to display "Hello World".
+  void Init() override;
+
+  // Update is called every frame—in this minimal example, it just
+  // submits a BGFX touch call and logs a message.
   void Update() override;
+
+private:
+  bgfx::ProgramHandle _helloWorldProgram;
 };
-#endif
+
+#endif  // GAME_TEST_H
