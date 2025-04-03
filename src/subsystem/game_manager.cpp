@@ -15,6 +15,13 @@ GameManager::GameManager(std::unique_ptr<Game>&& game)
 
 void GameManager::StartGame() {
   Logger::getInstance().Log(LogLevel::INFO, "Game manager start game");
+  
+  // Initialize the game BEFORE acquiring the lock
+  if (game_) {
+    game_->Init();
+    Logger::getInstance().Log(LogLevel::INFO, "Game initialized");
+  }
+  
   {
     std::lock_guard<std::mutex> lock(state_mutex_);
     gamestate_ = GameState::STARTING;
@@ -54,6 +61,8 @@ void GameManager::Run() {
       } else if (gamestate_ == GameState::PAUSING) {
         gamestate_ = PAUSED;
       }
+      Logger::getInstance().Log(LogLevel::DEBUG,
+                                "Game thread entering sleep state...");
       if (!is_terminating_ && gamestate_ == GameState::PAUSED ||
           gamestate_ == GameState::ENDED) {
         Logger::getInstance().Log(LogLevel::DEBUG, "Game thread Sleep");
@@ -77,4 +86,10 @@ void GameManager::Run() {
 
 uint64_t GameManager::GetFrameCount() {
   return frame_count_;
+}
+
+void GameManager::Render() {
+  if (game_ && gamestate_ == GameState::RUNNING) {
+    game_->Update();  // submit game draw calls
+  }
 }

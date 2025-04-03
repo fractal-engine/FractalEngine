@@ -1,0 +1,77 @@
+#version 450
+layout(row_major) uniform;
+layout(row_major) buffer;
+
+#line 11655 0
+struct _MatrixStorage_float4x4_ColMajorstd140_0
+{
+    vec4  data_0[4];
+};
+
+
+#line 11655
+struct SLANG_ParameterGroup_ProjectionMatrix_std140_0
+{
+    _MatrixStorage_float4x4_ColMajorstd140_0 u_projection_0;
+};
+
+
+#line 2 1
+layout(binding = 0)
+layout(std140) uniform block_SLANG_ParameterGroup_ProjectionMatrix_std140_0
+{
+    _MatrixStorage_float4x4_ColMajorstd140_0 u_projection_0;
+}ProjectionMatrix_0;
+layout(location = 0)
+out vec2 entryPointParam_main_texcoord0_0;
+
+
+#line 7
+layout(location = 1)
+out vec4 entryPointParam_main_color0_0;
+
+
+#line 7
+layout(location = 0)
+in vec2 input_a_position_0;
+
+
+#line 7
+layout(location = 1)
+in vec2 input_a_texcoord0_0;
+
+
+#line 7
+layout(location = 2)
+in vec4 input_a_color0_0;
+
+
+#line 14
+struct VS_OUTPUT_0
+{
+    vec4 position_0;
+    vec2 texcoord0_0;
+    vec4 color0_0;
+};
+
+void main()
+{
+    VS_OUTPUT_0 output_0;
+    output_0.position_0 = (((vec4(input_a_position_0, 0.0, 1.0)) * (mat4x4(ProjectionMatrix_0.u_projection_0.data_0[0][0], ProjectionMatrix_0.u_projection_0.data_0[1][0], ProjectionMatrix_0.u_projection_0.data_0[2][0], ProjectionMatrix_0.u_projection_0.data_0[3][0], ProjectionMatrix_0.u_projection_0.data_0[0][1], ProjectionMatrix_0.u_projection_0.data_0[1][1], ProjectionMatrix_0.u_projection_0.data_0[2][1], ProjectionMatrix_0.u_projection_0.data_0[3][1], ProjectionMatrix_0.u_projection_0.data_0[0][2], ProjectionMatrix_0.u_projection_0.data_0[1][2], ProjectionMatrix_0.u_projection_0.data_0[2][2], ProjectionMatrix_0.u_projection_0.data_0[3][2], ProjectionMatrix_0.u_projection_0.data_0[0][3], ProjectionMatrix_0.u_projection_0.data_0[1][3], ProjectionMatrix_0.u_projection_0.data_0[2][3], ProjectionMatrix_0.u_projection_0.data_0[3][3]))));
+    output_0.texcoord0_0 = input_a_texcoord0_0;
+    output_0.color0_0 = input_a_color0_0;
+    VS_OUTPUT_0 _S1 = output_0;
+
+#line 27
+    gl_Position = output_0.position_0;
+
+#line 27
+    entryPointParam_main_texcoord0_0 = _S1.texcoord0_0;
+
+#line 27
+    entryPointParam_main_color0_0 = _S1.color0_0;
+
+#line 27
+    return;
+}
+

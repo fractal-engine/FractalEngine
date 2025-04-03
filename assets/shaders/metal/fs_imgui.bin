@@ -1,0 +1,48 @@
+#include <metal_stdlib>
+#include <metal_math>
+#include <metal_texture>
+using namespace metal;
+
+#line 1866 "hlsl.meta.slang"
+struct pixelOutput_0
+{
+    float4 output_0 [[color(0)]];
+};
+
+
+#line 1866
+struct pixelInput_0
+{
+    float2 texcoord0_0 [[user(TEXCOORD)]];
+    float4 color0_0 [[user(COLOR)]];
+};
+
+
+#line 1866
+struct KernelContext_0
+{
+    texture2d<float, access::sample> s_texture_0;
+    sampler s_sampler_0;
+};
+
+
+#line 13 "src/shaders/imgui/fs_imgui.slang"
+[[fragment]] pixelOutput_0 main(pixelInput_0 _S1 [[stage_in]], float4 position_0 [[position]], texture2d<float, access::sample> s_texture_1 [[texture(0)]], sampler s_sampler_1 [[sampler(1)]])
+{
+
+#line 13
+    KernelContext_0 kernelContext_0;
+
+#line 13
+    (&kernelContext_0)->s_texture_0 = s_texture_1;
+
+#line 13
+    (&kernelContext_0)->s_sampler_0 = s_sampler_1;
+
+#line 13
+    pixelOutput_0 _S2 = { (((&kernelContext_0)->s_texture_0).sample((s_sampler_1), (_S1.texcoord0_0))) * _S1.color0_0 };
+
+
+    return _S2;
+}
+

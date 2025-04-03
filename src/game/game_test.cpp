@@ -1,7 +1,11 @@
 #include "game/game_test.h"
-#include <thirdparty/bgfx.cmake/bgfx/include/bgfx/bgfx.h>  // Include BGFX library for rendering
+#include <bgfx/bgfx.h>          // Fixed include path
 #include "base/logger.h"        // Include Logger for logging
 #include "base/shader_utils.h"  // Include ShaderUtils for shader loading
+#include "subsystem/graphics_renderer.h"  // Include GraphicsRenderer for rendering
+#include "subsystem/subsystem_manager.h"
+
+#include <bx/math.h>
 
 // Constructor: Initializes _helloWorldProgram to an invalid BGFX handle
 GameTest::GameTest() : _helloWorldProgram(BGFX_INVALID_HANDLE) {}
@@ -12,55 +16,60 @@ GameTest::~GameTest() {
     bgfx::destroy(_helloWorldProgram);    // Release the program resources
 }
 
-// Initialization function: Loads shaders and creates a BGFX program
+// Manages the shader program from the GraphicsRenderer
 void GameTest::Init() {
-  // Load vertex shader using custom loadShader function
-  bgfx::ShaderHandle vs = loadShader("vs_terrain.bin");
-  if (!bgfx::isValid(vs)) {  // Check if the vertex shader handle is valid
-    Logger::getInstance().Log(LogLevel::ERROR,
-                              "Failed to load vertex shader: vs_terrain.bin");
-    return;  // Exit function if shader loading fails
-  }
 
-  // Load fragment shader using custom loadShader function
-  bgfx::ShaderHandle fs = loadShader("fs_terrain.bin");
-  if (!bgfx::isValid(fs)) {  // Check if the fragment shader handle is valid
-    Logger::getInstance().Log(LogLevel::ERROR,
-                              "Failed to load fragment shader: fs_terrain.bin");
-    return;  // Exit function if shader loading fails
-  }
+  // Initialize the shader program
+  GraphicsRenderer* renderer =
+      static_cast<GraphicsRenderer*>(SubsystemManager::GetRenderer().get());
 
-  // Create a BGFX program using the loaded vertex and fragment shaders
-  _helloWorldProgram = bgfx::createProgram(vs, fs, true);
-  if (!bgfx::isValid(
-          _helloWorldProgram)) {  // Check if the program handle is valid
-    Logger::getInstance().Log(LogLevel::ERROR,
-                              "Failed to create shader program.");
-    return;  // Exit function if program creation fails
-  }
+  const char* backend = bgfx::getRendererName(bgfx::getRendererType());
+  std::string vsPath =
+      std::string("assets/shaders/") + backend + "/vs_terrain.bin";
+  std::string fsPath =
+      std::string("assets/shaders/") + backend + "/fs_terrain.bin";
 
-  // Log success message after shaders are loaded and program is created
-  Logger::getInstance().Log(LogLevel::INFO,
-                            "Hello World: Shader program loaded successfully.");
+  _helloWorldProgram = renderer->LoadShaderProgram("terrain", vsPath, fsPath);
+
+  // Example vertices
+  struct PosColorVertex {
+    float x, y;
+    uint32_t abgr;
+  };
+
+  static PosColorVertex s_vertices[] = {
+      {0.0f, 0.5f, 0xffff0000},   // top
+      {0.5f, -0.5f, 0xff00ff00},  // right
+      {-0.5f, -0.5f, 0xff0000ff}  // left
+  };
+
+  static const uint16_t s_indices[] = {0, 1, 2};
+
+  bgfx::VertexLayout layout;
+  layout.begin()
+      .add(bgfx::Attrib::Position, 2, bgfx::AttribType::Float)
+      .add(bgfx::Attrib::Color0, 4, bgfx::AttribType::Uint8, true)
+      .end();
+
+  const bgfx::Memory* vtxMem = bgfx::copy(s_vertices, sizeof(s_vertices));
+  vertexBuffer = bgfx::createVertexBuffer(vtxMem, layout);
+
+  const bgfx::Memory* idxMem = bgfx::copy(s_indices, sizeof(s_indices));
+  indexBuffer = bgfx::createIndexBuffer(idxMem);
+
+  // Initialize world matrix to identity
+  bx::mtxIdentity(world_matrix);
 }
 
-// Update function: Handles rendering every frame
 void GameTest::Update() {
-  // Validate the shader program handle before rendering
-  if (!bgfx::isValid(_helloWorldProgram)) {
-    Logger::getInstance().Log(LogLevel::ERROR, "Shader program is invalid.");
-    return;  // Exit function if shader program is invalid
-  }
+  if (!bgfx::isValid(_helloWorldProgram))
+    return;
 
-  // Set up the view clear behavior for view ID 0
-  bgfx::setViewClear(0, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH, 0x000000FF, 1.0f,
-                     0);
-
-  // Mark view ID 0 as touched (ensures it gets processed in the rendering
-  // pipeline)
-  bgfx::touch(0);
-
-  // Log rendering progress
-  Logger::getInstance().Log(LogLevel::INFO,
-                            "Rendering frame with Hello World shader.");
+  // BGFX draw calls
+  // send draw commands to the renderer here
+  bgfx::setTransform(world_matrix);
+  bgfx::setState(BGFX_STATE_DEFAULT);
+  bgfx::setVertexBuffer(0, vertexBuffer);
+  bgfx::setIndexBuffer(indexBuffer);
+  bgfx::submit(0, _helloWorldProgram);
 }

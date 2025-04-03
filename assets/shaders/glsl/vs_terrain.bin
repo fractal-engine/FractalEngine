@@ -1,0 +1,31 @@
+#version 450
+layout(row_major) uniform;
+layout(row_major) buffer;
+
+#line 4 0
+layout(location = 0)
+in vec3 input_a_position_0;
+
+
+struct VS_OUTPUT_0
+{
+    vec4 position_0;
+};
+
+
+#line 12
+void main()
+{
+
+#line 13
+    VS_OUTPUT_0 output_0;
+
+    output_0.position_0 = vec4(input_a_position_0, 1.0);
+
+#line 15
+    gl_Position = output_0.position_0;
+
+#line 15
+    return;
+}
+

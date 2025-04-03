@@ -1,12 +1,15 @@
 #include <thirdparty/bgfx.cmake/bgfx/include/bgfx/bgfx.h>
+#include <thirdparty/bgfx.cmake/bx/include/bx/debug.h>
 #include <thirdparty/bgfx.cmake/bx/include/bx/file.h>
 #include <thirdparty/bgfx.cmake/bx/include/bx/readerwriter.h>
-#include <thirdparty/bgfx.cmake/bx/include/bx/debug.h>
+#include "base/logger.h"
 #include "base/shader_utils.h"
 
 bgfx::ShaderHandle loadShader(const char* filePath) {
   bx::FileReader fileReader;
   if (!bx::open(&fileReader, filePath)) {
+    Logger::getInstance().Log(
+        LogLevel::ERROR, std::string("Shader file not found: ") + filePath);
     bx::close(&fileReader);
     return BGFX_INVALID_HANDLE;
   }

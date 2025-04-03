@@ -1,7 +1,7 @@
 #ifndef GAME_TEST_H
 #define GAME_TEST_H
 
-#include <thirdparty/bgfx.cmake/bgfx/include/bgfx/bgfx.h>
+#include <bgfx/bgfx.h>
 #include "base/game_base.h"
 
 // A minimal game class that just displays "Hello World".
@@ -14,12 +14,16 @@ public:
   // that will be used to display "Hello World".
   void Init() override;
 
-  // Update is called every frame—in this minimal example, it just
+  // Update is called every frameï¿½in this minimal example, it just
   // submits a BGFX touch call and logs a message.
   void Update() override;
 
 private:
+  // BGFX resources
   bgfx::ProgramHandle _helloWorldProgram;
+  bgfx::VertexBufferHandle vertexBuffer = BGFX_INVALID_HANDLE;
+  bgfx::IndexBufferHandle indexBuffer = BGFX_INVALID_HANDLE;
+  float world_matrix[16];  // 4x4 transformation matrix
 };
 
 #endif  // GAME_TEST_H

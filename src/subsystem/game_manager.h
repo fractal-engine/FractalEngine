@@ -27,6 +27,7 @@ private:
   GameManager(std::unique_ptr<Game>&& game);
 
 public:
+  void Render();
   void StartGame();
   void EndGame();
   void Run();

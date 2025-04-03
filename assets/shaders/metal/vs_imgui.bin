@@ -1,0 +1,47 @@
+#include <metal_stdlib>
+#include <metal_math>
+#include <metal_texture>
+using namespace metal;
+
+#line 14 "src/shaders/imgui/vs_imgui.slang"
+struct VS_OUTPUT_0
+{
+    float4 position_0 [[position]];
+    float2 texcoord0_0 [[user(TEXCOORD)]];
+    float4 color0_0 [[user(COLOR)]];
+};
+
+
+#line 14
+struct vertexInput_0
+{
+    float2 a_position_0 [[attribute(0)]];
+    float2 a_texcoord0_0 [[attribute(1)]];
+    float4 a_color0_0 [[attribute(2)]];
+};
+
+
+#line 14
+struct _MatrixStorage_float4x4_ColMajornatural_0
+{
+    array<float4, int(4)> data_0;
+};
+
+
+#line 14
+struct SLANG_ParameterGroup_ProjectionMatrix_natural_0
+{
+    _MatrixStorage_float4x4_ColMajornatural_0 u_projection_0;
+};
+
+
+
+[[vertex]] VS_OUTPUT_0 main(vertexInput_0 _S1 [[stage_in]], SLANG_ParameterGroup_ProjectionMatrix_natural_0 constant* ProjectionMatrix_0 [[buffer(0)]])
+{
+    thread VS_OUTPUT_0 output_0;
+    (&output_0)->position_0 = (((float4(_S1.a_position_0, 0.0, 1.0)) * (matrix<float,int(4),int(4)> (ProjectionMatrix_0->u_projection_0.data_0[int(0)][int(0)], ProjectionMatrix_0->u_projection_0.data_0[int(1)][int(0)], ProjectionMatrix_0->u_projection_0.data_0[int(2)][int(0)], ProjectionMatrix_0->u_projection_0.data_0[int(3)][int(0)], ProjectionMatrix_0->u_projection_0.data_0[int(0)][int(1)], ProjectionMatrix_0->u_projection_0.data_0[int(1)][int(1)], ProjectionMatrix_0->u_projection_0.data_0[int(2)][int(1)], ProjectionMatrix_0->u_projection_0.data_0[int(3)][int(1)], ProjectionMatrix_0->u_projection_0.data_0[int(0)][int(2)], ProjectionMatrix_0->u_projection_0.data_0[int(1)][int(2)], ProjectionMatrix_0->u_projection_0.data_0[int(2)][int(2)], ProjectionMatrix_0->u_projection_0.data_0[int(3)][int(2)], ProjectionMatrix_0->u_projection_0.data_0[int(0)][int(3)], ProjectionMatrix_0->u_projection_0.data_0[int(1)][int(3)], ProjectionMatrix_0->u_projection_0.data_0[int(2)][int(3)], ProjectionMatrix_0->u_projection_0.data_0[int(3)][int(3)]))));
+    (&output_0)->texcoord0_0 = _S1.a_texcoord0_0;
+    (&output_0)->color0_0 = _S1.a_color0_0;
+    return output_0;
+}
+

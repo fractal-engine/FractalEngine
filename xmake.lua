@@ -1,7 +1,7 @@
 set_languages("c++17")
 add_cxxflags("/Zc:__cplusplus")
 add_cxxflags("/Zc:preprocessor")
-add_requires("ftxui", "boost", "libsdl", "libsdl_ttf", "portaudio") -- Add dependencies
+add_requires("ftxui", "boost", "libsdl2", "libsdl2_ttf", "portaudio") -- Add dependencies
 add_requires("imgui", {configs = {sdl2 = true, sdl2_renderer = true}})
 
 if is_mode("debug") then
@@ -36,8 +36,12 @@ target("fractal")
     add_files("src/subsystem/input/*.cpp")  -- Add source files from base
     add_files("src/game/*.cpp")  -- Add source files from game
     add_files("src/editor/*.cpp")  -- Add source files from editor
+    add_files("src/drivers/*.cpp")  -- Add ImGuiRenderer, BGFX drivers
     add_files("src/audio/*.cpp")
+
+    -- Add shader files with slang rule
     add_files("src/shaders/**.slang", {rule = "slang"})
+
     add_options("display")
     on_load(function (target)
         local display_mode = get_config("display")
@@ -57,7 +61,7 @@ target("fractal")
         target:add("envs", { "PATH=" .. bgfx_tools_dir })
 
     end)
-    add_packages("ftxui", "boost", "libsdl", "libsdl_ttf", "imgui", "portaudio", "bgfx") -- Add packages
+    add_packages("ftxui", "boost", "libsdl2", "libsdl2_ttf", "imgui", "portaudio", "bgfx") -- Add packages
 
     after_build(function (target)
         os.cp("audio_lib", target:targetdir()) -- Copy audio folder to build directory
@@ -66,9 +70,16 @@ target("fractal")
     end)
 -- Define 'display' option
 option("display")
-    set_default("DISPLAY_TEXT")
+    set_default("DISPLAY_GRAPHICAL")
     set_showmenu(true)
     set_values("DISPLAY_TEXT", "DISPLAY_GRAPHICAL")
+
+-- Define 'backend' option
+option("backend")
+    set_default("auto")
+    set_description("Shader backend to target (e.g., spirv, glsl, metal, dx11)")
+    set_showmenu(true)
+    set_values("auto", "spirv", "glsl", "metal", "dx11", "dx12")
 -----------------------------------------------------------------------------------------------------------------
 
 package("bgfx")
@@ -84,15 +95,48 @@ package_end()
 -----------------------------------------------------------------------------------------------------------------
  rule("slang")
     set_extensions(".slang")
+
     on_build_file(function (target, sourcefile)
-        local outputdir = path.join(target:targetdir(), "shaders")
-        os.mkdir(outputdir)
 
-        local outputfile = path.join(outputdir, path.basename(sourcefile) .. ".spv")
-        local slangc = "C:/Users/moses/Downloads/Fractal_OpenGL/src/thirdparty/slang-2025.6.3-windows-x86_64/bin/slangc.exe"
+    -- Set backend folder based on the target platform
+        local function get_backend_folder()
+            local override = get_config("backend")
+            if override and override ~= "auto" then
+                return override
+            end
+
+            return "spirv"
+        end
+
+        local backend = get_backend_folder()
+        local asset_outputdir = path.join("assets", "shaders", backend)
+
+        os.mkdir(asset_outputdir)
+
+        local assetfile = path.join(asset_outputdir, path.basename(sourcefile) .. ".bin")
+
+        -- Use platform-specific path for slangc
+        local slangc = nil
+        if is_plat("windows") then
+            slangc = path.join(os.projectdir(), "src/thirdparty/slang-2025.6.3-windows-x86_64/bin/slangc.exe")
+        elseif is_plat("macosx") then
+            slangc = path.join(os.projectdir(), "src/thirdparty/slang-2025.6.3-macos-x86_64/bin/slangc")
+        elseif is_plat("linux") then
+            slangc = path.join(os.projectdir(), "src/thirdparty/slang-2025.6.3-linux-x86_64/bin/slangc")
+        end
+
+        -- Check if slangc exists
+        if not slangc or not os.isfile(slangc) then
+            local slangc_in_path = try { function() return os.iorunv("which", {"slangc"}) end }
+            if slangc_in_path and os.isfile(slangc_in_path:trim()) then
+                slangc = "slangc"
+            else
+                print("Error: slangc not found. Please install it and add to PATH.")
+                return
+            end
+        end
+
         local stage = nil
-
-        -- Assign stages based on filename patterns
         if sourcefile:find("vs_") then
             stage = "vertex"
         elseif sourcefile:find("fs_") then
@@ -104,14 +148,26 @@ package_end()
             return
         end
 
+        local target_lang_map = {
+            glsl = "glsl",
+            spirv = "spirv",
+            metal = "metal",
+            dx11 = "dx_5_0",
+            dx12 = "dxil",
+        }
+
+        local slang_target = target_lang_map[backend] or backend
+
         local argv = {
             "-entry", "main",
             "-stage", stage,
-            "-target", "spirv",
-            "-o", outputfile,
+            "-target", slang_target,
+            "-o", assetfile,
             sourcefile,
         }
 
         print("Slangc Command: ", table.concat(argv, " "))
         os.vrunv(slangc, argv)
     end)
+rule_end()
+-----------------------------------------------------------------------------------------------------------------

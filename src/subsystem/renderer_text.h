@@ -19,6 +19,7 @@ private:
   ftxui::Canvas canvas_;
   ftxui::Component game_canvas_;
   RendererText();  // Private constructor
+  void Render() override {}
   std::mutex canvas_mutex_;
 
   void showText(const std::string& text, int x, int y);

@@ -30,6 +30,7 @@ public:
 
   // virtual destructor
   virtual ~RendererBase() = default;
+  virtual void Render() = 0;
 
   int GetHeight() const;
   int GetWidth() const;
