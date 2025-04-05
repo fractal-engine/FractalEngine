@@ -1,5 +1,6 @@
 # vscode
 .vscode
+.vs
 
 # build systems
 compile_commands.json

@@ -6,11 +6,20 @@
 #include "base/shader_utils.h"
 
 bgfx::ShaderHandle loadShader(const char* filePath) {
+  std::string fullPath;
+
+  // resolve to full path if it doesn't already include "assets/shaders"
+  if (strstr(filePath, "assets/shaders") == nullptr) {
+    std::string folder = GetShaderFolder(bgfx::getRendererType());
+    fullPath = "assets/shaders/" + folder + "/" + filePath;
+  } else {
+    fullPath = filePath;
+  }
+
   bx::FileReader fileReader;
-  if (!bx::open(&fileReader, filePath)) {
+  if (!bx::open(&fileReader, fullPath.c_str())) {
     Logger::getInstance().Log(
-        LogLevel::ERROR, std::string("Shader file not found: ") + filePath);
-    bx::close(&fileReader);
+        LogLevel::Error, std::string("Shader file not found: ") + fullPath);
     return BGFX_INVALID_HANDLE;
   }
 

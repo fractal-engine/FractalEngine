@@ -19,7 +19,7 @@ RendererText::RendererText() {
 void RendererText::SetSize(int width, int height) {
   RendererBase::SetSize(width, height);
   canvas_ = Canvas(width_, height_);
-  Logger::getInstance().Log(LogLevel::INFO, "RendererText set size at (" +
+  Logger::getInstance().Log(LogLevel::Info, "RendererText set size at (" +
                                                 std::to_string(width_) + ", " +
                                                 std::to_string(height_) + ")");
 }

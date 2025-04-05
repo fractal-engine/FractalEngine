@@ -16,7 +16,7 @@
 
 
 int main() {
-  Logger::getInstance().Log(LogLevel::INFO, "Starting Fractal Engine");
+  Logger::getInstance().Log(LogLevel::Info, "Starting Fractal Engine");
 
   // Initialize the subsystem manager
   SubsystemManager::Initialize();
@@ -25,11 +25,11 @@ int main() {
   std::thread game_thread([&] { SubsystemManager::GetGameManager()->Run(); });
 
   // Log the start of the editor display
-  Logger::getInstance().Log(LogLevel::DEBUG, "Initializing editor display");
+  Logger::getInstance().Log(LogLevel::Debug, "Initializing editor display");
 
   // Initialize the sound system
   if (!SoundManager::Instance().init()) {
-    Logger::getInstance().Log(LogLevel::ERROR,
+    Logger::getInstance().Log(LogLevel::Error,
                               "Failed to initialize SoundManager");
     return -1;
   }
@@ -39,23 +39,23 @@ int main() {
 
   // Start the ambient background sound
   if (!SoundManager::Instance().startAmbient()) {
-    Logger::getInstance().Log(LogLevel::ERROR, "Failed to start ambient sound");
+    Logger::getInstance().Log(LogLevel::Error, "Failed to start ambient sound");
   }
 
   // Run the editor
-  Logger::getInstance().Log(LogLevel::INFO, "Calling EditorGUI::Run()");
+  Logger::getInstance().Log(LogLevel::Info, "Calling EditorGUI::Run()");
   SubsystemManager::GetEditor()->Run();
-  Logger::getInstance().Log(LogLevel::INFO,
+  Logger::getInstance().Log(LogLevel::Info,
                             "Returned from EditorGUI::Run()");  // debug
 
   // Join the game thread
   game_thread.join();
 
   // Log the joining of the game thread
-  Logger::getInstance().Log(LogLevel::INFO, "Game thread joined");
+  Logger::getInstance().Log(LogLevel::Info, "Game thread joined");
 
   // Shutdown BGFX before exiting
-  Logger::getInstance().Log(LogLevel::DEBUG, "Shutting down BGFX...");
+  Logger::getInstance().Log(LogLevel::Debug, "Shutting down BGFX...");
   bgfx::shutdown();
 
   // Clean up the sound system on exit

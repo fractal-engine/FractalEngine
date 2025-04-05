@@ -2,12 +2,12 @@
 layout(row_major) uniform;
 layout(row_major) buffer;
 
-#line 3 0
+#line 4 0
 layout(binding = 0)
 uniform texture2D s_texture_0;
 
 
-#line 4
+#line 5
 layout(binding = 1)
 uniform sampler s_sampler_0;
 
@@ -27,14 +27,14 @@ layout(location = 1)
 in vec4 input_color0_0;
 
 
-#line 13 0
+#line 14 0
 void main()
 {
 
-#line 13
+#line 14
     entryPointParam_main_0 = (texture(sampler2D(s_texture_0,s_sampler_0), (input_texcoord0_0))) * input_color0_0;
 
-#line 13
+#line 14
     return;
 }
 

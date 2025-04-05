@@ -2,6 +2,19 @@
 #define KEY_MAP_SDL_H
 
 #include <SDL.h>
+
+#ifdef DELETE
+#undef DELETE
+#endif
+
+#ifdef ERROR
+#undef ERROR
+#endif
+
+#ifdef DEBUG
+#undef DEBUG
+#endif
+
 #include "key.h"
 
 inline Key sdl_key_to_key(const SDL_Event& event) {

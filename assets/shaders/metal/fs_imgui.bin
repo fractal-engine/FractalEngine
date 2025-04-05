@@ -26,20 +26,20 @@ struct KernelContext_0
 };
 
 
-#line 13 "src/shaders/imgui/fs_imgui.slang"
+#line 14 "src/shaders/imgui/fs_imgui.slang"
 [[fragment]] pixelOutput_0 main(pixelInput_0 _S1 [[stage_in]], float4 position_0 [[position]], texture2d<float, access::sample> s_texture_1 [[texture(0)]], sampler s_sampler_1 [[sampler(1)]])
 {
 
-#line 13
+#line 14
     KernelContext_0 kernelContext_0;
 
-#line 13
+#line 14
     (&kernelContext_0)->s_texture_0 = s_texture_1;
 
-#line 13
+#line 14
     (&kernelContext_0)->s_sampler_0 = s_sampler_1;
 
-#line 13
+#line 14
     pixelOutput_0 _S2 = { (((&kernelContext_0)->s_texture_0).sample((s_sampler_1), (_S1.texcoord0_0))) * _S1.color0_0 };
 
 

@@ -8,11 +8,11 @@ bool WindowManager::Initialize(const char* title, int width, int height) {
   instance.width_ = width;
   instance.height_ = height;
 
-  Logger::getInstance().Log(LogLevel::DEBUG, "Calling SDL_Init"); // debug - remove later
+  Logger::getInstance().Log(LogLevel::Debug, "Calling SDL_Init"); // debug - remove later
 
   if (SDL_Init(SDL_INIT_VIDEO) < 0) {
     Logger::getInstance().Log(
-        LogLevel::ERROR, std::string("SDL_Init failed: ") + SDL_GetError());
+        LogLevel::Error, std::string("SDL_Init failed: ") + SDL_GetError());
     return false;
   }
 
@@ -25,14 +25,14 @@ bool WindowManager::Initialize(const char* title, int width, int height) {
     SDL_RaiseWindow(instance.window_);
 
     Logger::getInstance().Log(
-        LogLevel::ERROR,
+        LogLevel::Error,
         std::string("SDL_CreateWindow failed: ") + SDL_GetError());
     SDL_Quit();
     return false;
   }
 
   Logger::getInstance().Log(
-      LogLevel::INFO, "WindowManager initialized with size: " +
+      LogLevel::Info, "WindowManager initialized with size: " +
                           std::to_string(width) + "x" + std::to_string(height));
   return true;
 }
@@ -72,7 +72,7 @@ void WindowManager::OnWindowResize(int width, int height) {
   instance.height_ = height;
 
   Logger::getInstance().Log(
-      LogLevel::DEBUG, "Window resized to: " + std::to_string(width) + "x" +
+      LogLevel::Debug, "Window resized to: " + std::to_string(width) + "x" +
                            std::to_string(height));
 
   // Notify all registered callbacks
@@ -100,11 +100,11 @@ void WindowManager::InitBGFXPlatformData(bgfx::Init& init) {
     init.platformData.context = nullptr;
 
     Logger::getInstance().Log(
-        LogLevel::DEBUG,
+        LogLevel::Debug,
         "Set BGFX platformData for macOS (OpenGL). nwh = " +
             std::to_string(reinterpret_cast<uintptr_t>(init.platformData.nwh)));
   } else {
-    Logger::getInstance().Log(LogLevel::ERROR, "SDL_GetWindowWMInfo failed!");
+    Logger::getInstance().Log(LogLevel::Error, "SDL_GetWindowWMInfo failed!");
   }
 
 #elif defined(_WIN32)
@@ -114,7 +114,7 @@ void WindowManager::InitBGFXPlatformData(bgfx::Init& init) {
     init.platformData.ndt = nullptr;
     init.platformData.nwh = wmi.info.win.window;
     init.platformData.context = nullptr;
-    Logger::getInstance().Log(LogLevel::DEBUG,
+    Logger::getInstance().Log(LogLevel::Debug,
                               "Set BGFX platformData for Windows.");
   }
 
@@ -125,7 +125,7 @@ void WindowManager::InitBGFXPlatformData(bgfx::Init& init) {
     init.platformData.ndt = wmi.info.x11.display;
     init.platformData.nwh = (void*)(uintptr_t)wmi.info.x11.window;
     init.platformData.context = nullptr;
-    Logger::getInstance().Log(LogLevel::DEBUG,
+    Logger::getInstance().Log(LogLevel::Debug,
                               "Set BGFX platformData for Linux (X11).");
   }
 #endif

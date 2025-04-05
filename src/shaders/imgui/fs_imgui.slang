@@ -1,4 +1,5 @@
 // fs_imgui.slang - ImGui fragment shader
+#version 450 core
 
 Texture2D s_texture : register(t0);
 SamplerState s_sampler : register(s1);

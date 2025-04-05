@@ -17,23 +17,22 @@ void ImGuiRenderer::Init() {
   ImGui::CreateContext();
   ImGui::StyleColorsDark();
 
-  // Initialize SDL backend (platform binding)
   SDL_Window* window = WindowManager::GetWindow();
   ImGui_ImplSDL2_InitForOther(window);
 
-  // Initialize BGFX resources for ImGui rendering
   imguiVertexLayout.begin()
       .add(bgfx::Attrib::Position, 2, bgfx::AttribType::Float)
       .add(bgfx::Attrib::TexCoord0, 2, bgfx::AttribType::Float)
       .add(bgfx::Attrib::Color0, 4, bgfx::AttribType::Uint8, true)
       .end();
 
-  // Load shaders and create program
-  bgfx::ShaderHandle vs = loadShader("vs_imgui.slang");
-  bgfx::ShaderHandle fs = loadShader("fs_imgui.slang");
+  // Get BGFX backend type to determine folder
+  bgfx::ShaderHandle vs = loadShader("vs_imgui.bin");
+  bgfx::ShaderHandle fs = loadShader("fs_imgui.bin");
+
   imguiProgram = bgfx::createProgram(vs, fs, true);
 
-  Logger::getInstance().Log(LogLevel::INFO, "ImGuiRenderer initialized.");
+  Logger::getInstance().Log(LogLevel::Info, "ImGuiRenderer initialized.");
 }
 
 void ImGuiRenderer::BeginFrame() {
@@ -54,7 +53,7 @@ void ImGuiRenderer::EndFrame() {
     bgfx::frame();
     return;
   }
-  
+
   const float width = drawData->DisplaySize.x;
   const float height = drawData->DisplaySize.y;
 

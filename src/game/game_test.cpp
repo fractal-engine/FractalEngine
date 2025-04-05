@@ -23,13 +23,8 @@ void GameTest::Init() {
   GraphicsRenderer* renderer =
       static_cast<GraphicsRenderer*>(SubsystemManager::GetRenderer().get());
 
-  const char* backend = bgfx::getRendererName(bgfx::getRendererType());
-  std::string vsPath =
-      std::string("assets/shaders/") + backend + "/vs_terrain.bin";
-  std::string fsPath =
-      std::string("assets/shaders/") + backend + "/fs_terrain.bin";
-
-  _helloWorldProgram = renderer->LoadShaderProgram("terrain", vsPath, fsPath);
+  _helloWorldProgram = renderer->LoadShaderProgram("terrain", "vs_terrain.bin",
+                                                   "fs_terrain.bin");
 
   // Example vertices
   struct PosColorVertex {

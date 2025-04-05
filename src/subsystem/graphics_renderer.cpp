@@ -15,14 +15,14 @@ GraphicsRenderer::GraphicsRenderer() {
   // Initialize SDL_ttf (SDL itself is initialized by window manager)
   if (TTF_Init() == -1) {
     Logger::getInstance().Log(
-        LogLevel::ERROR, "TTF_Init failed: " + std::string(TTF_GetError()));
+        LogLevel::Error, "TTF_Init failed: " + std::string(TTF_GetError()));
     std::exit(1);
   }
 
   // Get SDL window from WindowManager instead of creating one
   window_ = WindowManager::GetWindow();
   if (!window_) {
-    Logger::getInstance().Log(LogLevel::ERROR,
+    Logger::getInstance().Log(LogLevel::Error,
                               "Failed to get window from WindowManager");
     std::exit(1);
   }
@@ -35,7 +35,7 @@ GraphicsRenderer::GraphicsRenderer() {
       [this](int width, int height) { SetSize(width, height); });
 
   Logger::getInstance().Log(
-      LogLevel::INFO, "GraphicsRenderer initialized successfully with BGFX.");
+      LogLevel::Info, "GraphicsRenderer initialized successfully with BGFX.");
 }
 
 GraphicsRenderer::~GraphicsRenderer() {
@@ -52,13 +52,13 @@ bool GraphicsRenderer::InitBGFX() {
   init.profile = true;
 
   if (!bgfx::init(init)) {
-    Logger::getInstance().Log(LogLevel::ERROR, "Failed to initialize BGFX!");
+    Logger::getInstance().Log(LogLevel::Error, "Failed to initialize BGFX!");
     return false;
   }
 
   bgfx::RendererType::Enum backend = bgfx::getRendererType();
   Logger::getInstance().Log(
-      LogLevel::INFO, "BGFX initialized successfully! Selected backend: " +
+      LogLevel::Info, "BGFX initialized successfully! Selected backend: " +
                           std::to_string(static_cast<int>(backend)) + " (" +
                           bgfx::getRendererName(backend) + ")");
 
@@ -150,31 +150,32 @@ void GraphicsRenderer::ClearDisplay() {
 
 // Utility function to load and create a shader program
 bgfx::ProgramHandle GraphicsRenderer::LoadShaderProgram(
-    const std::string& name, const std::string& vsPath,
-    const std::string& fsPath) {
-  Logger::getInstance().Log(
-      LogLevel::DEBUG,
-      "Looking for vertex shader at: " + vsPath);  // remove later
-  Logger::getInstance().Log(
-      LogLevel::DEBUG,
-      "Looking for fragment shader at: " + fsPath);  // remove later
-  if (shaderPrograms_.count(name))
-    return shaderPrograms_[name];
+    const std::string& programName, const std::string& vertexShaderFilename,
+    const std::string& fragmentShaderFilename) {
 
-  Logger::getInstance().Log(LogLevel::INFO, "Loading shader program: " + name);
+  Logger::getInstance().Log(
+      LogLevel::Debug, "Looking for vertex shader: " + vertexShaderFilename);
+  Logger::getInstance().Log(LogLevel::Debug, "Looking for fragment shader: " +
+                                                 fragmentShaderFilename);
 
-  // Use loadShader function from shader_utils.h
-  bgfx::ShaderHandle vs = loadShader(vsPath.c_str());
-  bgfx::ShaderHandle fs = loadShader(fsPath.c_str());
+  // Reuse if already loaded
+  if (shaderPrograms_.count(programName))
+    return shaderPrograms_[programName];
+
+  Logger::getInstance().Log(LogLevel::Info,
+                            "Loading shader program: " + programName);
+
+  bgfx::ShaderHandle vs = loadShader(vertexShaderFilename.c_str());
+  bgfx::ShaderHandle fs = loadShader(fragmentShaderFilename.c_str());
 
   if (!bgfx::isValid(vs) || !bgfx::isValid(fs)) {
-    Logger::getInstance().Log(LogLevel::ERROR,
-                              "Failed to load shaders for program: " + name);
+    Logger::getInstance().Log(
+        LogLevel::Error, "Failed to load shaders for program: " + programName);
     return BGFX_INVALID_HANDLE;
   }
 
   bgfx::ProgramHandle program = bgfx::createProgram(vs, fs, true);
-  shaderPrograms_[name] = program;
+  shaderPrograms_[programName] = program;
   return program;
 }
 

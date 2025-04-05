@@ -23,7 +23,7 @@ EditorGUI::EditorGUI(std::unique_ptr<RendererBase>& renderer)
 EditorGUI::~EditorGUI() {}
 
 void EditorGUI::Run() {
-  Logger::getInstance().Log(LogLevel::INFO, "EditorGUI main loop start");
+  Logger::getInstance().Log(LogLevel::Info, "EditorGUI main loop start");
 
   // Get SDL window
   SDL_Window* window = WindowManager::GetWindow();
@@ -77,7 +77,7 @@ void EditorGUI::Run() {
 
       // Close window
       if (event.type == SDL_QUIT) {
-        Logger::getInstance().Log(LogLevel::INFO, "SDL_QUIT event received");
+        Logger::getInstance().Log(LogLevel::Info, "SDL_QUIT event received");
         quit_ = true;
         editor_exit_pressed();  // Signal game to terminate
         break;
@@ -125,13 +125,13 @@ void EditorGUI::Run() {
     /*****************************BUTTONS AREA*****************************/
     // -- Top row: Buttons (Start, Stop, Add, Remove, Quit)
     if (ImGui::Button("Start")) {
-      Logger::getInstance().Log(LogLevel::INFO, "Editor start game thread");
+      Logger::getInstance().Log(LogLevel::Info, "Editor start game thread");
       is_game_started_ = true;
       game_start_pressed();
     }
     ImGui::SameLine();
     if (ImGui::Button("Stop")) {
-      Logger::getInstance().Log(LogLevel::INFO, "Editor stop game thread");
+      Logger::getInstance().Log(LogLevel::Info, "Editor stop game thread");
       is_game_started_ = false;
       game_end_pressed();
     }
@@ -145,7 +145,7 @@ void EditorGUI::Run() {
     }
     ImGui::SameLine();
     if (ImGui::Button("Quit")) {
-      Logger::getInstance().Log(LogLevel::INFO, "Editor exit on user input");
+      Logger::getInstance().Log(LogLevel::Info, "Editor exit on user input");
       quit_ = true;
       editor_exit_pressed();
     }
@@ -222,7 +222,7 @@ void EditorGUI::Run() {
   imgui_renderer_.Shutdown();
   ImGui::DestroyContext();
 
-  Logger::getInstance().Log(LogLevel::INFO, "EditorGUI main loop exited");
+  Logger::getInstance().Log(LogLevel::Info, "EditorGUI main loop exited");
 }
 
 void EditorGUI::RequestUpdate() {
@@ -238,7 +238,7 @@ void EditorGUI::RequestUpdate() {
 // Handles keyboard input
 void EditorGUI::game_inputed(Key key) {
   Logger::getInstance().Log(
-      LogLevel::DEBUG,
+      LogLevel::Debug,
       "[EditorGUI] Key pressed: " + std::to_string(static_cast<int>(key)));
 
   // Bypass WantCaptureKeyboard if game is active and canvas is hovered
@@ -249,13 +249,13 @@ void EditorGUI::game_inputed(Key key) {
   // Handle numeric shortcuts for Start/Stop/Quit
   switch (key) {
     case Key::DIGIT_0:  // '0' for Quit
-      Logger::getInstance().Log(LogLevel::INFO,
+      Logger::getInstance().Log(LogLevel::Info,
                                 "[EditorGUI] Received '0' => Quit");
       quit_ = true;
       editor_exit_pressed();
       return;
     case Key::DIGIT_1:  // '1' for Start Game
-      Logger::getInstance().Log(LogLevel::INFO,
+      Logger::getInstance().Log(LogLevel::Info,
                                 "[EditorGUI] Received '1' => Start game");
       if (!is_game_started_) {
         is_game_started_ = true;
@@ -263,7 +263,7 @@ void EditorGUI::game_inputed(Key key) {
       }
       return;
     case Key::DIGIT_2:  // '2' for Stop Game
-      Logger::getInstance().Log(LogLevel::INFO,
+      Logger::getInstance().Log(LogLevel::Info,
                                 "[EditorGUI] Received '2' => Stop game");
       if (is_game_started_) {
         is_game_started_ = false;
@@ -281,7 +281,7 @@ void EditorGUI::game_inputed(Key key) {
   // For keys such as WASD (or others) used to move the game object,
   // forward them to the input system so that the game update (GameTest::Update)
   // can detect them via IsJustPressed.
-  Logger::getInstance().Log(LogLevel::DEBUG,
+  Logger::getInstance().Log(LogLevel::Debug,
                             "[EditorGUI] Forwarding key to game system");
 
   InputEvent input_event(key);

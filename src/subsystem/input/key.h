@@ -1,6 +1,10 @@
 #ifndef KEY_H
 #define KEY_H
 
+#ifdef DELETE
+#undef DELETE
+#endif
+
 // NOTE - This code is generate by ChatGPT
 enum class Key {
   NONE = 0x0,

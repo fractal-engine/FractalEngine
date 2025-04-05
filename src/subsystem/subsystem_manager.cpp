@@ -43,7 +43,7 @@ void SubsystemManager::initialize() {
 #if defined(DISPLAY_GRAPHICAL)
   window_manager_ = std::make_unique<WindowManager>();
   if (!window_manager_->Initialize("Fractal", 1280, 720)) {
-    Logger::getInstance().Log(LogLevel::ERROR,
+    Logger::getInstance().Log(LogLevel::Error,
                               "WindowManager failed to initialize.");
     std::exit(1);
   }
@@ -53,7 +53,7 @@ void SubsystemManager::initialize() {
 #if defined(DISPLAY_GRAPHICAL)
   renderer_ = std::make_unique<GraphicsRenderer>();
   if (!static_cast<GraphicsRenderer*>(renderer_.get())->InitBGFX()) {
-    Logger::getInstance().Log(LogLevel::ERROR,
+    Logger::getInstance().Log(LogLevel::Error,
                               "BGFX failed to initialize in renderer!");
     std::exit(1);
   }
@@ -62,19 +62,19 @@ void SubsystemManager::initialize() {
 #else
 #error "No renderer defined! Use -o display=DISPLAY_GRAPHICAL or DISPLAY_TEXT."
 #endif
-  Logger::getInstance().Log(LogLevel::INFO, "Renderer initialized");
+  Logger::getInstance().Log(LogLevel::Info, "Renderer initialized");
 
   // 3. Initialize Input
   input_ = std::make_unique<Input>();
 
   // 4. Initialize Editor
   editor_.reset(new Editor(renderer_));
-  Logger::getInstance().Log(LogLevel::INFO, "Editor initialized");
+  Logger::getInstance().Log(LogLevel::Info, "Editor initialized");
 
   // TODO - Read Game Manager read games from filesystem
   // 5. Initialize GameManager
   game_manager_.reset(new GameManager(std::make_unique<GameTest>()));
-  Logger::getInstance().Log(LogLevel::INFO, "Game Manager initialized");
+  Logger::getInstance().Log(LogLevel::Info, "Game Manager initialized");
 
   // Connect editor signals to game manager
   editor_->game_start_pressed.connect([&] { game_manager_->StartGame(); });

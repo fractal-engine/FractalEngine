@@ -40,7 +40,7 @@ target("fractal")
     add_files("src/audio/*.cpp")
 
     -- Add shader files with slang rule
-    add_files("src/shaders/**.slang", {rule = "slang"})
+    add_files("src/shaders/**.slang", {rule = "slang_multi"})
 
     add_options("display")
     on_load(function (target)
@@ -86,57 +86,38 @@ package("bgfx")
     add_deps("cmake") -- Use CMake to build bgfx
     set_sourcedir("src/thirdparty/bgfx.cmake") -- Path to the bgfx source directory
     on_install(function (package)
-        local configs = {}
+        local configs = {
+            "-DBGFX_BUILD_EXAMPLES=OFF",
+            "-DBGFX_BUILD_TOOLS=ON",
+            "-DBGFX_BUILD_RENDERER_DIRECT3D12=ON",
+            "-DBX_CONFIG_DEBUG=" .. (package:debug() and "1" or "0")
+        }
         table.insert(configs, "-DCMAKE_BUILD_TYPE=" .. (package:debug() and "Debug" or "Release"))
         table.insert(configs, "-DBUILD_SHARED_LIBS=OFF") -- Build static libraries
+        table.insert(configs, "-DBGFX_BUILD_RENDERER_DIRECT3D11=ON")
+        table.insert(configs, "-DBGFX_BUILD_RENDERER_DIRECT3D12=ON")
+        table.insert(configs, "-DBGFX_BUILD_RENDERER_OPENGL=ON")
         import("package.tools.cmake").install(package, configs)
     end)
 package_end()
 -----------------------------------------------------------------------------------------------------------------
- rule("slang")
+rule("slang_multi")
     set_extensions(".slang")
 
     on_build_file(function (target, sourcefile)
+        import("core.project.config")
 
-    -- Set backend folder based on the target platform
-        local function get_backend_folder()
-            local override = get_config("backend")
-            if override and override ~= "auto" then
-                return override
-            end
+        -- List of backends to generate
+        local backends = {
+            dx11  = {target = "dxbc", profile = "sm_5_1"},
+            dx12  = {target = "dxil", profile = "sm_6_0"},
+            glsl  = {target = "glsl", version = "450"},
+            spirv = {target = "spirv", version = "1.3"},
+            metal = {target = "metal", version = "2.1"}
+        }
 
-            return "spirv"
-        end
-
-        local backend = get_backend_folder()
-        local asset_outputdir = path.join("assets", "shaders", backend)
-
-        os.mkdir(asset_outputdir)
-
-        local assetfile = path.join(asset_outputdir, path.basename(sourcefile) .. ".bin")
-
-        -- Use platform-specific path for slangc
-        local slangc = nil
-        if is_plat("windows") then
-            slangc = path.join(os.projectdir(), "src/thirdparty/slang-2025.6.3-windows-x86_64/bin/slangc.exe")
-        elseif is_plat("macosx") then
-            slangc = path.join(os.projectdir(), "src/thirdparty/slang-2025.6.3-macos-x86_64/bin/slangc")
-        elseif is_plat("linux") then
-            slangc = path.join(os.projectdir(), "src/thirdparty/slang-2025.6.3-linux-x86_64/bin/slangc")
-        end
-
-        -- Check if slangc exists
-        if not slangc or not os.isfile(slangc) then
-            local slangc_in_path = try { function() return os.iorunv("which", {"slangc"}) end }
-            if slangc_in_path and os.isfile(slangc_in_path:trim()) then
-                slangc = "slangc"
-            else
-                print("Error: slangc not found. Please install it and add to PATH.")
-                return
-            end
-        end
-
-        local stage = nil
+        -- Detect shader stage
+        local stage
         if sourcefile:find("vs_") then
             stage = "vertex"
         elseif sourcefile:find("fs_") then
@@ -148,26 +129,58 @@ package_end()
             return
         end
 
-        local target_lang_map = {
-            glsl = "glsl",
-            spirv = "spirv",
-            metal = "metal",
-            dx11 = "dx_5_0",
-            dx12 = "dxil",
-        }
+        -- Detect platform and set slangc path
+        local slangc
+        local projectdir = os.projectdir()
 
-        local slang_target = target_lang_map[backend] or backend
+        if is_plat("windows") then
+            slangc = path.join(projectdir, "src/thirdparty/slang-2025.6.3-windows-x86_64/bin/slangc.exe")
+        elseif is_plat("macosx") then
+            slangc = path.join(projectdir, "src/thirdparty/slang-2025.6.3-macos-x86_64/bin/slangc")
+        elseif is_plat("linux") then
+            slangc = path.join(projectdir, "src/thirdparty/slang/install/bin/slangc")
+        end
 
-        local argv = {
-            "-entry", "main",
-            "-stage", stage,
-            "-target", slang_target,
-            "-o", assetfile,
-            sourcefile,
-        }
+        -- If slangc wasn't found, try checking the system path
+        if not slangc or not os.isfile(slangc) then
+            local slangc_in_path = try { function() return os.iorunv("which", {"slangc"}) end }
+            if slangc_in_path and os.isfile(slangc_in_path:trim()) then
+                slangc = "slangc"
+            else
+                print("Error: slangc not found. Please install it and add to PATH.")
+                return
+            end
+        end
 
-        print("Slangc Command: ", table.concat(argv, " "))
-        os.vrunv(slangc, argv)
+        -- Build command arguments
+        for folderName, slangTarget in pairs(backends) do
+            local outputDir = path.join("assets", "shaders", folderName)
+            os.mkdir(outputDir)
+
+            local outputFile = path.join(outputDir, path.basename(sourcefile) .. ".bin")
+
+            local argv = {
+                "-entry", "main",
+                "-stage", stage,
+                "-target", slangTarget.target,
+            }
+
+            -- Add profile
+            if slangTarget.profile then
+                table.insert(argv, "-profile")
+                table.insert(argv, slangTarget.profile)
+            end
+
+            table.insert(argv, "-o")
+            table.insert(argv, outputFile)
+            table.insert(argv, sourcefile)
+
+            print("Slangc Command: " .. table.concat(argv, " "))
+            local ok, errors = os.iorunv(slangc, argv)
+            if not ok then
+                print("Failed to compile shader for backend [" .. folderName .. "]: " .. (errors or "Unknown error"))
+            end
+        end
     end)
 rule_end()
 -----------------------------------------------------------------------------------------------------------------
