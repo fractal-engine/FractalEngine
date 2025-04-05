@@ -64,6 +64,7 @@ target("fractal")
     add_packages("ftxui", "boost", "libsdl2", "libsdl2_ttf", "imgui", "portaudio", "bgfx") -- Add packages
 
     after_build(function (target)
+        os.cp("assets/shaders", path.join(target:targetdir(), "assets"))
         os.cp("audio_lib", target:targetdir()) -- Copy audio folder to build directory
         os.cp("resources/NotoSansMono_Regular.ttf", target:targetdir())
         os.cp("src/shaders/*.slang", target:targetdir() .. "/shaders")
