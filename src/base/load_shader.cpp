@@ -28,18 +28,22 @@ bgfx::ShaderHandle loadShader(const char* filePath) {
   }
 
   uint32_t fileSize = (uint32_t)bx::getSize(&fileReader);
+  Logger::getInstance().Log(LogLevel::Debug, std::string("Shader file size: ") +
+                                                 std::to_string(fileSize));
   const bgfx::Memory* mem =
       bgfx::alloc(fileSize + 1);  // Allocate memory for shader file
   bx::Error err;
 
-  // Correct call to bx::read
   bx::read(&fileReader, mem->data, fileSize, &err);  // Pass an error object
 
   if (err.isOk()) {
-    mem->data[fileSize] = '\0';  // Null-terminate
+    // mem->data[fileSize] = '\0';  // Null-terminate
     bx::close(&fileReader);
     return bgfx::createShader(mem);
   } else {
+    Logger::getInstance().Log(
+        LogLevel::Error,
+        std::string("Failed to read shader file"));
     bx::close(&fileReader);
     return BGFX_INVALID_HANDLE;
   }
