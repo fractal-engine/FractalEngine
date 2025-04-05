@@ -6,15 +6,19 @@
 #include "base/shader_utils.h"
 
 bgfx::ShaderHandle loadShader(const char* filePath) {
-  std::string fullPath;
+  // Add debug output for shader paths
+  Logger::getInstance().Log(
+      LogLevel::Debug, "Attempting to load shader: " + std::string(filePath));
 
-  // resolve to full path if it doesn't already include "assets/shaders"
-  if (strstr(filePath, "assets/shaders") == nullptr) {
-    std::string folder = GetShaderFolder(bgfx::getRendererType());
-    fullPath = "assets/shaders/" + folder + "/" + filePath;
-  } else {
-    fullPath = filePath;
-  }
+  std::string fullPath;
+  const bgfx::RendererType::Enum rendererType = bgfx::getRendererType();
+  const std::string folder = GetShaderFolder(rendererType);
+  
+  // Construct path based on detected backend
+  fullPath = "assets/shaders/" + folder + "/" + filePath;
+
+  Logger::getInstance().Log(LogLevel::Debug, 
+      "Resolved shader path: " + fullPath);
 
   bx::FileReader fileReader;
   if (!bx::open(&fileReader, fullPath.c_str())) {
