@@ -155,26 +155,13 @@ void EditorGUI::Run() {
     /*****************************GAME CANVAS AREA*****************************/
     ImGui::BeginChild("GameCanvas", ImVec2(0, canvasHeight), true);
     {
-      // -- Game Canvas area
-      // ImGui::Text("Game Canvas");
-
-      // debug, remove later!
-      ImGui::Begin("Debug");
-      ImGui::Text("ImGui is working!");
-
-      ImGui::Separator();
-
       if (is_game_started_) {
-
-        // Render game content here
-        SubsystemManager::GetGameManager()
-            ->Render();  // Calls GameTest::Update()
-
+        SubsystemManager::GetGameManager()->Render();
       } else {
         ImGui::Text("The game is not started");
       }
     }
-    ImGui::EndChild();  // End Game Canvas area
+    ImGui::EndChild();  // End game canvas area
 
     // Store game canvas state for input processing
     gameCanvasPos_ = ImGui::GetItemRectMin();
