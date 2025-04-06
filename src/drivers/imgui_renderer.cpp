@@ -11,6 +11,8 @@
 // static member initializations
 bgfx::ProgramHandle ImGuiRenderer::imguiProgram = BGFX_INVALID_HANDLE;
 bgfx::VertexLayout ImGuiRenderer::imguiVertexLayout;
+bgfx::TextureHandle ImGuiRenderer::fontTexture = BGFX_INVALID_HANDLE;
+bgfx::UniformHandle ImGuiRenderer::s_texUniform = BGFX_INVALID_HANDLE;
 
 void ImGuiRenderer::Init() {
   IMGUI_CHECKVERSION();
@@ -30,7 +32,26 @@ void ImGuiRenderer::Init() {
   bgfx::ShaderHandle vs = loadShader("vs_imgui.bin");
   bgfx::ShaderHandle fs = loadShader("fs_imgui.bin");
 
+  // Create the uniform once
+  if (!bgfx::isValid(s_texUniform)) {
+    s_texUniform =
+        bgfx::createUniform("u_texture0", bgfx::UniformType::Sampler);
+  }
+
   imguiProgram = bgfx::createProgram(vs, fs, true);
+
+  unsigned char* pixels;
+  int width, height;
+  ImGuiIO& io = ImGui::GetIO();
+  io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
+
+  const bgfx::Memory* mem = bgfx::copy(pixels, width * height * 4);
+  fontTexture = bgfx::createTexture2D(
+      uint16_t(width), uint16_t(height), false, 1, bgfx::TextureFormat::RGBA8,
+      BGFX_SAMPLER_MIN_POINT | BGFX_SAMPLER_MAG_POINT, mem);
+
+  // Let ImGui know the font texture was submitted manually
+  io.Fonts->SetTexID((ImTextureID)(uintptr_t)fontTexture.idx);
 
   Logger::getInstance().Log(LogLevel::Info, "ImGuiRenderer initialized.");
 }
@@ -96,6 +117,7 @@ void ImGuiRenderer::EndFrame() {
                      BGFX_STATE_MSAA | BGFX_STATE_BLEND_ALPHA);
       bgfx::setVertexBuffer(0, vbo);
       bgfx::setIndexBuffer(ibo, idxOffset, pcmd->ElemCount);
+      bgfx::setTexture(0, s_texUniform, fontTexture);
       bgfx::submit(viewId_, imguiProgram);
 
       idxOffset += pcmd->ElemCount;
@@ -111,4 +133,19 @@ void ImGuiRenderer::EndFrame() {
 void ImGuiRenderer::Shutdown() {
   ImGui_ImplSDL2_Shutdown();
   ImGui::DestroyContext();
+
+  if (bgfx::isValid(s_texUniform)) {
+    bgfx::destroy(s_texUniform);
+    s_texUniform = BGFX_INVALID_HANDLE;
+  }
+
+  if (bgfx::isValid(fontTexture)) {
+    bgfx::destroy(fontTexture);
+    fontTexture = BGFX_INVALID_HANDLE;
+  }
+
+  if (bgfx::isValid(imguiProgram)) {
+    bgfx::destroy(imguiProgram);
+    imguiProgram = BGFX_INVALID_HANDLE;
+  }
 }

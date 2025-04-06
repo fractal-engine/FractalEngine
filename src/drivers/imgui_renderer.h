@@ -18,6 +18,8 @@ private:
   // bgfx handles for shaders and vertex layout
   static bgfx::VertexLayout imguiVertexLayout;
   static bgfx::ProgramHandle imguiProgram;
+  static bgfx::UniformHandle s_texUniform;
+  static bgfx::TextureHandle fontTexture;
 };
 
 #endif  // IMGUI_RENDERER_H

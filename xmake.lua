@@ -38,11 +38,10 @@ target("fractal")
     add_files("src/editor/*.cpp")  -- Add source files from editor
     add_files("src/drivers/*.cpp")  -- Add ImGuiRenderer, BGFX drivers
     add_files("src/audio/*.cpp")
-
-    -- Add shader files with slang rule
-    add_files("src/shaders/**.slang", {rule = "slang_multi"})
+    add_files("src/shaders/**.sc|varying.def.sc|varying_imgui.def.sc", {rule = "bgfx_shaderc"})
 
     add_options("display")
+
     on_load(function (target)
         local display_mode = get_config("display")
         if display_mode == "DISPLAY_GRAPHICAL" then
@@ -67,7 +66,6 @@ target("fractal")
         os.cp("assets/shaders/**", path.join(target:targetdir(), "assets/shaders"))
         os.cp("audio_lib", target:targetdir()) -- Copy audio folder to build directory
         os.cp("resources/NotoSansMono_Regular.ttf", target:targetdir())
-        os.cp("src/shaders/*.slang", target:targetdir() .. "/shaders")
     end)
 -- Define 'display' option
 option("display")
@@ -102,84 +100,48 @@ package("bgfx")
     end)
 package_end()
 -----------------------------------------------------------------------------------------------------------------
-rule("slang_multi")
-    set_extensions(".slang")
+rule("bgfx_shaderc")
+    set_extensions(".sc")
 
     on_build_file(function (target, sourcefile)
-        import("core.project.config")
-
-        -- List of backends to generate
+        local shaderc = path.join(os.projectdir(), "src/thirdparty/bgfx.cmake/.build/win64_vs2022/cmake/bgfx/Release/shaderc.exe")
+        
+        -- Platform/backend mapping with correct profiles
         local backends = {
-            dx11  = {target = "dxbc", profile = "sm_5_1"},
-            dx12  = {target = "dxil", profile = "sm_6_0"},
-            glsl  = {target = "glsl", version = "450"},
-            spirv = {target = "spirv", version = "1.3"},
-            metal = {target = "metal", version = "2.1"}
+            { platform = "windows", profile = "s_5_0", folder = "dx11" },
+            { platform = "windows", profile = "s_5_0", folder = "dx12" },
+            { platform = "linux",   profile = "440",   folder = "glsl" },
+            { platform = "osx",     profile = "metal", folder = "metal" },
+            { platform = "android", profile = "spirv", folder = "spirv" }
         }
 
-        -- Detect shader stage
-        local stage
-        if sourcefile:find("vs_") then
-            stage = "vertex"
-        elseif sourcefile:find("fs_") then
-            stage = "fragment"
-        elseif sourcefile:find("compute") then
-            stage = "compute"
-        else
-            print("Unknown shader type for: " .. sourcefile)
-            return
-        end
+        local shader_type = sourcefile:match("vs_") and "vertex" or sourcefile:match("fs_") and "fragment" or "compute"
 
-        -- Detect platform and set slangc path
-        local slangc
-        local projectdir = os.projectdir()
+        local is_imgui = sourcefile:find("imgui") ~= nil
+        local varying_file = is_imgui
+            and path.join(os.projectdir(), "src/shaders/varying_imgui.def.sc")
+            or path.join(os.projectdir(), "src/shaders/varying.def.sc")
 
-        if is_plat("windows") then
-            slangc = path.join(projectdir, "src/thirdparty/slang-2025.6.3-windows-x86_64/bin/slangc.exe")
-        elseif is_plat("macosx") then
-            slangc = path.join(projectdir, "src/thirdparty/slang-2025.6.3-macos-x86_64/bin/slangc")
-        elseif is_plat("linux") then
-            slangc = path.join(projectdir, "src/thirdparty/slang/install/bin/slangc")
-        end
+        for _, backend in ipairs(backends) do
+            local output_dir = path.join("assets/shaders", backend.folder)
+            os.mkdir(output_dir)
 
-        -- If slangc wasn't found, try checking the system path
-        if not slangc or not os.isfile(slangc) then
-            local slangc_in_path = try { function() return os.iorunv("which", {"slangc"}) end }
-            if slangc_in_path and os.isfile(slangc_in_path:trim()) then
-                slangc = "slangc"
-            else
-                print("Error: slangc not found. Please install it and add to PATH.")
-                return
-            end
-        end
-
-        -- Build command arguments
-        for folderName, slangTarget in pairs(backends) do
-            local outputDir = path.join("assets", "shaders", folderName)
-            os.mkdir(outputDir)
-
-            local outputFile = path.join(outputDir, path.basename(sourcefile) .. ".bin")
-
-            local argv = {
-                "-entry", "main",
-                "-stage", stage,
-                "-target", slangTarget.target,
+            local args = {
+                "--type", shader_type:sub(1, 1),
+                "--platform", backend.platform,
+                "--profile", backend.profile,
+                "--varyingdef", varying_file,
+                "-i", path.join(os.projectdir(), "src/thirdparty/bgfx.cmake/bgfx/src"),
+                "-i", path.join(os.projectdir(), "src/thirdparty/bgfx.cmake/bgfx/examples/common"),
+                "--entry", "main",
+                "-f", sourcefile,
+                "-o", path.join(output_dir, path.basename(sourcefile) .. ".bin")
             }
 
-            -- Add profile
-            if slangTarget.profile then
-                table.insert(argv, "-profile")
-                table.insert(argv, slangTarget.profile)
-            end
-
-            table.insert(argv, "-o")
-            table.insert(argv, outputFile)
-            table.insert(argv, sourcefile)
-
-            print("Slangc Command: " .. table.concat(argv, " "))
-            local ok, errors = os.iorunv(slangc, argv)
+            print("Shaderc Command: " .. table.concat(args, " "))
+            local ok, out, err = os.iorunv(shaderc, args)
             if not ok then
-                print("Failed to compile shader for backend [" .. folderName .. "]: " .. (errors or "Unknown error"))
+                print("Shaderc failed for " .. sourcefile .. ": " .. (err or out))
             end
         end
     end)
