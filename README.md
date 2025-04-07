@@ -2,27 +2,78 @@
 
 ## Build the project
 
-Use 
+Use the following to build the project:
 ```bash
 xmake build
 ```
-to build the project, and
+To run the project, use:
 ```bash
-xmake run
+xmake run fractal
 ```
-to run the project.
 
-You may need
+You may need the following to generate compile_command:.
 ```bash
 xmake project -k compile_commands
 ```
-To generate compile_commands.
 
-Use
+Use the command below to change to debug mode:
 ```bash
 xmake f -m debug
 ```
-To change to debug mode.
+
+## Building BGFX
+
+This engine uses a [CMake-based fork of bgfx](https://github.com/bkaradzic/bgfx.cmake) for easier integration. Follow these steps to clone and build the library:
+
+> **Note**: This port is made to be used as a C++ library only. Some features such as bindings or dynamic tools might not work. For full flexibility, use the original bgfx repo with [GENie](https://github.com/bkaradzic/GENie).
+
+### ?? Cloning and Building
+
+```bash
+# Clone the bgfx.cmake fork
+git clone https://github.com/bkaradzic/bgfx.cmake.git src/thirdparty/bgfx.cmake
+cd src/thirdparty/bgfx.cmake
+
+# Pull in all bgfx dependencies
+git submodule update --init --recursive
+
+# Configure and build the library
+cmake -S. -Bcmake-build
+cmake --build cmake-build
+```
+
+---
+
+## ?? Enabling Shaderc (BGFX Shader Compiler)
+
+To compile shaders used by the engine, you need to build `shaderc.exe`, BGFX's cross-platform shader compiler.
+
+> **Warning**: shaderc must be built manually before compiling any `.sc` shader files. This only needs to be done once unless you clean your build or update BGFX.
+
+### ?? Build Shaderc on Windows (VS2022 example)
+
+```bash
+cd src/thirdparty/bgfx.cmake
+
+# Make sure all submodules are pulled in (important!)
+git submodule update --init --recursive
+
+# Configure build (use your preferred toolchain if not VS2022)
+cmake -B .build/win64_vs2022 -DCMAKE_BUILD_TYPE=Release -DBGFX_BUILD_TOOLS=ON
+
+# Build just the shaderc tool
+cmake --build .build/win64_vs2022 --config Release --target shaderc
+```
+
+After this, `shaderc.exe` will be available at:
+```
+src/thirdparty/bgfx.cmake/.build/win64_vs2022/bin/shaderc.exe
+```
+
+Your build system (e.g., XMake) should point to this executable when compiling shaders.
+
+> ? Tip: This path is already hardcoded in the engine’s `xmake.lua`, so once `shaderc` is built, shader compilation will work automatically when building the project.
+
 
 ## Important Note
 
