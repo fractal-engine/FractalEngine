@@ -1,4 +1,5 @@
 $input v_texcoord0
+$output o_color0
 
 /*
  * Copyright 2014 Dario Manesku. All rights reserved.

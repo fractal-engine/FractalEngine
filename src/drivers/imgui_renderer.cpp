@@ -50,6 +50,12 @@ void ImGuiRenderer::Init() {
       uint16_t(width), uint16_t(height), false, 1, bgfx::TextureFormat::RGBA8,
       BGFX_SAMPLER_MIN_POINT | BGFX_SAMPLER_MAG_POINT, mem);
 
+  // validate the texture
+  if (!bgfx::isValid(fontTexture)) {
+    Logger::getInstance().Log(LogLevel::Error,
+                              "Font texture failed to upload.");
+  }
+
   // Let ImGui know the font texture was submitted manually
   io.Fonts->SetTexID((ImTextureID)(uintptr_t)fontTexture.idx);
 
@@ -82,9 +88,17 @@ void ImGuiRenderer::EndFrame() {
   float ortho[16];
   bx::mtxOrtho(ortho, 0.0f, width, height, 0.0f, 0.0f, 1000.0f, 0.0f, false);
 
-  bgfx::setViewTransform(viewId_, NULL, ortho);
   bgfx::setViewRect(viewId_, 0, 0, uint16_t(width), uint16_t(height));
-  bgfx::setViewClear(viewId_, BGFX_CLEAR_NONE);
+  bgfx::setViewTransform(viewId_, nullptr, ortho);
+
+  // Set the view to clear once
+  static bool once = false;
+  if (!once) {
+    bgfx::setViewClear(viewId_, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH, 0x2d2d2dff,
+                       1.0f, 0);
+    once = true;
+  }
+
   bgfx::touch(viewId_);
 
   for (int n = 0; n < drawData->CmdListsCount; ++n) {
