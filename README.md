@@ -1,33 +1,55 @@
-# Readme and some notes here
+# Fractal Engine
 
-## Build the project
+## Contributing
 
-Use the following to build the project:
-```bash
-xmake build
-```
-To run the project, use:
-```bash
-xmake run fractal
-```
+Any contributions should follow the guidelines laid out in the [CONTRIBUTING.md](./CONTRIBUTING.md) file.
 
-You may need the following to generate compile_command:.
-```bash
-xmake project -k compile_commands
-```
+Any bugs or suggestions should be reported as [Issues](https://github.com/fractal-engine/Fractal_3D/issues).
 
-Use the command below to change to debug mode:
-```bash
-xmake f -m debug
-```
 
-## Building BGFX
+## Getting Started
+
+Follow these steps to set up and run the project:
+
+1. **Build the Project:**  
+   Open your terminal and run:
+
+   ```bash
+   xmake build
+   ```
+
+2. **Run the Project:**  
+   After a successful build, start the project with:
+
+   ```bash
+   xmake run
+   ```
+
+3. **(Optional) Generate Compile Commands:**  
+   If your development tools require a `compile_commands.json` file, generate it by running:
+
+   ```bash
+   xmake project -k compile_commands
+   ```
+
+4. **(Optional) Switch to Debug Mode:**  
+   To enable debugging features, switch to debug mode:
+
+   ```bash
+   xmake f -m debug
+   ```
+5. **To build with Visual Studio Debugger**
+    ```bash
+    xmake project -k vsxmake -m "debug"
+    ```
+## Thirdparty Libraries
+### Building BGFX
 
 This engine uses a [CMake-based fork of bgfx](https://github.com/bkaradzic/bgfx.cmake) for easier integration. Follow these steps to clone and build the library:
 
 > **Note**: This port is made to be used as a C++ library only. Some features such as bindings or dynamic tools might not work. For full flexibility, use the original bgfx repo with [GENie](https://github.com/bkaradzic/GENie).
 
-### Cloning and Building
+#### Cloning and Building
 
 ```bash
 # Clone the bgfx.cmake fork
@@ -44,13 +66,13 @@ cmake --build cmake-build
 
 ---
 
-## Enabling Shaderc (BGFX Shader Compiler)
+#### Enabling Shaderc (BGFX Shader Compiler)
 
 To compile shaders used by the engine, you need to build `shaderc.exe`, BGFX's cross-platform shader compiler.
 
 > **Warning**: shaderc must be built manually before compiling any `.sc` shader files. This only needs to be done once unless you clean your build or update BGFX.
 
-### Build Shaderc on Windows (VS2022 example)
+#### Build Shaderc on Windows (VS2022 example)
 
 ```bash
 cd src/thirdparty/bgfx.cmake
@@ -84,15 +106,20 @@ The SDL editor and the FTXUI editor are implemented separately and both show dif
 We plan to integrate them at a later stage but both form part of the unified Fractal architecture.
 
 
+## Authors
+
 ## Third Party Libraries used
 
-We wish to thank and acknowledge the following libraries and their creators:
+We gratefully acknowledge the following libraries and their creators:
 
-- FTXUI - Copyright (c) 2019 Arthur Sonzogni under MIT license
-- PortAudio Portable Real-Time Audio Library - Copyright (c) 1999-2011 Ross Bencina and Phil Burk
-- dr_wav - Copyright 2020 David Reid under MIT license
+- **FTXUI** – Arthur Sonzogni (licensed under the MIT License)
+- **PortAudio Portable Real-Time Audio Library** – Ross Bencina and Phil Burk (licensed under the PortAudio license)
+- **dr_wav** – David Reid (licensed under the MIT License)
+- **SDL** – Sam Lantinga (licensed under the SDL license)
+- **Dear ImGui** – Omar Cornut (licensed under the MIT License)
+- **bgfx** – Branimir Karadzic (licensed under the zlib license)
 
-Full licensing statement available at LICENSE.md
+For the full licensing details, please see the [LICENSE.md](./LICENSE.md) file.
 
 
 
