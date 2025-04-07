@@ -27,7 +27,7 @@ This engine uses a [CMake-based fork of bgfx](https://github.com/bkaradzic/bgfx.
 
 > **Note**: This port is made to be used as a C++ library only. Some features such as bindings or dynamic tools might not work. For full flexibility, use the original bgfx repo with [GENie](https://github.com/bkaradzic/GENie).
 
-### ?? Cloning and Building
+### Cloning and Building
 
 ```bash
 # Clone the bgfx.cmake fork
@@ -44,13 +44,13 @@ cmake --build cmake-build
 
 ---
 
-## ?? Enabling Shaderc (BGFX Shader Compiler)
+## Enabling Shaderc (BGFX Shader Compiler)
 
 To compile shaders used by the engine, you need to build `shaderc.exe`, BGFX's cross-platform shader compiler.
 
 > **Warning**: shaderc must be built manually before compiling any `.sc` shader files. This only needs to be done once unless you clean your build or update BGFX.
 
-### ?? Build Shaderc on Windows (VS2022 example)
+### Build Shaderc on Windows (VS2022 example)
 
 ```bash
 cd src/thirdparty/bgfx.cmake
@@ -72,7 +72,7 @@ src/thirdparty/bgfx.cmake/.build/win64_vs2022/bin/shaderc.exe
 
 Your build system (e.g., XMake) should point to this executable when compiling shaders.
 
-> ? Tip: This path is already hardcoded in the engine’s `xmake.lua`, so once `shaderc` is built, shader compilation will work automatically when building the project.
+>  Tip: This path is already hardcoded in the engine’s `xmake.lua`, so once `shaderc` is built, shader compilation will work automatically when building the project.
 
 
 ## Important Note
