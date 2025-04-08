@@ -1,3 +1,16 @@
+// ---------------------------------------------------------------------------
+// ImGuiRenderer - Custom integration layer between Dear ImGui and BGFX
+// References:
+// - https://github.com/pr0g/sdl-bgfx-imgui-starter (imgui_impl_bgfx.cpp)
+// - Original Gist by Richard Gale:
+// https://gist.github.com/RichardGale/6e2b74bc42b3005e08397236e4be0fd0
+// - BGFX + SDL2 + Dear ImGui integration notes from ocornut/imgui
+//
+// Purpose: Provides customized rendering logic to bridge ImGui with the BGFX
+// backend, allowing reuse of shared engine rendering subsystems while
+// respecting BGFX architecture.
+// ---------------------------------------------------------------------------
+
 #include "imgui_renderer.h"
 
 #include <backends/imgui_impl_sdl2.h>
@@ -35,7 +48,7 @@ void ImGuiRenderer::Init() {
   // Create the uniform once
   if (!bgfx::isValid(s_texUniform)) {
     s_texUniform =
-        bgfx::createUniform("u_texture0", bgfx::UniformType::Sampler);
+        bgfx::createUniform("g_AttribLocationTex", bgfx::UniformType::Sampler);
   }
 
   imguiProgram = bgfx::createProgram(vs, fs, true);
@@ -46,8 +59,10 @@ void ImGuiRenderer::Init() {
   io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
 
   const bgfx::Memory* mem = bgfx::copy(pixels, width * height * 4);
+
+  // format should be BGRA8
   fontTexture = bgfx::createTexture2D(
-      uint16_t(width), uint16_t(height), false, 1, bgfx::TextureFormat::RGBA8,
+      uint16_t(width), uint16_t(height), false, 1, bgfx::TextureFormat::BGRA8,
       BGFX_SAMPLER_MIN_POINT | BGFX_SAMPLER_MAG_POINT, mem);
 
   // validate the texture
@@ -57,7 +72,7 @@ void ImGuiRenderer::Init() {
   }
 
   // Let ImGui know the font texture was submitted manually
-  io.Fonts->SetTexID((ImTextureID)(uintptr_t)fontTexture.idx);
+  io.Fonts->TexID = static_cast<ImTextureID>(uintptr_t(fontTexture.idx));
 
   Logger::getInstance().Log(LogLevel::Info, "ImGuiRenderer initialized.");
 }
@@ -84,7 +99,6 @@ void ImGuiRenderer::EndFrame() {
   const float width = drawData->DisplaySize.x;
   const float height = drawData->DisplaySize.y;
 
-  // Setup projection matrix (orthographic)
   float ortho[16];
   bx::mtxOrtho(ortho, 0.0f, width, height, 0.0f, 0.0f, 1000.0f, 0.0f, false);
 
@@ -101,47 +115,80 @@ void ImGuiRenderer::EndFrame() {
 
   bgfx::touch(viewId_);
 
-  for (int n = 0; n < drawData->CmdListsCount; ++n) {
-    const ImDrawList* cmdList = drawData->CmdLists[n];
+  const ImGuiIO& io = ImGui::GetIO();
+  int fb_width = (int)(io.DisplaySize.x * io.DisplayFramebufferScale.x);
+  int fb_height = (int)(io.DisplaySize.y * io.DisplayFramebufferScale.y);
+  if (fb_width == 0 || fb_height == 0)
+    return;
 
-    const auto vtxSize = cmdList->VtxBuffer.Size * sizeof(ImDrawVert);
-    const auto idxSize = cmdList->IdxBuffer.Size * sizeof(ImDrawIdx);
+  drawData->ScaleClipRects(io.DisplayFramebufferScale);
 
-    const bgfx::Memory* vtxMem = bgfx::alloc(vtxSize);
-    memcpy(vtxMem->data, cmdList->VtxBuffer.Data, vtxSize);
-    bgfx::VertexBufferHandle vbo =
-        bgfx::createVertexBuffer(vtxMem, imguiVertexLayout);
+  // Set up orthographic projection
+  const bgfx::Caps* caps = bgfx::getCaps();
+  bx::mtxOrtho(ortho, 0.0f, io.DisplaySize.x, io.DisplaySize.y, 0.0f, 0.0f,
+               1000.0f, 0.0f, caps->homogeneousDepth);
 
-    const bgfx::Memory* idxMem = bgfx::alloc(idxSize);
-    memcpy(idxMem->data, cmdList->IdxBuffer.Data, idxSize);
-    bgfx::IndexBufferHandle ibo = bgfx::createIndexBuffer(idxMem);
+  bgfx::setViewTransform(viewId_, nullptr, ortho);
+  bgfx::setViewRect(viewId_, 0, 0, uint16_t(fb_width), uint16_t(fb_height));
+  bgfx::touch(viewId_);
 
-    int32_t idxOffset = 0;
+  const uint64_t state = BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A |
+                         BGFX_STATE_MSAA |
+                         BGFX_STATE_BLEND_FUNC(BGFX_STATE_BLEND_SRC_ALPHA,
+                                               BGFX_STATE_BLEND_INV_SRC_ALPHA);
 
-    for (int cmd_i = 0; cmd_i < cmdList->CmdBuffer.Size; cmd_i++) {
-      const ImDrawCmd* pcmd = &cmdList->CmdBuffer[cmd_i];
+  for (int n = 0; n < drawData->CmdListsCount; n++) {
+    const ImDrawList* cmd_list = drawData->CmdLists[n];
 
-      const uint16_t scissorX = (uint16_t)pcmd->ClipRect.x;
-      const uint16_t scissorY = (uint16_t)pcmd->ClipRect.y;
-      const uint16_t scissorW = (uint16_t)(pcmd->ClipRect.z - pcmd->ClipRect.x);
-      const uint16_t scissorH = (uint16_t)(pcmd->ClipRect.w - pcmd->ClipRect.y);
+    uint32_t numVertices = (uint32_t)cmd_list->VtxBuffer.Size;
+    uint32_t numIndices = (uint32_t)cmd_list->IdxBuffer.Size;
 
-      bgfx::setScissor(scissorX, scissorY, scissorW, scissorH);
-      bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A |
-                     BGFX_STATE_MSAA | BGFX_STATE_BLEND_ALPHA);
-      bgfx::setVertexBuffer(0, vbo);
-      bgfx::setIndexBuffer(ibo, idxOffset, pcmd->ElemCount);
-      bgfx::setTexture(0, s_texUniform, fontTexture);
-      bgfx::submit(viewId_, imguiProgram);
+    if (numVertices == 0 || numIndices == 0)
+      continue;
 
-      idxOffset += pcmd->ElemCount;
+    if ((numVertices >
+         bgfx::getAvailTransientVertexBuffer(numVertices, imguiVertexLayout)) ||
+        (numIndices > bgfx::getAvailTransientIndexBuffer(numIndices))) {
+      Logger::getInstance().Log(LogLevel::Warning,
+                                "Not enough space in transient buffers.");
+      continue;
     }
 
-    bgfx::destroy(vbo);
-    bgfx::destroy(ibo);
-  }
+    bgfx::TransientVertexBuffer tvb;
+    bgfx::TransientIndexBuffer tib;
 
-  bgfx::frame();
+    bgfx::allocTransientVertexBuffer(&tvb, numVertices, imguiVertexLayout);
+    bgfx::allocTransientIndexBuffer(&tib, numIndices);
+
+    memcpy(tvb.data, cmd_list->VtxBuffer.Data,
+           numVertices * sizeof(ImDrawVert));
+    memcpy(tib.data, cmd_list->IdxBuffer.Data, numIndices * sizeof(ImDrawIdx));
+
+    int idx_offset = 0;
+    for (int cmd_i = 0; cmd_i < cmd_list->CmdBuffer.Size; cmd_i++) {
+      const ImDrawCmd* pcmd = &cmd_list->CmdBuffer[cmd_i];
+
+      if (pcmd->UserCallback) {
+        pcmd->UserCallback(cmd_list, pcmd);
+      } else {
+        const uint16_t xx = (uint16_t)bx::max(pcmd->ClipRect.x, 0.0f);
+        const uint16_t yy = (uint16_t)bx::max(pcmd->ClipRect.y, 0.0f);
+        const uint16_t ww = (uint16_t)bx::min(pcmd->ClipRect.z, 65535.0f) - xx;
+        const uint16_t hh = (uint16_t)bx::min(pcmd->ClipRect.w, 65535.0f) - yy;
+
+        bgfx::setScissor(xx, yy, ww, hh);
+        bgfx::setState(state);
+        bgfx::setVertexBuffer(0, &tvb);
+        bgfx::setIndexBuffer(&tib, idx_offset, pcmd->ElemCount);
+
+        bgfx::TextureHandle tex = {(uint16_t)(intptr_t)pcmd->TextureId};
+        bgfx::setTexture(0, s_texUniform, tex);
+        bgfx::submit(viewId_, imguiProgram);
+      }
+
+      idx_offset += pcmd->ElemCount;
+    }
+  }
 }
 
 void ImGuiRenderer::Shutdown() {

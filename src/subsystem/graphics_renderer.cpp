@@ -122,6 +122,9 @@ void GraphicsRenderer::Render() {
 
   bgfx::touch(0);  // mark the view as used even if nothing is submitted
 
+  // Submit the entire frame
+  bgfx::frame();
+
   // Signal that a frame was rendered
   redrawn();
   frameCount_++;
