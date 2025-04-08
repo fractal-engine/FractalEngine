@@ -54,9 +54,9 @@ int main() {
   // Log the joining of the game thread
   Logger::getInstance().Log(LogLevel::Info, "Game thread joined");
 
-  // Shutdown BGFX before exiting
-  Logger::getInstance().Log(LogLevel::Debug, "Shutting down BGFX...");
-  bgfx::shutdown();
+  // Shutdown subsystems
+  SubsystemManager::Shutdown();
+  Logger::getInstance().Log(LogLevel::Debug, "SubsystemManager shutdown started in main");
 
   // Clean up the sound system on exit
   SoundManager::Instance().terminate();

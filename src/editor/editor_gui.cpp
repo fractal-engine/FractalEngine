@@ -94,10 +94,7 @@ void EditorGUI::Run() {
     GraphicsRenderer* graphicsRenderer =
         static_cast<GraphicsRenderer*>(renderer_.get());
     graphicsRenderer->PrepareFrame();
-
-    // Start ImGui frame
-    ImGui_ImplSDL2_NewFrame();
-    ImGui::NewFrame();
+    graphicsRenderer->BeginImGuiFrame();
 
     // ----------------------------------------------------------
     // 4 - ImGui content
@@ -195,20 +192,18 @@ void EditorGUI::Run() {
     // Submit one frame (delegated to Renderer)
     renderer_->Render();
 
-    imgui_renderer_.EndFrame();  // End ImGui frame
+    graphicsRenderer->EndImGuiFrame();  // End ImGui frame
 
     // TODO: Add a delay or vsync depending on FPS cap
     std::this_thread::sleep_for(std::chrono::milliseconds(20));
   }
 
-  // ------------------------------------------------------------
-  // 6 - Cleanup ImGui
-  // ------------------------------------------------------------
-  ImGui_ImplSDL2_Shutdown();
-  imgui_renderer_.Shutdown();
-  ImGui::DestroyContext();
-
   Logger::getInstance().Log(LogLevel::Info, "EditorGUI main loop exited");
+}
+
+void EditorGUI::Shutdown() {
+  Logger::getInstance().Log(LogLevel::Info, "Shutting down EditorGUI");
+  imgui_renderer_.Shutdown();
 }
 
 void EditorGUI::RequestUpdate() {

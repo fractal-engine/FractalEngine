@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "base/renderer_base.h"
+#include "drivers/imgui_renderer.h"
 #include "subsystem/window_manager.h"
 
 class GraphicsRenderer : public RendererBase {
@@ -27,6 +28,8 @@ public:
   void RenderGameContent();
 
   void PrepareFrame();
+  void BeginImGuiFrame();
+  void EndImGuiFrame();
 
   // Called after drawing to present the frame.
   void Render() override;
@@ -43,6 +46,8 @@ public:
 
   // clean up shaders
   void CleanupShaders();
+
+  void Shutdown() override;
 
   // Called when window resizes to update BGFX viewport
   void onResize(uint32_t width, uint32_t height);
@@ -65,6 +70,8 @@ private:
 
   // shader programs map
   std::unordered_map<std::string, bgfx::ProgramHandle> shaderPrograms_;
+
+  ImGuiRenderer imgui_renderer_;
 
   // Frame counter
   uint32_t frameCount_ = 0;

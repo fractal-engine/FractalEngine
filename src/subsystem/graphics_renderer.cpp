@@ -3,6 +3,9 @@
 #include <SDL.h>
 #include <SDL2/SDL_ttf.h>
 
+#include <backends/imgui_impl_sdl2.h>
+#include <imgui.h>
+
 #include <cstdlib>
 #include <iostream>
 
@@ -149,6 +152,22 @@ void GraphicsRenderer::ProcessEvents(bool& quit) {
 void GraphicsRenderer::ClearDisplay() {
   // clear the BGFX view with nothing drawn
   bgfx::touch(0);
+}
+
+void GraphicsRenderer::Shutdown() {
+  Logger::getInstance().Log(LogLevel::Info, "Shutting down GraphicsRenderer");
+
+  CleanupShaders();
+  bgfx::frame();
+  bgfx::shutdown();
+}
+
+void GraphicsRenderer::BeginImGuiFrame() {
+  imgui_renderer_.BeginFrame();
+}
+
+void GraphicsRenderer::EndImGuiFrame() {
+  imgui_renderer_.EndFrame();
 }
 
 // Utility function to load and create a shader program

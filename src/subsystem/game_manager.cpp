@@ -9,18 +9,17 @@
 // GameManager::GameManager() : gamestate_(GameState::ENDED) {}
 
 GameManager::GameManager(std::unique_ptr<Game>&& game)
-    : gamestate_(GameState::ENDED), game_(std::move(game)), frame_count_(0) {
-}
+    : gamestate_(GameState::ENDED), game_(std::move(game)), frame_count_(0) {}
 
 void GameManager::StartGame() {
   Logger::getInstance().Log(LogLevel::Info, "Game manager start game");
-  
+
   // Initialize the game BEFORE acquiring the lock
   if (game_) {
     game_->Init();
     Logger::getInstance().Log(LogLevel::Info, "Game initialized");
   }
-  
+
   {
     std::lock_guard<std::mutex> lock(state_mutex_);
     gamestate_ = GameState::STARTING;
@@ -90,5 +89,14 @@ uint64_t GameManager::GetFrameCount() {
 void GameManager::Render() {
   if (game_ && gamestate_ == GameState::RUNNING) {
     game_->Update();  // submit game draw calls
+  }
+}
+
+void GameManager::Shutdown() {
+  Logger::getInstance().Log(LogLevel::Info, "Game manager shutdown initiated");
+
+  if (game_) {
+    Logger::getInstance().Log(LogLevel::Info, "Calling game_->Shutdown()");
+    game_->Shutdown();  // Your new cleanup method in GameTest
   }
 }

@@ -68,3 +68,27 @@ void GameTest::Update() {
   bgfx::setIndexBuffer(indexBuffer);
   bgfx::submit(0, _helloWorldProgram);
 }
+
+void GameTest::Shutdown() {
+  Logger::getInstance().Log(LogLevel::Debug, "[GameTest] Shutdown()");
+
+  if (bgfx::isValid(_helloWorldProgram)) {
+    Logger::getInstance().Log(LogLevel::Debug, "[GameTest] Destroying shader");
+    bgfx::destroy(_helloWorldProgram);
+    _helloWorldProgram = BGFX_INVALID_HANDLE;
+  }
+
+  if (bgfx::isValid(vertexBuffer)) {
+    Logger::getInstance().Log(LogLevel::Debug,
+                              "[GameTest] Destroying vertex buffer");
+    bgfx::destroy(vertexBuffer);
+    vertexBuffer = BGFX_INVALID_HANDLE;
+  }
+
+  if (bgfx::isValid(indexBuffer)) {
+    Logger::getInstance().Log(LogLevel::Debug,
+                              "[GameTest] Destroying index buffer");
+    bgfx::destroy(indexBuffer);
+    indexBuffer = BGFX_INVALID_HANDLE;
+  }
+}

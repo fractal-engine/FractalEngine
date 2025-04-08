@@ -27,22 +27,21 @@ protected:
   RendererBase() = default;
 
 public:
-
   // virtual destructor
   virtual ~RendererBase() = default;
+
   virtual void Render() = 0;
-
-  int GetHeight() const;
-  int GetWidth() const;
-
-  virtual void SetSize(int w, int h);
   virtual void ClearDisplay() = 0;
   virtual void ShowText(const std::string& text, int x, int y) = 0;
   virtual void ShowText(const std::vector<std::string>& text_area, int x,
                         int y) = 0;
+  virtual void Shutdown() = 0;
+
+  virtual void SetSize(int w, int h);
+  int GetHeight() const;
+  int GetWidth() const;
 
   boost::signals2::signal<void()> redrawn;
 };
 
 #endif  // RENDERER_BASE_H
-

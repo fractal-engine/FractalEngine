@@ -32,6 +32,7 @@ public:
   void EndGame();
   void Run();
   void Terminate();
+  void Shutdown();
   uint64_t GetFrameCount();
 };
 

@@ -39,6 +39,7 @@ public:
   void Run() override;
   void RequestUpdate() override;
   void game_inputed(Key key);  // Handles keyboard input
+  void Shutdown() override;
 };
 
 #endif  // EDITOR_GUI_H

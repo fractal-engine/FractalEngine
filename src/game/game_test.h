@@ -18,6 +18,8 @@ public:
   // submits a BGFX touch call and logs a message.
   void Update() override;
 
+  void Shutdown() override;
+
 private:
   // BGFX resources
   bgfx::ProgramHandle _helloWorldProgram;

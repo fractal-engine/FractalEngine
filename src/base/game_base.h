@@ -6,6 +6,7 @@ public:
   virtual void Init() = 0;    // Add Init as a pure virtual method
   virtual void Update() = 0;  // Existing method in our old implementation
   virtual ~Game() = default;
+  virtual void Shutdown() = 0;  // pure virtual method
 };
 
 #endif  // GAME_BASE_H

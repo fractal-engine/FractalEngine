@@ -87,3 +87,36 @@ void SubsystemManager::initialize() {
 
   game_manager_->StartGame();  // Start the game
 }
+
+void SubsystemManager::Shutdown() {
+  Logger::getInstance().Log(LogLevel::Info,
+                            "=== SubsystemManager::Shutdown called ===");
+
+  // 1. Stop the game thread
+  if (getInstance().game_manager_) {
+    getInstance().game_manager_->Shutdown();   // destroy BGFX resources
+    getInstance().game_manager_->Terminate();  // stop thread
+  }
+
+  // 3. Shutdown ImGui and Editor
+  if (getInstance().editor_) {
+    Logger::getInstance().Log(LogLevel::Info, "Shutting down Editor");
+    getInstance().editor_->Shutdown();
+  }
+
+  // 2. Shutdown graphics renderer
+  if (getInstance().renderer_) {
+    Logger::getInstance().Log(LogLevel::Info, "Shutting down Renderer");
+    getInstance().renderer_->Shutdown();
+  }
+
+  // 4. reset all subsystems
+  getInstance().game_manager_.reset();
+  getInstance().input_.reset();
+  getInstance().editor_.reset();
+  getInstance().renderer_.reset();
+  getInstance().window_manager_.reset();
+
+  Logger::getInstance().Log(LogLevel::Info,
+                            "=== SubsystemManager::Shutdown complete ===");
+}
