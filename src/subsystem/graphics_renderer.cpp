@@ -105,14 +105,14 @@ void GraphicsRenderer::CleanupShaders() {
 
 void GraphicsRenderer::PrepareFrame() {
   // Clear the view
-  bgfx::setDebug(BGFX_DEBUG_TEXT);
+  // bgfx::setDebug(BGFX_DEBUG_TEXT); <- overlays debug layer
   bgfx::setViewClear(0, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH, 0x2d2d2dff, 1.0f,
                      0);
   bgfx::setViewRect(0, 0, 0, width_, height_);
 
   // debug text
-  bgfx::dbgTextClear();
-  bgfx::dbgTextPrintf(0, 1, 0x0f, "Current frame: %d", frameCount_);
+  // bgfx::dbgTextClear();
+  // bgfx::dbgTextPrintf(0, 1, 0x0f, "Current frame: %d", frameCount_);
 }
 
 void GraphicsRenderer::Render() {
@@ -123,7 +123,7 @@ void GraphicsRenderer::Render() {
   bgfx::touch(0);  // mark the view as used even if nothing is submitted
 
   // Submit the entire frame
-  bgfx::frame();
+  //  bgfx::frame();
 
   // Signal that a frame was rendered
   redrawn();

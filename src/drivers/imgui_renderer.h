@@ -13,7 +13,7 @@ public:
 private:
 
   // "constexpr uint8_t kImGuiViewId = 255;" has to be set globally instead
-  const uint8_t viewId_ = 255; // TODO: Set a proper view ID
+  const uint8_t viewId_ = 1; // TODO: Set a proper view ID, Imgui 
 
   // bgfx handles for shaders and vertex layout
   static bgfx::VertexLayout imguiVertexLayout;

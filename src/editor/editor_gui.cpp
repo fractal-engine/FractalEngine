@@ -98,7 +98,6 @@ void EditorGUI::Run() {
     // Start ImGui frame
     ImGui_ImplSDL2_NewFrame();
     ImGui::NewFrame();
-    imgui_renderer_.BeginFrame();  // Start ImGui frame
 
     // ----------------------------------------------------------
     // 4 - ImGui content

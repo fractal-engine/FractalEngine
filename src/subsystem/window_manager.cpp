@@ -46,6 +46,7 @@ WindowManager::~WindowManager() {
     SDL_DestroyWindow(window_);
     window_ = nullptr;
   }
+  SDL_QuitSubSystem(SDL_INIT_VIDEO);
   SDL_Quit();
 }
 

@@ -29,11 +29,10 @@ bgfx::UniformHandle ImGuiRenderer::s_texUniform = BGFX_INVALID_HANDLE;
 
 void ImGuiRenderer::Init() {
   IMGUI_CHECKVERSION();
-  ImGui::CreateContext();
   ImGui::StyleColorsDark();
 
   SDL_Window* window = WindowManager::GetWindow();
-  ImGui_ImplSDL2_InitForOther(window);
+  ImGui_ImplSDL2_InitForOther(WindowManager::GetWindow());
 
   imguiVertexLayout.begin()
       .add(bgfx::Attrib::Position, 2, bgfx::AttribType::Float)
@@ -91,7 +90,7 @@ void ImGuiRenderer::EndFrame() {
   ImGui::Render();
   ImDrawData* drawData = ImGui::GetDrawData();
   if (!drawData || drawData->TotalVtxCount == 0) {
-
+    bgfx::touch(viewId_);
     bgfx::frame();
     return;
   }
@@ -185,10 +184,10 @@ void ImGuiRenderer::EndFrame() {
         bgfx::setTexture(0, s_texUniform, tex);
         bgfx::submit(viewId_, imguiProgram);
       }
-
       idx_offset += pcmd->ElemCount;
     }
   }
+  bgfx::frame();
 }
 
 void ImGuiRenderer::Shutdown() {
