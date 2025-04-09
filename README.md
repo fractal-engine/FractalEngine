@@ -94,7 +94,7 @@ src/thirdparty/bgfx.cmake/.build/win64_vs2022/bin/shaderc.exe
 
 Your build system (e.g., XMake) should point to this executable when compiling shaders.
 
->  Tip: This path is already hardcoded in the engine’s `xmake.lua`, so once `shaderc` is built, shader compilation will work automatically when building the project.
+>  Tip: This path is already hardcoded in the engineâ€™s `xmake.lua`, so once `shaderc` is built, shader compilation will work automatically when building the project.
 
 
 ## Important Note
@@ -112,15 +112,11 @@ We plan to integrate them at a later stage but both form part of the unified Fra
 
 We gratefully acknowledge the following libraries and their creators:
 
-- **FTXUI** – Arthur Sonzogni (licensed under the MIT License)
-- **PortAudio Portable Real-Time Audio Library** – Ross Bencina and Phil Burk (licensed under the PortAudio license)
-- **dr_wav** – David Reid (licensed under the MIT License)
-- **SDL** – Sam Lantinga (licensed under the SDL license)
-- **Dear ImGui** – Omar Cornut (licensed under the MIT License)
-- **bgfx** – Branimir Karadzic (licensed under the zlib license)
+- **FTXUI** â€“ Arthur Sonzogni (licensed under the MIT License)
+- **PortAudio Portable Real-Time Audio Library** â€“ Ross Bencina and Phil Burk (licensed under the PortAudio license)
+- **dr_wav** â€“ David Reid (licensed under the MIT License)
+- **SDL** â€“ Sam Lantinga (licensed under the SDL license)
+- **Dear ImGui** â€“ Omar Cornut (licensed under the MIT License)
+- **bgfx** â€“ Branimir Karadzic (licensed under the zlib license)
 
 For the full licensing details, please see the [LICENSE.md](./LICENSE.md) file.
-
-
-
-
