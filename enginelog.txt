@@ -1,5 +1,0 @@
-[INFO] WindowManager initialized with size: 1280x720
-[DEBUG] SDL_GetWindowWMInfo status: success
-[DEBUG] SDL_GetWindowWMInfo call returned true.
-[DEBUG] Cocoa window handle acquired.
-[DEBUG] init.platformData.nwh = 140546428481504

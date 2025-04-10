@@ -13,6 +13,7 @@
 #include <string>
 #include "base/logger.h"
 #include "base/shader_utils.h"
+#include "base/view_ids.h"
 
 GraphicsRenderer::GraphicsRenderer() {
   // Initialize SDL_ttf (SDL itself is initialized by window manager)
@@ -106,14 +107,30 @@ void GraphicsRenderer::CleanupShaders() {
   shaderPrograms_.clear();
 }
 
+void GraphicsRenderer::ConfigureViews() {
+  // GAME View
+  bgfx::setViewClear(ViewID::GAME, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH,
+                     0x1e1e1eff, 1.0f, 0);
+  bgfx::setViewRect(ViewID::GAME, 0, 0, width_, height_);
+  bgfx::touch(ViewID::GAME);
+
+  // UI_BACKGROUND View (behind ImGui)
+  bgfx::setViewClear(ViewID::UI_BACKGROUND, BGFX_CLEAR_COLOR, 0x1e1e1eff, 1.0f,
+                     0);  // darker than UI
+  bgfx::setViewRect(ViewID::UI_BACKGROUND, 0, 0, width_, height_);
+  bgfx::touch(ViewID::UI_BACKGROUND);
+}
+
 void GraphicsRenderer::PrepareFrame() {
+  ConfigureViews();
+
   // Clear the view
-  // bgfx::setDebug(BGFX_DEBUG_TEXT); <- overlays debug layer
-  bgfx::setViewClear(0, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH, 0x2d2d2dff, 1.0f,
-                     0);
-  bgfx::setViewRect(0, 0, 0, width_, height_);
+  bgfx::setViewClear(ViewID::CLEAR, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH,
+                     0x2d2d2dff, 1.0f, 0);
+  bgfx::setViewRect(ViewID::CLEAR, 0, 0, width_, height_);
 
   // debug text
+  // bgfx::setDebug(BGFX_DEBUG_TEXT);
   // bgfx::dbgTextClear();
   // bgfx::dbgTextPrintf(0, 1, 0x0f, "Current frame: %d", frameCount_);
 }
@@ -123,7 +140,8 @@ void GraphicsRenderer::Render() {
 
   // Render game objects here
 
-  bgfx::touch(0);  // mark the view as used even if nothing is submitted
+  bgfx::touch(
+      ViewID::CLEAR);  // mark the view as used even if nothing is submitted
 
   // Submit the entire frame
   //  bgfx::frame();

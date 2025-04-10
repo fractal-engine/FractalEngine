@@ -26,7 +26,7 @@ public:
                 int y) override;
 
   void RenderGameContent();
-
+  void ConfigureViews();
   void PrepareFrame();
   void BeginImGuiFrame();
   void EndImGuiFrame();

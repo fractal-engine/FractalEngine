@@ -185,6 +185,8 @@ void EditorGUI::Run() {
     }
     ImGui::EndChild();  // End Debug Log area
 
+    // ImGui::ShowDemoWindow();  // Show ImGui demo window
+
     ImGui::End();  // End main window
     // ----------------------------------------------------------
     // 5 - Render ImGui
@@ -193,6 +195,8 @@ void EditorGUI::Run() {
     renderer_->Render();
 
     graphicsRenderer->EndImGuiFrame();  // End ImGui frame
+
+    bgfx::frame();  // Submit everything to GPU
 
     // TODO: Add a delay or vsync depending on FPS cap
     std::this_thread::sleep_for(std::chrono::milliseconds(20));

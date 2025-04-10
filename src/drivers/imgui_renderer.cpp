@@ -19,6 +19,7 @@
 #include <imgui.h>
 #include "base/logger.h"
 #include "base/shader_utils.h"
+#include "base/view_ids.h"
 #include "subsystem/window_manager.h"
 
 // static member initializations
@@ -90,8 +91,9 @@ void ImGuiRenderer::EndFrame() {
   ImGui::Render();
   ImDrawData* drawData = ImGui::GetDrawData();
   if (!drawData || drawData->TotalVtxCount == 0) {
-    bgfx::touch(viewId_);
-    bgfx::frame();
+    bgfx::touch(ViewID::UI);
+    bgfx::frame();  // TODO: check if moving it to
+                    // GraphicsRenderer::Render() is better
     return;
   }
 
@@ -101,18 +103,18 @@ void ImGuiRenderer::EndFrame() {
   float ortho[16];
   bx::mtxOrtho(ortho, 0.0f, width, height, 0.0f, 0.0f, 1000.0f, 0.0f, false);
 
-  bgfx::setViewRect(viewId_, 0, 0, uint16_t(width), uint16_t(height));
-  bgfx::setViewTransform(viewId_, nullptr, ortho);
+  bgfx::setViewRect(ViewID::UI, 0, 0, uint16_t(width), uint16_t(height));
+  bgfx::setViewTransform(ViewID::UI, nullptr, ortho);
 
   // Set the view to clear once
   static bool once = false;
   if (!once) {
-    bgfx::setViewClear(viewId_, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH, 0x2d2d2dff,
-                       1.0f, 0);
+    // bgfx::setViewClear(ViewID::UI, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH,
+    // 0x2d2d2dff,         1.0f, 0);
     once = true;
   }
 
-  bgfx::touch(viewId_);
+  bgfx::touch(ViewID::UI);
 
   const ImGuiIO& io = ImGui::GetIO();
   int fb_width = (int)(io.DisplaySize.x * io.DisplayFramebufferScale.x);
@@ -127,9 +129,9 @@ void ImGuiRenderer::EndFrame() {
   bx::mtxOrtho(ortho, 0.0f, io.DisplaySize.x, io.DisplaySize.y, 0.0f, 0.0f,
                1000.0f, 0.0f, caps->homogeneousDepth);
 
-  bgfx::setViewTransform(viewId_, nullptr, ortho);
-  bgfx::setViewRect(viewId_, 0, 0, uint16_t(fb_width), uint16_t(fb_height));
-  bgfx::touch(viewId_);
+  bgfx::setViewTransform(ViewID::UI, nullptr, ortho);
+  bgfx::setViewRect(ViewID::UI, 0, 0, uint16_t(fb_width), uint16_t(fb_height));
+  bgfx::touch(ViewID::UI);
 
   const uint64_t state = BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A |
                          BGFX_STATE_MSAA |
@@ -182,7 +184,7 @@ void ImGuiRenderer::EndFrame() {
 
         bgfx::TextureHandle tex = {(uint16_t)(intptr_t)pcmd->TextureId};
         bgfx::setTexture(0, s_texUniform, tex);
-        bgfx::submit(viewId_, imguiProgram);
+        bgfx::submit(ViewID::UI, imguiProgram);
       }
       idx_offset += pcmd->ElemCount;
     }

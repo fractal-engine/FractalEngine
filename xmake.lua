@@ -38,6 +38,7 @@ target("fractal")
     add_files("src/editor/*.cpp")  -- Add source files from editor
     add_files("src/drivers/*.cpp")  -- Add ImGuiRenderer, BGFX drivers
     add_files("src/audio/*.cpp")
+    add_files("src/scene/*.cpp")
     add_files("src/shaders/**.sc|varying.def.sc|varying_imgui.def.sc", {rule = "bgfx_shaderc"})
 
     add_options("display")
