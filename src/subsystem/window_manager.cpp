@@ -3,12 +3,19 @@
 #include <bgfx/platform.h>
 #include "base/logger.h"
 
+#ifdef __APPLE__
+extern "C" {
+void* setupMetalLayer(void* window);
+}
+#endif
+
 bool WindowManager::Initialize(const char* title, int width, int height) {
   WindowManager& instance = getInstance();
   instance.width_ = width;
   instance.height_ = height;
 
-  Logger::getInstance().Log(LogLevel::Debug, "Calling SDL_Init"); // debug - remove later
+  Logger::getInstance().Log(LogLevel::Debug,
+                            "Calling SDL_Init");  // debug - remove later
 
   if (SDL_Init(SDL_INIT_VIDEO) < 0) {
     Logger::getInstance().Log(
@@ -96,18 +103,19 @@ void WindowManager::InitBGFXPlatformData(bgfx::Init& init) {
   SDL_SysWMinfo wmi;
   SDL_VERSION(&wmi.version);
   if (SDL_GetWindowWMInfo(getInstance().window_, &wmi)) {
+    void* metalLayer = setupMetalLayer(wmi.info.cocoa.window);
+
+    init.platformData.nwh = metalLayer;  // This must be the CAMetalLayer*
     init.platformData.ndt = nullptr;
-    init.platformData.nwh = wmi.info.cocoa.window;  // required for OpenGL
     init.platformData.context = nullptr;
 
     Logger::getInstance().Log(
         LogLevel::Debug,
-        "Set BGFX platformData for macOS (OpenGL). nwh = " +
+        "Set BGFX platformData for macOS (Metal). nwh = " +
             std::to_string(reinterpret_cast<uintptr_t>(init.platformData.nwh)));
   } else {
     Logger::getInstance().Log(LogLevel::Error, "SDL_GetWindowWMInfo failed!");
   }
-
 #elif defined(_WIN32)
   SDL_SysWMinfo wmi;
   SDL_VERSION(&wmi.version);

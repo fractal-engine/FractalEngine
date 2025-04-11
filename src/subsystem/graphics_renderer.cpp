@@ -51,7 +51,11 @@ GraphicsRenderer::~GraphicsRenderer() {
 bool GraphicsRenderer::InitBGFX() {
   bgfx::Init init;
   WindowManager::InitBGFXPlatformData(init);
-  init.type = bgfx::RendererType::Count;  // Let BGFX auto-select
+#if defined(__APPLE__)
+  init.type = bgfx::RendererType::Metal;  // Force Metal on macOS
+#else
+  init.type = bgfx::RendererType::Count;  // Auto-select on other platforms
+#endif
   init.debug = true;
   init.profile = true;
 
