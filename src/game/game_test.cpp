@@ -30,7 +30,7 @@ GameTest::~GameTest() {}
 
 // Manages the shader program from the GraphicsRenderer
 void GameTest::Init() {
-  /* auto* renderer =
+  auto* renderer =
       static_cast<GraphicsRenderer*>(SubsystemManager::GetRenderer().get());
 
   _terrainProgramHeight = renderer->LoadShaderProgram(
@@ -93,11 +93,11 @@ void GameTest::Init() {
       terrainIndices.data(), terrainIndices.size() * sizeof(uint16_t));
   indexBuffer = bgfx::createIndexBuffer(idxMem);
 
-  bx::mtxIdentity(world_matrix); */
+  bx::mtxIdentity(world_matrix);
 }
 
 void GameTest::Update() {
-  /* if (!bgfx::isValid(_terrainProgramHeight))
+  if (!bgfx::isValid(_terrainProgramHeight))
     return;
 
   // animate frame by frame
@@ -119,18 +119,38 @@ void GameTest::Update() {
 
   // physics, input, etc. */
 }
+void SetLightDirectionWithIntensity(
+    bgfx::UniformHandle lightUniform,  // Light intensity function
+    float intensity, const float dir[3]) {
+  if (!bgfx::isValid(lightUniform))
+    return;
 
+  // Normalize input direction
+  float normDir[3];
+  float len = bx::sqrt(dir[0] * dir[0] + dir[1] * dir[1] + dir[2] * dir[2]);
+  normDir[0] = dir[0] / len;
+  normDir[1] = dir[1] / len;
+  normDir[2] = dir[2] / len;
+
+  // Multiply normalized direction by intensity
+  float lightDir[4] = {
+      normDir[0] * intensity, normDir[1] * intensity, normDir[2] * intensity,
+      0.0f  // directional light: w = 0
+  };
+
+  bgfx::setUniform(lightUniform, lightDir);
+}
 // TODO: lock or check thread safety here (in case games access state that's
 // modified in game thread)
 void GameTest::Render() {
-  /*
+
   float view[16], proj[16];
 
   if (!bgfx::isValid(_terrainProgramHeight))
     return;
 
   bgfx::setViewClear(ViewID::GAME, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH,
-                     0x303030ff,  // dark gray
+                     0xFFA500FF,  // bright orange
                      1.0f,        // depth
                      0            // stencil
   );
@@ -138,12 +158,13 @@ void GameTest::Render() {
   bgfx::setViewRect(ViewID::GAME, 0, 0, WindowManager::GetWidth(),
                     WindowManager::GetHeight());
 
-  bx::mtxLookAt(view, bx::Vec3{32.0f, 32.0f, -50.0f},  // eye
-                bx::Vec3{32.0f, 0.0f, 32.0f},          // at
-                bx::Vec3{0.0f, 1.0f, 0.0f});           // up
+  bx::Vec3 eye = bx::Vec3(120.0f, 60.0f, 32.0f);  // Move up and back
+  bx::Vec3 at = bx::Vec3(32.0f, 0.0f, 32.0f);     // Look toward the center
+  bx::Vec3 up = bx::Vec3(1.0f, 0.0f, 0.0f);       // Standard Y-up
+  bx::mtxLookAt(view, eye, at, up);
 
   bx::mtxProj(
-      proj, 60.0f,
+      proj, 80.0f,
       float(WindowManager::GetWidth()) / float(WindowManager::GetHeight()),
       0.1f, 1000.0f, bgfx::getCaps()->homogeneousDepth);
 
@@ -156,17 +177,16 @@ void GameTest::Render() {
   bgfx::setTexture(0, _heightUniform, _heightTexture);  // Bind height texture
 
   // Set the light direction uniform
-  if (bgfx::isValid(_lightDirUniform)) {
-    float lightDir[4] = {0.3f, 1.0f, 0.4f, 0.0f};
-    bgfx::setUniform(_lightDirUniform, lightDir);
-  }
+  const float direction[3] = {0.3f, 1.0f, 0.4f};
+  SetLightDirectionWithIntensity(_lightDirUniform, 5.0f,
+                                 direction);  // for example, 5x stronger
 
   bgfx::setState(BGFX_STATE_DEFAULT);
-  bgfx::submit(ViewID::GAME, _terrainProgramHeight); */
+  bgfx::submit(ViewID::GAME, _terrainProgramHeight);
 }
 
 void GameTest::Shutdown() {
-  /* Logger::getInstance().Log(LogLevel::Debug, "[GameTest] Shutdown()");
+  Logger::getInstance().Log(LogLevel::Debug, "[GameTest] Shutdown()");
 
   if (bgfx::isValid(_terrainProgramHeight)) {
     Logger::getInstance().Log(LogLevel::Debug,
@@ -208,5 +228,5 @@ void GameTest::Shutdown() {
                               "[GameTest] Destroying index buffer");
     bgfx::destroy(indexBuffer);
     indexBuffer = BGFX_INVALID_HANDLE;
-  } */
+  }
 }
