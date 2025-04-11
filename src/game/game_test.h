@@ -1,28 +1,54 @@
 #ifndef GAME_TEST_H
 #define GAME_TEST_H
+
+#include <bgfx/bgfx.h>
 #include "base/game_base.h"
 
-#include <string>
 #include <vector>
 
-class GameTest : public Game {
-  int interval = 0;
-  int pos_x = 0;
-  int pos_y = 0;
-  std::vector<std::string> asciiArt = {
-      R"(==============================)",  //
-      R"(       _                   _  )",  //
-      R"(   ___| |__   __ _ _ __ __| | )",  //
-      R"(  / __| '_ \ / _` | '__/ _` | )",  //
-      R"(  \__ \ | | | (_| | | | (_| | )",  //
-      R"(  |___/_| |_|\__,_|_|  \__,_| )",  //
-      R"(                              )",  //
-      R"(          It Works!           )",  //
-      R"(                              )",  //
-      R"(==============================)",  //
-  };
+// vertex definition for terrain
+struct PosTexCoord0Vertex {
+  float x, y, z;
+  float u, v;
 
-public:
-  void Update() override;
+  static bgfx::VertexLayout layout;  // Declaration
+  static void init();
 };
-#endif
+
+// A minimal game class that just displays "Hello World".
+class GameTest : public GameBase {
+public:
+  GameTest();
+  virtual ~GameTest();
+
+  // Initialize the shader program (and any minimal resources)
+  // that will be used to display "Hello World".
+  void Init() override;
+
+  // Update is called every frame�in this minimal example, it just
+  // submits a BGFX touch call and logs a message.
+  void Update() override;
+
+  void Render() override;
+
+  void Shutdown() override;
+
+private:
+  // BGFX resources
+  bgfx::ProgramHandle _terrainProgramHeight = BGFX_INVALID_HANDLE;
+  bgfx::UniformHandle _heightUniform;
+  bgfx::TextureHandle _heightTexture;
+  bgfx::UniformHandle _lightDirUniform = BGFX_INVALID_HANDLE;
+
+  bgfx::VertexBufferHandle vertexBuffer = BGFX_INVALID_HANDLE;
+  bgfx::IndexBufferHandle indexBuffer = BGFX_INVALID_HANDLE;
+
+  std::vector<PosTexCoord0Vertex> terrainVertices;
+  std::vector<uint16_t> terrainIndices;
+
+  float world_matrix[16];  // 4x4 transformation matrix
+
+  void* _terrainData = nullptr;
+};
+
+#endif  // GAME_TEST_H

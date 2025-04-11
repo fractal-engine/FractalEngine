@@ -1,3 +1,4 @@
+#include <bgfx/bgfx.h>
 #include <chrono>
 #include <ftxui/component/component.hpp>  // For Renderer, ScreenInteractive
 #include <ftxui/component/screen_interactive.hpp>  // For ScreenInteractive::Fullscreen
@@ -9,10 +10,14 @@
 #include "audio/sound_manager.h"  // For SoundManager
 #include "base/game_base.h"
 #include "base/logger.h"
+#include "base/shader_utils.h"
 #include "game/game_test.h"
 #include "subsystem/subsystem_manager.h"
 
+
 int main() {
+  Logger::getInstance().Log(LogLevel::Info, "Starting Fractal Engine");
+
   // Initialize the subsystem manager
   SubsystemManager::Initialize();
 
@@ -20,37 +25,40 @@ int main() {
   std::thread game_thread([&] { SubsystemManager::GetGameManager()->Run(); });
 
   // Log the start of the editor display
-  Logger::getInstance().Log(LogLevel::DEBUG, "Initializing editor display");
+  Logger::getInstance().Log(LogLevel::Debug, "Initializing editor display");
 
-  // Initialize the sound system.
+  // Initialize the sound system
   if (!SoundManager::Instance().init()) {
-    Logger::getInstance().Log(LogLevel::ERROR,
+    Logger::getInstance().Log(LogLevel::Error,
                               "Failed to initialize SoundManager");
     return -1;
   }
 
-  // Optionally adjust ambient volume (e.g., to 10%).
-  SoundManager::Instance().setAmbientVolume(0.1f);
+  // Optionally adjust ambient volume (e.g., to 10%)
+  SoundManager::Instance().setAmbientVolume(0.1f); // TODO: change this value
 
-  // Start the ambient background sound.
+  // Start the ambient background sound
   if (!SoundManager::Instance().startAmbient()) {
-    Logger::getInstance().Log(LogLevel::ERROR, "Failed to start ambient sound");
-    // Decide whether to exit or continue without ambient sound.
+    Logger::getInstance().Log(LogLevel::Error, "Failed to start ambient sound");
   }
 
   // Run the editor
+  Logger::getInstance().Log(LogLevel::Info, "Calling EditorGUI::Run()");
   SubsystemManager::GetEditor()->Run();
-
-  // Log the termination of the editor thread
-  // Logger::getInstance().Log(LogLevel::INFO, "Editor thread terminated");
+  Logger::getInstance().Log(LogLevel::Info,
+                            "Returned from EditorGUI::Run()");  // debug
 
   // Join the game thread
   game_thread.join();
 
   // Log the joining of the game thread
-  Logger::getInstance().Log(LogLevel::INFO, "Game thread joined");
+  Logger::getInstance().Log(LogLevel::Info, "Game thread joined");
 
-  // Clean up the sound system on exit.
+  // Shutdown subsystems
+  SubsystemManager::Shutdown();
+  Logger::getInstance().Log(LogLevel::Debug, "SubsystemManager shutdown started in main");
+
+  // Clean up the sound system on exit
   SoundManager::Instance().terminate();
 
   return 0;

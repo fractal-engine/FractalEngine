@@ -12,7 +12,7 @@ using Editor = EditorTUI;
 #ifdef DISPLAY_GRAPHICAL
 // Connect your implementation here
 #include "editor/editor_gui.h"
-#include "subsystem/renderer_gui.h"
-using Renderer = RendererGUI;
+#include "subsystem/graphics_renderer.h"
+using Renderer = GraphicsRenderer;
 using Editor = EditorGUI;
 #endif

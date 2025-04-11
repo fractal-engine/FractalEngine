@@ -49,7 +49,7 @@ EditorTUI::EditorTUI(const std::unique_ptr<RendererBase>& renderer)
   auto start_button = Button(
       "Start",
       [&] {
-        Logger::getInstance().Log(LogLevel::INFO, "Editor start game thread");
+        Logger::getInstance().Log(LogLevel::Info, "Editor start game thread");
         SoundManager::Instance().playClickAsync();
         game_start_pressed();
         is_game_start_ = true;
@@ -59,7 +59,7 @@ EditorTUI::EditorTUI(const std::unique_ptr<RendererBase>& renderer)
   auto stop_button = Button(
       "Stop",
       [&] {
-        Logger::getInstance().Log(LogLevel::INFO, "Editor stop game thread");
+        Logger::getInstance().Log(LogLevel::Info, "Editor stop game thread");
         SoundManager::Instance().playClickAsync();
         is_game_start_ = false;
         game_end_pressed();
@@ -83,7 +83,7 @@ EditorTUI::EditorTUI(const std::unique_ptr<RendererBase>& renderer)
   auto quit_button = Button(
       "Quit",
       [&] {
-        Logger::getInstance().Log(LogLevel::INFO, "Editor exit on user input");
+        Logger::getInstance().Log(LogLevel::Info, "Editor exit on user input");
         editor_exit_pressed();
         screen_.ExitLoopClosure()();
       },
@@ -165,18 +165,18 @@ Component EditorTUI::renderLayout() {
     }
     if (event == Event::Character('0')) {
       editor_exit_pressed();
-      Logger::getInstance().Log(LogLevel::INFO, "Editor exit on user input");
+      Logger::getInstance().Log(LogLevel::Info, "Editor exit on user input");
       screen_.ExitLoopClosure()();
       return true;
     }
     if (event == Event::Character('1')) {
-      Logger::getInstance().Log(LogLevel::INFO, "Editor start game thread");
+      Logger::getInstance().Log(LogLevel::Info, "Editor start game thread");
       game_start_pressed();
       is_game_start_ = true;
       return true;
     }
     if (event == Event::Character('2')) {
-      Logger::getInstance().Log(LogLevel::INFO, "Editor stop game thread");
+      Logger::getInstance().Log(LogLevel::Info, "Editor stop game thread");
       is_game_start_ = false;
       game_end_pressed();
       return true;
@@ -196,18 +196,18 @@ Component EditorTUI::addInteraction() {  // we need this as backup so I'm
   return CatchEvent(editor_layout_, [&](Event event) {
     if (event == Event::Character('0')) {
       editor_exit_pressed();
-      Logger::getInstance().Log(LogLevel::INFO, "Editor exit on user input");
+      Logger::getInstance().Log(LogLevel::Info, "Editor exit on user input");
       screen_.ExitLoopClosure()();
       return true;
     }
     if (event == Event::Character('1')) {
-      Logger::getInstance().Log(LogLevel::INFO, "Editor start game thread");
+      Logger::getInstance().Log(LogLevel::Info, "Editor start game thread");
       game_start_pressed();
       is_game_start_ = true;
       return true;
     }
     if (event == Event::Character('2')) {
-      Logger::getInstance().Log(LogLevel::INFO, "Editor stop game thread");
+      Logger::getInstance().Log(LogLevel::Info, "Editor stop game thread");
       is_game_start_ = false;
       game_end_pressed();
       return true;
@@ -222,9 +222,9 @@ void EditorTUI::Run() {
   editor_layout_ = renderLayout();
   editor_interactive_ = addInteraction();
 
-  Logger::getInstance().Log(LogLevel::INFO, "Editor main loop start");
+  Logger::getInstance().Log(LogLevel::Info, "Editor main loop start");
   screen_.Loop(editor_interactive_);
-  Logger::getInstance().Log(LogLevel::INFO, "Editor main loop passed");
+  Logger::getInstance().Log(LogLevel::Info, "Editor main loop passed");
 }
 
 void EditorTUI::RequestUpdate() {

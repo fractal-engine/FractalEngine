@@ -21,7 +21,7 @@ public:
     PaError err = Pa_Initialize();
     if (err != paNoError) {
       Logger::getInstance().Log(
-          LogLevel::ERROR,
+          LogLevel::Error,
           std::string("PortAudio init error: ") + Pa_GetErrorText(err));
       return false;
     }
@@ -37,7 +37,7 @@ public:
   bool startAmbient() {
     if (!drwav_init_file(&ambientWav, kAmbientSoundFilename.c_str(), NULL)) {
       Logger::getInstance().Log(
-          LogLevel::ERROR, std::string("Error: Could not open ambient file: ") +
+          LogLevel::Error, std::string("Error: Could not open ambient file: ") +
                                kAmbientSoundFilename);
       ambientInitialized = false;
       return false;
@@ -49,7 +49,7 @@ public:
                                        ambientCallback, this);
     if (err != paNoError) {  // Error opening stream.
       Logger::getInstance().Log(
-          LogLevel::ERROR,
+          LogLevel::Error,
           std::string("Error opening ambient stream: ") + Pa_GetErrorText(err));
       drwav_uninit(&ambientWav);
       ambientInitialized = false;
@@ -58,7 +58,7 @@ public:
     }
     err = Pa_StartStream(ambientStream);
     if (err != paNoError) {
-      Logger::getInstance().Log(LogLevel::ERROR,
+      Logger::getInstance().Log(LogLevel::Error,
                                 std::string("Error starting ambient stream: ") +
                                     Pa_GetErrorText(err));
       Pa_CloseStream(ambientStream);
@@ -87,7 +87,7 @@ public:
     drwav clickWav;
     if (!drwav_init_file(&clickWav, kClickSoundFilename.c_str(), NULL)) {
       Logger::getInstance().Log(
-          LogLevel::ERROR, std::string("Error: Could not open click file: ") +
+          LogLevel::Error, std::string("Error: Could not open click file: ") +
                                kClickSoundFilename);
       return false;
     }
@@ -98,7 +98,7 @@ public:
         drwav_read_pcm_frames_f32(&clickWav, frames, buffer);
     drwav_uninit(&clickWav);
     if (framesRead != frames) {
-      Logger::getInstance().Log(LogLevel::ERROR,
+      Logger::getInstance().Log(LogLevel::Error,
                                 "Error reading all frames from click file");
       delete[] buffer;
       return false;
@@ -109,7 +109,7 @@ public:
         paFramesPerBufferUnspecified, NULL, NULL);
     if (err != paNoError) {
       Logger::getInstance().Log(
-          LogLevel::ERROR,
+          LogLevel::Error,
           std::string("Error opening click stream: ") + Pa_GetErrorText(err));
       delete[] buffer;
       return false;
@@ -117,7 +117,7 @@ public:
     err = Pa_StartStream(stream);
     if (err != paNoError) {
       Logger::getInstance().Log(
-          LogLevel::ERROR,
+          LogLevel::Error,
           std::string("Error starting click stream: ") + Pa_GetErrorText(err));
       Pa_CloseStream(stream);
       delete[] buffer;
@@ -127,7 +127,7 @@ public:
     err = Pa_WriteStream(stream, buffer, (unsigned long)frames);
     if (err != paNoError) {
       Logger::getInstance().Log(
-          LogLevel::ERROR,
+          LogLevel::Error,
           std::string("Error writing click stream: ") + Pa_GetErrorText(err));
       Pa_StopStream(stream);
       Pa_CloseStream(stream);

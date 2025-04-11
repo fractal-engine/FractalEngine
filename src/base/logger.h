@@ -11,7 +11,7 @@
 
 #include "base/singleton.hpp"
 // Enumeration for log levels
-enum class LogLevel { INFO, DEBUG, WARNING, ERROR };
+enum class LogLevel { Info, Debug, Warning, Error };
 
 class Logger : public Singleton<Logger> {
 public:
@@ -25,10 +25,10 @@ public:
   std::ofstream logfile_;  // stream data to file
   std::mutex mutex_;  // support for multi-thread i.e. only 1 thread can access
                       // at a time
-  std::map<LogLevel, std::string> logLevelNames{{LogLevel::INFO, "INFO"},
-                                                {LogLevel::DEBUG, "DEBUG"},
-                                                {LogLevel::WARNING, "WARNING"},
-                                                {LogLevel::ERROR, "ERROR"}};
+  std::map<LogLevel, std::string> logLevelNames{{LogLevel::Info, "INFO"},
+                                                {LogLevel::Debug, "DEBUG"},
+                                                {LogLevel::Warning, "WARNING"},
+                                                {LogLevel::Error, "ERROR"}};
 
   std::string GetLogLevelName(LogLevel level);
 };

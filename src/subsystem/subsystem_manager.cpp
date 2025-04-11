@@ -3,6 +3,7 @@
 #include "base/logger.h"
 #include "editor/editor_tui.h"
 #include "game/game_test.h"
+#include "subsystem/graphics_renderer.h"
 #include "subsystem/renderer_text.h"
 
 using namespace std;
@@ -29,19 +30,53 @@ const std::unique_ptr<GameManager>& SubsystemManager::GetGameManager() {
 const std::unique_ptr<Input>& SubsystemManager::GetInput() {
   return getInstance().input_;
 }
+
+const std::unique_ptr<WindowManager>& SubsystemManager::GetWindowManager() {
+  return getInstance().window_manager_;
+}
+
+// TODO: pass the imgui_renderer_ to Renderer to consolidate ImGui and
+// gamerendering
+// TODO: fix constructors/destructors to use .reset only
 void SubsystemManager::initialize() {
-  // STUB - Wrap this to a new function
-  renderer_.reset(new Renderer());
-  Logger::getInstance().Log(LogLevel::INFO, "Renderer initialized");
+// 1. Initialize window manager
+#if defined(DISPLAY_GRAPHICAL)
+  window_manager_ = std::make_unique<WindowManager>();
+  if (!window_manager_->Initialize("Fractal", 1280, 720)) {
+    Logger::getInstance().Log(LogLevel::Error,
+                              "WindowManager failed to initialize.");
+    std::exit(1);
+  }
+#endif
+
+// 2. Initialize renderer + bgfx
+#if defined(DISPLAY_GRAPHICAL)
+  renderer_ = std::make_unique<GraphicsRenderer>();
+  if (!static_cast<GraphicsRenderer*>(renderer_.get())->InitBGFX()) {
+    Logger::getInstance().Log(LogLevel::Error,
+                              "BGFX failed to initialize in renderer!");
+    std::exit(1);
+  }
+#elif defined(DISPLAY_TEXT)
+  renderer_.reset(new RendererText());
+#else
+#error "No renderer defined! Use -o display=DISPLAY_GRAPHICAL or DISPLAY_TEXT."
+#endif
+  Logger::getInstance().Log(LogLevel::Info, "Renderer initialized");
+
+  // 3. Initialize Input
+  input_ = std::make_unique<Input>();
+
+  // 4. Initialize Editor
   editor_.reset(new Editor(renderer_));
-  Logger::getInstance().Log(LogLevel::INFO, "Editor initialized");
-  input_.reset(new Input());
+  Logger::getInstance().Log(LogLevel::Info, "Editor initialized");
 
-  // STUB - For testing, directly used GameTest
   // TODO - Read Game Manager read games from filesystem
+  // 5. Initialize GameManager
   game_manager_.reset(new GameManager(std::make_unique<GameTest>()));
-  // Create GameManager using new
+  Logger::getInstance().Log(LogLevel::Info, "Game Manager initialized");
 
+  // Connect editor signals to game manager
   editor_->game_start_pressed.connect([&] { game_manager_->StartGame(); });
   editor_->game_end_pressed.connect([&] { game_manager_->EndGame(); });
   editor_->editor_exit_pressed.connect([&] { game_manager_->Terminate(); });
@@ -49,4 +84,39 @@ void SubsystemManager::initialize() {
     input_->FowardInputEvent(event, game_manager_->GetFrameCount());
   });
   renderer_->redrawn.connect([&] { editor_->RequestUpdate(); });
+
+  game_manager_->StartGame();  // Start the game
+}
+
+void SubsystemManager::Shutdown() {
+  Logger::getInstance().Log(LogLevel::Info,
+                            "=== SubsystemManager::Shutdown called ===");
+
+  // 1. Stop the game thread
+  if (getInstance().game_manager_) {
+    getInstance().game_manager_->Shutdown();   // destroy BGFX resources
+    getInstance().game_manager_->Terminate();  // stop thread
+  }
+
+  // 3. Shutdown ImGui and Editor
+  if (getInstance().editor_) {
+    Logger::getInstance().Log(LogLevel::Info, "Shutting down Editor");
+    getInstance().editor_->Shutdown();
+  }
+
+  // 2. Shutdown graphics renderer
+  if (getInstance().renderer_) {
+    Logger::getInstance().Log(LogLevel::Info, "Shutting down Renderer");
+    getInstance().renderer_->Shutdown();
+  }
+
+  // 4. reset all subsystems
+  getInstance().game_manager_.reset();
+  getInstance().input_.reset();
+  getInstance().editor_.reset();
+  getInstance().renderer_.reset();
+  getInstance().window_manager_.reset();
+
+  Logger::getInstance().Log(LogLevel::Info,
+                            "=== SubsystemManager::Shutdown complete ===");
 }

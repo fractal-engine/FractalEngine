@@ -1,10 +1,14 @@
 #ifndef GAME_BASE_H
 #define GAME_BASE_H
 
-class Game {
- public:
+class GameBase {
+public:
+  virtual void Init() = 0;
   virtual void Update() = 0;
-  virtual ~Game() = default;
+  virtual void Render() = 0;
+  virtual void Shutdown() = 0;
+
+  virtual ~GameBase() = default;
 };
 
 #endif  // GAME_BASE_H

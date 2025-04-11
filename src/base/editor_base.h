@@ -7,7 +7,6 @@
 
 class EditorBase {
 
-private:
 public:
   // virtual destructor
   virtual ~EditorBase() = default;
@@ -20,6 +19,7 @@ public:
 
   void virtual Run() = 0;
   void virtual RequestUpdate() = 0;
+  virtual void Shutdown() = 0;
 };
 
-#endif // EDITOR_BASE_H
+#endif  // EDITOR_BASE_H

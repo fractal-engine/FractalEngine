@@ -1,3 +1,10 @@
+// ---------------------------------------------------------------------------
+// game_manager.cpp
+// Implements the GameManager, which handles the main thread loop,
+// game state transitions, and delegates scene updates/rendering to
+// SceneManager.
+// ---------------------------------------------------------------------------
+
 #include "subsystem/game_manager.h"
 
 #include <chrono>
@@ -6,15 +13,22 @@
 #include "base/game_base.h"
 #include "base/logger.h"
 
-// GameManager::GameManager() : gamestate_(GameState::ENDED) {}
+#include "scene/scene_manager.h"
 
-GameManager::GameManager(std::unique_ptr<Game>&& game)
-    : gamestate_(GameState::ENDED), game_(std::move(game)), frame_count_(0) {
-  Logger::getInstance().Log(LogLevel::INFO, "Game Manager initialized");
-}
+GameManager::GameManager(std::unique_ptr<GameBase>&& core)
+    : gamestate_(GameState::ENDED),
+      core_(std::move(core)),
+      scene_manager_(std::make_unique<SceneManager>()),
+      frame_count_(0) {}
 
 void GameManager::StartGame() {
-  Logger::getInstance().Log(LogLevel::INFO, "Game manager start game");
+  Logger::getInstance().Log(LogLevel::Info, "Game manager start game");
+
+  if (core_) {
+    core_->Init();
+    Logger::getInstance().Log(LogLevel::Info, "Game initialized");
+  }
+
   {
     std::lock_guard<std::mutex> lock(state_mutex_);
     gamestate_ = GameState::STARTING;
@@ -22,14 +36,21 @@ void GameManager::StartGame() {
   condition_.notify_one();
 }
 
+void GameManager::LoadScene(std::unique_ptr<Scene> scene) {
+  if (scene_manager_) {
+    scene_manager_->LoadScene(std::move(scene));
+    Logger::getInstance().Log(LogLevel::Info, "Scene loaded");
+  }
+}
+
 void GameManager::EndGame() {
-  Logger::getInstance().Log(LogLevel::INFO, "Game manager end game");
+  Logger::getInstance().Log(LogLevel::Info, "Game manager end game");
   std::lock_guard<std::mutex> lock(state_mutex_);
   gamestate_ = GameState::ENDING;
 }
 
 void GameManager::Terminate() {
-  Logger::getInstance().Log(LogLevel::INFO, "Game manager terminating");
+  Logger::getInstance().Log(LogLevel::Info, "Game manager terminating");
   {
     std::lock_guard<std::mutex> lock(state_mutex_);
     is_terminating_ = true;
@@ -38,25 +59,27 @@ void GameManager::Terminate() {
 }
 
 void GameManager::Run() {
-  Logger::getInstance().Log(LogLevel::INFO, "Game thread started");
+  Logger::getInstance().Log(LogLevel::Info, "Game thread started");
 
   while (true) {
     if (gamestate_ != RUNNING && !is_terminating_) {
       std::unique_lock<std::mutex> lock(state_mutex_);
 
       if (gamestate_ == GameState::STARTING) {
-        // game_->start();
+        // core_->start();
         gamestate_ = GameState::RUNNING;
       } else if (gamestate_ == GameState::ENDING) {
-        // game_->end();
-        Logger::getInstance().Log(LogLevel::DEBUG, "Game thread ending to end");
+        // core_->end();
+        Logger::getInstance().Log(LogLevel::Debug, "Game thread ending to end");
         gamestate_ = ENDED;
       } else if (gamestate_ == GameState::PAUSING) {
         gamestate_ = PAUSED;
       }
+      Logger::getInstance().Log(LogLevel::Debug,
+                                "Game thread entering sleep state...");
       if (!is_terminating_ && gamestate_ == GameState::PAUSED ||
           gamestate_ == GameState::ENDED) {
-        Logger::getInstance().Log(LogLevel::DEBUG, "Game thread Sleep");
+        Logger::getInstance().Log(LogLevel::Debug, "Game thread Sleep");
         condition_.wait(lock, [this] {
           return is_terminating_ || (gamestate_ != GameState::ENDED &&
                                      gamestate_ != GameState::PAUSED);
@@ -65,11 +88,18 @@ void GameManager::Run() {
     }
 
     if (is_terminating_) {
-      Logger::getInstance().Log(LogLevel::INFO,
+      Logger::getInstance().Log(LogLevel::Info,
                                 "Game thread return on terminating");
       return;
     }
-    game_->Update();
+
+    if (core_) {
+      core_->Update();
+    }
+    if (scene_manager_) {
+      scene_manager_->Update(1.0f / 60.0f);  // fixed timestep
+    }
+
     frame_count_++;
     std::this_thread::sleep_for(std::chrono::milliseconds(20));
   }
@@ -77,4 +107,26 @@ void GameManager::Run() {
 
 uint64_t GameManager::GetFrameCount() {
   return frame_count_;
+}
+
+void GameManager::Render() {
+  //   if (core_ && gamestate_ == GameState::RUNNING) {
+  if (core_) {
+    Logger::getInstance().Log(LogLevel::Debug,
+                              "[GameManager] Calling game->Render()");
+    core_->Render();
+  } else if (scene_manager_) {
+    Logger::getInstance().Log(LogLevel::Debug,
+                              "[GameManager] Calling scene->Render()");
+    scene_manager_->Render();
+  }
+}
+
+void GameManager::Shutdown() {
+  Logger::getInstance().Log(LogLevel::Info, "Game manager shutdown initiated");
+
+  if (core_) {
+    Logger::getInstance().Log(LogLevel::Info, "Calling core_->Shutdown()");
+    core_->Shutdown();
+  }
 }

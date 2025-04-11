@@ -5,7 +5,9 @@
 #include <mutex>
 
 #include "base/editor_base.h"
+#include "drivers/imgui_renderer.h"
 #include "imgui.h"
+#include "subsystem/window_manager.h"
 
 class RendererBase;
 
@@ -16,6 +18,8 @@ private:
   std::unique_ptr<RendererBase>& renderer_;
   bool quit_;
   bool is_game_started_;  // Track if game is started
+
+  ImGuiRenderer imgui_renderer_;
 
   // Game canvas position and size
   ImVec2 gameCanvasPos_;
@@ -35,6 +39,7 @@ public:
   void Run() override;
   void RequestUpdate() override;
   void game_inputed(Key key);  // Handles keyboard input
+  void Shutdown() override;
 };
 
 #endif  // EDITOR_GUI_H
