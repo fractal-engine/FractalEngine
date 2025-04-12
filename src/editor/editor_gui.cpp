@@ -38,6 +38,13 @@ void EditorGUI::Run() {
   io.DisplaySize = ImVec2((float)WindowManager::GetWidth(),
                           (float)WindowManager::GetHeight());
   ImGui::StyleColorsDark();
+  ImGui::GetStyle().Colors[ImGuiCol_WindowBg].w = 0.0f;
+  ImGui::GetStyle().Colors[ImGuiCol_ChildBg].w = 0.0f;
+  ImGui::GetStyle().Colors[ImGuiCol_PopupBg].w = 0.0f;
+  ImGui::GetStyle().Colors[ImGuiCol_TitleBg].w = 0.0f;
+  ImGui::GetStyle().Colors[ImGuiCol_TitleBgActive].w = 0.0f;
+  ImGui::GetStyle().Colors[ImGuiCol_FrameBg].w = 0.0f;
+
 
   // Setup Platform/Renderer backends
   ImGui_ImplSDL2_InitForOther(WindowManager::GetWindow());
