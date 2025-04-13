@@ -33,7 +33,6 @@ void ImGuiRenderer::Init() {
   ImGui::StyleColorsDark();
 
   SDL_Window* window = WindowManager::GetWindow();
-  ImGui_ImplSDL2_InitForOther(WindowManager::GetWindow());
 
   imguiVertexLayout.begin()
       .add(bgfx::Attrib::Position, 2, bgfx::AttribType::Float)
@@ -82,6 +81,8 @@ void ImGuiRenderer::BeginFrame() {
   ImGuiIO& io = ImGui::GetIO();
   io.DisplaySize = ImVec2((float)WindowManager::GetWidth(),
                           (float)WindowManager::GetHeight());
+  float scale = WindowManager::GetDPIScale();
+  io.DisplayFramebufferScale = ImVec2(scale, scale);
 
   ImGui_ImplSDL2_NewFrame();
   ImGui::NewFrame();

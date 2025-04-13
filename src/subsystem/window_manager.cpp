@@ -4,9 +4,7 @@
 #include "base/logger.h"
 
 #ifdef __APPLE__
-extern "C" {
-void* setupMetalLayer(void* window);
-}
+#include "platform/window_macos.h"
 #endif
 
 bool WindowManager::Initialize(const char* title, int width, int height) {
@@ -38,6 +36,13 @@ bool WindowManager::Initialize(const char* title, int width, int height) {
     return false;
   }
 
+// ------------------------------------------------
+//  Get macOS display scale factor for Retina support
+// ------------------------------------------------
+#ifdef __APPLE__
+  instance.dpiScale_ = WindowManager_GetDPIScale(instance.window_);
+#endif
+
   Logger::getInstance().Log(
       LogLevel::Info, "WindowManager initialized with size: " +
                           std::to_string(width) + "x" + std::to_string(height));
@@ -67,6 +72,10 @@ int WindowManager::GetHeight() {
 
 SDL_Window* WindowManager::GetWindow() {
   return getInstance().window_;
+}
+
+float WindowManager::GetDPIScale() {
+  return getInstance().dpiScale_;
 }
 
 void WindowManager::RegisterResizeCallback(
@@ -100,12 +109,16 @@ void WindowManager::InitBGFXPlatformData(bgfx::Init& init) {
   init.resolution.reset = BGFX_RESET_VSYNC;
 
 #if defined(__APPLE__)
+  int drawableW, drawableH;
+  SDL_Metal_GetDrawableSize(getInstance().window_, &drawableW, &drawableH);
+  init.resolution.width = drawableW;
+  init.resolution.height = drawableH;
+
   SDL_SysWMinfo wmi;
   SDL_VERSION(&wmi.version);
   if (SDL_GetWindowWMInfo(getInstance().window_, &wmi)) {
-    void* metalLayer = setupMetalLayer(wmi.info.cocoa.window);
-
-    init.platformData.nwh = metalLayer;  // This must be the CAMetalLayer*
+    void* metalLayer = WindowManager_CreateMetalLayer(wmi.info.cocoa.window);
+    init.platformData.nwh = metalLayer;
     init.platformData.ndt = nullptr;
     init.platformData.context = nullptr;
 

@@ -39,8 +39,12 @@ void EditorGUI::Run() {
                           (float)WindowManager::GetHeight());
   ImGui::StyleColorsDark();
 
-  // Setup Platform/Renderer backends
-  ImGui_ImplSDL2_InitForOther(WindowManager::GetWindow());
+// Initialize ImGui backend
+#ifdef __APPLE__
+  ImGui_ImplSDL2_InitForMetal(window);
+#else
+  ImGui_ImplSDL2_InitForOther(window);
+#endif
 
   // ----------------------------------------------------------
   // 2 - Main editor loop

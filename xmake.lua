@@ -44,7 +44,6 @@ target("fractal")
     -- Add Metal frameworks for macOS
     if is_plat("macosx") then
         add_frameworks("Metal", "MetalKit", "QuartzCore")
-        add_files("src/platform/window_manager_mac.mm")
         add_files("src/platform/*.mm")
         add_includedirs("src")
     end
