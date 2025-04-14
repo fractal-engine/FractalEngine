@@ -158,15 +158,17 @@ void GameTest::Render() {
   bgfx::setViewRect(ViewID::GAME, 0, 0, WindowManager::GetWidth(),
                     WindowManager::GetHeight());
 
-  bx::Vec3 eye = bx::Vec3(120.0f, 60.0f, 32.0f);  // Move up and back
-  bx::Vec3 at = bx::Vec3(32.0f, 0.0f, 32.0f);     // Look toward the center
-  bx::Vec3 up = bx::Vec3(1.0f, 0.0f, 0.0f);       // Standard Y-up
-  bx::mtxLookAt(view, eye, at, up);
+  bx::Vec3 eye = bx::Vec3(cameraEye[0], cameraEye[1], cameraEye[2]);
+  bx::Vec3 at = bx::Vec3(cameraAt[0], cameraAt[1], cameraAt[2]);
+  bx::Vec3 up = bx::Vec3(cameraUp[0], cameraUp[1], cameraUp[2]);
 
-  bx::mtxProj(
-      proj, 80.0f,
-      float(WindowManager::GetWidth()) / float(WindowManager::GetHeight()),
-      0.1f, 1000.0f, bgfx::getCaps()->homogeneousDepth);
+  bx::mtxLookAt(view, bx::Vec3{cameraEye[0], cameraEye[1], cameraEye[2]},
+                bx::Vec3{cameraAt[0], cameraAt[1], cameraAt[2]},
+                bx::Vec3{cameraUp[0], cameraUp[1], cameraUp[2]});
+
+  bx::mtxProj(proj, cameraFOV,
+              float(WindowManager::GetWidth()) / WindowManager::GetHeight(),
+              0.1f, 1000.0f, bgfx::getCaps()->homogeneousDepth);
 
   bx::mtxIdentity(world_matrix);
 
