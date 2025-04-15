@@ -1,17 +1,21 @@
 $input a_position, a_texcoord0
-$output v_position, v_texcoord0
-
-/*
- * Copyright 2015 Andrew Mac. All rights reserved.
- * License: https://github.com/bkaradzic/bgfx/blob/master/LICENSE
- */
+$output v_texcoord0, v_position
 
 #include "../common/common.sh"
 
-void main()
-{
-	v_position = a_position.xyz;
-	v_texcoord0 = a_texcoord0;
+SAMPLER2D(s_heightTexture, 0);
 
-	gl_Position = mul(u_modelViewProj, vec4(v_position.xyz, 1.0));
+void main() {
+    v_texcoord0 = a_texcoord0;
+
+    // Base position
+    vec3 pos = a_position;
+
+    // Sample height from texture and scale it
+    float height = texture2DLod(s_heightTexture, a_texcoord0, 0.0).r * 50.0;
+    pos.y = height;
+
+    v_position = pos; // Pass to fragment for slope calc
+
+    gl_Position = mul(u_modelViewProj, vec4(pos, 1.0));
 }

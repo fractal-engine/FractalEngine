@@ -112,12 +112,12 @@ uint64_t GameManager::GetFrameCount() {
 void GameManager::Render() {
   //   if (core_ && gamestate_ == GameState::RUNNING) {
   if (core_) {
-    Logger::getInstance().Log(LogLevel::Debug,
-                              "[GameManager] Calling game->Render()");
+    // Logger::getInstance().Log(LogLevel::Debug,
+                             // "[GameManager] Calling game->Render()");
     core_->Render();
   } else if (scene_manager_) {
-    Logger::getInstance().Log(LogLevel::Debug,
-                              "[GameManager] Calling scene->Render()");
+   // Logger::getInstance().Log(LogLevel::Debug,
+                             // "[GameManager] Calling scene->Render()");
     scene_manager_->Render();
   }
 }

@@ -39,7 +39,8 @@ target("fractal")
     add_files("src/drivers/*.cpp")  -- Add ImGuiRenderer, BGFX drivers
     add_files("src/audio/*.cpp")
     add_files("src/scene/*.cpp")
-    add_files("src/shaders/**.sc|varying.def.sc|varying_imgui.def.sc", {rule = "bgfx_shaderc"})
+    add_files("src/shaders/**.sc|varying.def.sc|varying_imgui.def.sc|includes/**.sc", {rule = "bgfx_shaderc"}) --exclude any include files
+
 
     add_options("display")
 
@@ -134,6 +135,7 @@ rule("bgfx_shaderc")
                 "--varyingdef", varying_file,
                 "-i", path.join(os.projectdir(), "src/thirdparty/bgfx.cmake/bgfx/src"),
                 "-i", path.join(os.projectdir(), "src/thirdparty/bgfx.cmake/bgfx/examples/common"),
+                "-i", path.join(os.projectdir(), "src/shaders/includes"),
                 "--entry", "main",
                 "-f", sourcefile,
                 "-o", path.join(output_dir, path.basename(sourcefile) .. ".bin")

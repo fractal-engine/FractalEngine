@@ -150,7 +150,7 @@ void GameTest::Render() {
     return;
 
   bgfx::setViewClear(ViewID::GAME, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH,
-                     0xFFA500FF,  // bright orange
+                     0x00008BF,  // dark blue
                      1.0f,        // depth
                      0            // stencil
   );
@@ -170,7 +170,8 @@ void GameTest::Render() {
               float(WindowManager::GetWidth()) / WindowManager::GetHeight(),
               0.1f, 1000.0f, bgfx::getCaps()->homogeneousDepth);
 
-  bx::mtxIdentity(world_matrix);
+  bx::mtxScale(world_matrix, 5.0f, 5.0f, 5.0f);  // Scale terrain larger
+
 
   bgfx::setViewTransform(ViewID::GAME, view, proj);
   bgfx::setTransform(world_matrix);
