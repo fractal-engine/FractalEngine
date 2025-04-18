@@ -15,6 +15,8 @@
 #include "base/shader_utils.h"
 #include "base/view_ids.h"
 
+#include "platform/window_macos.h"
+
 GraphicsRenderer::GraphicsRenderer() {
   // Initialize SDL_ttf (SDL itself is initialized by window manager)
   if (TTF_Init() == -1) {
@@ -112,31 +114,27 @@ void GraphicsRenderer::CleanupShaders() {
 }
 
 void GraphicsRenderer::ConfigureViews() {
-  // GAME View
+  int fbw, fbh;
+  WindowManager_GetDrawableSize(window_, &fbw, &fbh);
+  // Game view
   bgfx::setViewClear(ViewID::GAME, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH,
                      0x1e1e1eff, 1.0f, 0);
-  bgfx::setViewRect(ViewID::GAME, 0, 0, width_, height_);
+  bgfx::setViewRect(ViewID::GAME, 0, 0, fbw, fbh);
   bgfx::touch(ViewID::GAME);
 
-  // UI_BACKGROUND View (behind ImGui)
+  // UI background view
   bgfx::setViewClear(ViewID::UI_BACKGROUND, BGFX_CLEAR_COLOR, 0x1e1e1eff, 1.0f,
-                     0);  // darker than UI
-  bgfx::setViewRect(ViewID::UI_BACKGROUND, 0, 0, width_, height_);
+                     0);
+  bgfx::setViewRect(ViewID::UI_BACKGROUND, 0, 0, fbw, fbh);
   bgfx::touch(ViewID::UI_BACKGROUND);
 }
 
 void GraphicsRenderer::PrepareFrame() {
-  ConfigureViews();
-
-  // Clear the view
+  int fbw, fbh;
+  WindowManager_GetDrawableSize(window_, &fbw, &fbh);
   bgfx::setViewClear(ViewID::CLEAR, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH,
                      0x2d2d2dff, 1.0f, 0);
-  bgfx::setViewRect(ViewID::CLEAR, 0, 0, width_, height_);
-
-  // debug text
-  // bgfx::setDebug(BGFX_DEBUG_TEXT);
-  // bgfx::dbgTextClear();
-  // bgfx::dbgTextPrintf(0, 1, 0x0f, "Current frame: %d", frameCount_);
+  bgfx::setViewRect(ViewID::CLEAR, 0, 0, fbw, fbh);
 }
 
 void GraphicsRenderer::Render() {

@@ -14,6 +14,8 @@
 #include "subsystem/input/key_map_sdl.h"
 #include "subsystem/subsystem_manager.h"
 
+#include "platform/imgui_macos.h"
+
 EditorGUI::EditorGUI(std::unique_ptr<RendererBase>& renderer)
     : renderer_(renderer),
       quit_(false),
@@ -41,7 +43,7 @@ void EditorGUI::Run() {
 
 // Initialize ImGui backend
 #ifdef __APPLE__
-  ImGui_ImplSDL2_InitForMetal(window);
+  imgui_macos::InitSDLForMetal(window);
 #else
   ImGui_ImplSDL2_InitForOther(window);
 #endif

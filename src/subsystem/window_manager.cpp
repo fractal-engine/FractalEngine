@@ -4,6 +4,7 @@
 #include "base/logger.h"
 
 #ifdef __APPLE__
+#include "platform/bgfx_macos.h"
 #include "platform/window_macos.h"
 #endif
 
@@ -109,27 +110,9 @@ void WindowManager::InitBGFXPlatformData(bgfx::Init& init) {
   init.resolution.reset = BGFX_RESET_VSYNC;
 
 #if defined(__APPLE__)
-  int drawableW, drawableH;
-  SDL_Metal_GetDrawableSize(getInstance().window_, &drawableW, &drawableH);
-  init.resolution.width = drawableW;
-  init.resolution.height = drawableH;
+  bgfx_macos::SetupPlatformData(init, getInstance().window_);
 
-  SDL_SysWMinfo wmi;
-  SDL_VERSION(&wmi.version);
-  if (SDL_GetWindowWMInfo(getInstance().window_, &wmi)) {
-    void* metalLayer = WindowManager_CreateMetalLayer(wmi.info.cocoa.window);
-    init.platformData.nwh = metalLayer;
-    init.platformData.ndt = nullptr;
-    init.platformData.context = nullptr;
-
-    Logger::getInstance().Log(
-        LogLevel::Debug,
-        "Set BGFX platformData for macOS (Metal). nwh = " +
-            std::to_string(reinterpret_cast<uintptr_t>(init.platformData.nwh)));
-  } else {
-    Logger::getInstance().Log(LogLevel::Error, "SDL_GetWindowWMInfo failed!");
-  }
-#elif defined(_WIN32)
+#elif defined(_WIN32)  // TODO: move code to bgfx_win32.cpp
   SDL_SysWMinfo wmi;
   SDL_VERSION(&wmi.version);
   if (SDL_GetWindowWMInfo(getInstance().window_, &wmi)) {
@@ -140,7 +123,7 @@ void WindowManager::InitBGFXPlatformData(bgfx::Init& init) {
                               "Set BGFX platformData for Windows.");
   }
 
-#elif defined(__linux__)
+#elif defined(__linux__)  // TODO: move code to bgfx_linux.cpp
   SDL_SysWMinfo wmi;
   SDL_VERSION(&wmi.version);
   if (SDL_GetWindowWMInfo(getInstance().window_, &wmi)) {

@@ -50,4 +50,8 @@ float WindowManager_GetDPIScale(SDL_Window* sdlWindow)
     return scale;
 }
 
+void WindowManager_GetDrawableSize(SDL_Window* window, int* out_w, int* out_h) {
+    SDL_Metal_GetDrawableSize(window, out_w, out_h);
+}
+
 } // extern "C"

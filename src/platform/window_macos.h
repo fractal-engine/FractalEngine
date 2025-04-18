@@ -14,11 +14,15 @@ void* WindowManager_CreateMetalLayer(void* cocoaWindow);
 
 /**
  * Fetch the Retina scale factor from an SDL window.
- * Typically by creating an SDL_MetalView, getting the CAMetalLayer, etc.
- *
  * @param sdlWindow The SDL_Window*
  * @return The scale factor, e.g. 2.0 on a high-DPI (Retina) Mac
  */
 float WindowManager_GetDPIScale(SDL_Window* sdlWindow);
+
+/**
+ * SDL_Metal_GetDrawableSize returns the actual pixel
+ * dimensions of the CAMetalLayer backing surface.
+ */
+void WindowManager_GetDrawableSize(SDL_Window* window, int* out_w, int* out_h);
 
 }  // extern "C"

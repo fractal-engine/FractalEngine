@@ -30,7 +30,7 @@ GameTest::~GameTest() {}
 
 // Manages the shader program from the GraphicsRenderer
 void GameTest::Init() {
-  /* auto* renderer =
+  auto* renderer =
       static_cast<GraphicsRenderer*>(SubsystemManager::GetRenderer().get());
 
   _terrainProgramHeight = renderer->LoadShaderProgram(
@@ -93,11 +93,11 @@ void GameTest::Init() {
       terrainIndices.data(), terrainIndices.size() * sizeof(uint16_t));
   indexBuffer = bgfx::createIndexBuffer(idxMem);
 
-  bx::mtxIdentity(world_matrix); */
+  bx::mtxIdentity(world_matrix);
 }
 
 void GameTest::Update() {
-  /* if (!bgfx::isValid(_terrainProgramHeight))
+  if (!bgfx::isValid(_terrainProgramHeight))
     return;
 
   // animate frame by frame
@@ -117,13 +117,13 @@ void GameTest::Update() {
   const bgfx::Memory* mem = bgfx::copy(heightData.data(), heightData.size());
   bgfx::updateTexture2D(_heightTexture, 0, 0, 0, 0, size, size, mem);
 
-  // physics, input, etc. */
+  // physics, input, etc.
 }
 
 // TODO: lock or check thread safety here (in case games access state that's
 // modified in game thread)
 void GameTest::Render() {
-  /*
+
   float view[16], proj[16];
 
   if (!bgfx::isValid(_terrainProgramHeight))
@@ -162,11 +162,11 @@ void GameTest::Render() {
   }
 
   bgfx::setState(BGFX_STATE_DEFAULT);
-  bgfx::submit(ViewID::GAME, _terrainProgramHeight); */
+  bgfx::submit(ViewID::GAME, _terrainProgramHeight);
 }
 
 void GameTest::Shutdown() {
-  /* Logger::getInstance().Log(LogLevel::Debug, "[GameTest] Shutdown()");
+  Logger::getInstance().Log(LogLevel::Debug, "[GameTest] Shutdown()");
 
   if (bgfx::isValid(_terrainProgramHeight)) {
     Logger::getInstance().Log(LogLevel::Debug,
@@ -208,5 +208,5 @@ void GameTest::Shutdown() {
                               "[GameTest] Destroying index buffer");
     bgfx::destroy(indexBuffer);
     indexBuffer = BGFX_INVALID_HANDLE;
-  } */
+  }
 }
