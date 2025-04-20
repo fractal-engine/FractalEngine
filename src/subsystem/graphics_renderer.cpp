@@ -15,7 +15,9 @@
 #include "base/shader_utils.h"
 #include "base/view_ids.h"
 
+#if defined(__APPLE__)
 #include "platform/window_macos.h"
+#endif
 
 GraphicsRenderer::GraphicsRenderer() {
   // Initialize SDL_ttf (SDL itself is initialized by window manager)
@@ -115,7 +117,11 @@ void GraphicsRenderer::CleanupShaders() {
 
 void GraphicsRenderer::ConfigureViews() {
   int fbw, fbh;
+
+#if defined(__APPLE__)
   WindowManager_GetDrawableSize(window_, &fbw, &fbh);
+#endif
+
   // Game view
   bgfx::setViewClear(ViewID::GAME, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH,
                      0x1e1e1eff, 1.0f, 0);
@@ -131,7 +137,11 @@ void GraphicsRenderer::ConfigureViews() {
 
 void GraphicsRenderer::PrepareFrame() {
   int fbw, fbh;
+
+#if defined(__APPLE__)
   WindowManager_GetDrawableSize(window_, &fbw, &fbh);
+#endif
+
   bgfx::setViewClear(ViewID::CLEAR, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH,
                      0x2d2d2dff, 1.0f, 0);
   bgfx::setViewRect(ViewID::CLEAR, 0, 0, fbw, fbh);
