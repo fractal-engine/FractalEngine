@@ -26,16 +26,14 @@ bool WindowManager::Initialize(const char* title, int width, int height) {
       title, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, width, height,
       SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
   if (!instance.window_) {
-
-    // Make sure window is raised
-    SDL_RaiseWindow(instance.window_);
-
     Logger::getInstance().Log(
         LogLevel::Error,
         std::string("SDL_CreateWindow failed: ") + SDL_GetError());
     SDL_Quit();
     return false;
   }
+
+  SDL_RaiseWindow(instance.window_);
 
 // ------------------------------------------------
 //  Get macOS display scale factor for Retina support
