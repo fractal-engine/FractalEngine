@@ -1,6 +1,8 @@
 #include "platform_utils.h"
 
 #include <SDL.h>
+#include <SDL_syswm.h>
+#include <backends/imgui_impl_sdl2.h>
 
 #if defined(_WIN32) || defined(__linux__)
 

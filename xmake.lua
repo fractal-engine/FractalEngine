@@ -40,6 +40,7 @@ target("fractal")
     add_files("src/audio/*.cpp")
     add_files("src/scene/*.cpp")
     add_files("src/shaders/**.sc|varying.def.sc|varying_imgui.def.sc", {rule = "bgfx_shaderc"})
+    add_files("src/platform/platform_utils.cpp")
 
     -- Add Metal frameworks for macOS
     if is_plat("macosx") then
