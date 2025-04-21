@@ -117,7 +117,7 @@ void GameTest::Update() {
   const bgfx::Memory* mem = bgfx::copy(heightData.data(), heightData.size());
   bgfx::updateTexture2D(_heightTexture, 0, 0, 0, 0, size, size, mem);
 
-  // physics, input, etc. */
+  // physics, input, etc.
 }
 void SetLightDirectionWithIntensity(
     bgfx::UniformHandle lightUniform,  // Light intensity function

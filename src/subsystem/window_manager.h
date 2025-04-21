@@ -3,7 +3,7 @@
 
 #include <SDL.h>
 #include <SDL_hints.h>
-#include <SDL_syswm.h> 
+#include <SDL_syswm.h>
 #include <bgfx/bgfx.h>
 
 #include <functional>
@@ -15,12 +15,14 @@ private:
   SDL_Window* window_;
   int width_;
   int height_;
+  float dpiScale_; // retina scale factor
   std::vector<std::function<void(int, int)>> resizeCallbacks_;
 
   void initialize();
 
 public:
-  WindowManager() : window_(nullptr), width_(1280), height_(720) {}
+  WindowManager()
+      : window_(nullptr), width_(1280), height_(720), dpiScale_(1.0f) {}
   ~WindowManager();
 
   // Prevent copying
@@ -37,13 +39,16 @@ public:
   static int GetHeight();
   static SDL_Window* GetWindow();
 
+  // stored scale factor
+  static float GetDPIScale();
+
   // Register for resize notifications
   static void RegisterResizeCallback(std::function<void(int, int)> callback);
 
   // Handle window resize
   static void OnWindowResize(int width, int height);
 
-  // Initialize BGFX platform data
+  // BGFX platform data
   static void InitBGFXPlatformData(bgfx::Init& init);
 };
 

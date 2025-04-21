@@ -16,6 +16,8 @@
 
 #include "game/game_test.h"
 
+#include "platform/platform_utils.h"
+
 EditorGUI::EditorGUI(std::unique_ptr<RendererBase>& renderer)
     : renderer_(renderer),
       quit_(false),
@@ -47,8 +49,8 @@ void EditorGUI::Run() {
   ImGui::GetStyle().Colors[ImGuiCol_TitleBgActive].w = 0.0f;
   ImGui::GetStyle().Colors[ImGuiCol_FrameBg].w = 0.0f;
 
-  // Setup Platform/Renderer backends
-  ImGui_ImplSDL2_InitForOther(WindowManager::GetWindow());
+  // Initialize ImGui backend
+  platform::InitSDLForImGui(window);
 
   // ----------------------------------------------------------
   // 2 - Main editor loop
