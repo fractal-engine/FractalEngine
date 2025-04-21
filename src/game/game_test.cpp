@@ -119,7 +119,27 @@ void GameTest::Update() {
 
   // physics, input, etc.
 }
+void SetLightDirectionWithIntensity(
+    bgfx::UniformHandle lightUniform,  // Light intensity function
+    float intensity, const float dir[3]) {
+  if (!bgfx::isValid(lightUniform))
+    return;
 
+  // Normalize input direction
+  float normDir[3];
+  float len = bx::sqrt(dir[0] * dir[0] + dir[1] * dir[1] + dir[2] * dir[2]);
+  normDir[0] = dir[0] / len;
+  normDir[1] = dir[1] / len;
+  normDir[2] = dir[2] / len;
+
+  // Multiply normalized direction by intensity
+  float lightDir[4] = {
+      normDir[0] * intensity, normDir[1] * intensity, normDir[2] * intensity,
+      0.0f  // directional light: w = 0
+  };
+
+  bgfx::setUniform(lightUniform, lightDir);
+}
 // TODO: lock or check thread safety here (in case games access state that's
 // modified in game thread)
 void GameTest::Render() {
@@ -130,7 +150,7 @@ void GameTest::Render() {
     return;
 
   bgfx::setViewClear(ViewID::GAME, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH,
-                     0x303030ff,  // dark gray
+                     0x00008BF,  // dark blue
                      1.0f,        // depth
                      0            // stencil
   );
@@ -138,16 +158,20 @@ void GameTest::Render() {
   bgfx::setViewRect(ViewID::GAME, 0, 0, WindowManager::GetWidth(),
                     WindowManager::GetHeight());
 
-  bx::mtxLookAt(view, bx::Vec3{32.0f, 32.0f, -50.0f},  // eye
-                bx::Vec3{32.0f, 0.0f, 32.0f},          // at
-                bx::Vec3{0.0f, 1.0f, 0.0f});           // up
+  bx::Vec3 eye = bx::Vec3(cameraEye[0], cameraEye[1], cameraEye[2]);
+  bx::Vec3 at = bx::Vec3(cameraAt[0], cameraAt[1], cameraAt[2]);
+  bx::Vec3 up = bx::Vec3(cameraUp[0], cameraUp[1], cameraUp[2]);
 
-  bx::mtxProj(
-      proj, 60.0f,
-      float(WindowManager::GetWidth()) / float(WindowManager::GetHeight()),
-      0.1f, 1000.0f, bgfx::getCaps()->homogeneousDepth);
+  bx::mtxLookAt(view, bx::Vec3{cameraEye[0], cameraEye[1], cameraEye[2]},
+                bx::Vec3{cameraAt[0], cameraAt[1], cameraAt[2]},
+                bx::Vec3{cameraUp[0], cameraUp[1], cameraUp[2]});
 
-  bx::mtxIdentity(world_matrix);
+  bx::mtxProj(proj, cameraFOV,
+              float(WindowManager::GetWidth()) / WindowManager::GetHeight(),
+              0.1f, 1000.0f, bgfx::getCaps()->homogeneousDepth);
+
+  bx::mtxScale(world_matrix, 5.0f, 5.0f, 5.0f);  // Scale terrain larger
+
 
   bgfx::setViewTransform(ViewID::GAME, view, proj);
   bgfx::setTransform(world_matrix);
@@ -156,10 +180,9 @@ void GameTest::Render() {
   bgfx::setTexture(0, _heightUniform, _heightTexture);  // Bind height texture
 
   // Set the light direction uniform
-  if (bgfx::isValid(_lightDirUniform)) {
-    float lightDir[4] = {0.3f, 1.0f, 0.4f, 0.0f};
-    bgfx::setUniform(_lightDirUniform, lightDir);
-  }
+  const float direction[3] = {0.3f, 1.0f, 0.4f};
+  SetLightDirectionWithIntensity(_lightDirUniform, 5.0f,
+                                 direction);  // for example, 5x stronger
 
   bgfx::setState(BGFX_STATE_DEFAULT);
   bgfx::submit(ViewID::GAME, _terrainProgramHeight);

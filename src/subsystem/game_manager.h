@@ -36,6 +36,8 @@ private:
   GameManager() = delete;
   GameManager(std::unique_ptr<GameBase>&& core);
   void LoadScene(std::unique_ptr<Scene> scene);
+  
+
 
   bool is_running_ = false;
 
@@ -47,6 +49,7 @@ public:
   void Terminate();
   void Shutdown();
   uint64_t GetFrameCount();
+  GameBase* GetGame() const { return core_.get(); }
 };
 
 #endif  // GAME_MANAGER_H

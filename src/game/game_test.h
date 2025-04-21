@@ -33,6 +33,11 @@ public:
 
   void Shutdown() override;
 
+  float cameraEye[3] = {120.0f, 60.0f, 32.0f};
+  float cameraAt[3] = {32.0f, 0.0f, 32.0f};
+  float cameraUp[3] = {1.0f, 0.0f, 0.0f};
+  float cameraFOV = 80.0f;
+
 private:
   // BGFX resources
   bgfx::ProgramHandle _terrainProgramHeight = BGFX_INVALID_HANDLE;
@@ -47,6 +52,8 @@ private:
   std::vector<uint16_t> terrainIndices;
 
   float world_matrix[16];  // 4x4 transformation matrix
+
+  
 
   void* _terrainData = nullptr;
 };
