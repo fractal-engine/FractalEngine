@@ -15,9 +15,7 @@
 #include "base/shader_utils.h"
 #include "base/view_ids.h"
 
-#if defined(__APPLE__)
-#include "platform/window_macos.h"
-#endif
+#include "platform/platform_utils.h"
 
 GraphicsRenderer::GraphicsRenderer() {
   // Initialize SDL_ttf (SDL itself is initialized by window manager)
@@ -54,12 +52,9 @@ GraphicsRenderer::~GraphicsRenderer() {
 // Initialize BGFX with platform data
 bool GraphicsRenderer::InitBGFX() {
   bgfx::Init init;
-  WindowManager::InitBGFXPlatformData(init);
-#if defined(__APPLE__)
-  init.type = bgfx::RendererType::Metal;  // Force Metal on macOS
-#else
-  init.type = bgfx::RendererType::Count;  // Auto-select on other platforms
-#endif
+  platform::SetupBGFXPlatformData(init, window_);
+
+  init.type = bgfx::RendererType::Count;  // Auto-select backend
   init.debug = true;
   init.profile = true;
 
@@ -68,12 +63,11 @@ bool GraphicsRenderer::InitBGFX() {
     return false;
   }
 
-  bgfx::RendererType::Enum backend = bgfx::getRendererType();
+  auto backend = bgfx::getRendererType();
   Logger::getInstance().Log(
       LogLevel::Info, "BGFX initialized successfully! Selected backend: " +
                           std::to_string(static_cast<int>(backend)) + " (" +
                           bgfx::getRendererName(backend) + ")");
-
   return true;
 }
 
@@ -117,10 +111,7 @@ void GraphicsRenderer::CleanupShaders() {
 
 void GraphicsRenderer::ConfigureViews() {
   int fbw, fbh;
-
-#if defined(__APPLE__)
-  WindowManager_GetDrawableSize(window_, &fbw, &fbh);
-#endif
+  platform::GetDrawableSize(window_, &fbw, &fbh);
 
   // Game view
   bgfx::setViewClear(ViewID::GAME, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH,
@@ -137,10 +128,7 @@ void GraphicsRenderer::ConfigureViews() {
 
 void GraphicsRenderer::PrepareFrame() {
   int fbw, fbh;
-
-#if defined(__APPLE__)
-  WindowManager_GetDrawableSize(window_, &fbw, &fbh);
-#endif
+  platform::GetDrawableSize(window_, &fbw, &fbh);
 
   bgfx::setViewClear(ViewID::CLEAR, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH,
                      0x2d2d2dff, 1.0f, 0);

@@ -11,16 +11,21 @@
 // respecting BGFX architecture.
 // ---------------------------------------------------------------------------
 
-#include "imgui_renderer.h"
-
-#include <backends/imgui_impl_sdl2.h>
 #include <bgfx/bgfx.h>
 #include <bx/math.h>
 #include <imgui.h>
+
+#include "imgui_renderer.h"
+
+#include <backends/imgui_impl_sdl2.h>
+
 #include "base/logger.h"
 #include "base/shader_utils.h"
 #include "base/view_ids.h"
+
 #include "subsystem/window_manager.h"
+
+#include "platform/platform_utils.h"
 
 // static member initializations
 bgfx::ProgramHandle ImGuiRenderer::imguiProgram = BGFX_INVALID_HANDLE;
@@ -81,7 +86,7 @@ void ImGuiRenderer::BeginFrame() {
   ImGuiIO& io = ImGui::GetIO();
   io.DisplaySize = ImVec2((float)WindowManager::GetWidth(),
                           (float)WindowManager::GetHeight());
-  float scale = WindowManager::GetDPIScale();
+  float scale = platform::GetDPIScale(window);
   io.DisplayFramebufferScale = ImVec2(scale, scale);
 
   ImGui_ImplSDL2_NewFrame();

@@ -14,7 +14,7 @@
 #include "subsystem/input/key_map_sdl.h"
 #include "subsystem/subsystem_manager.h"
 
-#include "platform/imgui_macos.h"
+#include "platform/platform_utils.h"
 
 EditorGUI::EditorGUI(std::unique_ptr<RendererBase>& renderer)
     : renderer_(renderer),
@@ -41,12 +41,8 @@ void EditorGUI::Run() {
                           (float)WindowManager::GetHeight());
   ImGui::StyleColorsDark();
 
-// Initialize ImGui backend
-#ifdef __APPLE__
-  imgui_macos::InitSDLForMetal(window);
-#else
-  ImGui_ImplSDL2_InitForOther(window);
-#endif
+  // Initialize ImGui backend
+  platform::InitSDLForImGui(window);
 
   // ----------------------------------------------------------
   // 2 - Main editor loop

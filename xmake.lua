@@ -45,6 +45,7 @@ target("fractal")
     if is_plat("macosx") then
         add_frameworks("Metal", "MetalKit", "QuartzCore")
         add_files("src/platform/*.mm")
+        add_files("src/platform/*.cpp")
         add_includedirs("src")
     end
 
