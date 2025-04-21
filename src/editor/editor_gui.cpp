@@ -14,6 +14,8 @@
 #include "subsystem/input/key_map_sdl.h"
 #include "subsystem/subsystem_manager.h"
 
+#include "platform/platform_utils.h"
+
 EditorGUI::EditorGUI(std::unique_ptr<RendererBase>& renderer)
     : renderer_(renderer),
       quit_(false),
@@ -39,8 +41,8 @@ void EditorGUI::Run() {
                           (float)WindowManager::GetHeight());
   ImGui::StyleColorsDark();
 
-  // Setup Platform/Renderer backends
-  ImGui_ImplSDL2_InitForOther(WindowManager::GetWindow());
+  // Initialize ImGui backend
+  platform::InitSDLForImGui(window);
 
   // ----------------------------------------------------------
   // 2 - Main editor loop
