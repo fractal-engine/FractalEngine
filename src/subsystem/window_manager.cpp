@@ -1,7 +1,7 @@
 #include "window_manager.h"
 #include <bgfx/bgfx.h>
 #include <bgfx/platform.h>
-#include "base/logger.h"
+#include "core/logger.h"
 
 #include "platform/platform_utils.h"
 

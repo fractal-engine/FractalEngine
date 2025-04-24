@@ -1,8 +1,8 @@
-#include "subsystem/renderer_text.h"
+#include "renderer/renderer_text.h"
 
 #include <algorithm>
 
-#include "base/logger.h"
+#include "core/logger.h"
 
 using namespace ftxui;
 

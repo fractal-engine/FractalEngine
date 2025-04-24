@@ -3,14 +3,17 @@
 #include <SDL.h>
 
 #include "backends/imgui_impl_sdl2.h"
-#include "drivers/imgui_renderer.h"
+#include "drivers/imgui_backend.h"
 
 #include <chrono>
 #include <thread>
-#include "base/logger.h"
 #include "imgui.h"
 
-#include "subsystem/graphics_renderer.h"
+#include "core/engine_globals.h"
+#include "core/logger.h"
+
+#include "renderer/renderer_graphics.h"
+
 #include "subsystem/input/key_map_sdl.h"
 #include "subsystem/subsystem_manager.h"
 
@@ -37,17 +40,11 @@ void EditorGUI::Run() {
   // ------------------------------------------------------------
   IMGUI_CHECKVERSION();
   ImGui::CreateContext();
-  imgui_renderer_.Init();
+  imgui_backend_.Init();
   ImGuiIO& io = ImGui::GetIO();
   io.DisplaySize = ImVec2((float)WindowManager::GetWidth(),
                           (float)WindowManager::GetHeight());
   ImGui::StyleColorsDark();
-  ImGui::GetStyle().Colors[ImGuiCol_WindowBg].w = 0.0f;
-  ImGui::GetStyle().Colors[ImGuiCol_ChildBg].w = 0.0f;
-  ImGui::GetStyle().Colors[ImGuiCol_PopupBg].w = 0.0f;
-  ImGui::GetStyle().Colors[ImGuiCol_TitleBg].w = 0.0f;
-  ImGui::GetStyle().Colors[ImGuiCol_TitleBgActive].w = 0.0f;
-  ImGui::GetStyle().Colors[ImGuiCol_FrameBg].w = 0.0f;
 
   // Initialize ImGui backend
   platform::InitSDLForImGui(window);
@@ -114,8 +111,8 @@ void EditorGUI::Run() {
     ImGui::SetNextWindowPos(ImVec2(0, 0));
 
     // Set IMGUI window size using WindowManager
-    ImGui::SetNextWindowSize(ImVec2((float)WindowManager::GetWidth(),
-                                    (float)WindowManager::GetHeight()));
+    ImGui::SetNextWindowSize(
+        ImVec2(WindowManager::GetWidth(), WindowManager::GetHeight()));
 
     ImGui::Begin("Fractal Engine", nullptr,
                  ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
@@ -160,6 +157,23 @@ void EditorGUI::Run() {
 
     /*****************************GAME CANVAS AREA*****************************/
     ImGui::BeginChild("GameCanvas", ImVec2(0, canvasHeight), true);
+
+    // Store game canvas state for input processing
+    gameCanvasPos_ = ImGui::GetItemRectMin();
+    gameCanvasSize_ = ImGui::GetItemRectSize();
+    gameCanvasHovered_ = ImGui::IsItemHovered();
+
+    // Get game canvas position and size
+    ImVec2 canvasScreenPos = ImGui::GetItemRectMin();
+    ImVec2 canvasScreenSize = ImGui::GetItemRectSize();
+
+    // Convert ImVec2 values to framebuffer coordinates (pixels)
+    ImVec2 scale = io.DisplayFramebufferScale;
+    canvasViewportX = static_cast<uint16_t>(canvasScreenPos.x * scale.x);
+    canvasViewportY = static_cast<uint16_t>(canvasScreenPos.y * scale.y);
+    canvasViewportW = static_cast<uint16_t>(canvasScreenSize.x * scale.x);
+    canvasViewportH = static_cast<uint16_t>(canvasScreenSize.y * scale.y);
+
     {
       if (is_game_started_) {
         SubsystemManager::GetGameManager()->Render();
@@ -168,11 +182,6 @@ void EditorGUI::Run() {
       }
     }
     ImGui::EndChild();  // End game canvas area
-
-    // Store game canvas state for input processing
-    gameCanvasPos_ = ImGui::GetItemRectMin();
-    gameCanvasSize_ = ImGui::GetItemRectSize();
-    gameCanvasHovered_ = ImGui::IsItemHovered();
 
     /*****************************LOG REGION AREA*****************************/
     // -- Debug Log area (scrollable)
@@ -250,7 +259,7 @@ void EditorGUI::Run() {
 
 void EditorGUI::Shutdown() {
   Logger::getInstance().Log(LogLevel::Info, "Shutting down EditorGUI");
-  imgui_renderer_.Shutdown();
+  imgui_backend_.Shutdown();
 }
 
 void EditorGUI::RequestUpdate() {

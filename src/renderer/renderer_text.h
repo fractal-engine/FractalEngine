@@ -9,7 +9,7 @@
 #include <mutex>
 #include <string>
 
-#include "base/renderer_base.h"
+#include "renderer/renderer_base.h"
 
 class RendererText : public RendererBase {
   friend class SubsystemManager;  // Allow SubsystemManager to access private

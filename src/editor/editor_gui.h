@@ -3,10 +3,10 @@
 
 #include <memory>
 #include <mutex>
-
-#include "base/editor_base.h"
-#include "drivers/imgui_renderer.h"
 #include "imgui.h"
+
+#include "drivers/imgui_backend.h"
+#include "editor/editor_base.h"
 #include "subsystem/window_manager.h"
 
 class RendererBase;
@@ -19,7 +19,7 @@ private:
   bool quit_;
   bool is_game_started_;  // Track if game is started
 
-  ImGuiRenderer imgui_renderer_;
+  ImGuiBackend imgui_backend_;
 
   // Game canvas position and size
   ImVec2 gameCanvasPos_;

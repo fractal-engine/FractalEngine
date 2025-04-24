@@ -10,8 +10,8 @@
 #include <chrono>
 #include <thread>
 
-#include "base/game_base.h"
-#include "base/logger.h"
+#include "core/logger.h"
+#include "game/game_base.h"
 
 #include "scene/scene_manager.h"
 
@@ -113,11 +113,11 @@ void GameManager::Render() {
   //   if (core_ && gamestate_ == GameState::RUNNING) {
   if (core_) {
     // Logger::getInstance().Log(LogLevel::Debug,
-                             // "[GameManager] Calling game->Render()");
+    // "[GameManager] Calling game->Render()");
     core_->Render();
   } else if (scene_manager_) {
-   // Logger::getInstance().Log(LogLevel::Debug,
-                             // "[GameManager] Calling scene->Render()");
+    // Logger::getInstance().Log(LogLevel::Debug,
+    // "[GameManager] Calling scene->Render()");
     scene_manager_->Render();
   }
 }

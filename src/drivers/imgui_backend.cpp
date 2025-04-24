@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// ImGuiRenderer - Custom integration layer between Dear ImGui and BGFX
+// ImGuiBackend - Custom integration layer between Dear ImGui and BGFX
 // References:
 // - https://github.com/pr0g/sdl-bgfx-imgui-starter (imgui_impl_bgfx.cpp)
 // - Original Gist by Richard Gale:
@@ -15,27 +15,29 @@
 #include <bx/math.h>
 #include <imgui.h>
 
-#include "imgui_renderer.h"
+#include "imgui_backend.h"
 
 #include <backends/imgui_impl_sdl2.h>
 
-#include "base/logger.h"
-#include "base/shader_utils.h"
-#include "base/view_ids.h"
+#include "core/logger.h"
+#include "core/view_ids.h"
 
+#include "renderer/shaders/shader_manager.h"
+#include "renderer/shaders/shader_utils.h"
+
+#include "subsystem/subsystem_manager.h"
 #include "subsystem/window_manager.h"
 
 #include "platform/platform_utils.h"
 
 // static member initializations
-bgfx::ProgramHandle ImGuiRenderer::imguiProgram = BGFX_INVALID_HANDLE;
-bgfx::VertexLayout ImGuiRenderer::imguiVertexLayout;
-bgfx::TextureHandle ImGuiRenderer::fontTexture = BGFX_INVALID_HANDLE;
-bgfx::UniformHandle ImGuiRenderer::s_texUniform = BGFX_INVALID_HANDLE;
+bgfx::ProgramHandle ImGuiBackend::imguiProgram = BGFX_INVALID_HANDLE;
+bgfx::VertexLayout ImGuiBackend::imguiVertexLayout;
+bgfx::TextureHandle ImGuiBackend::fontTexture = BGFX_INVALID_HANDLE;
+bgfx::UniformHandle ImGuiBackend::s_texUniform = BGFX_INVALID_HANDLE;
 
-void ImGuiRenderer::Init() {
+void ImGuiBackend::Init() {
   IMGUI_CHECKVERSION();
-  ImGui::StyleColorsDark();
 
   SDL_Window* window = WindowManager::GetWindow();
 
@@ -46,16 +48,14 @@ void ImGuiRenderer::Init() {
       .end();
 
   // Get BGFX backend type to determine folder
-  bgfx::ShaderHandle vs = loadShader("vs_imgui.bin");
-  bgfx::ShaderHandle fs = loadShader("fs_imgui.bin");
+  imguiProgram = SubsystemManager::GetShaderManager()->LoadProgram(
+      "imgui", "vs_imgui.bin", "fs_imgui.bin");
 
   // Create the uniform once
   if (!bgfx::isValid(s_texUniform)) {
     s_texUniform =
         bgfx::createUniform("g_AttribLocationTex", bgfx::UniformType::Sampler);
   }
-
-  imguiProgram = bgfx::createProgram(vs, fs, true);
 
   unsigned char* pixels;
   int width, height;
@@ -78,10 +78,12 @@ void ImGuiRenderer::Init() {
   // Let ImGui know the font texture was submitted manually
   io.Fonts->TexID = static_cast<ImTextureID>(uintptr_t(fontTexture.idx));
 
-  Logger::getInstance().Log(LogLevel::Info, "ImGuiRenderer initialized.");
+  Logger::getInstance().Log(LogLevel::Info, "ImGuiBackend initialized.");
 }
 
-void ImGuiRenderer::BeginFrame() {
+void ImGuiBackend::BeginFrame() {
+
+  // Setup ImGui IO
   SDL_Window* window = WindowManager::GetWindow();
   ImGuiIO& io = ImGui::GetIO();
   io.DisplaySize = ImVec2((float)WindowManager::GetWidth(),
@@ -93,7 +95,7 @@ void ImGuiRenderer::BeginFrame() {
   ImGui::NewFrame();
 }
 
-void ImGuiRenderer::EndFrame() {
+void ImGuiBackend::EndFrame() {
   ImGui::Render();
   ImDrawData* drawData = ImGui::GetDrawData();
   if (!drawData || drawData->TotalVtxCount == 0) {
@@ -198,7 +200,7 @@ void ImGuiRenderer::EndFrame() {
   bgfx::frame();
 }
 
-void ImGuiRenderer::Shutdown() {
+void ImGuiBackend::Shutdown() {
   ImGui_ImplSDL2_Shutdown();
   ImGui::DestroyContext();
 

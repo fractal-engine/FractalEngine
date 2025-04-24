@@ -1,10 +1,10 @@
 // This file is used to select implementation of subsystems at compile time
-#include "base/editor_base.h"
-#include "base/renderer_base.h"
+#include "editor/editor_base.h"
+#include "renderer/renderer_base.h"
 
 #ifdef DISPLAY_TEXT
 #include "editor/editor_tui.h"
-#include "subsystem/renderer_text.h"
+#include "renderer/renderer_text.h"
 using Renderer = RendererText;
 using Editor = EditorTUI;
 #endif
@@ -12,7 +12,7 @@ using Editor = EditorTUI;
 #ifdef DISPLAY_GRAPHICAL
 // Connect your implementation here
 #include "editor/editor_gui.h"
-#include "subsystem/graphics_renderer.h"
+#include "renderer/renderer_graphics.h"
 using Renderer = GraphicsRenderer;
 using Editor = EditorGUI;
 #endif

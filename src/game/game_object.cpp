@@ -1,4 +1,4 @@
-#include "base/game_object.h"
+#include "game/game_object.h"
 
 /*********************************************************************************
  * @brief Implementation of GameObject class

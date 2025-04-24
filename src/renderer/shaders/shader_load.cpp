@@ -2,8 +2,10 @@
 #include <thirdparty/bgfx.cmake/bx/include/bx/debug.h>
 #include <thirdparty/bgfx.cmake/bx/include/bx/file.h>
 #include <thirdparty/bgfx.cmake/bx/include/bx/readerwriter.h>
-#include "base/logger.h"
-#include "base/shader_utils.h"
+
+#include "core/logger.h"
+
+#include "shader_utils.h"
 
 bgfx::ShaderHandle loadShader(const char* filePath) {
   // Add debug output for shader paths
@@ -13,12 +15,12 @@ bgfx::ShaderHandle loadShader(const char* filePath) {
   std::string fullPath;
   const bgfx::RendererType::Enum rendererType = bgfx::getRendererType();
   const std::string folder = GetShaderFolder(rendererType);
-  
+
   // Construct path based on detected backend
   fullPath = "assets/shaders/" + folder + "/" + filePath;
 
-  Logger::getInstance().Log(LogLevel::Debug, 
-      "Resolved shader path: " + fullPath);
+  Logger::getInstance().Log(LogLevel::Debug,
+                            "Resolved shader path: " + fullPath);
 
   bx::FileReader fileReader;
   if (!bx::open(&fileReader, fullPath.c_str())) {
@@ -41,9 +43,8 @@ bgfx::ShaderHandle loadShader(const char* filePath) {
     bx::close(&fileReader);
     return bgfx::createShader(mem);
   } else {
-    Logger::getInstance().Log(
-        LogLevel::Error,
-        std::string("Failed to read shader file"));
+    Logger::getInstance().Log(LogLevel::Error,
+                              std::string("Failed to read shader file"));
     bx::close(&fileReader);
     return BGFX_INVALID_HANDLE;
   }

@@ -2,7 +2,7 @@
 #define GAME_TEST_H
 
 #include <bgfx/bgfx.h>
-#include "base/game_base.h"
+#include "game/game_base.h"
 
 #include <vector>
 
@@ -52,8 +52,6 @@ private:
   std::vector<uint16_t> terrainIndices;
 
   float world_matrix[16];  // 4x4 transformation matrix
-
-  
 
   void* _terrainData = nullptr;
 };

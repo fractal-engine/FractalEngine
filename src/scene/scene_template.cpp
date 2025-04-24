@@ -6,7 +6,7 @@
 // ---------------------------------------------------------------------------
 
 #include "scene/scene_template.h"
-#include "base/logger.h"
+#include "core/logger.h"
 
 void SceneTemplate::Init() {
   Logger::getInstance().Log(LogLevel::Info, "[SceneTemplate] Init()");

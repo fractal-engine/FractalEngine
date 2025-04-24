@@ -1,13 +1,13 @@
 #ifndef RENDERER_BASE_H
 #define RENDERER_BASE_H
 
-#include "base/singleton.hpp"
+#include "core/singleton.hpp"
 
 #include <boost/signals2/signal.hpp>
 #include <memory>
 #include <string>
 #include <vector>
-#include "base/logger.h"
+#include "core/logger.h"
 
 class RendererBase;
 

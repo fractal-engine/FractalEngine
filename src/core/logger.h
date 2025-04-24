@@ -9,7 +9,7 @@
 #include <string>
 #include <vector>
 
-#include "base/singleton.hpp"
+#include "core/singleton.hpp"
 // Enumeration for log levels
 enum class LogLevel { Info, Debug, Warning, Error };
 

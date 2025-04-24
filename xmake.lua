@@ -32,15 +32,16 @@ target("fractal")
     add_defines("SDL_MAIN_HANDLED")  -- Prevent SDL from redefining main()
     add_files("src/subsystem/*.cpp")  -- Add source files from subsystem
     add_files("src/*.cpp")  -- Add main source files
-    add_files("src/base/*.cpp")  -- Add source files from base
+    add_files("src/core/*.cpp")  -- Add source files from base
+    add_files("src/renderer/*.cpp")
+    add_files("src/renderer/shaders/*.cpp")
     add_files("src/subsystem/input/*.cpp")  -- Add source files from base
     add_files("src/game/*.cpp")  -- Add source files from game
     add_files("src/editor/*.cpp")  -- Add source files from editor
-    add_files("src/drivers/*.cpp")  -- Add ImGuiRenderer, BGFX drivers
+    add_files("src/drivers/*.cpp")  -- Add ImGuiBackend, BGFX drivers
     add_files("src/audio/*.cpp")
     add_files("src/scene/*.cpp")
     add_files("src/shaders/**.sc|varying.def.sc|varying_imgui.def.sc|includes/**.sc", {rule = "bgfx_shaderc"}) --exclude any include files
-
     add_files("src/platform/platform_utils.cpp")
 
     -- Add Metal frameworks for macOS

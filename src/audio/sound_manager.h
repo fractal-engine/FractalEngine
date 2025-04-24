@@ -3,7 +3,7 @@
 #include <portaudio.h>
 #include <string>
 #include <thread>  // Added for threading support
-#include "base/logger.h"
+#include "core/logger.h"
 #include "thirdparty/dr_wav.h"
 
 class SoundManager {

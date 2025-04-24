@@ -1,12 +1,15 @@
-#include "game/game_test.h"
 #include <bgfx/bgfx.h>
-#include "base/logger.h"
-#include "base/shader_utils.h"
-#include "base/view_ids.h"
-#include "subsystem/graphics_renderer.h"
-#include "subsystem/subsystem_manager.h"
-
 #include <bx/math.h>
+
+#include "game/game_test.h"
+
+#include "core/logger.h"
+#include "core/view_ids.h"
+#include "renderer/shaders/shader_utils.h"
+
+#include "renderer/renderer_graphics.h"
+
+#include "subsystem/subsystem_manager.h"
 
 bgfx::VertexLayout PosTexCoord0Vertex::layout;  // Definition
 
@@ -33,7 +36,8 @@ void GameTest::Init() {
   auto* renderer =
       static_cast<GraphicsRenderer*>(SubsystemManager::GetRenderer().get());
 
-  _terrainProgramHeight = renderer->LoadShaderProgram(
+  auto& shaderMgr = *SubsystemManager::GetShaderManager();
+  _terrainProgramHeight = shaderMgr.LoadProgram(
       "terrain_height", "vs_terrain_height_texture.bin", "fs_terrain.bin");
 
   _heightUniform =
@@ -151,8 +155,8 @@ void GameTest::Render() {
 
   bgfx::setViewClear(ViewID::GAME, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH,
                      0x00008BF,  // dark blue
-                     1.0f,        // depth
-                     0            // stencil
+                     1.0f,       // depth
+                     0           // stencil
   );
 
   bgfx::setViewRect(ViewID::GAME, 0, 0, WindowManager::GetWidth(),
@@ -171,7 +175,6 @@ void GameTest::Render() {
               0.1f, 1000.0f, bgfx::getCaps()->homogeneousDepth);
 
   bx::mtxScale(world_matrix, 5.0f, 5.0f, 5.0f);  // Scale terrain larger
-
 
   bgfx::setViewTransform(ViewID::GAME, view, proj);
   bgfx::setTransform(world_matrix);

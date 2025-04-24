@@ -6,7 +6,7 @@
 #include "backends/imgui_impl_sdl2.h"
 
 #include "platform_utils.h"
-#include "base/logger.h"
+#include "core/logger.h"
 
 #if defined(__APPLE__)
 
@@ -25,8 +25,7 @@ float GetDPIScale(SDL_Window* window) {
 
     float scale = logicalW > 0 ? (float)drawableW / (float)logicalW : 1.0f;
     
-    Logger::getInstance().Log(LogLevel::Debug,
-        "macOS DPI Scale: " + std::to_string(scale)); // DEBUG only
+    // Logger::getInstance().Log(LogLevel::Debug, "macOS DPI Scale: " + std::to_string(scale)); // DEBUG only
     return scale;
 }
 

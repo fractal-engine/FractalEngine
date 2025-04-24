@@ -1,9 +1,9 @@
-#ifndef IMGUI_RENDERER_H
-#define IMGUI_RENDERER_H
+#ifndef IMGUI_BACKEND_H
+#define IMGUI_BACKEND_H
 
 #include <bgfx/bgfx.h>
 
-class ImGuiRenderer {
+class ImGuiBackend {
 public:
   void Init();
   void BeginFrame();
@@ -11,10 +11,6 @@ public:
   void Shutdown();
 
 private:
-
-  // "constexpr uint8_t kImGuiViewId = 255;" has to be set globally instead
-  const uint8_t viewId_ = 1; // TODO: Set a proper view ID, Imgui 
-
   // bgfx handles for shaders and vertex layout
   static bgfx::VertexLayout imguiVertexLayout;
   static bgfx::ProgramHandle imguiProgram;
@@ -22,4 +18,4 @@ private:
   static bgfx::TextureHandle fontTexture;
 };
 
-#endif  // IMGUI_RENDERER_H
+#endif  // IMGUI_BACKEND_H

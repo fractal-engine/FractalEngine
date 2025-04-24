@@ -8,14 +8,14 @@
 
 #include <functional>
 #include <vector>
-#include "base/singleton.hpp"
+#include "core/singleton.hpp"
 
 class WindowManager : public Singleton<WindowManager> {
 private:
   SDL_Window* window_;
   int width_;
   int height_;
-  float dpiScale_; // retina scale factor
+  float dpiScale_;  // retina scale factor
   std::vector<std::function<void(int, int)>> resizeCallbacks_;
 
   void initialize();

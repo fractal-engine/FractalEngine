@@ -1,4 +1,4 @@
-#include "subsystem/graphics_renderer.h"
+#include "renderer/renderer_graphics.h"
 
 #include <SDL.h>
 #include <SDL2/SDL_ttf.h>
@@ -8,12 +8,17 @@
 
 #include <cstdlib>
 #include <iostream>
-
 #include <sstream>
 #include <string>
-#include "base/logger.h"
-#include "base/shader_utils.h"
-#include "base/view_ids.h"
+
+#include "core/engine_globals.h"
+#include "core/logger.h"
+#include "core/view_ids.h"
+
+#include "renderer/shaders/shader_manager.h"
+#include "renderer/shaders/shader_utils.h"
+
+#include "subsystem/subsystem_manager.h"
 
 #include "platform/platform_utils.h"
 
@@ -45,7 +50,6 @@ GraphicsRenderer::GraphicsRenderer() {
 }
 
 GraphicsRenderer::~GraphicsRenderer() {
-  CleanupShaders();  // Clean up shaders
   TTF_Quit();
 }
 
@@ -62,6 +66,9 @@ bool GraphicsRenderer::InitBGFX() {
     Logger::getInstance().Log(LogLevel::Error, "Failed to initialize BGFX!");
     return false;
   }
+
+  // Initialize shaders
+  InitShaders();
 
   auto backend = bgfx::getRendererType();
   Logger::getInstance().Log(
@@ -100,23 +107,23 @@ std::string GraphicsRenderer::GetCurrentGameContent() {
   return current_game_content_;
 }
 
-// Clean up shader programs
-void GraphicsRenderer::CleanupShaders() {
-  for (auto& pair : shaderPrograms_) {
-    if (bgfx::isValid(pair.second))
-      bgfx::destroy(pair.second);
-  }
-  shaderPrograms_.clear();
-}
-
+// Handle view setup and framebuffer creation
 void GraphicsRenderer::ConfigureViews() {
   int fbw, fbh;
   platform::GetDrawableSize(window_, &fbw, &fbh);
+
+  // Only recreate framebuffers if resolution changed
+  if (fbw != lastFramebufferWidth_ || fbh != lastFramebufferHeight_) {
+    CreateFramebuffers(fbw, fbh);
+    lastFramebufferWidth_ = fbw;
+    lastFramebufferHeight_ = fbh;
+  }
 
   // Game view
   bgfx::setViewClear(ViewID::GAME, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH,
                      0x1e1e1eff, 1.0f, 0);
   bgfx::setViewRect(ViewID::GAME, 0, 0, fbw, fbh);
+  bgfx::setViewFrameBuffer(ViewID::GAME, gameFramebuffer_);
   bgfx::touch(ViewID::GAME);
 
   // UI background view
@@ -126,6 +133,7 @@ void GraphicsRenderer::ConfigureViews() {
   bgfx::touch(ViewID::UI_BACKGROUND);
 }
 
+// Set up per-frame and clear operations
 void GraphicsRenderer::PrepareFrame() {
   int fbw, fbh;
   platform::GetDrawableSize(window_, &fbw, &fbh);
@@ -133,6 +141,15 @@ void GraphicsRenderer::PrepareFrame() {
   bgfx::setViewClear(ViewID::CLEAR, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH,
                      0x2d2d2dff, 1.0f, 0);
   bgfx::setViewRect(ViewID::CLEAR, 0, 0, fbw, fbh);
+}
+
+// Framebuffer initialization and handling
+void GraphicsRenderer::CreateFramebuffers(int width, int height) {
+  // add new framebuffers  here
+
+  if (bgfx::isValid(gameFramebuffer_)) {
+    bgfx::destroy(gameFramebuffer_);
+  }
 }
 
 void GraphicsRenderer::Render() {
@@ -144,7 +161,9 @@ void GraphicsRenderer::Render() {
       ViewID::CLEAR);  // mark the view as used even if nothing is submitted
 
   // Submit the entire frame
-  //  bgfx::frame();
+  // bgfx::frame();
+
+  bgfx::touch(ViewID::GAME);
 
   // Signal that a frame was rendered
   redrawn();
@@ -175,49 +194,23 @@ void GraphicsRenderer::ClearDisplay() {
 void GraphicsRenderer::Shutdown() {
   Logger::getInstance().Log(LogLevel::Info, "Shutting down GraphicsRenderer");
 
-  CleanupShaders();
+  if (bgfx::isValid(gameFramebuffer_))
+    bgfx::destroy(gameFramebuffer_);
+
   bgfx::frame();
   bgfx::shutdown();
 }
 
 void GraphicsRenderer::BeginImGuiFrame() {
-  imgui_renderer_.BeginFrame();
+  imgui_backend_.BeginFrame();
 }
 
 void GraphicsRenderer::EndImGuiFrame() {
-  imgui_renderer_.EndFrame();
+  imgui_backend_.EndFrame();
 }
 
-// Utility function to load and create a shader program
-bgfx::ProgramHandle GraphicsRenderer::LoadShaderProgram(
-    const std::string& programName, const std::string& vertexShaderFilename,
-    const std::string& fragmentShaderFilename) {
-
-  Logger::getInstance().Log(
-      LogLevel::Debug, "Looking for vertex shader: " + vertexShaderFilename);
-  Logger::getInstance().Log(LogLevel::Debug, "Looking for fragment shader: " +
-                                                 fragmentShaderFilename);
-
-  // Reuse if already loaded
-  if (shaderPrograms_.count(programName))
-    return shaderPrograms_[programName];
-
-  Logger::getInstance().Log(LogLevel::Info,
-                            "Loading shader program: " + programName);
-
-  bgfx::ShaderHandle vs = loadShader(vertexShaderFilename.c_str());
-  bgfx::ShaderHandle fs = loadShader(fragmentShaderFilename.c_str());
-
-  if (!bgfx::isValid(vs) || !bgfx::isValid(fs)) {
-    Logger::getInstance().Log(
-        LogLevel::Error, "Failed to load shaders for program: " + programName);
-    return BGFX_INVALID_HANDLE;
-  }
-
-  bgfx::ProgramHandle program = bgfx::createProgram(vs, fs, true);
-  shaderPrograms_[programName] = program;
-  return program;
-}
+// function to initialize shaders
+void GraphicsRenderer::InitShaders() {}
 
 // Getters for the SDL window and renderer.
 SDL_Window* GraphicsRenderer::GetWindow() const {

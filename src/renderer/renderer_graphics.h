@@ -1,13 +1,16 @@
-#ifndef GRAPHICS_RENDERER_H
-#define GRAPHICS_RENDERER_H
+#ifndef renderer_graphics_H
+#define renderer_graphics_H
 
 #include <SDL.h>
+
 #include <mutex>
 #include <string>
 #include <vector>
 
-#include "base/renderer_base.h"
-#include "drivers/imgui_renderer.h"
+#include "renderer/renderer_base.h"
+
+#include "drivers/imgui_backend.h"
+
 #include "subsystem/window_manager.h"
 
 class GraphicsRenderer : public RendererBase {
@@ -30,6 +33,7 @@ public:
   void PrepareFrame();
   void BeginImGuiFrame();
   void EndImGuiFrame();
+  void CreateFramebuffers(int width, int height);
 
   // Called after drawing to present the frame.
   void Render() override;
@@ -37,15 +41,7 @@ public:
   // Processes SDL events, including quitting – called from the Editor loop.
   void ProcessEvents(bool& quit);
 
-  // Shader management methods
-  bgfx::ProgramHandle LoadShaderProgram(const std::string& name,
-                                        const std::string& vsPath,
-                                        const std::string& fsPath);
-
-  bgfx::ProgramHandle GetProgram(const std::string& name) const;
-
-  // clean up shaders
-  void CleanupShaders();
+  void InitShaders();
 
   void Shutdown() override;
 
@@ -62,19 +58,21 @@ private:
   mutable std::mutex canvas_mutex_;
   SDL_Texture* game_texture_;  // Texture for the game canvas
 
+  // BGFX framebuffer handles
+  bgfx::FrameBufferHandle gameFramebuffer_ = BGFX_INVALID_HANDLE;
+  int lastFramebufferWidth_ = -1;
+  int lastFramebufferHeight_ = -1;
+
   std::string current_game_content_;
 
   // Default position for rendering
   int pos_x_ = 0;
   int pos_y_ = 0;
 
-  // shader programs map
-  std::unordered_map<std::string, bgfx::ProgramHandle> shaderPrograms_;
-
-  ImGuiRenderer imgui_renderer_;
+  ImGuiBackend imgui_backend_;
 
   // Frame counter
   uint32_t frameCount_ = 0;
 };
 
-#endif  // GRAPHICS_RENDERER_H
+#endif  // renderer_graphics_H

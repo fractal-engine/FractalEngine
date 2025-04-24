@@ -1,6 +1,6 @@
-#include "base/renderer_base.h"
+#include "renderer/renderer_base.h"
 
-#include "base/logger.h"
+#include "core/logger.h"
 
 // void DisplayEngine::initialize(std::unique_ptr<DisplayBase>&& displayer) {
 //   if (displayer == nullptr) {
