@@ -6,6 +6,7 @@
 #include <backends/imgui_impl_sdl2.h>
 #include <imgui.h>
 
+#include <bx/math.h>
 #include <cstdlib>
 #include <iostream>
 #include <sstream>
@@ -67,8 +68,12 @@ bool GraphicsRenderer::InitBGFX() {
     return false;
   }
 
+  bgfx::setDebug(BGFX_DEBUG_TEXT | BGFX_DEBUG_STATS);
+
   // Initialize shaders
   InitShaders();
+
+  ConfigureViews();
 
   auto backend = bgfx::getRendererType();
   Logger::getInstance().Log(
@@ -109,63 +114,90 @@ std::string GraphicsRenderer::GetCurrentGameContent() {
 
 // Handle view setup and framebuffer creation
 void GraphicsRenderer::ConfigureViews() {
+  // 1. Called once on init and in WindowManager::OnWindowResize()
   int fbw, fbh;
   platform::GetDrawableSize(window_, &fbw, &fbh);
 
-  // Only recreate framebuffers if resolution changed
-  if (fbw != lastFramebufferWidth_ || fbh != lastFramebufferHeight_) {
+  // Create/resize off-screen FBO only
+  if (fbw != lastFramebufferWidth_ || fbh != lastFramebufferHeight_)
     CreateFramebuffers(fbw, fbh);
-    lastFramebufferWidth_ = fbw;
-    lastFramebufferHeight_ = fbh;
-  }
 
-  // Game view
-  bgfx::setViewClear(ViewID::GAME, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH,
-                     0x1e1e1eff, 1.0f, 0);
-  bgfx::setViewRect(ViewID::GAME, 0, 0, fbw, fbh);
-  bgfx::setViewFrameBuffer(ViewID::GAME, gameFramebuffer_);
-  bgfx::touch(ViewID::GAME);
-
-  // UI background view
+  // UI background view lives in back-buffer, full window size
   bgfx::setViewClear(ViewID::UI_BACKGROUND, BGFX_CLEAR_COLOR, 0x1e1e1eff, 1.0f,
                      0);
   bgfx::setViewRect(ViewID::UI_BACKGROUND, 0, 0, fbw, fbh);
-  bgfx::touch(ViewID::UI_BACKGROUND);
+}
+
+void GraphicsRenderer::SetSize(int w, int h) {
+  lastFramebufferWidth_ = 0;  // force rebuild on next PrepareFrame()
+  lastFramebufferHeight_ = 0;
+  ConfigureViews();  // rebuild views for new window
 }
 
 // Set up per-frame and clear operations
 void GraphicsRenderer::PrepareFrame() {
-  int fbw, fbh;
-  platform::GetDrawableSize(window_, &fbw, &fbh);
+  // Get current viewport dimensions (from ImGui canvas)
+  const uint16_t fbw = canvasViewportW ? canvasViewportW : 1;
+  const uint16_t fbh = canvasViewportH ? canvasViewportH : 1;
 
-  bgfx::setViewClear(ViewID::CLEAR, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH,
-                     0x2d2d2dff, 1.0f, 0);
-  bgfx::setViewRect(ViewID::CLEAR, 0, 0, fbw, fbh);
-}
+  // Create/recreate framebuffers if size changed
+  if (fbw != lastFramebufferWidth_ || fbh != lastFramebufferHeight_) {
+    CreateFramebuffers(fbw, fbh);
+  }
 
-// Framebuffer initialization and handling
-void GraphicsRenderer::CreateFramebuffers(int width, int height) {
-  // add new framebuffers  here
+  // set up scene view with clear values and framebuffer
+  bgfx::setViewClear(ViewID::SCENE, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH,
+                     0x303030ff, 1.0f, 0);
+  bgfx::setViewRect(ViewID::SCENE, 0, 0, fbw, fbh);
+  bgfx::setViewFrameBuffer(ViewID::SCENE, scene_framebuffer_);
 
-  if (bgfx::isValid(gameFramebuffer_)) {
-    bgfx::destroy(gameFramebuffer_);
+  // debug
+  if (!bgfx::isValid(scene_framebuffer_)) {
+    Logger::getInstance().Log(LogLevel::Error,
+                              "Scene framebuffer is invalid in PrepareFrame!");
   }
 }
 
+// Framebuffer initialization and handling
+void GraphicsRenderer::CreateFramebuffers(uint16_t w, uint16_t h) {
+  // 1. If an old FBO exists, finish the *current* frame first
+  if (bgfx::isValid(scene_framebuffer_)) {
+    bgfx::frame();                      // flush everything that still
+                                        //  uses scene_framebuffer_
+    bgfx::destroy(scene_framebuffer_);
+    scene_framebuffer_ = BGFX_INVALID_HANDLE;
+  }
+
+  // 2. Create NEW colour & depth RT (no sRGB flag)
+  scene_color_texture_ = bgfx::createTexture2D(
+      w, h, false, 1, bgfx::TextureFormat::BGRA8,
+      BGFX_TEXTURE_RT | BGFX_SAMPLER_U_CLAMP | BGFX_SAMPLER_V_CLAMP);
+
+  scene_depth_texture_ =
+      bgfx::createTexture2D(w, h, false, 1, bgfx::TextureFormat::D24S8,
+                            BGFX_TEXTURE_RT | BGFX_TEXTURE_RT_WRITE_ONLY);
+
+  const bgfx::TextureHandle attachments[2] = {scene_color_texture_,
+                                              scene_depth_texture_};
+  scene_framebuffer_ = bgfx::createFrameBuffer(
+      BX_COUNTOF(attachments), attachments, /*destroyTextures*/ true);
+
+  // 3. Pass handle to ImGui via helper overload (no raw cast)
+  scene_tex_id_ = (ImTextureID)(uintptr_t)scene_color_texture_.idx;
+  Logger::getInstance().Log(
+      LogLevel::Debug,
+      "[FBO] new colour RT idx = " + std::to_string(scene_color_texture_.idx));
+
+  lastFramebufferWidth_ = w;
+  lastFramebufferHeight_ = h;
+}
+
 void GraphicsRenderer::Render() {
-  // view and projection matrices can be added here if needed
 
-  // Render game objects here
+  bgfx::touch(ViewID::UI_BACKGROUND);  // dummy background view
+  // bgfx::touch(ViewID::UI);             // ImGui rendering into UI view
+  // bgfx::touch(ViewID::SCENE);
 
-  bgfx::touch(
-      ViewID::CLEAR);  // mark the view as used even if nothing is submitted
-
-  // Submit the entire frame
-  // bgfx::frame();
-
-  bgfx::touch(ViewID::GAME);
-
-  // Signal that a frame was rendered
   redrawn();
   frameCount_++;
 }
@@ -194,23 +226,40 @@ void GraphicsRenderer::ClearDisplay() {
 void GraphicsRenderer::Shutdown() {
   Logger::getInstance().Log(LogLevel::Info, "Shutting down GraphicsRenderer");
 
-  if (bgfx::isValid(gameFramebuffer_))
-    bgfx::destroy(gameFramebuffer_);
+  if (bgfx::isValid(scene_framebuffer_))
+    bgfx::destroy(scene_framebuffer_);
+  scene_tex_id_ = 0;
 
   bgfx::frame();
   bgfx::shutdown();
 }
 
-void GraphicsRenderer::BeginImGuiFrame() {
-  imgui_backend_.BeginFrame();
-}
+void GraphicsRenderer::BeginImGuiFrame() {}
 
-void GraphicsRenderer::EndImGuiFrame() {
-  imgui_backend_.EndFrame();
-}
+void GraphicsRenderer::EndImGuiFrame() {}
 
 // function to initialize shaders
-void GraphicsRenderer::InitShaders() {}
+void GraphicsRenderer::InitShaders() {
+
+  // Fullscreen quad vertices
+  struct FSVertex {
+    float x, y, z;
+    float u, v;
+  };
+
+  // use triangle strip topology
+  static FSVertex quadVertices[] = {
+      // Triangle strip order: TL -> TR -> BL -> BR
+      {-1.0f, 1.0f, 0.0f, 0.0f, 1.0f},   // Top-left
+      {1.0f, 1.0f, 0.0f, 1.0f, 1.0f},    // Top-right
+      {-1.0f, -1.0f, 0.0f, 0.0f, 0.0f},  // Bottom-left
+      {1.0f, -1.0f, 0.0f, 1.0f, 0.0f},   // Bottom-right
+  };
+
+  // Submit as triangle strip
+  bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_MSAA |
+                 BGFX_STATE_PT_TRISTRIP);
+}
 
 // Getters for the SDL window and renderer.
 SDL_Window* GraphicsRenderer::GetWindow() const {

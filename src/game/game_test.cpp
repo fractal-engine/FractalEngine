@@ -72,7 +72,8 @@ void GameTest::Init() {
     for (uint16_t x = 0; x < gridSize; ++x) {
       float xf = (float)x;
       float yf = (float)y;
-      terrainVertices.push_back({xf, 0.0f, yf, xf / gridSize, yf / gridSize});
+      terrainVertices.push_back(
+          {xf, 0.0f, yf, xf / (gridSize - 1), yf / (gridSize - 1)});
     }
   }
 
@@ -147,48 +148,55 @@ void SetLightDirectionWithIntensity(
 // TODO: lock or check thread safety here (in case games access state that's
 // modified in game thread)
 void GameTest::Render() {
-
-  float view[16], proj[16];
-
-  if (!bgfx::isValid(_terrainProgramHeight))
+  if (!bgfx::isValid(_terrainProgramHeight)) {
+    Logger::getInstance().Log(LogLevel::Error,
+                              "Terrain program invalid in Render()");
     return;
+  }
 
-  bgfx::setViewClear(ViewID::GAME, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH,
-                     0x00008BF,  // dark blue
-                     1.0f,       // depth
-                     0           // stencil
-  );
+  // Set view/projection matrices for SCENE view
+  float view[16];
+  float proj[16];
 
-  bgfx::setViewRect(ViewID::GAME, 0, 0, WindowManager::GetWidth(),
-                    WindowManager::GetHeight());
-
+  // Setup camera matrices
   bx::Vec3 eye = bx::Vec3(cameraEye[0], cameraEye[1], cameraEye[2]);
   bx::Vec3 at = bx::Vec3(cameraAt[0], cameraAt[1], cameraAt[2]);
   bx::Vec3 up = bx::Vec3(cameraUp[0], cameraUp[1], cameraUp[2]);
+  bx::mtxLookAt(view, eye, at, up);
 
-  bx::mtxLookAt(view, bx::Vec3{cameraEye[0], cameraEye[1], cameraEye[2]},
-                bx::Vec3{cameraAt[0], cameraAt[1], cameraAt[2]},
-                bx::Vec3{cameraUp[0], cameraUp[1], cameraUp[2]});
+  // Use canvas viewport dimensions for aspect ratio
+  float aspect = (canvasViewportW > 0 && canvasViewportH > 0)
+                     ? float(canvasViewportW) / float(canvasViewportH)
+                     : 1.0f;
 
-  bx::mtxProj(proj, cameraFOV,
-              float(WindowManager::GetWidth()) / WindowManager::GetHeight(),
-              0.1f, 1000.0f, bgfx::getCaps()->homogeneousDepth);
+  bx::mtxProj(proj, cameraFOV, aspect, 0.1f, 1000.0f,
+              bgfx::getCaps()->homogeneousDepth);
 
-  bx::mtxScale(world_matrix, 5.0f, 5.0f, 5.0f);  // Scale terrain larger
+  // Scale terrain
+  bx::mtxScale(world_matrix, 5.0f, 5.0f, 5.0f);
 
-  bgfx::setViewTransform(ViewID::GAME, view, proj);
+  // Explicit ViewID and transformations
+  bgfx::setViewTransform(ViewID::SCENE, view, proj);
   bgfx::setTransform(world_matrix);
+
+  // Set up buffers and textures
   bgfx::setVertexBuffer(0, vertexBuffer);
   bgfx::setIndexBuffer(indexBuffer);
-  bgfx::setTexture(0, _heightUniform, _heightTexture);  // Bind height texture
+  bgfx::setTexture(0, _heightUniform, _heightTexture);
 
-  // Set the light direction uniform
+  // Light settings
   const float direction[3] = {0.3f, 1.0f, 0.4f};
-  SetLightDirectionWithIntensity(_lightDirUniform, 5.0f,
-                                 direction);  // for example, 5x stronger
+  SetLightDirectionWithIntensity(_lightDirUniform, 2.5f, direction);
 
+  // Set render state with depth testing enabled
   bgfx::setState(BGFX_STATE_DEFAULT);
-  bgfx::submit(ViewID::GAME, _terrainProgramHeight);
+
+  // Submit to SCENE view, bound to framebuffer
+  bgfx::submit(ViewID::SCENE, _terrainProgramHeight);
+
+  // Debugging
+  Logger::getInstance().Log(LogLevel::Debug,
+                            "GameTest submitted render to ViewID::SCENE");
 }
 
 void GameTest::Shutdown() {

@@ -11,8 +11,8 @@ using Editor = EditorTUI;
 
 #ifdef DISPLAY_GRAPHICAL
 // Connect your implementation here
-#include "editor/editor_gui.h"
+#include "editor/editor_layer.h"
 #include "renderer/renderer_graphics.h"
 using Renderer = GraphicsRenderer;
-using Editor = EditorGUI;
+using Editor = EditorLayer;
 #endif

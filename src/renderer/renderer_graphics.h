@@ -2,14 +2,13 @@
 #define renderer_graphics_H
 
 #include <SDL.h>
+#include <imgui.h>
 
 #include <mutex>
 #include <string>
 #include <vector>
 
 #include "renderer/renderer_base.h"
-
-#include "drivers/imgui_backend.h"
 
 #include "subsystem/window_manager.h"
 
@@ -33,7 +32,8 @@ public:
   void PrepareFrame();
   void BeginImGuiFrame();
   void EndImGuiFrame();
-  void CreateFramebuffers(int width, int height);
+  void CreateFramebuffers(uint16_t w, uint16_t h);
+  void SetSize(int w, int h) override;
 
   // Called after drawing to present the frame.
   void Render() override;
@@ -52,6 +52,10 @@ public:
   SDL_Window* GetWindow() const;
   SDL_Texture* GetGameTexture();
   std::string GetCurrentGameContent();
+  bgfx::TextureHandle GetSceneColorTexture() const {
+    return scene_color_texture_;
+  }
+  ImTextureID GetSceneTexId() const { return scene_tex_id_; }
 
 private:
   SDL_Window* window_;
@@ -59,17 +63,23 @@ private:
   SDL_Texture* game_texture_;  // Texture for the game canvas
 
   // BGFX framebuffer handles
-  bgfx::FrameBufferHandle gameFramebuffer_ = BGFX_INVALID_HANDLE;
+  // bgfx::FrameBufferHandle scene_framebuffer_ = BGFX_INVALID_HANDLE;
+  // bgfx::TextureHandle scene_color_texture_;
   int lastFramebufferWidth_ = -1;
   int lastFramebufferHeight_ = -1;
+
+  // game FBO
+  bgfx::FrameBufferHandle scene_framebuffer_ = BGFX_INVALID_HANDLE;
+  bgfx::TextureHandle scene_color_texture_ = BGFX_INVALID_HANDLE;
+  bgfx::TextureHandle scene_depth_texture_ = BGFX_INVALID_HANDLE;
+
+  ImTextureID scene_tex_id_{0};
 
   std::string current_game_content_;
 
   // Default position for rendering
   int pos_x_ = 0;
   int pos_y_ = 0;
-
-  ImGuiBackend imgui_backend_;
 
   // Frame counter
   uint32_t frameCount_ = 0;

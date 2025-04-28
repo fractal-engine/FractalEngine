@@ -38,6 +38,9 @@ public:
   float cameraUp[3] = {1.0f, 0.0f, 0.0f};
   float cameraFOV = 80.0f;
 
+  int canvasViewportW = 800;
+  int canvasViewportH = 600;
+
 private:
   // BGFX resources
   bgfx::ProgramHandle _terrainProgramHeight = BGFX_INVALID_HANDLE;

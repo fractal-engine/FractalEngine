@@ -42,8 +42,6 @@ const std::unique_ptr<ShaderManager>& SubsystemManager::GetShaderManager() {
   return getInstance().shader_manager_;
 }
 
-// TODO: pass the imgui_backend_ to Renderer to consolidate ImGui and
-// gamerendering
 // TODO: fix constructors/destructors to use .reset only
 void SubsystemManager::initialize() {
 // 1. Initialize window manager

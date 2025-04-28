@@ -38,9 +38,10 @@ target("fractal")
     add_files("src/subsystem/input/*.cpp")  -- Add source files from base
     add_files("src/game/*.cpp")  -- Add source files from game
     add_files("src/editor/*.cpp")  -- Add source files from editor
-    add_files("src/drivers/*.cpp")  -- Add ImGuiBackend, BGFX drivers
+    add_files("src/tools/*.cpp")  -- Add ImGuiBackend, BGFX drivers
     add_files("src/audio/*.cpp")
     add_files("src/scene/*.cpp")
+    add_files("src/editor/vendor/imgui_impl_bgfx.cpp")
     add_files("src/shaders/**.sc|varying.def.sc|varying_imgui.def.sc|includes/**.sc", {rule = "bgfx_shaderc"}) --exclude any include files
     add_files("src/platform/platform_utils.cpp")
 
@@ -77,7 +78,7 @@ target("fractal")
     after_build(function (target)
         os.cp("assets/shaders/**", path.join(target:targetdir(), "assets/shaders"))
         os.cp("audio_lib", target:targetdir()) -- Copy audio folder to build directory
-        os.cp("resources/NotoSansMono_Regular.ttf", target:targetdir())
+        os.cp("src/editor/resource/NotoSansMono_Regular.ttf", target:targetdir())
     end)
 -- Define 'display' option
 option("display")
@@ -100,6 +101,8 @@ package("bgfx")
         local configs = {
             "-DBGFX_BUILD_EXAMPLES=OFF",
             "-DBGFX_BUILD_TOOLS=ON",
+            "-DCMAKE_USE_RELATIVE_PATHS=ON",
+            "-DBGFX_CUSTOM_TARGETS=ON", 
             "-DBGFX_BUILD_RENDERER_DIRECT3D12=ON",
             "-DBX_CONFIG_DEBUG=" .. (package:debug() and "1" or "0")
         }
