@@ -1,4 +1,4 @@
-set_languages("c++17")
+set_languages("c++20")
 add_cxxflags("/Zc:__cplusplus")
 add_cxxflags("/Zc:preprocessor")
 add_requires("ftxui", "boost", "libsdl2", "libsdl2_ttf", "portaudio") -- Add dependencies
