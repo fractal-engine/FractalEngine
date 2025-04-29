@@ -5,242 +5,305 @@
 
 #include "core/logger.h"
 #include "core/view_ids.h"
-#include "renderer/shaders/shader_utils.h"
-
 #include "renderer/renderer_graphics.h"
-
+#include "renderer/shaders/shader_utils.h"
 #include "subsystem/subsystem_manager.h"
 
-bgfx::VertexLayout PosTexCoord0Vertex::layout;  // Definition
+// ──────────────────────────────────────────────────────
+//  Vertex layouts
+// ──────────────────────────────────────────────────────
+bgfx::VertexLayout PosTexCoord0Vertex::layout;
 
-void PosTexCoord0Vertex::init() {
-  layout.begin()
+// sky-box & sun use position-only verts
+struct PosVertex {
+  float x, y, z;
+  static bgfx::VertexLayout layout;
+};
+bgfx::VertexLayout PosVertex::layout;
+
+// helper
+static void initLayouts() {
+  PosTexCoord0Vertex::layout.begin()
       .add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float)
       .add(bgfx::Attrib::TexCoord0, 2, bgfx::AttribType::Float)
       .end();
+
+  PosVertex::layout.begin()
+      .add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float)
+      .end();
 }
 
-// Constructor: Initializes _terrainProgram to an invalid BGFX handle
+// ──────────────────────────────────────────────────────
+//  GameTest ctor / dtor
+// ──────────────────────────────────────────────────────
 GameTest::GameTest()
     : _terrainProgramHeight(BGFX_INVALID_HANDLE),
       _heightUniform(BGFX_INVALID_HANDLE),
       _heightTexture(BGFX_INVALID_HANDLE),
-      vertexBuffer(BGFX_INVALID_HANDLE),
-      indexBuffer(BGFX_INVALID_HANDLE) {}
+      _lightDirUniform(BGFX_INVALID_HANDLE),
+      _terrainVbh(BGFX_INVALID_HANDLE),
+      _terrainIbh(BGFX_INVALID_HANDLE),
+      _skyProgram(BGFX_INVALID_HANDLE),
+      _sunProgram(BGFX_INVALID_HANDLE),
+      _skyVbh(BGFX_INVALID_HANDLE),
+      _skyIbh(BGFX_INVALID_HANDLE),
+      _sunVbh(BGFX_INVALID_HANDLE),
+      _sunIbh(BGFX_INVALID_HANDLE),
+      _timeUniform(BGFX_INVALID_HANDLE),
+      _sunDirUniform(BGFX_INVALID_HANDLE),
+      _sunLumUniform(BGFX_INVALID_HANDLE),
+      _paramsUniform(BGFX_INVALID_HANDLE),
+      _cycleTime(0.f) {
+  bx::mtxIdentity(world_matrix);
+}
 
-// Destructor: Destroys the shader program if it is valid
-GameTest::~GameTest() {}
+GameTest::~GameTest() = default;
 
-// Manages the shader program from the GraphicsRenderer
+// ──────────────────────────────────────────────────────
+//  Init()
+// ──────────────────────────────────────────────────────
 void GameTest::Init() {
+  initLayouts();
+
   auto* renderer =
       static_cast<GraphicsRenderer*>(SubsystemManager::GetRenderer().get());
 
-  auto& shaderMgr = *SubsystemManager::GetShaderManager();
-  _terrainProgramHeight = shaderMgr.LoadProgram(
+  // ― Terrain shader
+  _terrainProgramHeight = SubsystemManager::GetShaderManager()->LoadProgram(
       "terrain_height", "vs_terrain_height_texture.bin", "fs_terrain.bin");
 
   _heightUniform =
       bgfx::createUniform("s_heightTexture", bgfx::UniformType::Sampler);
-  Logger::getInstance().Log(LogLevel::Debug,
-                            "[GameTest] Created height texture uniform");
-
   _lightDirUniform = bgfx::createUniform("u_lightDir", bgfx::UniformType::Vec4);
 
-  PosTexCoord0Vertex::init();
+  // height map (should be 32×32 sine-wave so we can still see animation)
+  const uint16_t sz = 32;
+  std::vector<uint8_t> hdata(sz * sz);
+  for (int y = 0; y < sz; ++y)
+    for (int x = 0; x < sz; ++x)
+      hdata[y * sz + x] = uint8_t(127 + 127 * sinf(x * 0.2f));
 
-  // Create height texture - grayscale
-  const uint16_t size = 32;
-  std::vector<uint8_t> heightData(size * size, 0);
+  _heightTexture =
+      bgfx::createTexture2D(sz, sz, false, 1, bgfx::TextureFormat::R8, 0,
+                            bgfx::copy(hdata.data(), hdata.size()));
 
-  for (int y = 0; y < size; ++y) {
-    for (int x = 0; x < size; ++x) {
-      heightData[y * size + x] = static_cast<uint8_t>(
-          127 + 127 * sinf(x * 0.2f));  // some wavy pattern
-    }
-  }
+  // terrain mesh
+  const uint16_t grid = 32;
+  for (uint16_t y = 0; y < grid; ++y)
+    for (uint16_t x = 0; x < grid; ++x)
+      terrainVertices.push_back({float(x), 0.f, float(y), float(x) / (grid - 1),
+                                 float(y) / (grid - 1)});
 
-  const bgfx::Memory* mem = bgfx::copy(heightData.data(), heightData.size());
-  _heightTexture = bgfx::createTexture2D(size, size, false, 1,
-                                         bgfx::TextureFormat::R8, 0, mem);
-
-  Logger::getInstance().Log(LogLevel::Debug,
-                            "[GameTest] Created initial height texture");
-
-  const uint16_t gridSize = 32;
-  for (uint16_t y = 0; y < gridSize; ++y) {
-    for (uint16_t x = 0; x < gridSize; ++x) {
-      float xf = (float)x;
-      float yf = (float)y;
-      terrainVertices.push_back(
-          {xf, 0.0f, yf, xf / (gridSize - 1), yf / (gridSize - 1)});
-    }
-  }
-
-  for (uint16_t y = 0; y < gridSize - 1; ++y) {
-    for (uint16_t x = 0; x < gridSize - 1; ++x) {
-      uint16_t i = y * gridSize + x;
+  for (uint16_t y = 0; y < grid - 1; ++y)
+    for (uint16_t x = 0; x < grid - 1; ++x) {
+      uint16_t i = y * grid + x;
       terrainIndices.push_back(i);
       terrainIndices.push_back(i + 1);
-      terrainIndices.push_back(i + gridSize);
+      terrainIndices.push_back(i + grid);
       terrainIndices.push_back(i + 1);
-      terrainIndices.push_back(i + gridSize + 1);
-      terrainIndices.push_back(i + gridSize);
+      terrainIndices.push_back(i + grid + 1);
+      terrainIndices.push_back(i + grid);
     }
-  }
 
-  const bgfx::Memory* vtxMem =
+  _terrainVbh = bgfx::createVertexBuffer(
       bgfx::copy(terrainVertices.data(),
-                 terrainVertices.size() * sizeof(PosTexCoord0Vertex));
-  vertexBuffer = bgfx::createVertexBuffer(vtxMem, PosTexCoord0Vertex::layout);
+                 terrainVertices.size() * sizeof(PosTexCoord0Vertex)),
+      PosTexCoord0Vertex::layout);
+  _terrainIbh = bgfx::createIndexBuffer(bgfx::copy(
+      terrainIndices.data(), terrainIndices.size() * sizeof(uint16_t)));
 
-  const bgfx::Memory* idxMem = bgfx::copy(
-      terrainIndices.data(), terrainIndices.size() * sizeof(uint16_t));
-  indexBuffer = bgfx::createIndexBuffer(idxMem);
+  // ― Sky / Sun
+  _skyProgram =
+      renderer->LoadShaderProgram("skybox", "vs_skybox.bin", "fs_skybox.bin");
+  _sunProgram = renderer->LoadShaderProgram("sun", "vs_sun.bin", "fs_sun.bin");
 
-  bx::mtxIdentity(world_matrix);
+  _timeUniform = bgfx::createUniform("u_time", bgfx::UniformType::Vec4);
+  _sunDirUniform =
+      bgfx::createUniform("u_sunDirection", bgfx::UniformType::Vec4);
+  _sunLumUniform =
+      bgfx::createUniform("u_sunLuminance", bgfx::UniformType::Vec4);
+  _paramsUniform = bgfx::createUniform("u_parameters", bgfx::UniformType::Vec4);
+
+  createSkyboxBuffers();
+  createSunBuffers();
 }
 
+// ──────────────────────────────────────────────────────
+//  helper – generate cube for sky
+// ──────────────────────────────────────────────────────
+void GameTest::createSkyboxBuffers() {
+  // 8 cube vertices – 36 indices (12 tris)
+  static constexpr float v[] = {
+      -1, -1, -1, 1, -1, -1, 1, 1, -1, -1, 1, -1,  // back
+      -1, -1, 1,  1, -1, 1,  1, 1, 1,  -1, 1, 1    // front
+  };
+  static constexpr uint16_t i[] = {
+      0, 1, 2, 0, 2, 3,  // back
+      4, 6, 5, 4, 7, 6,  // front
+      4, 5, 1, 4, 1, 0,  // bottom
+      3, 2, 6, 3, 6, 7,  // top
+      1, 5, 6, 1, 6, 2,  // right
+      4, 0, 3, 4, 3, 7   // left
+  };
+  _skyVbh =
+      bgfx::createVertexBuffer(bgfx::makeRef(v, sizeof(v)), PosVertex::layout);
+  _skyIbh = bgfx::createIndexBuffer(bgfx::makeRef(i, sizeof(i)));
+}
+
+// sun is just a quad billboard
+void GameTest::createSunBuffers() {
+  static constexpr float v[] = {-10, -10, 0, 10, -10, 0, 10, 10, 0, -10, 10, 0};
+  static constexpr uint16_t i[] = {0, 1, 2, 2, 3, 0};
+
+  _sunVbh =
+      bgfx::createVertexBuffer(bgfx::makeRef(v, sizeof(v)), PosVertex::layout);
+  _sunIbh = bgfx::createIndexBuffer(bgfx::makeRef(i, sizeof(i)));
+}
+
+// ──────────────────────────────────────────────────────
+//  Update()
+// ──────────────────────────────────────────────────────
 void GameTest::Update() {
   if (!bgfx::isValid(_terrainProgramHeight))
     return;
 
-  // animate frame by frame
-  static float t = 0.0f;
-  t += 0.05f;
+  // animate height map & day/night timer
+  _cycleTime += 0.01f;
 
-  const uint16_t size = 32;
-  std::vector<uint8_t> heightData(size * size);
+  const uint16_t sz = 32;
+  std::vector<uint8_t> h(sz * sz);
+  for (int y = 0; y < sz; ++y)
+    for (int x = 0; x < sz; ++x)
+      h[y * sz + x] = uint8_t(127 + 127 * sinf(x * 0.2f + _cycleTime));
 
-  for (int y = 0; y < size; ++y) {
-    for (int x = 0; x < size; ++x) {
-      heightData[y * size + x] =
-          static_cast<uint8_t>(127 + 127 * sinf(x * 0.2f + t));
-    }
-  }
-
-  const bgfx::Memory* mem = bgfx::copy(heightData.data(), heightData.size());
-  bgfx::updateTexture2D(_heightTexture, 0, 0, 0, 0, size, size, mem);
-
-  // physics, input, etc.
+  bgfx::updateTexture2D(_heightTexture, 0, 0, 0, 0, sz, sz,
+                        bgfx::copy(h.data(), h.size()));
 }
-void SetLightDirectionWithIntensity(
-    bgfx::UniformHandle lightUniform,  // Light intensity function
-    float intensity, const float dir[3]) {
-  if (!bgfx::isValid(lightUniform))
-    return;
 
-  // Normalize input direction
-  float normDir[3];
-  float len = bx::sqrt(dir[0] * dir[0] + dir[1] * dir[1] + dir[2] * dir[2]);
-  normDir[0] = dir[0] / len;
-  normDir[1] = dir[1] / len;
-  normDir[2] = dir[2] / len;
-
-  // Multiply normalized direction by intensity
-  float lightDir[4] = {
-      normDir[0] * intensity, normDir[1] * intensity, normDir[2] * intensity,
-      0.0f  // directional light: w = 0
-  };
-
-  bgfx::setUniform(lightUniform, lightDir);
-}
-// TODO: lock or check thread safety here (in case games access state that's
-// modified in game thread)
+// ──────────────────────────────────────────────────────
+//  Render()
+// ──────────────────────────────────────────────────────
 void GameTest::Render() {
-  if (!bgfx::isValid(_terrainProgramHeight)) {
-    Logger::getInstance().Log(LogLevel::Error,
-                              "Terrain program invalid in Render()");
+  if (!bgfx::isValid(_terrainProgramHeight))
     return;
-  }
 
-  // Set view/projection matrices for SCENE view
-  float view[16];
-  float proj[16];
+  // camera matrices
+  float view[16], proj[16];
+  bx::mtxLookAt(view, bx::Vec3{cameraEye[0], cameraEye[1], cameraEye[2]},
+                bx::Vec3{cameraAt[0], cameraAt[1], cameraAt[2]},
+                bx::Vec3{cameraUp[0], cameraUp[1], cameraUp[2]});
 
-  // Setup camera matrices
-  bx::Vec3 eye = bx::Vec3(cameraEye[0], cameraEye[1], cameraEye[2]);
-  bx::Vec3 at = bx::Vec3(cameraAt[0], cameraAt[1], cameraAt[2]);
-  bx::Vec3 up = bx::Vec3(cameraUp[0], cameraUp[1], cameraUp[2]);
-  bx::mtxLookAt(view, eye, at, up);
-
-  // Use canvas viewport dimensions for aspect ratio
-  float aspect = (canvasViewportW > 0 && canvasViewportH > 0)
-                     ? float(canvasViewportW) / float(canvasViewportH)
-                     : 1.0f;
-
-  bx::mtxProj(proj, cameraFOV, aspect, 0.1f, 1000.0f,
+  const float aspect = (canvasViewportW > 0 && canvasViewportH > 0)
+                           ? float(canvasViewportW) / float(canvasViewportH)
+                           : 1.f;
+  bx::mtxProj(proj, cameraFOV, aspect, 0.1f, 1000.f,
               bgfx::getCaps()->homogeneousDepth);
 
-  // Scale terrain
-  bx::mtxScale(world_matrix, 5.0f, 5.0f, 5.0f);
+  // ---- View IDs ----
+  constexpr uint8_t kSceneView = ViewID::SCENE;     // 1
+  constexpr uint8_t kSkyView = ViewID::SCENE_N(0);  // 2 – shares FBO
 
-  // Explicit ViewID and transformations
-  bgfx::setViewTransform(ViewID::SCENE, view, proj);
+  // ---- sky-box ----
+  if (bgfx::isValid(_skyProgram)) {
+    bgfx::setViewTransform(kSkyView, view, proj);
+    float id[16];
+    bx::mtxIdentity(id);
+    bgfx::setTransform(id);
+
+    bgfx::setVertexBuffer(0, _skyVbh);
+    bgfx::setIndexBuffer(_skyIbh);
+
+    // uniforms
+    bx::Vec3 sunDir = bx::normalize(
+        bx::Vec3{cosf(_cycleTime), sinf(_cycleTime), sinf(_cycleTime * 0.5f)});
+
+    float time[4] = {_cycleTime, 0, 0, 0};
+    float dir[4] = {sunDir.x, sunDir.y, sunDir.z, 0};
+
+    bgfx::setUniform(_timeUniform, time);
+    bgfx::setUniform(_sunDirUniform, dir);
+    bgfx::setUniform(_sunLumUniform, _sunColorArray);
+    bgfx::setUniform(_paramsUniform, _parametersArray);
+
+    bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_DEPTH_TEST_ALWAYS |
+                   BGFX_STATE_WRITE_A);
+
+    bgfx::submit(kSkyView, _skyProgram);
+  }
+
+  // ---- terrain ----
+  bx::mtxScale(world_matrix, 5.f, 5.f, 5.f);
+  bgfx::setViewTransform(kSceneView, view, proj);
   bgfx::setTransform(world_matrix);
-
-  // Set up buffers and textures
-  bgfx::setVertexBuffer(0, vertexBuffer);
-  bgfx::setIndexBuffer(indexBuffer);
+  bgfx::setVertexBuffer(0, _terrainVbh);
+  bgfx::setIndexBuffer(_terrainIbh);
   bgfx::setTexture(0, _heightUniform, _heightTexture);
 
-  // Light settings
-  const float direction[3] = {0.3f, 1.0f, 0.4f};
-  SetLightDirectionWithIntensity(_lightDirUniform, 2.5f, direction);
+  const float lightDir3[3] = {0.3f, 1.f, 0.4f};
+  float tmp[4] = {lightDir3[0] * 2.5f, lightDir3[1] * 2.5f, lightDir3[2] * 2.5f,
+                  0};
+  bgfx::setUniform(_lightDirUniform, tmp);
 
-  // Set render state with depth testing enabled
   bgfx::setState(BGFX_STATE_DEFAULT);
+  bgfx::submit(kSceneView, _terrainProgramHeight);
 
-  // Submit to SCENE view, bound to framebuffer
-  bgfx::submit(ViewID::SCENE, _terrainProgramHeight);
+  // ---- sun billboard ----
+  if (bgfx::isValid(_sunProgram)) {
+    bx::Vec3 sunDir = bx::normalize(
+        bx::Vec3{cosf(_cycleTime), sinf(_cycleTime), sinf(_cycleTime * 0.5f)});
+    bx::Vec3 sunPos = bx::mul(sunDir, 100.f);
 
-  // Debugging
-  Logger::getInstance().Log(LogLevel::Debug,
-                            "GameTest submitted render to ViewID::SCENE");
+    float sunMtx[16];
+    bx::mtxTranslate(sunMtx, sunPos.x, sunPos.y, sunPos.z);
+    bgfx::setTransform(sunMtx);
+    bgfx::setViewTransform(kSceneView, view, proj);
+
+    bgfx::setVertexBuffer(0, _sunVbh);
+    bgfx::setIndexBuffer(_sunIbh);
+
+    float dir[4] = {sunDir.x, sunDir.y, sunDir.z, 0};
+    float time[4] = {_cycleTime, 0, 0, 0};
+    _parametersArray[3] = _cycleTime;
+
+    bgfx::setUniform(_sunDirUniform, dir);
+    bgfx::setUniform(_sunLumUniform, _sunColorArray);
+    bgfx::setUniform(_paramsUniform, _parametersArray);
+    bgfx::setUniform(_timeUniform, time);
+
+    bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_BLEND_ADD |
+                   BGFX_STATE_DEPTH_TEST_LESS);
+
+    bgfx::submit(kSceneView, _sunProgram);
+  }
 }
 
+// ──────────────────────────────────────────────────────
+//  Shutdown()
+// ──────────────────────────────────────────────────────
 void GameTest::Shutdown() {
-  Logger::getInstance().Log(LogLevel::Debug, "[GameTest] Shutdown()");
+  auto destroy = [](auto& h) {
+    if (bgfx::isValid(h)) {
+      bgfx::destroy(h);
+      h = BGFX_INVALID_HANDLE;
+    }
+  };
 
-  if (bgfx::isValid(_terrainProgramHeight)) {
-    Logger::getInstance().Log(LogLevel::Debug,
-                              "[GameTest] Destroying terrain shader");
-    bgfx::destroy(_terrainProgramHeight);
-    _terrainProgramHeight = BGFX_INVALID_HANDLE;
-  }
+  destroy(_terrainProgramHeight);
+  destroy(_skyProgram);
+  destroy(_sunProgram);
 
-  if (bgfx::isValid(_heightTexture)) {
-    Logger::getInstance().Log(LogLevel::Debug,
-                              "[GameTest] Destroying height texture");
-    bgfx::destroy(_heightTexture);
-    _heightTexture = BGFX_INVALID_HANDLE;
-  }
+  destroy(_heightTexture);
+  destroy(_heightUniform);
+  destroy(_lightDirUniform);
+  destroy(_timeUniform);
+  destroy(_sunDirUniform);
+  destroy(_sunLumUniform);
+  destroy(_paramsUniform);
 
-  if (bgfx::isValid(_heightUniform)) {
-    Logger::getInstance().Log(LogLevel::Debug,
-                              "[GameTest] Destroying height uniform");
-    bgfx::destroy(_heightUniform);
-    _heightUniform = BGFX_INVALID_HANDLE;
-  }
-
-  if (bgfx::isValid(_lightDirUniform)) {
-    Logger::getInstance().Log(LogLevel::Debug,
-                              "[GameTest] Destroying light uniform");
-    bgfx::destroy(_lightDirUniform);
-    _lightDirUniform = BGFX_INVALID_HANDLE;
-  }
-
-  if (bgfx::isValid(vertexBuffer)) {
-    Logger::getInstance().Log(LogLevel::Debug,
-                              "[GameTest] Destroying vertex buffer");
-    bgfx::destroy(vertexBuffer);
-    vertexBuffer = BGFX_INVALID_HANDLE;
-  }
-
-  if (bgfx::isValid(indexBuffer)) {
-    Logger::getInstance().Log(LogLevel::Debug,
-                              "[GameTest] Destroying index buffer");
-    bgfx::destroy(indexBuffer);
-    indexBuffer = BGFX_INVALID_HANDLE;
-  }
+  destroy(_terrainVbh);
+  destroy(_terrainIbh);
+  destroy(_skyVbh);
+  destroy(_skyIbh);
+  destroy(_sunVbh);
+  destroy(_sunIbh);
 }

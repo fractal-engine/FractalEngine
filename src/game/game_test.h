@@ -2,37 +2,34 @@
 #define GAME_TEST_H
 
 #include <bgfx/bgfx.h>
+#include <vector>
 #include "game/game_base.h"
 
-#include <vector>
-
-// vertex definition for terrain
+// ──────────────────────────────────────────────────────
+//  Vertex layout used by terrain + sun billboard
+// ──────────────────────────────────────────────────────
 struct PosTexCoord0Vertex {
   float x, y, z;
   float u, v;
 
-  static bgfx::VertexLayout layout;  // Declaration
+  static bgfx::VertexLayout layout;
   static void init();
 };
 
-// A minimal game class that just displays "Hello World".
+// ──────────────────────────────────────────────────────
+//  GameTest
+// ──────────────────────────────────────────────────────
 class GameTest : public GameBase {
 public:
   GameTest();
-  virtual ~GameTest();
+  ~GameTest() override;
 
-  // Initialize the shader program (and any minimal resources)
-  // that will be used to display "Hello World".
   void Init() override;
-
-  // Update is called every frame�in this minimal example, it just
-  // submits a BGFX touch call and logs a message.
   void Update() override;
-
   void Render() override;
-
   void Shutdown() override;
 
+  // simple camera (keep it public so we can tweak it from the editor)
   float cameraEye[3] = {120.0f, 60.0f, 32.0f};
   float cameraAt[3] = {32.0f, 0.0f, 32.0f};
   float cameraUp[3] = {1.0f, 0.0f, 0.0f};
@@ -42,21 +39,45 @@ public:
   int canvasViewportH = 600;
 
 private:
-  // BGFX resources
+  // ───── Terrain
   bgfx::ProgramHandle _terrainProgramHeight = BGFX_INVALID_HANDLE;
-  bgfx::UniformHandle _heightUniform;
-  bgfx::TextureHandle _heightTexture;
+  bgfx::UniformHandle _heightUniform = BGFX_INVALID_HANDLE;
+  bgfx::TextureHandle _heightTexture = BGFX_INVALID_HANDLE;
   bgfx::UniformHandle _lightDirUniform = BGFX_INVALID_HANDLE;
 
-  bgfx::VertexBufferHandle vertexBuffer = BGFX_INVALID_HANDLE;
-  bgfx::IndexBufferHandle indexBuffer = BGFX_INVALID_HANDLE;
+  bgfx::VertexBufferHandle _terrainVbh = BGFX_INVALID_HANDLE;
+  bgfx::IndexBufferHandle _terrainIbh = BGFX_INVALID_HANDLE;
 
   std::vector<PosTexCoord0Vertex> terrainVertices;
   std::vector<uint16_t> terrainIndices;
 
-  float world_matrix[16];  // 4x4 transformation matrix
+  // ───── Sky-box & Sun
+  bgfx::ProgramHandle _skyProgram = BGFX_INVALID_HANDLE;
+  bgfx::ProgramHandle _sunProgram = BGFX_INVALID_HANDLE;
 
-  void* _terrainData = nullptr;
+  bgfx::VertexBufferHandle _skyVbh = BGFX_INVALID_HANDLE;
+  bgfx::IndexBufferHandle _skyIbh = BGFX_INVALID_HANDLE;
+
+  bgfx::VertexBufferHandle _sunVbh = BGFX_INVALID_HANDLE;
+  bgfx::IndexBufferHandle _sunIbh = BGFX_INVALID_HANDLE;
+
+  bgfx::UniformHandle _timeUniform = BGFX_INVALID_HANDLE;
+  bgfx::UniformHandle _sunDirUniform = BGFX_INVALID_HANDLE;
+  bgfx::UniformHandle _sunLumUniform = BGFX_INVALID_HANDLE;
+  bgfx::UniformHandle _paramsUniform = BGFX_INVALID_HANDLE;
+
+  float _cycleTime = 0.0f;  // day-night timer
+
+  // colour / param arrays passed to both sky & sun shaders
+  float _sunColorArray[4] = {5.0f, 5.0f, 5.0f, 0.0f};
+  float _parametersArray[4] = {1.0f, 1.0f, 1.0f, 0.0f};
+
+  // small helpers that build vertex / index buffers
+  void createSkyboxBuffers();
+  void createSunBuffers();
+
+  // world transform for the terrain
+  float world_matrix[16];
 };
 
 #endif  // GAME_TEST_H
