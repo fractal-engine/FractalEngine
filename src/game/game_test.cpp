@@ -65,16 +65,28 @@ GameTest::~GameTest() = default;
 void GameTest::Init() {
   initLayouts();
 
-  auto* renderer =
-      static_cast<GraphicsRenderer*>(SubsystemManager::GetRenderer().get());
+  auto& shaderMgr = *SubsystemManager::GetShaderManager();
 
   // ― Terrain shader
   _terrainProgramHeight = SubsystemManager::GetShaderManager()->LoadProgram(
       "terrain_height", "vs_terrain_height_texture.bin", "fs_terrain.bin");
 
+  // ― Sky / Sun
+  _skyProgram =
+      shaderMgr.LoadProgram("skybox", "vs_skybox.bin", "fs_skybox.bin");
+  _sunProgram = shaderMgr.LoadProgram("sun", "vs_sun.bin", "fs_sun.bin");
+
+  // ― Uniforms
   _heightUniform =
       bgfx::createUniform("s_heightTexture", bgfx::UniformType::Sampler);
   _lightDirUniform = bgfx::createUniform("u_lightDir", bgfx::UniformType::Vec4);
+
+  _timeUniform = bgfx::createUniform("u_time", bgfx::UniformType::Vec4);
+  _sunDirUniform =
+      bgfx::createUniform("u_sunDirection", bgfx::UniformType::Vec4);
+  _sunLumUniform =
+      bgfx::createUniform("u_sunLuminance", bgfx::UniformType::Vec4);
+  _paramsUniform = bgfx::createUniform("u_parameters", bgfx::UniformType::Vec4);
 
   // height map (should be 32×32 sine-wave so we can still see animation)
   const uint16_t sz = 32;
@@ -111,18 +123,6 @@ void GameTest::Init() {
       PosTexCoord0Vertex::layout);
   _terrainIbh = bgfx::createIndexBuffer(bgfx::copy(
       terrainIndices.data(), terrainIndices.size() * sizeof(uint16_t)));
-
-  // ― Sky / Sun
-  _skyProgram =
-      renderer->LoadShaderProgram("skybox", "vs_skybox.bin", "fs_skybox.bin");
-  _sunProgram = renderer->LoadShaderProgram("sun", "vs_sun.bin", "fs_sun.bin");
-
-  _timeUniform = bgfx::createUniform("u_time", bgfx::UniformType::Vec4);
-  _sunDirUniform =
-      bgfx::createUniform("u_sunDirection", bgfx::UniformType::Vec4);
-  _sunLumUniform =
-      bgfx::createUniform("u_sunLuminance", bgfx::UniformType::Vec4);
-  _paramsUniform = bgfx::createUniform("u_parameters", bgfx::UniformType::Vec4);
 
   createSkyboxBuffers();
   createSunBuffers();

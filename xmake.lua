@@ -184,10 +184,15 @@ rule("bgfx_shaderc")
         
         local shader_type = sourcefile:match("vs_") and "vertex" or sourcefile:match("fs_") and "fragment" or "compute"
 
-        local is_imgui = sourcefile:find("imgui") ~= nil
-        local varying_file = is_imgui
-            and path.join(os.projectdir(), "src/shaders/varying_imgui.def.sc")
-            or path.join(os.projectdir(), "src/shaders/varying.def.sc")
+        -- Shader definition files
+        local varying_file = path.join(os.projectdir(), "src/shaders/varying.def.sc")
+        if     sourcefile:find("imgui")  then
+            varying_file = path.join(os.projectdir(), "src/shaders/varying_imgui.def.sc")
+        elseif sourcefile:find("sun")    then
+            varying_file = path.join(os.projectdir(), "src/shaders/varying_sun.def.sc")
+        elseif sourcefile:find("skybox") then
+            varying_file = path.join(os.projectdir(), "src/shaders/varying_skybox.def.sc")
+        end
 
         -- Only compile for backends of the current platform
         for _, backend in ipairs(backends_to_compile) do
