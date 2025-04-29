@@ -205,15 +205,21 @@ void GameTest::Render() {
 
   // ---- sky-box ----
   if (bgfx::isValid(_skyProgram)) {
-    bgfx::setViewTransform(kSkyView, view, proj);
-    float id[16];
-    bx::mtxIdentity(id);
-    bgfx::setTransform(id);
+    // --- view matrix: camera rotation, no translation -------------
+    float skyView[16];
+    bx::memCopy(skyView, view, sizeof(skyView));
+    skyView[12] = skyView[13] = skyView[14] = 0.0f;  // centre on eye
+    bgfx::setViewTransform(kSkyView, skyView, proj);
+
+    // --- model matrix: looks like huge cube at the origin ---------
+    float skyMtx[16];
+    bx::mtxScale(skyMtx, 500.0f, 500.0f, 500.0f);  // 500-unit box
+    bgfx::setTransform(skyMtx);
 
     bgfx::setVertexBuffer(0, _skyVbh);
     bgfx::setIndexBuffer(_skyIbh);
 
-    // uniforms
+    // uniforms -----------------------------------------------------
     bx::Vec3 sunDir = bx::normalize(
         bx::Vec3{cosf(_cycleTime), sinf(_cycleTime), sinf(_cycleTime * 0.5f)});
 
@@ -225,14 +231,13 @@ void GameTest::Render() {
     bgfx::setUniform(_sunLumUniform, _sunColorArray);
     bgfx::setUniform(_paramsUniform, _parametersArray);
 
-    bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_DEPTH_TEST_ALWAYS |
-                   BGFX_STATE_WRITE_A);
-
+    bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A |
+                   BGFX_STATE_DEPTH_TEST_ALWAYS);  // depth read yes, write no
     bgfx::submit(kSkyView, _skyProgram);
   }
 
   // ---- terrain ----
-  bx::mtxScale(world_matrix, 5.f, 5.f, 5.f);
+  bx::mtxScale(world_matrix, 5.f, 5.f, 5.f);  // scale terrain
   bgfx::setViewTransform(kSceneView, view, proj);
   bgfx::setTransform(world_matrix);
   bgfx::setVertexBuffer(0, _terrainVbh);

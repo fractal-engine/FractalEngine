@@ -70,9 +70,6 @@ bool GraphicsRenderer::InitBGFX() {
 
   bgfx::setDebug(BGFX_DEBUG_TEXT | BGFX_DEBUG_STATS);
 
-  // Initialize shaders
-  InitShaders();
-
   ConfigureViews();
 
   auto backend = bgfx::getRendererType();
