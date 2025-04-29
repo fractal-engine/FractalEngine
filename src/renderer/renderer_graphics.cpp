@@ -151,6 +151,12 @@ void GraphicsRenderer::PrepareFrame() {
   bgfx::setViewRect(ViewID::SCENE, 0, 0, fbw, fbh);
   bgfx::setViewFrameBuffer(ViewID::SCENE, scene_framebuffer_);
 
+  // Bind extra passes (SCENE_N) to the scene_framebuffer_
+  for (uint8_t v = ViewID::SCENE_N(0); v < ViewID::UI_BACKGROUND; ++v) {
+    bgfx::setViewRect(v, 0, 0, fbw, fbh);
+    bgfx::setViewFrameBuffer(v, scene_framebuffer_);
+  }
+
   // debug
   if (!bgfx::isValid(scene_framebuffer_)) {
     Logger::getInstance().Log(LogLevel::Error,
@@ -162,8 +168,8 @@ void GraphicsRenderer::PrepareFrame() {
 void GraphicsRenderer::CreateFramebuffers(uint16_t w, uint16_t h) {
   // 1. If an old FBO exists, finish the *current* frame first
   if (bgfx::isValid(scene_framebuffer_)) {
-    bgfx::frame();                      // flush everything that still
-                                        //  uses scene_framebuffer_
+    bgfx::frame();  // flush everything that still
+                    //  uses scene_framebuffer_
     bgfx::destroy(scene_framebuffer_);
     scene_framebuffer_ = BGFX_INVALID_HANDLE;
   }
