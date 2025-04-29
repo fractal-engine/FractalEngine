@@ -42,7 +42,7 @@ target("fractal")
     add_files("src/audio/*.cpp")
     add_files("src/scene/*.cpp")
     add_files("src/editor/vendor/imgui_impl_bgfx.cpp")
-    add_files("src/shaders/**.sc|varying.def.sc|varying_imgui.def.sc|includes/**.sc", {rule = "bgfx_shaderc"}) --exclude any include files
+    add_files("src/shaders/**.sc|varying.def.sc|varying_imgui.def.sc|varying_sun.def.sc|varying_skybox.def.sc||includes/**.sc", {rule = "bgfx_shaderc"}) --exclude any include files
     add_files("src/platform/platform_utils.cpp")
 
     -- Add Metal frameworks for macOS
