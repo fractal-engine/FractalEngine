@@ -163,6 +163,11 @@ void GraphicsRenderer::PrepareFrame() {
 
 // Framebuffer initialization and handling
 void GraphicsRenderer::CreateFramebuffers(uint16_t w, uint16_t h) {
+
+  // Ignore impossible sizes (window minimised, window-resize)
+  if (w < 2 || h < 2)
+    return;
+
   // 1. If an old FBO exists, finish the *current* frame first
   if (bgfx::isValid(scene_framebuffer_)) {
     bgfx::frame();  // flush everything that still
