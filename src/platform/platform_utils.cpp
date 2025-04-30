@@ -9,7 +9,19 @@
 namespace platform {
 
 void GetDrawableSize(SDL_Window* window, int* out_w, int* out_h) {
-  SDL_GetRendererOutputSize(SDL_GetRenderer(window), out_w, out_h);
+  // use SDL_Renderer
+  if (SDL_Renderer* r = SDL_GetRenderer(window)) {
+    SDL_GetRendererOutputSize(r, out_w, out_h);
+  } else  // fall back to GL / D3D drawable size.
+  {
+    SDL_GL_GetDrawableSize(window, out_w, out_h);
+  }
+
+  // never return 0×0 (happens during minimise)
+  if (*out_w < 2)
+    *out_w = 2;
+  if (*out_h < 2)
+    *out_h = 2;
 }
 
 float GetDPIScale(SDL_Window* window) {
