@@ -68,7 +68,7 @@ bool GraphicsRenderer::InitBGFX() {
     return false;
   }
 
-  bgfx::setDebug(BGFX_DEBUG_TEXT | BGFX_DEBUG_STATS);
+  // bgfx::setDebug(BGFX_DEBUG_TEXT | BGFX_DEBUG_STATS); // debug
 
   ConfigureViews();
 
