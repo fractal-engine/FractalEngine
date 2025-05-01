@@ -3,6 +3,7 @@
 
 #include "game/game_test.h"
 
+#include <SDL.h>
 #include "core/logger.h"
 #include "core/view_ids.h"
 #include "renderer/renderer_graphics.h"
@@ -150,9 +151,13 @@ void GameTest::createSkyboxBuffers() {
   _skyIbh = bgfx::createIndexBuffer(bgfx::makeRef(i, sizeof(i)));
 }
 
-// sun is just a quad billboard
+// Sun is just a quad billboard
 void GameTest::createSunBuffers() {
-  static constexpr float v[] = {-10, -10, 0, 10, -10, 0, 10, 10, 0, -10, 10, 0};
+  static constexpr float size = 2.0f;  // Half-size for a 4x4 quad
+
+  static constexpr float v[] = {-size, -size, 0.0f, size,  -size, 0.0f,
+                                size,  size,  0.0f, -size, size,  0.0f};
+
   static constexpr uint16_t i[] = {0, 1, 2, 2, 3, 0};
 
   _sunVbh =
@@ -164,6 +169,20 @@ void GameTest::createSunBuffers() {
 //  Update()
 // ──────────────────────────────────────────────────────
 void GameTest::Update() {
+
+  // --- Camera Input Handling ---
+  const Uint8* keys = SDL_GetKeyboardState(nullptr);
+
+  if (keys[SDL_SCANCODE_W])
+    camera.pan(0.0f, 0.1f);
+  if (keys[SDL_SCANCODE_S])
+    camera.pan(0.0f, -0.1f);
+  if (keys[SDL_SCANCODE_A])
+    camera.pan(-0.1f, 0.0f);
+  if (keys[SDL_SCANCODE_D])
+    camera.pan(0.1f, 0.0f);
+
+  /* -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- - */
   if (!bgfx::isValid(_terrainProgramHeight))
     return;
 
@@ -189,15 +208,17 @@ void GameTest::Render() {
 
   // camera matrices
   float view[16], proj[16];
-  bx::mtxLookAt(view, bx::Vec3{cameraEye[0], cameraEye[1], cameraEye[2]},
-                bx::Vec3{cameraAt[0], cameraAt[1], cameraAt[2]},
-                bx::Vec3{cameraUp[0], cameraUp[1], cameraUp[2]});
+  camera.getViewMatrix(view);
 
-  const float aspect = (canvasViewportW > 0 && canvasViewportH > 0)
-                           ? float(canvasViewportW) / float(canvasViewportH)
-                           : 1.f;
-  bx::mtxProj(proj, cameraFOV, aspect, 0.1f, 1000.f,
-              bgfx::getCaps()->homogeneousDepth);
+  float aspect = canvasViewportW > 0 && canvasViewportH > 0
+                     ? float(canvasViewportW) / canvasViewportH
+                     : 1.0f;
+
+  camera.getProjectionMatrix(proj, aspect,
+                             60.0f);  // replace hardcoded FOV if needed, for now let's keep it
+
+
+  /*---------------------------------------------------------*/
 
   // ---- View IDs ----
   constexpr uint8_t kSceneView = ViewID::SCENE;     // 1
@@ -258,10 +279,13 @@ void GameTest::Render() {
         bx::Vec3{cosf(_cycleTime), sinf(_cycleTime), sinf(_cycleTime * 0.5f)});
     bx::Vec3 sunPos = bx::mul(sunDir, 100.f);
 
-    float sunMtx[16];
-    bx::mtxTranslate(sunMtx, sunPos.x, sunPos.y, sunPos.z);
+    float scale = 1.5f;  // Small value (need to adjust until visually correct)
+
+    float sunScaleMtx[16], sunTranslateMtx[16], sunMtx[16];
+    bx::mtxScale(sunScaleMtx, scale, scale, scale);
+    bx::mtxTranslate(sunTranslateMtx, sunPos.x, sunPos.y, sunPos.z);
+    bx::mtxMul(sunMtx, sunScaleMtx, sunTranslateMtx);  // scale * translate
     bgfx::setTransform(sunMtx);
-    bgfx::setViewTransform(kSceneView, view, proj);
 
     bgfx::setVertexBuffer(0, _sunVbh);
     bgfx::setIndexBuffer(_sunIbh);

@@ -4,6 +4,7 @@
 #include <bgfx/bgfx.h>
 #include <vector>
 #include "game/game_base.h"
+#include "editor/components/orbit_camera.h"
 
 // ──────────────────────────────────────────────────────
 //  Vertex layout used by terrain + sun billboard
@@ -29,11 +30,8 @@ public:
   void Render() override;
   void Shutdown() override;
 
-  // simple camera (keep it public so we can tweak it from the editor)
-  float cameraEye[3] = {120.0f, 60.0f, 32.0f};
-  float cameraAt[3] = {32.0f, 0.0f, 32.0f};
-  float cameraUp[3] = {1.0f, 0.0f, 0.0f};
-  float cameraFOV = 80.0f;
+  // simple camera function call
+  OrbitCamera camera;
 
   int canvasViewportW = 800;
   int canvasViewportH = 600;
