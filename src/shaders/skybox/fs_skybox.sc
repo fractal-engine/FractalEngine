@@ -42,9 +42,18 @@ void main()
     // Horizon blending
     float horizon = clamp(viewDir.y * 0.5 + 0.5, 0.0, 1.0);
 
-    // Base sky color transitions
+    // Base sky color transitions (enhanced with time-based gradient)
     float sunAmount = clamp(dot(viewDir, lightDir), 0.0, 1.0);
-    float3 baseSky = lerp(float3(0.9, 0.5, 0.2), float3(0.4, 0.6, 0.95), pow(sunAmount, 1.5));
+
+    // Time-driven blend between sunset and daylight
+    float dayFactor = (sin(u_parameters.w) + 1.0) * 0.5;
+
+    float3 nightColor = float3(0.05, 0.05, 0.2);       // Deep blue/purple night
+    float3 sunriseColor = float3(0.9, 0.5, 0.2);       // Orange
+    float3 dayColor = float3(0.4, 0.6, 0.95);          // Bright blue
+
+    float3 skyBlend = lerp(sunriseColor, dayColor, pow(sunAmount, 1.5));
+    float3 baseSky = lerp(nightColor, skyBlend, dayFactor);
 
     // Procedural cloud generation (moving with time)
     float cloudNoise = noise(v_screenPos * 4.0 + u_parameters.ww); // u_time.w

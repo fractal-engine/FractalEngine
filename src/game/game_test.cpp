@@ -48,8 +48,6 @@ GameTest::GameTest()
       _sunProgram(BGFX_INVALID_HANDLE),
       _skyVbh(BGFX_INVALID_HANDLE),
       _skyIbh(BGFX_INVALID_HANDLE),
-      _sunVbh(BGFX_INVALID_HANDLE),
-      _sunIbh(BGFX_INVALID_HANDLE),
       _timeUniform(BGFX_INVALID_HANDLE),
       _sunDirUniform(BGFX_INVALID_HANDLE),
       _sunLumUniform(BGFX_INVALID_HANDLE),
@@ -126,7 +124,6 @@ void GameTest::Init() {
       terrainIndices.data(), terrainIndices.size() * sizeof(uint16_t)));
 
   createSkyboxBuffers();
-  createSunBuffers();
 }
 
 // ──────────────────────────────────────────────────────
@@ -151,20 +148,6 @@ void GameTest::createSkyboxBuffers() {
   _skyIbh = bgfx::createIndexBuffer(bgfx::makeRef(i, sizeof(i)));
 }
 
-// Sun is just a quad billboard
-void GameTest::createSunBuffers() {
-  static constexpr float size = 2.0f;  // Half-size for a 4x4 quad
-
-  static constexpr float v[] = {-size, -size, 0.0f, size,  -size, 0.0f,
-                                size,  size,  0.0f, -size, size,  0.0f};
-
-  static constexpr uint16_t i[] = {0, 1, 2, 2, 3, 0};
-
-  _sunVbh =
-      bgfx::createVertexBuffer(bgfx::makeRef(v, sizeof(v)), PosVertex::layout);
-  _sunIbh = bgfx::createIndexBuffer(bgfx::makeRef(i, sizeof(i)));
-}
-
 // ──────────────────────────────────────────────────────
 //  Update()
 // ──────────────────────────────────────────────────────
@@ -174,13 +157,13 @@ void GameTest::Update() {
   const Uint8* keys = SDL_GetKeyboardState(nullptr);
 
   if (keys[SDL_SCANCODE_W])
-    camera.pan(0.0f, 0.1f);
+    camera.pan(0.0f, 0.10f);
   if (keys[SDL_SCANCODE_S])
-    camera.pan(0.0f, -0.1f);
+    camera.pan(0.0f, -0.10f);
   if (keys[SDL_SCANCODE_A])
-    camera.pan(-0.1f, 0.0f);
+    camera.pan(-0.10f, 0.0f);
   if (keys[SDL_SCANCODE_D])
-    camera.pan(0.1f, 0.0f);
+    camera.pan(0.10f, 0.0f);
 
   /* -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- - */
   if (!bgfx::isValid(_terrainProgramHeight))
@@ -206,46 +189,51 @@ void GameTest::Render() {
   if (!bgfx::isValid(_terrainProgramHeight))
     return;
 
-  // camera matrices
+  // --- Camera view and projection ---
   float view[16], proj[16];
   camera.getViewMatrix(view);
-
   float aspect = canvasViewportW > 0 && canvasViewportH > 0
                      ? float(canvasViewportW) / canvasViewportH
                      : 1.0f;
+  camera.getProjectionMatrix(proj, aspect, 60.0f);
 
-  camera.getProjectionMatrix(proj, aspect,
-                             60.0f);  // replace hardcoded FOV if needed, for now let's keep it
+  constexpr uint8_t kSceneView = ViewID::SCENE;
+  constexpr uint8_t kSkyView = ViewID::SCENE_N(0);  // shared FBO
 
-
-  /*---------------------------------------------------------*/
-
-  // ---- View IDs ----
-  constexpr uint8_t kSceneView = ViewID::SCENE;     // 1
-  constexpr uint8_t kSkyView = ViewID::SCENE_N(0);  // 2 – shares FBO
-
-  // ---- sky-box ----
+  // --- SKYBOX (unit cube centered at origin) ---
   if (bgfx::isValid(_skyProgram)) {
-    // --- view matrix: camera rotation, no translation -------------
     float skyView[16];
     bx::memCopy(skyView, view, sizeof(skyView));
-    skyView[12] = skyView[13] = skyView[14] = 0.0f;  // centre on eye
-    bgfx::setViewTransform(kSkyView, skyView, proj);
+    skyView[12] = skyView[13] = skyView[14] = 0.0f;
 
-    // --- model matrix: looks like huge cube at the origin ---------
-    float skyMtx[16];
-    bx::mtxScale(skyMtx, 500.0f, 500.0f, 500.0f);  // 500-unit box
-    bgfx::setTransform(skyMtx);
+    float skyProj[16];
+    camera.getProjectionMatrix(skyProj, 1.0f, 60.0f);  // square aspect
+
+    bgfx::setViewTransform(kSkyView, skyView, skyProj);
+
+    float scale = 250.0f;  // Skybox cube size - start small, can increase later
+    float skyScaleMtx[16];
+    bx::mtxScale(skyScaleMtx, scale, scale, scale);
+    bgfx::setTransform(skyScaleMtx);
 
     bgfx::setVertexBuffer(0, _skyVbh);
     bgfx::setIndexBuffer(_skyIbh);
 
-    // uniforms -----------------------------------------------------
     bx::Vec3 sunDir = bx::normalize(
         bx::Vec3{cosf(_cycleTime), sinf(_cycleTime), sinf(_cycleTime * 0.5f)});
-
     float time[4] = {_cycleTime, 0, 0, 0};
     float dir[4] = {sunDir.x, sunDir.y, sunDir.z, 0};
+
+    float t = (sinf(_cycleTime) + 1.0f) * 0.5f;
+    _sunColorArray[0] = bx::lerp(1.5f, 5.0f, t);
+    _sunColorArray[1] = bx::lerp(0.8f, 5.0f, t);
+    _sunColorArray[2] = bx::lerp(0.2f, 5.0f, t);
+    _sunColorArray[3] = 0.0f;
+
+    _parametersArray[0] = 0.1f;  // control the scale of the sun
+    _parametersArray[1] = 1.0f;   // bloom scale
+    _parametersArray[2] = 1.0f;   // exposure
+    _parametersArray[3] = _cycleTime;
 
     bgfx::setUniform(_timeUniform, time);
     bgfx::setUniform(_sunDirUniform, dir);
@@ -253,12 +241,13 @@ void GameTest::Render() {
     bgfx::setUniform(_paramsUniform, _parametersArray);
 
     bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A |
-                   BGFX_STATE_DEPTH_TEST_ALWAYS);  // depth read yes, write no
+                   BGFX_STATE_DEPTH_TEST_ALWAYS);  // no depth write
+
     bgfx::submit(kSkyView, _skyProgram);
   }
 
-  // ---- terrain ----
-  bx::mtxScale(world_matrix, 5.f, 5.f, 5.f);  // scale terrain
+  // --- TERRAIN ---
+  bx::mtxScale(world_matrix, 5.f, 5.f, 5.f);
   bgfx::setViewTransform(kSceneView, view, proj);
   bgfx::setTransform(world_matrix);
   bgfx::setVertexBuffer(0, _terrainVbh);
@@ -270,40 +259,13 @@ void GameTest::Render() {
                   0};
   bgfx::setUniform(_lightDirUniform, tmp);
 
-  bgfx::setState(BGFX_STATE_DEFAULT);
+  bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A |
+                 BGFX_STATE_WRITE_Z | BGFX_STATE_DEPTH_TEST_LESS |
+                 BGFX_STATE_MSAA
+
+  );
+
   bgfx::submit(kSceneView, _terrainProgramHeight);
-
-  // ---- sun billboard ----
-  if (bgfx::isValid(_sunProgram)) {
-    bx::Vec3 sunDir = bx::normalize(
-        bx::Vec3{cosf(_cycleTime), sinf(_cycleTime), sinf(_cycleTime * 0.5f)});
-    bx::Vec3 sunPos = bx::mul(sunDir, 100.f);
-
-    float scale = 1.5f;  // Small value (need to adjust until visually correct)
-
-    float sunScaleMtx[16], sunTranslateMtx[16], sunMtx[16];
-    bx::mtxScale(sunScaleMtx, scale, scale, scale);
-    bx::mtxTranslate(sunTranslateMtx, sunPos.x, sunPos.y, sunPos.z);
-    bx::mtxMul(sunMtx, sunScaleMtx, sunTranslateMtx);  // scale * translate
-    bgfx::setTransform(sunMtx);
-
-    bgfx::setVertexBuffer(0, _sunVbh);
-    bgfx::setIndexBuffer(_sunIbh);
-
-    float dir[4] = {sunDir.x, sunDir.y, sunDir.z, 0};
-    float time[4] = {_cycleTime, 0, 0, 0};
-    _parametersArray[3] = _cycleTime;
-
-    bgfx::setUniform(_sunDirUniform, dir);
-    bgfx::setUniform(_sunLumUniform, _sunColorArray);
-    bgfx::setUniform(_paramsUniform, _parametersArray);
-    bgfx::setUniform(_timeUniform, time);
-
-    bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_BLEND_ADD |
-                   BGFX_STATE_DEPTH_TEST_LESS);
-
-    bgfx::submit(kSceneView, _sunProgram);
-  }
 }
 
 // ──────────────────────────────────────────────────────
@@ -333,6 +295,4 @@ void GameTest::Shutdown() {
   destroy(_terrainIbh);
   destroy(_skyVbh);
   destroy(_skyIbh);
-  destroy(_sunVbh);
-  destroy(_sunIbh);
 }

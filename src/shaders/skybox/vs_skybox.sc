@@ -5,17 +5,16 @@ $output v_viewDir, v_screenPos, v_skyColor
 
 void main()
 {
+    // Transform cube vertex from object to clip space
     vec4 pos = mul(u_modelViewProj, vec4(a_position, 1.0));
-    // Basic projection setup
     gl_Position = pos;
 
-    // This will point from camera center outwards
+    // Calculate direction vector from camera to vertex in world space
     v_viewDir = a_position;
 
-    // convert clip-space to [0,1] UV:
+    // Map NDC coordinates [-1..1] to screen UVs [0..1]
     v_screenPos = pos.xy / pos.w * 0.5 + 0.5;
 
-    // Initial base sky color (e.g. horizon blue), tweak as needed
+    // Give a base color, this can be overwritten by the fragment shader
     v_skyColor = vec3(0.2, 0.4, 0.8);
 }
-

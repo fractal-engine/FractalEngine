@@ -12,17 +12,21 @@ public:
         m_yaw(0.0f),
         m_target{0.0f, 0.0f, 0.0f} {}
 
-  void orbit(float dx, float dy) {
-    m_yaw += dx;
-    m_pitch += dy;
+  void orbit(float dx, float dy) { // ORBIT
+    constexpr float kMouseSpeed = 0.005f;
+    m_yaw += dx * kMouseSpeed;
+    m_pitch += dy * kMouseSpeed;
 
     const float limit = bx::kPiHalf - 0.01f;
     m_pitch = bx::clamp(m_pitch, -limit, limit);
   }
 
-  void zoom(float dz) { m_distance = bx::clamp(m_distance + dz, 1.0f, 500.0f); }
+  void zoom(float dz) { // ZOOM
+    constexpr float kZoomSpeed = 0.1f;
+    m_distance = bx::clamp(m_distance + dz * kZoomSpeed, +1.0f, 500.0f);
+  }
 
-  void pan(float dx, float dy) {
+  void pan(float dx, float dy) { // PAN
     float offset[3] = {};
     calcPanOffset(dx, dy, offset);
     for (int i = 0; i < 3; ++i) {

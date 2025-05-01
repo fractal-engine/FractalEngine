@@ -56,15 +56,12 @@ private:
   bgfx::VertexBufferHandle _skyVbh = BGFX_INVALID_HANDLE;
   bgfx::IndexBufferHandle _skyIbh = BGFX_INVALID_HANDLE;
 
-  bgfx::VertexBufferHandle _sunVbh = BGFX_INVALID_HANDLE;
-  bgfx::IndexBufferHandle _sunIbh = BGFX_INVALID_HANDLE;
-
   bgfx::UniformHandle _timeUniform = BGFX_INVALID_HANDLE;
   bgfx::UniformHandle _sunDirUniform = BGFX_INVALID_HANDLE;
   bgfx::UniformHandle _sunLumUniform = BGFX_INVALID_HANDLE;
   bgfx::UniformHandle _paramsUniform = BGFX_INVALID_HANDLE;
 
-  float _cycleTime = 0.0f;  // day-night timer
+  float _cycleTime = 0.0f;  // day-night timerm keep it at 0
 
   // colour / param arrays passed to both sky & sun shaders
   float _sunColorArray[4] = {5.0f, 5.0f, 5.0f, 0.0f};
@@ -72,7 +69,7 @@ private:
 
   // small helpers that build vertex / index buffers
   void createSkyboxBuffers();
-  void createSunBuffers();
+
 
   // world transform for the terrain
   float world_matrix[16];
