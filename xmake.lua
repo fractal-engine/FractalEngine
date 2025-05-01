@@ -1,8 +1,8 @@
 set_languages("c++20")
 add_cxxflags("/Zc:__cplusplus")
 add_cxxflags("/Zc:preprocessor")
-add_requires("ftxui", "boost", "libsdl2", "libsdl2_ttf", "portaudio") -- Add dependencies
-add_requires("imgui", {configs = {sdl2 = true, sdl2_renderer = true}})
+add_requires("ftxui", "boost", "libsdl2", "libsdl2_ttf", "portaudio", "glm")
+add_requires("imgui 1.91.8-docking", { configs = { sdl2 = true, sdl2_renderer = true } })
 
 if is_mode("debug") then
     add_defines("BX_CONFIG_DEBUG=1")
@@ -73,7 +73,7 @@ target("fractal")
         target:add("envs", { "PATH=" .. bgfx_tools_dir })
 
     end)
-    add_packages("ftxui", "boost", "libsdl2", "libsdl2_ttf", "imgui", "portaudio", "bgfx") -- Add packages
+    add_packages("ftxui", "boost", "libsdl2", "libsdl2_ttf", "imgui", "portaudio", "bgfx", "glm") -- Add packages
 
     after_build(function (target)
         os.cp("assets/shaders/**", path.join(target:targetdir(), "assets/shaders"))

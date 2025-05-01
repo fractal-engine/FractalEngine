@@ -1,5 +1,5 @@
-#ifndef LOG_PANEL_H
-#define LOG_PANEL_H
+#ifndef CONSOLE_PANEL_H
+#define CONSOLE_PANEL_H
 
 #include <imgui.h>
 #include <string>
@@ -8,7 +8,7 @@
 
 namespace Components {
 
-inline void LogPanel() {
+inline void ConsolePanel() {
   ImGui::BeginChild("LogRegion", ImVec2(0, 0), true);
   ImGui::Text("Debug Log");
   ImGui::Separator();
@@ -26,4 +26,4 @@ inline void LogPanel() {
 
 }  // namespace Components
 
-#endif  // LOG_PANEL_H
+#endif  // CONSOLE_PANEL_H

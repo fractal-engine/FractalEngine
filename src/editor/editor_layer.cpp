@@ -1,7 +1,9 @@
 #include "editor/editor_layer.h"
 #include "components/camera_controls.h"
+#include "components/console_panel.h"
 #include "components/game_canvas.h"
-#include "components/log_panel.h"
+#include "components/hierarchy_panel.h"
+#include "components/inspector_panel.h"
 #include "components/toolbar.h"
 #include "core/engine_globals.h"
 #include "core/logger.h"
@@ -19,21 +21,43 @@
 #include <chrono>
 #include <thread>
 
+EditorLayer* EditorLayer::s_instance_ = nullptr;
+
 EditorLayer::EditorLayer(std::unique_ptr<RendererBase>& renderer)
-    : renderer_(renderer) {}
+    : renderer_(renderer) {
+  s_instance_ = this;
+}
 
 EditorLayer::~EditorLayer() {}
+
+// static accessor:
+EditorLayer* EditorLayer::Get() {
+  return s_instance_;
+}
+
+void EditorLayer::Initialize() {
+  IMGUI_CHECKVERSION();
+  ImGui::CreateContext();
+  auto& io = ImGui::GetIO();
+
+  window_flags_ = ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoDocking |
+                 ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse |
+                 ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
+                 ImGuiWindowFlags_NoBringToFrontOnFocus |
+                 ImGuiWindowFlags_NoNavFocus | ImGuiWindowFlags_NoBackground;
+
+  ImGui::StyleColorsDark();
+
+  // backends
+  ImGui_Implbgfx_Init(ViewID::UI);
+  InitImGui();  // TODO: change naming and move logic
+  ImGui_ImplSDL2_InitForOther(WindowManager::GetWindow());
+}
 
 void EditorLayer::Run() {
   Logger::getInstance().Log(LogLevel::Info, "EditorLayer main loop start");
 
-  IMGUI_CHECKVERSION();
-  ImGui::CreateContext();
-  ImGui::StyleColorsDark();
-  ImGui_Implbgfx_Init(ViewID::UI);
-
-  InitImGui();
-  ImGui_ImplSDL2_InitForOther(WindowManager::GetWindow());
+  Initialize();
 
   SDL_Event event;
   while (!quit_) {
@@ -133,52 +157,89 @@ void EditorLayer::HandleInput(Key key) {
                                                  input_event.pressed_frame_);
 }
 
-void EditorLayer::RenderUI() {
-  ImGui::SetNextWindowPos(ImVec2(0, 0));
-  ImGui::SetNextWindowSize(
-      ImVec2(WindowManager::GetWidth(), WindowManager::GetHeight()));
-  ImGui::Begin("Fractal Engine", nullptr,
-               ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
-                   ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse);
+void EditorLayer::DockSpace() {
+  ImGuiViewport* vp = ImGui::GetMainViewport();
+  ImGui::SetNextWindowViewport(vp->ID);
+  ImGui::SetNextWindowPos(vp->Pos);
+  ImGui::SetNextWindowSize(vp->Size);
+  ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+  ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+  ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
 
+  ImGui::Begin("Dockspace", nullptr, window_flags_);
+  ImGuiID dockID = ImGui::GetID("Dockspace");
+  ImGui::DockSpace(dockID, ImVec2(0, 0),
+                   ImGuiDockNodeFlags_PassthruCentralNode);
+  ImGui::End();
+
+  ImGui::PopStyleVar(3);
+}
+
+void EditorLayer::RenderUI() {
+  // full window
+  ImGui::SetNextWindowPos(ImVec2(0, 0));
+  ImGui::SetNextWindowSize(ImGui::GetIO().DisplaySize);
+
+  DockSpace();
+
+  //--------------------------- TOP TOOLBAR ----------------------------------
   Components::ToolbarCallbacks cb{.onStart =
-                                      [&]() {
+                                      [&] {
                                         if (!is_game_started_) {
                                           is_game_started_ = true;
                                           game_start_pressed();
                                         }
                                       },
                                   .onStop =
-                                      [&]() {
+                                      [&] {
                                         if (is_game_started_) {
                                           is_game_started_ = false;
                                           game_end_pressed();
                                         }
                                       },
-                                  .onAddObject =
-                                      []() {
-                                        // TODO: add game object
-                                      },
-                                  .onRemoveObject =
-                                      []() {
-                                        // TODO: remove game object
-                                      },
                                   .onQuit =
-                                      [&]() {
+                                      [&] {
                                         quit_ = true;
                                         editor_exit_pressed();
                                       }};
-
   Components::Toolbar(cb);
-  Components::GameCanvas(is_game_started_, game_canvas_hovered_);
-  Components::LogPanel();
-  Components::CameraControls();
 
-  ImGui::End();
+  //--------------------------- LAYOUT ---------------------------------
+  const ImVec2 avail = ImGui::GetContentRegionAvail();
+  const float totalW = avail.x;
+  const float totalH = avail.y;
+  const float leftW = 240.0f;
+  const float rightW = 300.0f;
+  const float bottomH = 150.0f;
+  const float centerW = totalW - leftW - rightW;
+  const float centerH = totalH - bottomH;
+
+  // -------- LEFT : hierarchy + assets -------------------------------------
+  static std::vector<std::string> demoNames = {"Camera", "Terrain", "Sun",
+                                               "Player"};
+  Components::HierarchyPanel(demoNames, "assets");
+  ImGui::SameLine();
+
+  // -------- MIDDLE : game view --------------------------------------------
+  Components::GameCanvas(is_game_started_, game_canvas_hovered_);
+  ImGui::SameLine();
+
+  // -------- RIGHT : inspector ---------------------------------------------
+  static std::vector<Components::Transform> demoTf(demoNames.size());
+  Components::Inspector(demoTf);
+
+  //--------------------------- PANELS ------------------------------
+  Components::ConsolePanel();
+  ImGui::SameLine();
+
+  // Camera Controls
+  Components::CameraControls();
 }
 
 void EditorLayer::BeginImGuiFrame(SDL_Window* window) {
   ImGuiIO& io = ImGui::GetIO();
+  io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;  // Enable Docking
+  // io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable; // Enable Viewports
   io.DisplaySize = ImVec2((float)WindowManager::GetWidth(),
                           (float)WindowManager::GetHeight());
   io.DisplayFramebufferScale =
@@ -187,4 +248,18 @@ void EditorLayer::BeginImGuiFrame(SDL_Window* window) {
   ImGui_ImplSDL2_NewFrame();  // platform backend
   ImGui_Implbgfx_NewFrame();  // renderer backend
   ImGui::NewFrame();          // ImGui begins
+}
+
+// ── Selection API ─────────────────────────────────────────────────────────
+void EditorLayer::SetSelectedEntity(int id) {
+  selected_entity_ = id;
+  last_selected_entity_ = selected_entity_;
+}
+
+int EditorLayer::GetSelectedEntity() const {
+  return selected_entity_;
+}
+
+int EditorLayer::GetLastSelectedEntity() const {
+  return last_selected_entity_;
 }
