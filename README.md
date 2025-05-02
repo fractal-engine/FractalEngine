@@ -7,6 +7,9 @@
   <!-- <a href="#screenshots">Screenshots</a> | -->
   <!-- <a href="#features">Features</a> | -->
   <!-- <a href="https://github.com/fractal-engine/Fractal_3D/wiki">Wiki</a> | -->
+  <a href="#goals">Goals</a> |
+  <a href="#project-status">Project Status</a> |
+  <a href="#getting-started">Getting Started</a> |
   <a href="https://github.com/fractal-engine/Fractal_3D/blob/main/CONTRIBUTING.md">Contributing</a> |
   <a href="https://github.com/fractal-engine/Fractal_3D/blob/main/LICENSE.md">License</a> |
   <a href="https://github.com/fractal-engine/Fractal_3D/wiki">Documentation</a>
@@ -80,6 +83,10 @@ Follow these steps to set up and run the project:
     ```bash
     xmake project -k vsxmake -m "debug"
     ```
+
+## Goals
+
+## Project Status
 
 ## Thirdparty Libraries
 
