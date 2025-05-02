@@ -230,17 +230,29 @@ void GameTest::Render() {
     bgfx::setVertexBuffer(0, _skyVbh);
     bgfx::setIndexBuffer(_skyIbh);
 
-    // Sun direction (cycle-based rotation)
-    bx::Vec3 sunDir = bx::normalize(
-        bx::Vec3{cosf(_cycleTime), sinf(_cycleTime), sinf(_cycleTime * 0.5f)});
+    // Compute spherical sun direction (realistic arc)
+    const float angle = _cycleTime;  // angle over time
+
+    const float theta =
+        bx::kPi * 0.5f * sinf(angle);  // vertical arc (−π/2 to π/2)
+    const float phi = angle;           // azimuthal spin
+
+    const float x = cosf(theta) * cosf(phi);
+    const float y = sinf(theta);
+    const float z = cosf(theta) * sinf(phi);
+
+    const bx::Vec3 sunDir = bx::normalize(bx::Vec3(x, y, z));
+
+    const float dir[4] = {sunDir.x, sunDir.y, sunDir.z, 0.0f};
 
     float time[4] = {_cycleTime, 0, 0, 0};
-    float dir[4] = {sunDir.x, sunDir.y, sunDir.z, 0};
 
     float t = (sinf(_cycleTime) + 1.0f) * 0.5f;
-    _sunColorArray[0] = bx::lerp(1.5f, 5.0f, t);
-    _sunColorArray[1] = bx::lerp(0.8f, 5.0f, t);
-    _sunColorArray[2] = bx::lerp(0.2f, 5.0f, t);
+    // Soften sun color range
+    _sunColorArray[0] = bx::lerp(0.6f, 2.0f, t);
+    _sunColorArray[1] = bx::lerp(0.4f, 1.2f, t);
+    _sunColorArray[2] = bx::lerp(0.2f, 0.8f, t);
+
     _sunColorArray[3] = 0.0f;
 
     _parametersArray[0] = 0.1f;        // Sun size

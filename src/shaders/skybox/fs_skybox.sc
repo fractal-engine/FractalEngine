@@ -1,3 +1,4 @@
+
 $input v_viewDir
 
 // Uniforms from CPU
@@ -25,7 +26,7 @@ float noise(vec2 p) {
     return mix(mix(a, b, u.x), mix(c, d, u.x), u.y);
 }
 
-// Fractal Brownian Motion (layered noise)
+// Fractal Brownian Motion (FBM)
 float fbm(vec2 p) {
     float f = 0.0;
     float amp = 0.5;
@@ -42,21 +43,24 @@ void main()
     float3 viewDir = normalize(v_viewDir);
     float3 lightDir = normalize(u_sunDirection.xyz);
 
-    float sunDist = 2.0 * (1.0 - dot(viewDir, lightDir));
+    // Compute distance from view direction to sun direction
+    float dist = 1.0 - dot(viewDir, lightDir);
     float size2 = u_parameters.x * u_parameters.x;
 
-    float sunGlow = exp(-sunDist / u_parameters.y / size2) + step(sunDist, size2);
-    float sunIntensity = min(sunGlow * sunGlow, 1.0);
+    // Exponential glow around sun
+    float glowFalloff = max(0.0001, u_parameters.y);
+    float sunGlow = exp(-dist / (glowFalloff * size2));
+    float sunIntensity = clamp(sunGlow, 0.0, 1.0);
 
-    float horizon = clamp(viewDir.y * 0.5 + 0.5, 0.0, 1.0);
-    float sunAmount = clamp(dot(viewDir, lightDir), 0.0, 1.0);
+    // Time of day blend
     float dayFactor = (sin(u_parameters.w) + 1.0) * 0.5;
+    float sunAmount = clamp(dot(viewDir, lightDir), 0.0, 1.0);
 
-    // Elevation-based horizon gradient
+    // Elevation affects gradient
     float elevation = clamp(viewDir.y, -1.0, 1.0);
     float verticalBlend = smoothstep(-0.2, 0.5, elevation);
 
-    // Sky colors
+    // Horizon/sky colors
     float3 nightColor   = float3(0.05, 0.05, 0.2);
     float3 sunriseColor = float3(0.9, 0.5, 0.2);
     float3 dayColor     = float3(0.4, 0.6, 0.95);
@@ -65,19 +69,24 @@ void main()
     float3 timeSky  = mix(nightColor, skyBlend, dayFactor);
     float3 baseSky  = mix(nightColor, timeSky, verticalBlend);
 
-    // Fractal cloud UV and mask
-    float2 cloudUV = viewDir.xy * 5.0 + float2(u_parameters.w * 0.1, u_parameters.w * 0.1);
+    // Additional global lighting from sun elevation
+    baseSky += u_sunLuminance.rgb * pow(max(lightDir.y, 0.0), 2.0) * 0.15;
+
+    // Clouds
+    float2 cloudUV = viewDir.xy * 5.0 + vec2(u_parameters.w * 0.1, u_parameters.w * 0.1);
     float cloudNoise = fbm(cloudUV);
     float cloudMask = smoothstep(0.5, 0.7, cloudNoise);
 
     float3 color = mix(baseSky, float3(1.0, 1.0, 1.0), cloudMask * 0.5);
 
-    // Apply sun
-    color += sunIntensity * u_sunLuminance.xyz;
+    // Apply sun glow on top
+    color += sunIntensity * u_sunLuminance.rgb;
 
-    // Global brightness by time of day
-    color *= mix(0.1, 1.0, dayFactor);  // darker at night
+    // Overall brightness control
+    color *= mix(0.2, 1.0, dayFactor);
 
+    // Gamma correction
     color = toGamma(color);
-    gl_FragColor = vec4(color * horizon, 1.0);
+
+    gl_FragColor = vec4(color, 1.0);
 }
