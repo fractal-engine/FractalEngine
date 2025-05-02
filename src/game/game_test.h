@@ -61,6 +61,11 @@ private:
   bgfx::UniformHandle _sunLumUniform = BGFX_INVALID_HANDLE;
   bgfx::UniformHandle _paramsUniform = BGFX_INVALID_HANDLE;
 
+  // New skybox uniforms
+  bgfx::UniformHandle _viewInvUniform = BGFX_INVALID_HANDLE;
+  bgfx::UniformHandle _projInvUniform = BGFX_INVALID_HANDLE;
+
+
   float _cycleTime = 0.0f;  // day-night timerm keep it at 0
 
   // colour / param arrays passed to both sky & sun shaders

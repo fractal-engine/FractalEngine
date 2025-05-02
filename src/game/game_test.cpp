@@ -22,7 +22,14 @@ struct PosVertex {
 };
 bgfx::VertexLayout PosVertex::layout;
 
-// helper
+struct ScreenPosVertex {
+  float x, y;
+  static bgfx::VertexLayout layout;
+};
+bgfx::VertexLayout ScreenPosVertex::layout;
+
+// ──────────────────────────────────────────────────────
+// helper to initialize vertex layouts
 static void initLayouts() {
   PosTexCoord0Vertex::layout.begin()
       .add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float)
@@ -31,6 +38,10 @@ static void initLayouts() {
 
   PosVertex::layout.begin()
       .add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float)
+      .end();
+
+  ScreenPosVertex::layout.begin()
+      .add(bgfx::Attrib::Position, 2, bgfx::AttribType::Float)
       .end();
 }
 
@@ -86,6 +97,9 @@ void GameTest::Init() {
   _sunLumUniform =
       bgfx::createUniform("u_sunLuminance", bgfx::UniformType::Vec4);
   _paramsUniform = bgfx::createUniform("u_parameters", bgfx::UniformType::Vec4);
+  _viewInvUniform = bgfx::createUniform("u_viewInv", bgfx::UniformType::Mat4);
+  _projInvUniform = bgfx::createUniform("u_projInv", bgfx::UniformType::Mat4);
+
 
   // height map (should be 32×32 sine-wave so we can still see animation)
   const uint16_t sz = 32;
@@ -127,26 +141,29 @@ void GameTest::Init() {
 }
 
 // ──────────────────────────────────────────────────────
-//  helper – generate cube for sky
+//  helper – generate sky buffers
 // ──────────────────────────────────────────────────────
 void GameTest::createSkyboxBuffers() {
-  // 8 cube vertices – 36 indices (12 tris)
-  static constexpr float v[] = {
-      -1, -1, -1, 1, -1, -1, 1, 1, -1, -1, 1, -1,  // back
-      -1, -1, 1,  1, -1, 1,  1, 1, 1,  -1, 1, 1    // front
+  // Fullscreen quad in NDC space (x, y in [-1, 1])
+  static const ScreenPosVertex quadVertices[] = {
+      {-1.0f, -1.0f},
+      {1.0f, -1.0f},
+      {-1.0f, 1.0f},
+      {1.0f, 1.0f},
   };
-  static constexpr uint16_t i[] = {
-      0, 1, 2, 0, 2, 3,  // back
-      4, 6, 5, 4, 7, 6,  // front
-      4, 5, 1, 4, 1, 0,  // bottom
-      3, 2, 6, 3, 6, 7,  // top
-      1, 5, 6, 1, 6, 2,  // right
-      4, 0, 3, 4, 3, 7   // left
+
+  static const uint16_t quadIndices[] = {
+      0, 1, 2, 1, 3, 2,
   };
-  _skyVbh =
-      bgfx::createVertexBuffer(bgfx::makeRef(v, sizeof(v)), PosVertex::layout);
-  _skyIbh = bgfx::createIndexBuffer(bgfx::makeRef(i, sizeof(i)));
+
+  _skyVbh = bgfx::createVertexBuffer(
+      bgfx::makeRef(quadVertices, sizeof(quadVertices)),
+      ScreenPosVertex::layout);
+
+  _skyIbh =
+      bgfx::createIndexBuffer(bgfx::makeRef(quadIndices, sizeof(quadIndices)));
 }
+
 
 // ──────────────────────────────────────────────────────
 //  Update()
@@ -200,27 +217,25 @@ void GameTest::Render() {
   constexpr uint8_t kSceneView = ViewID::SCENE;
   constexpr uint8_t kSkyView = ViewID::SCENE_N(0);  // shared FBO
 
-  // --- SKYBOX (unit cube centered at origin) ---
+  // --- SKYBOX (procedural full-screen quad) ---
   if (bgfx::isValid(_skyProgram)) {
-    float skyView[16];
-    bx::memCopy(skyView, view, sizeof(skyView));
-    skyView[12] = skyView[13] = skyView[14] = 0.0f;
+    float invView[16], invProj[16];
+    bx::mtxInverse(invView, view);
+    bx::mtxInverse(invProj, proj);
 
-    float skyProj[16];
-    camera.getProjectionMatrix(skyProj, 1.0f, 60.0f);  // square aspect
+    // View & proj are identity for screen-space quad
+    float identity[16];
+    bx::mtxIdentity(identity);
+    bgfx::setViewTransform(kSkyView, identity, identity);
 
-    bgfx::setViewTransform(kSkyView, skyView, skyProj);
-
-    float scale = 250.0f;  // Skybox cube size - start small, can increase later
-    float skyScaleMtx[16];
-    bx::mtxScale(skyScaleMtx, scale, scale, scale);
-    bgfx::setTransform(skyScaleMtx);
-
+    // Submit fullscreen quad 
     bgfx::setVertexBuffer(0, _skyVbh);
     bgfx::setIndexBuffer(_skyIbh);
 
+    // Sun direction (cycle-based rotation)
     bx::Vec3 sunDir = bx::normalize(
         bx::Vec3{cosf(_cycleTime), sinf(_cycleTime), sinf(_cycleTime * 0.5f)});
+
     float time[4] = {_cycleTime, 0, 0, 0};
     float dir[4] = {sunDir.x, sunDir.y, sunDir.z, 0};
 
@@ -230,21 +245,24 @@ void GameTest::Render() {
     _sunColorArray[2] = bx::lerp(0.2f, 5.0f, t);
     _sunColorArray[3] = 0.0f;
 
-    _parametersArray[0] = 0.1f;  // control the scale of the sun
-    _parametersArray[1] = 1.0f;   // bloom scale
-    _parametersArray[2] = 1.0f;   // exposure
-    _parametersArray[3] = _cycleTime;
+    _parametersArray[0] = 0.1f;        // Sun size
+    _parametersArray[1] = 1.0f;        // Bloom factor
+    _parametersArray[2] = 1.0f;        // Exposure (unused)
+    _parametersArray[3] = _cycleTime;  // Time
 
+    bgfx::setUniform(_viewInvUniform, invView);
+    bgfx::setUniform(_projInvUniform, invProj);
     bgfx::setUniform(_timeUniform, time);
     bgfx::setUniform(_sunDirUniform, dir);
     bgfx::setUniform(_sunLumUniform, _sunColorArray);
     bgfx::setUniform(_paramsUniform, _parametersArray);
 
     bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A |
-                   BGFX_STATE_DEPTH_TEST_ALWAYS);  // no depth write
+                   BGFX_STATE_DEPTH_TEST_ALWAYS | BGFX_STATE_CULL_CW);
 
     bgfx::submit(kSkyView, _skyProgram);
   }
+
 
   // --- TERRAIN ---
   bx::mtxScale(world_matrix, 5.f, 5.f, 5.f);
@@ -290,7 +308,8 @@ void GameTest::Shutdown() {
   destroy(_sunDirUniform);
   destroy(_sunLumUniform);
   destroy(_paramsUniform);
-
+  destroy(_viewInvUniform);
+  destroy(_projInvUniform);
   destroy(_terrainVbh);
   destroy(_terrainIbh);
   destroy(_skyVbh);
