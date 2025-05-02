@@ -100,7 +100,6 @@ void GameTest::Init() {
   _viewInvUniform = bgfx::createUniform("u_viewInv", bgfx::UniformType::Mat4);
   _projInvUniform = bgfx::createUniform("u_projInv", bgfx::UniformType::Mat4);
 
-
   // height map (should be 32×32 sine-wave so we can still see animation)
   const uint16_t sz = 32;
   std::vector<uint8_t> hdata(sz * sz);
@@ -163,7 +162,6 @@ void GameTest::createSkyboxBuffers() {
   _skyIbh =
       bgfx::createIndexBuffer(bgfx::makeRef(quadIndices, sizeof(quadIndices)));
 }
-
 
 // ──────────────────────────────────────────────────────
 //  Update()
@@ -228,7 +226,7 @@ void GameTest::Render() {
     bx::mtxIdentity(identity);
     bgfx::setViewTransform(kSkyView, identity, identity);
 
-    // Submit fullscreen quad 
+    // Submit fullscreen quad
     bgfx::setVertexBuffer(0, _skyVbh);
     bgfx::setIndexBuffer(_skyIbh);
 
@@ -257,12 +255,14 @@ void GameTest::Render() {
     bgfx::setUniform(_sunLumUniform, _sunColorArray);
     bgfx::setUniform(_paramsUniform, _parametersArray);
 
+    // Clear sky view (view 1) with black and depth 1.0
+
+    bgfx::setViewClear(kSkyView, BGFX_CLEAR_COLOR, 0x000000ff, 1.0f, 0);
     bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A |
-                   BGFX_STATE_DEPTH_TEST_ALWAYS | BGFX_STATE_CULL_CW);
+                   BGFX_STATE_DEPTH_TEST_ALWAYS);
 
     bgfx::submit(kSkyView, _skyProgram);
   }
-
 
   // --- TERRAIN ---
   bx::mtxScale(world_matrix, 5.f, 5.f, 5.f);
@@ -277,13 +277,12 @@ void GameTest::Render() {
                   0};
   bgfx::setUniform(_lightDirUniform, tmp);
 
+  // Clear scene view (view 0) with depth only
+
+  bgfx::setViewClear(kSceneView, BGFX_CLEAR_DEPTH, 0, 1.0f, 0);
   bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A |
                  BGFX_STATE_WRITE_Z | BGFX_STATE_DEPTH_TEST_LESS |
-                 BGFX_STATE_MSAA
-
-  );
-
-  bgfx::submit(kSceneView, _terrainProgramHeight);
+                 BGFX_STATE_MSAA);
 }
 
 // ──────────────────────────────────────────────────────
