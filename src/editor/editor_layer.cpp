@@ -13,9 +13,11 @@
 #include "subsystem/subsystem_manager.h"
 #include "subsystem/window_manager.h"
 #include "tools/imgui_utils.h"
+#include "editor/resource/theme/dark_theme.hpp"
 
 #include <backends/imgui_impl_sdl2.h>
-#include "editor/vendor/imgui_impl_bgfx.h"
+#include "editor/vendor/imgui/imgui_impl_bgfx.h"
+#include "imgui_internal.h"
 
 #include <SDL.h>
 #include <chrono>
@@ -39,14 +41,16 @@ void EditorLayer::Initialize() {
   IMGUI_CHECKVERSION();
   ImGui::CreateContext();
   auto& io = ImGui::GetIO();
+  io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;  // Enable Docking
 
   window_flags_ = ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoDocking |
-                 ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse |
-                 ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
-                 ImGuiWindowFlags_NoBringToFrontOnFocus |
-                 ImGuiWindowFlags_NoNavFocus | ImGuiWindowFlags_NoBackground;
+                  ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse |
+                  ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
+                  ImGuiWindowFlags_NoBringToFrontOnFocus |
+                  ImGuiWindowFlags_NoNavFocus | ImGuiWindowFlags_NoBackground;
 
-  ImGui::StyleColorsDark();
+  Theme::Initialize();
+  // ImGui::StyleColorsDark();
 
   // backends
   ImGui_Implbgfx_Init(ViewID::UI);
@@ -159,16 +163,17 @@ void EditorLayer::HandleInput(Key key) {
 
 void EditorLayer::DockSpace() {
   ImGuiViewport* vp = ImGui::GetMainViewport();
-  ImGui::SetNextWindowViewport(vp->ID);
   ImGui::SetNextWindowPos(vp->Pos);
   ImGui::SetNextWindowSize(vp->Size);
+  ImGui::SetNextWindowViewport(vp->ID);
+
   ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
   ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
   ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
 
   ImGui::Begin("Dockspace", nullptr, window_flags_);
-  ImGuiID dockID = ImGui::GetID("Dockspace");
-  ImGui::DockSpace(dockID, ImVec2(0, 0),
+  ImGuiID root_id_ = ImGui::GetID("Dockspace");
+  ImGui::DockSpace(root_id_, ImVec2(0, 0),
                    ImGuiDockNodeFlags_PassthruCentralNode);
   ImGui::End();
 
@@ -176,9 +181,34 @@ void EditorLayer::DockSpace() {
 }
 
 void EditorLayer::RenderUI() {
-  // full window
-  ImGui::SetNextWindowPos(ImVec2(0, 0));
-  ImGui::SetNextWindowSize(ImGui::GetIO().DisplaySize);
+
+  if (!built_layout_) {
+    // 1- remove old nodes
+    ImGuiID dock_id_ = ImGui::GetID("Dockspace");
+    ImGui::DockBuilderRemoveNode(dock_id_);
+    // 2- create nodes
+    ImGui::DockBuilderAddNode(dock_id_, ImGuiDockNodeFlags_None);
+    ImGui::DockBuilderSetNodeSize(dock_id_, ImGui::GetIO().DisplaySize);
+    // 3- split nodes
+    ImGuiID left_ = ImGui::DockBuilderSplitNode(dock_id_, ImGuiDir_Left, 0.20f,
+                                                nullptr, &dock_id_);
+    ImGuiID right_ = ImGui::DockBuilderSplitNode(dock_id_, ImGuiDir_Right,
+                                                 0.20f, nullptr, &dock_id_);
+    ImGuiID bottom_ = ImGui::DockBuilderSplitNode(dock_id_, ImGuiDir_Down,
+                                                  0.25f, nullptr, &dock_id_);
+    ImGuiID toolbar_node_ = ImGui::DockBuilderSplitNode(
+        dock_id_, ImGuiDir_Up, 0.05f, nullptr, &dock_id_);
+
+    // 4- dock windows by *name* into every node
+    ImGui::DockBuilderDockWindow("Toolbar", toolbar_node_);
+    ImGui::DockBuilderDockWindow("Hierarchy", left_);
+    ImGui::DockBuilderDockWindow("Inspector", right_);
+    ImGui::DockBuilderDockWindow("Scene", dock_id_);
+    ImGui::DockBuilderDockWindow("Console", bottom_);
+    ImGui::DockBuilderDockWindow("Camera", right_);
+    ImGui::DockBuilderFinish(dock_id_);
+    built_layout_ = true;
+  }
 
   DockSpace();
 
@@ -202,7 +232,9 @@ void EditorLayer::RenderUI() {
                                         quit_ = true;
                                         editor_exit_pressed();
                                       }};
+  ImGui::Begin("Toolbar");
   Components::Toolbar(cb);
+  ImGui::End();
 
   //--------------------------- LAYOUT ---------------------------------
   const ImVec2 avail = ImGui::GetContentRegionAvail();
@@ -217,23 +249,30 @@ void EditorLayer::RenderUI() {
   // -------- LEFT : hierarchy + assets -------------------------------------
   static std::vector<std::string> demoNames = {"Camera", "Terrain", "Sun",
                                                "Player"};
+  ImGui::Begin("Hierarchy");
   Components::HierarchyPanel(demoNames, "assets");
-  ImGui::SameLine();
+  ImGui::End();
 
   // -------- MIDDLE : game view --------------------------------------------
+  ImGui::Begin("Scene");
   Components::GameCanvas(is_game_started_, game_canvas_hovered_);
-  ImGui::SameLine();
+  ImGui::End();
 
   // -------- RIGHT : inspector ---------------------------------------------
   static std::vector<Components::Transform> demoTf(demoNames.size());
+  ImGui::Begin("Inspector");
   Components::Inspector(demoTf);
+  ImGui::End();
 
   //--------------------------- PANELS ------------------------------
+  ImGui::Begin("Console");
   Components::ConsolePanel();
-  ImGui::SameLine();
+  ImGui::End();
 
   // Camera Controls
+  ImGui::Begin("Camera");
   Components::CameraControls();
+  ImGui::End();
 }
 
 void EditorLayer::BeginImGuiFrame(SDL_Window* window) {

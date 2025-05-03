@@ -40,6 +40,7 @@ private:
   int last_selected_entity_ = -1;
 
   ImGuiWindowFlags window_flags_;
+  bool built_layout_ = false; // guard for BuildDefaultLayout()
 
   // singleton pointer
   static EditorLayer* s_instance_;

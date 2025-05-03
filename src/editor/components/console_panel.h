@@ -9,19 +9,19 @@
 namespace Components {
 
 inline void ConsolePanel() {
+  ImGui::PushStyleVar(ImGuiStyleVar_ChildBorderSize, 0.0f);
   ImGui::BeginChild("LogRegion", ImVec2(0, 0), true);
-  ImGui::Text("Debug Log");
-  ImGui::Separator();
+  ImGui::Text("Console");
 
-  ImGui::BeginChild("LogScrollingRegion", ImVec2(0, 0), true,
+  ImGui::BeginChild("LogScrollingRegion", ImVec2(0, 0), false,
                     ImGuiWindowFlags_HorizontalScrollbar);
   const auto& log_entries = Logger::getInstance().GetLogEntries();
   for (const auto& line : log_entries) {
     ImGui::TextUnformatted(line.c_str());
   }
   ImGui::EndChild();
-
   ImGui::EndChild();
+  ImGui::PopStyleVar();
 }
 
 }  // namespace Components

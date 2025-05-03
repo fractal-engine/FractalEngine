@@ -29,9 +29,7 @@ inline void Toolbar(const ToolbarCallbacks& cb) {
   ImGui::SameLine();
   if (ImGui::Button("Quit") && cb.onQuit)
     cb.onQuit();
-  ImGui::Separator();
 }
-
 }  // namespace Components
 
 #endif  // TOOLBAR_H

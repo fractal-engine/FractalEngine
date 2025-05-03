@@ -2,7 +2,7 @@ set_languages("c++20")
 add_cxxflags("/Zc:__cplusplus")
 add_cxxflags("/Zc:preprocessor")
 add_requires("ftxui", "boost", "libsdl2", "libsdl2_ttf", "portaudio", "glm")
-add_requires("imgui 1.91.8-docking", { configs = { sdl2 = true, sdl2_renderer = true } })
+add_requires("imgui 1.91.8-docking", { configs = { sdl2 = true, sdl2_renderer = true, docking = true } })
 
 if is_mode("debug") then
     add_defines("BX_CONFIG_DEBUG=1")
@@ -41,7 +41,7 @@ target("fractal")
     add_files("src/tools/*.cpp")  -- Add ImGuiBackend, BGFX drivers
     add_files("src/audio/*.cpp")
     add_files("src/scene/*.cpp")
-    add_files("src/editor/vendor/imgui_impl_bgfx.cpp")
+    add_files("src/editor/vendor/imgui/imgui_impl_bgfx.cpp")
     add_files("src/shaders/**.sc|varying.def.sc|varying_imgui.def.sc|varying_sun.def.sc|varying_skybox.def.sc||includes/**.sc", {rule = "bgfx_shaderc"}) --exclude any include files
     add_files("src/platform/platform_utils.cpp")
 
@@ -77,8 +77,9 @@ target("fractal")
 
     after_build(function (target)
         os.cp("assets/shaders/**", path.join(target:targetdir(), "assets/shaders"))
-        os.cp("audio_lib", target:targetdir()) -- Copy audio folder to build directory
-        os.cp("src/editor/resource/NotoSansMono_Regular.ttf", target:targetdir())
+        os.cp("audio_lib", target:targetdir())
+        os.cp("src/editor/resource/fonts/NotoSansMono_Regular.ttf", target:targetdir())
+        os.cp("src/editor/resource/fonts/fa-solid-900.ttf", target:targetdir())
     end)
 -- Define 'display' option
 option("display")
