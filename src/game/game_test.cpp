@@ -231,19 +231,18 @@ void GameTest::Render() {
     bgfx::setIndexBuffer(_skyIbh);
 
     // Compute spherical sun direction (realistic arc)
-    const float angle = _cycleTime;  // angle over time
+    const float phi = _cycleTime;         // full rotation over time (azimuth)
+    const float theta = bx::kPi * 0.25f;  // fixed elevation (45° above horizon)
 
-    const float theta =
-        bx::kPi * 0.5f * sinf(angle);  // vertical arc (−π/2 to π/2)
-    const float phi = angle;           // azimuthal spin
-
-    const float x = cosf(theta) * cosf(phi);
-    const float y = sinf(theta);
-    const float z = cosf(theta) * sinf(phi);
+    // Proper sun path using spherical coordinates
+    const float x = cosf(theta) * sinf(phi);  // left-right (X)
+    const float y = sinf(theta);              // up-down (Y, fixed)
+    const float z = cosf(theta) * cosf(phi);  // depth (Z)
 
     const bx::Vec3 sunDir = bx::normalize(bx::Vec3(x, y, z));
 
-    const float dir[4] = {sunDir.x, sunDir.y, sunDir.z, 0.0f};
+
+    float dir[4] = {sunDir.x, sunDir.y, sunDir.z, 0.0f};
 
     float time[4] = {_cycleTime, 0, 0, 0};
 
