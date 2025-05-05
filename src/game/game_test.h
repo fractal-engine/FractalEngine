@@ -3,8 +3,9 @@
 
 #include <bgfx/bgfx.h>
 #include <vector>
-#include "game/game_base.h"
 #include "editor/components/orbit_camera.h"
+#include "editor/systems/camera_system.h"
+#include "game/game_base.h"
 
 // ──────────────────────────────────────────────────────
 //  Vertex layout used by terrain + sun billboard
@@ -32,6 +33,7 @@ public:
 
   // simple camera function call
   OrbitCamera camera;
+  CameraSystem cameraSystem;
 
   int canvasViewportW = 800;
   int canvasViewportH = 600;
@@ -65,7 +67,6 @@ private:
   bgfx::UniformHandle _viewInvUniform = BGFX_INVALID_HANDLE;
   bgfx::UniformHandle _projInvUniform = BGFX_INVALID_HANDLE;
 
-
   float _cycleTime = 0.0f;  // day-night timerm keep it at 0
 
   // colour / param arrays passed to both sky & sun shaders
@@ -74,7 +75,6 @@ private:
 
   // small helpers that build vertex / index buffers
   void createSkyboxBuffers();
-
 
   // world transform for the terrain
   float world_matrix[16];

@@ -63,20 +63,21 @@ void EditorLayer::Run() {
     /* 1 - Clear background first */
     bgfx::setViewClear(ViewID::UI_BACKGROUND, BGFX_CLEAR_COLOR, 0x1e1e1eff,
                        1.0f, 0);
-    bgfx::touch(ViewID::UI_BACKGROUND);  // Ensure background view is processed
+    bgfx::touch(ViewID::UI_BACKGROUND);
 
-    /* 2 - Configure and prepare scene framebuffer */
-    auto* graphics = static_cast<GraphicsRenderer*>(renderer_.get());
-    graphics->PrepareFrame();  // This sets up the scene framebuffer view
-
-    /* 3 - Let game render into scene framebuffer */
-    if (is_game_started_) {
-      SubsystemManager::GetGameManager()->Render();  // Renders to ViewID::SCENE
-    }
-
-    /* 4 - start ImGui frame, samples from scene texture */
+    /* 2 - start ImGui frame so we get actual canvasViewportW/H */
     BeginImGuiFrame(WindowManager::GetWindow());
-    RenderUI();  // includes GameCanvas which samples scene texture
+    RenderUI();
+
+    /* 3 - Configure/prepare scene framebuffer with updated size */
+    auto* graphics = static_cast<GraphicsRenderer*>(renderer_.get());
+    graphics->PrepareFrame();
+
+    /* 4 - Let game render into correctly‐sized FBO */
+    if (is_game_started_) {
+      SubsystemManager::GetGameManager()
+          ->Render();  // Render sky->SCENE, terrain->SCENE_N(0)
+    }
 
     /* 5 - Submit ImGui to UI view */
     ImGui::Render();

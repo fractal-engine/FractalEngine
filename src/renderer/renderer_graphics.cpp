@@ -133,28 +133,27 @@ void GraphicsRenderer::SetSize(int w, int h) {
 
 // Set up per-frame and clear operations
 void GraphicsRenderer::PrepareFrame() {
-  // Get current viewport dimensions (from ImGui canvas)
+  // Get current viewport dimensions (taken from ImGui canvas)
   const uint16_t fbw = canvasViewportW ? canvasViewportW : 1;
   const uint16_t fbh = canvasViewportH ? canvasViewportH : 1;
 
-  // Create/recreate framebuffers if size changed
+  // create framebuffers if size changed
   if (fbw != lastFramebufferWidth_ || fbh != lastFramebufferHeight_) {
     CreateFramebuffers(fbw, fbh);
   }
 
-  // set up scene view with clear values and framebuffer
+  // clear once for view 1 (SCENE)
   bgfx::setViewClear(ViewID::SCENE, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH,
                      0x303030ff, 1.0f, 0);
+
+  // bind both view 1 and view 2 to the same offscreen FBO
+  // view 1:
   bgfx::setViewRect(ViewID::SCENE, 0, 0, fbw, fbh);
   bgfx::setViewFrameBuffer(ViewID::SCENE, scene_framebuffer_);
+  // view 2:
+  bgfx::setViewRect(ViewID::SCENE_N(1), 0, 0, fbw, fbh);
+  bgfx::setViewFrameBuffer(ViewID::SCENE_N(1), scene_framebuffer_);
 
-  // Bind extra passes (SCENE_N) to the scene_framebuffer_
-  for (uint8_t v = ViewID::SCENE_N(0); v < ViewID::UI_BACKGROUND; ++v) {
-    bgfx::setViewRect(v, 0, 0, fbw, fbh);
-    bgfx::setViewFrameBuffer(v, scene_framebuffer_);
-  }
-
-  // debug
   if (!bgfx::isValid(scene_framebuffer_)) {
     Logger::getInstance().Log(LogLevel::Error,
                               "Scene framebuffer is invalid in PrepareFrame!");

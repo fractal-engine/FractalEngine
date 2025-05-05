@@ -49,7 +49,9 @@ static void initLayouts() {
 //  GameTest ctor / dtor
 // ──────────────────────────────────────────────────────
 GameTest::GameTest()
-    : _terrainProgramHeight(BGFX_INVALID_HANDLE),
+    : camera(),
+      cameraSystem(&camera),
+      _terrainProgramHeight(BGFX_INVALID_HANDLE),
       _heightUniform(BGFX_INVALID_HANDLE),
       _heightTexture(BGFX_INVALID_HANDLE),
       _lightDirUniform(BGFX_INVALID_HANDLE),
@@ -74,6 +76,11 @@ GameTest::~GameTest() = default;
 // ──────────────────────────────────────────────────────
 void GameTest::Init() {
   initLayouts();
+
+  float terrainCenter[3] = {77.5f, 0.0f, 77.5f};
+  camera.setTarget(terrainCenter);
+  camera.setPitch(0.4f);
+  camera.setYaw(0.75f);
 
   auto& shaderMgr = *SubsystemManager::GetShaderManager();
 
@@ -129,6 +136,11 @@ void GameTest::Init() {
       terrainIndices.push_back(i + grid);
     }
 
+  std::string message =
+      "Terrain indices: " + std::to_string(terrainIndices.size()) +
+      ", vertices: " + std::to_string(terrainVertices.size());
+  Logger::getInstance().Log(LogLevel::Info, message);
+
   _terrainVbh = bgfx::createVertexBuffer(
       bgfx::copy(terrainVertices.data(),
                  terrainVertices.size() * sizeof(PosTexCoord0Vertex)),
@@ -169,16 +181,7 @@ void GameTest::createSkyboxBuffers() {
 void GameTest::Update() {
 
   // --- Camera Input Handling ---
-  const Uint8* keys = SDL_GetKeyboardState(nullptr);
-
-  if (keys[SDL_SCANCODE_W])
-    camera.pan(0.0f, 0.10f);
-  if (keys[SDL_SCANCODE_S])
-    camera.pan(0.0f, -0.10f);
-  if (keys[SDL_SCANCODE_A])
-    camera.pan(-0.10f, 0.0f);
-  if (keys[SDL_SCANCODE_D])
-    camera.pan(0.10f, 0.0f);
+  cameraSystem.UpdateFromKeyboard();
 
   /* -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- - */
   if (!bgfx::isValid(_terrainProgramHeight))
@@ -206,14 +209,19 @@ void GameTest::Render() {
 
   // --- Camera view and projection ---
   float view[16], proj[16];
-  camera.getViewMatrix(view);
+  cameraSystem.GetViewMatrix(view);
   float aspect = canvasViewportW > 0 && canvasViewportH > 0
                      ? float(canvasViewportW) / canvasViewportH
                      : 1.0f;
-  camera.getProjectionMatrix(proj, aspect, 60.0f);
+  cameraSystem.GetProjectionMatrix(proj, aspect, 60.0f);
 
-  constexpr uint8_t kSceneView = ViewID::SCENE;
-  constexpr uint8_t kSkyView = ViewID::SCENE_N(0);  // shared FBO
+  // render sky into SCENE (view 1) and terrain into SCENE_N(1) (view 2):
+  constexpr uint8_t skyView = ViewID::SCENE;
+  constexpr uint8_t terrainView = ViewID::SCENE_N(1);
+
+  // upload camera matrices into both views:
+  bgfx::setViewTransform(skyView, view, proj);
+  bgfx::setViewTransform(terrainView, view, proj);
 
   // --- SKYBOX (procedural full-screen quad) ---
   if (bgfx::isValid(_skyProgram)) {
@@ -224,7 +232,7 @@ void GameTest::Render() {
     // View & proj are identity for screen-space quad
     float identity[16];
     bx::mtxIdentity(identity);
-    bgfx::setViewTransform(kSkyView, identity, identity);
+    bgfx::setTransform(identity);
 
     // Submit fullscreen quad
     bgfx::setVertexBuffer(0, _skyVbh);
@@ -240,7 +248,6 @@ void GameTest::Render() {
     const float z = cosf(theta) * cosf(phi);  // depth (Z)
 
     const bx::Vec3 sunDir = bx::normalize(bx::Vec3(x, y, z));
-
 
     float dir[4] = {sunDir.x, sunDir.y, sunDir.z, 0.0f};
 
@@ -266,34 +273,37 @@ void GameTest::Render() {
     bgfx::setUniform(_sunLumUniform, _sunColorArray);
     bgfx::setUniform(_paramsUniform, _parametersArray);
 
-    // Clear sky view (view 1) with black and depth 1.0
-
-    bgfx::setViewClear(kSkyView, BGFX_CLEAR_COLOR, 0x000000ff, 1.0f, 0);
     bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A |
                    BGFX_STATE_DEPTH_TEST_ALWAYS);
 
-    bgfx::submit(kSkyView, _skyProgram);
+    /* std::string skyboxMessage =
+        "Submitting SKYBOX to view " + std::to_string(skyView);
+    Logger::getInstance().Log(LogLevel::Info, skyboxMessage); */
+    bgfx::submit(skyView, _skyProgram);
   }
 
   // --- TERRAIN ---
   bx::mtxScale(world_matrix, 5.f, 5.f, 5.f);
-  bgfx::setViewTransform(kSceneView, view, proj);
   bgfx::setTransform(world_matrix);
   bgfx::setVertexBuffer(0, _terrainVbh);
   bgfx::setIndexBuffer(_terrainIbh);
   bgfx::setTexture(0, _heightUniform, _heightTexture);
 
+  // light direction
   const float lightDir3[3] = {0.3f, 1.f, 0.4f};
   float tmp[4] = {lightDir3[0] * 2.5f, lightDir3[1] * 2.5f, lightDir3[2] * 2.5f,
                   0};
   bgfx::setUniform(_lightDirUniform, tmp);
 
-  // Clear scene view (view 0) with depth only
-
-  bgfx::setViewClear(kSceneView, BGFX_CLEAR_DEPTH, 0, 1.0f, 0);
   bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A |
                  BGFX_STATE_WRITE_Z | BGFX_STATE_DEPTH_TEST_LESS |
                  BGFX_STATE_MSAA);
+
+  /* Logger::getInstance().Log(LogLevel::Debug, "Submitting terrain draw call");
+  std::string terrainMessage =
+      "Submitting TERRAIN to view " + std::to_string(terrainView);
+  Logger::getInstance().Log(LogLevel::Info, terrainMessage); */
+  bgfx::submit(terrainView, _terrainProgramHeight);
 }
 
 // ──────────────────────────────────────────────────────
