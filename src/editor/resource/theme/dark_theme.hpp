@@ -4,10 +4,14 @@
 #include "imgui.h"
 
 namespace Theme {
+inline ImFont* consoleFont = nullptr;  // Global font for console
 
 inline void LoadFonts(ImGuiIO& io, float fontSize = 16.0f) {
   static const ImWchar icon_ranges[] = {ICON_MIN_FA, ICON_MAX_FA, 0};
 
+  // TODO: add font config with correct size, fix icon config
+
+  // UI font config
   ImFontConfig icons_config;
   icons_config.MergeMode = true;
   icons_config.PixelSnapH = true;
@@ -15,10 +19,20 @@ inline void LoadFonts(ImGuiIO& io, float fontSize = 16.0f) {
 
   // Load primary font
   io.Fonts->AddFontFromFileTTF("NotoSansMono_Regular.ttf", fontSize);
-
-  // Load FontAwesome font
   io.Fonts->AddFontFromFileTTF("fa-solid-900.ttf", fontSize, &icons_config,
                                icon_ranges);
+
+  // console font config
+  ImFontConfig console_config;
+  console_config.SizePixels = 12.0f;
+  console_config.OversampleH = 1;
+  console_config.OversampleV = 1;
+  console_config.PixelSnapH = true;
+  console_config.RasterizerMultiply = 1.0f;
+
+  // load font for console
+  consoleFont = io.Fonts->AddFontFromFileTTF("TerminusTTF-4.49.3.ttf", 12.0f,
+                                             &console_config);
 }
 
 void ApplyStyle() {
@@ -65,7 +79,8 @@ void ApplyStyle() {
   colors[ImGuiCol_ScrollbarGrab] = ImVec4(0.30f, 0.30f, 0.30f, 0.60f);
   colors[ImGuiCol_ScrollbarGrabHovered] = ImVec4(0.45f, 0.45f, 0.45f, 0.80f);
   colors[ImGuiCol_ScrollbarGrabActive] = ImVec4(0.60f, 0.60f, 0.60f, 1.00f);
-  colors[ImGuiCol_Border] = ImVec4(0.08f, 0.08f, 0.08f, 1.00f);  // inner borders
+  colors[ImGuiCol_Border] =
+      ImVec4(0.08f, 0.08f, 0.08f, 1.00f);  // inner borders
   colors[ImGuiCol_BorderShadow] = ImVec4(0, 0, 0, 0);
 
   // === Style Tuning ===

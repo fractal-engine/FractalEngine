@@ -80,6 +80,7 @@ target("fractal")
         os.cp("audio_lib", target:targetdir())
         os.cp("src/editor/resource/fonts/NotoSansMono_Regular.ttf", target:targetdir())
         os.cp("src/editor/resource/fonts/fa-solid-900.ttf", target:targetdir())
+        os.cp("src/editor/resource/fonts/TerminusTTF-4.49.3.ttf", target:targetdir())
     end)
 -- Define 'display' option
 option("display")
