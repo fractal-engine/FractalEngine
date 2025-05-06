@@ -9,7 +9,7 @@
 #include "renderer/renderer_graphics.h"
 #include "renderer/shaders/shader_utils.h"
 #include "subsystem/subsystem_manager.h"
-
+#include "tools/texture_utils.h"
 // ──────────────────────────────────────────────────────
 //  Vertex layouts
 // ──────────────────────────────────────────────────────
@@ -65,6 +65,9 @@ GameTest::GameTest()
       _sunDirUniform(BGFX_INVALID_HANDLE),
       _sunLumUniform(BGFX_INVALID_HANDLE),
       _paramsUniform(BGFX_INVALID_HANDLE),
+      _s_diffuseUniform(BGFX_INVALID_HANDLE),
+      _s_ormUniform(BGFX_INVALID_HANDLE),
+      _s_normalUniform(BGFX_INVALID_HANDLE),
       _cycleTime(0.f) {
   bx::mtxIdentity(world_matrix);
 }
@@ -106,6 +109,19 @@ void GameTest::Init() {
   _paramsUniform = bgfx::createUniform("u_parameters", bgfx::UniformType::Vec4);
   _viewInvUniform = bgfx::createUniform("u_viewInv", bgfx::UniformType::Mat4);
   _projInvUniform = bgfx::createUniform("u_projInv", bgfx::UniformType::Mat4);
+
+  _s_diffuseUniform =
+      bgfx::createUniform("s_diffuse", bgfx::UniformType::Sampler);
+  _s_ormUniform = bgfx::createUniform("s_orm", bgfx::UniformType::Sampler);
+  _s_normalUniform =
+      bgfx::createUniform("s_normal", bgfx::UniformType::Sampler);
+
+  // Load terrain textures
+  terrainDiffuse =
+      TextureUtils::LoadTexture("assets/textures/terrain/basecolor.tga");
+  terrainORM = TextureUtils::LoadTexture("assets/textures/terrain/ORM.tga");
+  terrainNormal =
+      TextureUtils::LoadTexture("assets/textures/terrain/Normal.tga");
 
   // --------------- TERRAIN GENERATION ------------------
   const uint16_t sz =
@@ -256,9 +272,8 @@ void GameTest::Render() {
     bgfx::setIndexBuffer(_skyIbh);
 
     // Compute spherical sun direction (realistic arc)
-    const float phi = _cycleTime;  // full rotation over time (azimuth)
-    const float theta =
-        bx::kPi * 0.25f;  // fixed elevation (45° above horizon)
+    const float phi = _cycleTime;         // full rotation over time (azimuth)
+    const float theta = bx::kPi * 0.25f;  // fixed elevation (45° above horizon)
 
     // Proper sun path using spherical coordinates
     const float x = cosf(theta) * sinf(phi);  // left-right (X)
@@ -281,7 +296,7 @@ void GameTest::Render() {
 
     _sunColorArray[3] = 0.0f;
 
-    _parametersArray[0] = 0.008f;        // Sun size
+    _parametersArray[0] = 0.008f;      // Sun size
     _parametersArray[1] = 3.0f;        // Bloom factor
     _parametersArray[2] = 1.0f;        // Exposure (unused)
     _parametersArray[3] = _cycleTime;  // Time
@@ -308,6 +323,11 @@ void GameTest::Render() {
   bgfx::setVertexBuffer(0, _terrainVbh);
   bgfx::setIndexBuffer(_terrainIbh);
   bgfx::setTexture(0, _heightUniform, _heightTexture);
+
+  // Load Textures
+  bgfx::setTexture(0, _s_diffuseUniform, terrainDiffuse);
+  bgfx::setTexture(1, _s_ormUniform, terrainORM);
+  bgfx::setTexture(2, _s_normalUniform, terrainNormal);
 
   // light direction
   const float lightDir3[3] = {0.3f, 1.f, 0.4f};
@@ -352,6 +372,12 @@ void GameTest::Shutdown() {
   destroy(_projInvUniform);
   destroy(_terrainVbh);
   destroy(_terrainIbh);
+  destroy(terrainDiffuse);
+  destroy(terrainORM);
+  destroy(terrainNormal);
+  destroy(_s_diffuseUniform);
+  destroy(_s_ormUniform);
+  destroy(_s_normalUniform);
   destroy(_skyVbh);
   destroy(_skyIbh);
 }

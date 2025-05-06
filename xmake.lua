@@ -79,6 +79,9 @@ target("fractal")
         os.cp("assets/shaders/**", path.join(target:targetdir(), "assets/shaders"))
         os.cp("audio_lib", target:targetdir()) -- Copy audio folder to build directory
         os.cp("src/editor/resource/NotoSansMono_Regular.ttf", target:targetdir())
+        os.cp("src/textures", path.join(target:targetdir(), "assets"))
+
+
     end)
 -- Define 'display' option
 option("display")

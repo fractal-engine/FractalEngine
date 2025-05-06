@@ -42,7 +42,14 @@ private:
   // ───── Terrain
   bgfx::ProgramHandle _terrainProgramHeight = BGFX_INVALID_HANDLE;
   bgfx::UniformHandle _heightUniform = BGFX_INVALID_HANDLE;
+
   bgfx::TextureHandle _heightTexture = BGFX_INVALID_HANDLE;
+  bgfx::TextureHandle terrainDiffuse = BGFX_INVALID_HANDLE;
+  bgfx::TextureHandle terrainORM = BGFX_INVALID_HANDLE;
+  bgfx::TextureHandle terrainNormal = BGFX_INVALID_HANDLE;
+
+
+
   bgfx::UniformHandle _lightDirUniform = BGFX_INVALID_HANDLE;
 
   bgfx::VertexBufferHandle _terrainVbh = BGFX_INVALID_HANDLE;
@@ -66,6 +73,13 @@ private:
   // New skybox uniforms
   bgfx::UniformHandle _viewInvUniform = BGFX_INVALID_HANDLE;
   bgfx::UniformHandle _projInvUniform = BGFX_INVALID_HANDLE;
+
+  // Texture Uniforms
+
+  bgfx::UniformHandle _s_diffuseUniform = BGFX_INVALID_HANDLE;
+  bgfx::UniformHandle _s_ormUniform = BGFX_INVALID_HANDLE;
+  bgfx::UniformHandle _s_normalUniform = BGFX_INVALID_HANDLE;
+
 
   float _cycleTime = 0.0f;  // day-night timerm keep it at 0
 
