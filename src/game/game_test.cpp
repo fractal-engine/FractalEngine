@@ -107,44 +107,61 @@ void GameTest::Init() {
   _viewInvUniform = bgfx::createUniform("u_viewInv", bgfx::UniformType::Mat4);
   _projInvUniform = bgfx::createUniform("u_projInv", bgfx::UniformType::Mat4);
 
-  // height map (should be 32×32 sine-wave so we can still see animation)
-  const uint16_t sz = 32;
+  // --------------- TERRAIN GENERATION ------------------
+  const uint16_t sz =
+      128;  // Increase terrain resolution, remember to update in Update()
   std::vector<uint8_t> hdata(sz * sz);
-  for (int y = 0; y < sz; ++y)
-    for (int x = 0; x < sz; ++x)
-      hdata[y * sz + x] = uint8_t(127 + 127 * sinf(x * 0.2f));
 
+  for (int y = 0; y < sz; ++y) {
+    for (int x = 0; x < sz; ++x) {
+      float nx = (x - sz / 2.0f) / (sz / 2.0f);
+      float ny = (y - sz / 2.0f) / (sz / 2.0f);
+
+      // Canyon depth carved along X
+      float canyon =
+          1.0f - expf(-10.0f * nx * nx);  // deep in center, flat on sides
+
+      // Combine with sine wave for texture
+      float height = (sinf(x * 0.1f) + cosf(y * 0.1f)) * 0.5f;
+      height *= canyon;
+
+      hdata[y * sz + x] = uint8_t(127 + 127 * height);
+    }
+  }
+
+  // Send to GPU as heightmap texture
   _heightTexture =
       bgfx::createTexture2D(sz, sz, false, 1, bgfx::TextureFormat::R8, 0,
                             bgfx::copy(hdata.data(), hdata.size()));
 
-  // terrain mesh
-  const uint16_t grid = 32;
-  for (uint16_t y = 0; y < grid; ++y)
-    for (uint16_t x = 0; x < grid; ++x)
-      terrainVertices.push_back({float(x), 0.f, float(y), float(x) / (grid - 1),
-                                 float(y) / (grid - 1)});
+  // Rebuild terrain mesh grid
+  terrainVertices.clear();
+  terrainIndices.clear();
 
-  for (uint16_t y = 0; y < grid - 1; ++y)
-    for (uint16_t x = 0; x < grid - 1; ++x) {
-      uint16_t i = y * grid + x;
+  for (uint16_t y = 0; y < sz; ++y) {
+    for (uint16_t x = 0; x < sz; ++x) {
+      terrainVertices.push_back(
+          {float(x), 0.f, float(y), float(x) / (sz - 1), float(y) / (sz - 1)});
+    }
+  }
+
+  for (uint16_t y = 0; y < sz - 1; ++y) {
+    for (uint16_t x = 0; x < sz - 1; ++x) {
+      uint16_t i = y * sz + x;
       terrainIndices.push_back(i);
       terrainIndices.push_back(i + 1);
-      terrainIndices.push_back(i + grid);
+      terrainIndices.push_back(i + sz);
       terrainIndices.push_back(i + 1);
-      terrainIndices.push_back(i + grid + 1);
-      terrainIndices.push_back(i + grid);
+      terrainIndices.push_back(i + sz + 1);
+      terrainIndices.push_back(i + sz);
     }
-
-  std::string message =
-      "Terrain indices: " + std::to_string(terrainIndices.size()) +
-      ", vertices: " + std::to_string(terrainVertices.size());
-  Logger::getInstance().Log(LogLevel::Info, message);
-
+  }
+  // recreate our buffers after pushing the vertices
   _terrainVbh = bgfx::createVertexBuffer(
       bgfx::copy(terrainVertices.data(),
                  terrainVertices.size() * sizeof(PosTexCoord0Vertex)),
       PosTexCoord0Vertex::layout);
+
   _terrainIbh = bgfx::createIndexBuffer(bgfx::copy(
       terrainIndices.data(), terrainIndices.size() * sizeof(uint16_t)));
 
@@ -188,9 +205,9 @@ void GameTest::Update() {
     return;
 
   // animate height map & day/night timer
-  _cycleTime += 0.01f;
+  _cycleTime += 0.001f;
 
-  const uint16_t sz = 32;
+  const uint16_t sz = 128;
   std::vector<uint8_t> h(sz * sz);
   for (int y = 0; y < sz; ++y)
     for (int x = 0; x < sz; ++x)
@@ -239,8 +256,9 @@ void GameTest::Render() {
     bgfx::setIndexBuffer(_skyIbh);
 
     // Compute spherical sun direction (realistic arc)
-    const float phi = _cycleTime;         // full rotation over time (azimuth)
-    const float theta = bx::kPi * 0.25f;  // fixed elevation (45° above horizon)
+    const float phi = _cycleTime;  // full rotation over time (azimuth)
+    const float theta =
+        bx::kPi * 0.25f;  // fixed elevation (45° above horizon)
 
     // Proper sun path using spherical coordinates
     const float x = cosf(theta) * sinf(phi);  // left-right (X)
@@ -253,7 +271,9 @@ void GameTest::Render() {
 
     float time[4] = {_cycleTime, 0, 0, 0};
 
-    float t = (sinf(_cycleTime) + 1.0f) * 0.5f;
+    // Clamp between 0 and 1 — 0 when sun is below, 1 when fully overhead
+    float t = bx::clamp(sunDir.y * 0.5f + 0.5f, 0.0f, 1.0f);
+
     // Soften sun color range
     _sunColorArray[0] = bx::lerp(0.6f, 2.0f, t);
     _sunColorArray[1] = bx::lerp(0.4f, 1.2f, t);
@@ -261,7 +281,7 @@ void GameTest::Render() {
 
     _sunColorArray[3] = 0.0f;
 
-    _parametersArray[0] = 0.1f;        // Sun size
+    _parametersArray[0] = 0.08f;        // Sun size
     _parametersArray[1] = 1.0f;        // Bloom factor
     _parametersArray[2] = 1.0f;        // Exposure (unused)
     _parametersArray[3] = _cycleTime;  // Time

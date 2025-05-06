@@ -42,24 +42,26 @@ void main()
     float dist = 2.0 * (1.0 - dotSun);
     float size2 = u_parameters.x * u_parameters.x;
 
-    float sunDisk = smoothstep(0.0025, 0.0, dist - size2 * 0.5);
+    float sunDisk = smoothstep(0.0025, 0.0, dist - size2 * 0.2);
     float sunGlow = exp(-dist / (u_parameters.y * size2)) + sunDisk;
     float sunIntensity = saturate(sunGlow);
 
     float horizon = clamp(viewDir.y * 0.5 + 0.5, 0.0, 1.0);
-    float sunAmount = clamp(dotSun, 0.0, 1.0);
-    float dayFactor = (sin(u_parameters.w) + 1.0) * 0.5;
-
-    float elevation = clamp(viewDir.y, -1.0, 1.0);
-    float verticalBlend = smoothstep(-0.2, 0.5, elevation);
-
     float3 nightColor   = float3(0.02, 0.02, 0.08);
     float3 sunriseColor = float3(1.0, 0.4, 0.1);
     float3 dayColor     = float3(0.4, 0.7, 1.0);
 
+    float sunAmount = clamp(dot(viewDir, lightDir), 0.0, 1.0);
     float3 skyBlend = mix(sunriseColor, dayColor, pow(sunAmount, 1.5));
+
+    float dayFactor = smoothstep(-0.1, 0.1, lightDir.y);  // based on sun position only
     float3 timeSky  = mix(nightColor, skyBlend, dayFactor);
+
+    float elevation = clamp(viewDir.y, -1.0, 1.0);
+    float verticalBlend = smoothstep(-0.2, 0.5, elevation);
+
     float3 baseSky  = mix(nightColor, timeSky, verticalBlend);
+
 
     float2 cloudUV = viewDir.xy * 5.0 + float2(u_parameters.w * 0.1, u_parameters.w * 0.1);
     float cloudNoise = fbm(cloudUV);
@@ -67,7 +69,8 @@ void main()
 
     float3 color = mix(baseSky, float3(1.0, 1.0, 1.0), cloudMask * 0.4);
     color += sunIntensity * u_sunLuminance.xyz;
-    color *= mix(0.2, 1.0, dayFactor); // Ambient brightening based on time
+    color *= mix(10.2, 1.5, dayFactor); // ambient light based on sun direction in dayfactor
+
 
     color = toGamma(color);
     gl_FragColor = vec4(color * horizon, 1.0);
