@@ -6,20 +6,26 @@
 namespace Theme {
 inline ImFont* consoleFont = nullptr;  // Global font for console
 
-inline void LoadFonts(ImGuiIO& io, float fontSize = 16.0f) {
+inline void LoadFonts(ImGuiIO& io) {
   static const ImWchar icon_ranges[] = {ICON_MIN_FA, ICON_MAX_FA, 0};
 
-  // TODO: add font config with correct size, fix icon config
+  // main font config
+  ImFontConfig main_font_config;
+  main_font_config.MergeMode = false;
+  main_font_config.PixelSnapH = true;
+  main_font_config.SizePixels = 16.0f;      
+  main_font_config.OversampleH = 1;    
+  main_font_config.OversampleV = 1;
 
-  // UI font config
+  io.Fonts->AddFontFromFileTTF("NotoSansMono_Regular.ttf", 16.0f, &main_font_config);
+
+  // icons font config
   ImFontConfig icons_config;
   icons_config.MergeMode = true;
   icons_config.PixelSnapH = true;
-  icons_config.GlyphMinAdvanceX = fontSize;
+  icons_config.GlyphMinAdvanceX = 16.0f; 
 
-  // Load primary font
-  io.Fonts->AddFontFromFileTTF("NotoSansMono_Regular.ttf", fontSize);
-  io.Fonts->AddFontFromFileTTF("fa-solid-900.ttf", fontSize, &icons_config,
+  io.Fonts->AddFontFromFileTTF("fa-solid-900.ttf", 16.0f, &icons_config,
                                icon_ranges);
 
   // console font config
