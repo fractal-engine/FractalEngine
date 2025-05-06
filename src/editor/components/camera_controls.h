@@ -19,6 +19,7 @@ inline void CameraControls() {
 
     float pitch = cam.getPitch();
     float yaw = cam.getYaw();
+    float roll = cam.getRoll();
     float dist = cam.getDistance();
     float target[3];
     std::memcpy(target, cam.getTarget(), sizeof(target));
@@ -27,6 +28,8 @@ inline void CameraControls() {
       cam.setPitch(pitch);
     if (ImGui::SliderFloat("Yaw", &yaw, -bx::kPi, bx::kPi))
       cam.setYaw(yaw);
+    if (ImGui::SliderFloat("Roll", &roll, -bx::kPi, bx::kPi))
+      cam.setRoll(roll);
     if (ImGui::SliderFloat("Distance", &dist, 1.0f, 500.0f))
       cam.setDistance(dist);
     if (ImGui::SliderFloat3("Target", target, -200.0f, 200.0f))
@@ -36,6 +39,7 @@ inline void CameraControls() {
       cam.setDistance(100.0f);
       cam.setPitch(0.5f);
       cam.setYaw(0.0f);
+      cam.setRoll(0.0f);
       float resetTarget[3] = {32.0f, 0.0f, 32.0f};
       cam.setTarget(resetTarget);
     }

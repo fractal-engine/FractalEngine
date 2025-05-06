@@ -10,6 +10,7 @@ public:
       : m_distance(100.0f),
         m_pitch(0.5f),
         m_yaw(0.0f),
+        m_roll(0.0f),
         m_target{0.0f, 0.0f, 0.0f} {}
 
   void orbit(float dx, float dy) { // ORBIT
@@ -38,10 +39,30 @@ public:
     float eye[3];
     getPosition(eye);
 
-    bx::mtxLookAt(out, bx::Vec3{eye[0], eye[1], eye[2]},
+    // 1: Create basic view matrix from eye -> target
+    float view[16];
+    bx::mtxLookAt(view, bx::Vec3{eye[0], eye[1], eye[2]},
                   bx::Vec3{m_target[0], m_target[1], m_target[2]},
                   bx::Vec3{0.0f, 1.0f, 0.0f});
+
+    if (m_roll != 0.0f) {
+      // 2: Extract the rotation part of the view matrix
+      // Apply roll in camera local space (around forward Z)
+
+      float rollMtx[16];
+      bx::mtxIdentity(rollMtx);
+      bx::mtxRotateZ(rollMtx, m_roll);  // Roll around camera-local Z
+
+      // 3: Combine roll with view matrix
+      // This applies the roll as a twist around the forward axis
+      bx::mtxMul(out, rollMtx, view);
+    } else {
+      // No roll; copy base view matrix
+      bx::memCopy(out, view, sizeof(view));
+    }
   }
+
+
 
   void getProjectionMatrix(float* out, float aspect, float fov = 60.0f) const {
     bx::mtxProj(out, fov, aspect, 0.1f, 1000.0f,
@@ -63,11 +84,13 @@ public:
   float getDistance() const { return m_distance; }
   float getPitch() const { return m_pitch; }
   float getYaw() const { return m_yaw; }
+  float getRoll() const { return m_roll; }
   const float* getTarget() const { return m_target; }
 
   void setDistance(float d) { m_distance = d; }
   void setPitch(float p) { m_pitch = p; }
   void setYaw(float y) { m_yaw = y; }
+  void setRoll(float r) { m_roll = r; }
   void setTarget(const float* t) {
     m_target[0] = t[0];
     m_target[1] = t[1];
@@ -96,10 +119,11 @@ private:
     bx::store(out, pan);
   }
 
-
+  // Declare the camera parameters
   float m_distance;
   float m_pitch;
   float m_yaw;
+  float m_roll;
   float m_target[3];
 };
 
