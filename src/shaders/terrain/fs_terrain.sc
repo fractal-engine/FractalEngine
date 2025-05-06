@@ -6,6 +6,8 @@ SAMPLER2D(s_diffuse, 0);  // Texture unit 0
 SAMPLER2D(s_orm,     1);  // Texture unit 1
 SAMPLER2D(s_normal,  2);  // Texture unit 2
 
+uniform vec4 u_sunDirection; // Sun direction from C++
+
 void main()
 {
     vec2 uv = v_texcoord0;
@@ -15,12 +17,12 @@ void main()
     vec3 orm = texture2D(s_orm, uv).rgb;       // r = AO, g = Roughness, b = Metalness
     vec3 normalMap = texture2D(s_normal, uv).xyz * 2.0 - 1.0;  // unpack normal
 
-    // Simple lighting simulation (optional and basic)
+    // Simple lighting simulation (basic Lambertian reflectance)
     vec3 normal = normalize(normalMap);
-    vec3 lightDir = normalize(vec3(0.3, 1.0, 0.4)); // arbitrary sun direction
-    float light = max(dot(normal, lightDir), 0.0);
+    vec3 lightDir = normalize(u_sunDirection.xyz); // Use dynamic sun direction
+    float lightIntensity = max(dot(normal, lightDir), 0.0); // Lambertian lighting
 
-    vec3 color = albedo * light;
+    vec3 color = albedo * lightIntensity;
 
     gl_FragColor = vec4(color, 1.0);
 }

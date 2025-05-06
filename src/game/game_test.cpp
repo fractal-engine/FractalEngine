@@ -130,17 +130,34 @@ void GameTest::Init() {
 
   for (int y = 0; y < sz; ++y) {
     for (int x = 0; x < sz; ++x) {
+      // Normalize the coordinates to [-1, 1] for terrain manipulation
       float nx = (x - sz / 2.0f) / (sz / 2.0f);
       float ny = (y - sz / 2.0f) / (sz / 2.0f);
 
-      // Canyon depth carved along X
+      // Canyon-like depth carved along X (stronger canyon in the center)
+      // The canyon is deeper and steeper around the center, simulating the
+      // Grand Canyon
       float canyon =
-          1.0f - expf(-10.0f * nx * nx);  // deep in center, flat on sides
+          expf(-10.0f * nx * nx);  // Steep center, shallows out at the edges
+      canyon =
+          std::max(canyon, 0.2f);  // Ensure a minimum depth for visual realism
 
-      // Combine with sine wave for texture
+      // Combine with sine and cosine functions for undulating terrain (canyon
+      // ridges, mesas)
       float height = (sinf(x * 0.1f) + cosf(y * 0.1f)) * 0.5f;
+
+      // Simulate more varied terrain with the canyon effect
       height *= canyon;
 
+      // Add some noise or randomness for variation (representing erosion,
+      // randomness)
+      float noise =
+          (rand() % 100) / 100.0f;  // Random variation between 0.0 and 1.0
+      height +=
+          noise *
+          0.1f;  // Slight variation in height to make terrain less uniform
+
+      // Store the final height value in the heightmap (clamped to range)
       hdata[y * sz + x] = uint8_t(127 + 127 * height);
     }
   }
@@ -156,8 +173,11 @@ void GameTest::Init() {
 
   for (uint16_t y = 0; y < sz; ++y) {
     for (uint16_t x = 0; x < sz; ++x) {
-      terrainVertices.push_back(
-          {float(x), 0.f, float(y), float(x) / (sz - 1), float(y) / (sz - 1)});
+      // Use height from the texture (heightmap) to set vertex elevation
+      float height =
+          (hdata[y * sz + x] - 127) / 127.0f;  // Normalize the height
+      terrainVertices.push_back({float(x), height, float(y),
+                                 float(x) / (sz - 1), float(y) / (sz - 1)});
     }
   }
 
@@ -172,6 +192,7 @@ void GameTest::Init() {
       terrainIndices.push_back(i + sz);
     }
   }
+
   // recreate our buffers after pushing the vertices
   _terrainVbh = bgfx::createVertexBuffer(
       bgfx::copy(terrainVertices.data(),
@@ -329,11 +350,12 @@ void GameTest::Render() {
   bgfx::setTexture(1, _s_ormUniform, terrainORM);
   bgfx::setTexture(2, _s_normalUniform, terrainNormal);
 
-  // light direction
-  const float lightDir3[3] = {0.3f, 1.f, 0.4f};
+  // light direction from the sun to hit on terrain
+  const float lightDir3[3] = {0.3f, 1.f, 0.4f};  // Sun direction in world space
   float tmp[4] = {lightDir3[0] * 2.5f, lightDir3[1] * 2.5f, lightDir3[2] * 2.5f,
                   0};
-  bgfx::setUniform(_lightDirUniform, tmp);
+  bgfx::setUniform(_sunDirUniform, tmp);
+
 
   bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A |
                  BGFX_STATE_WRITE_Z | BGFX_STATE_DEPTH_TEST_LESS |

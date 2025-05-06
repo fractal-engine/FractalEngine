@@ -3,7 +3,11 @@ $output v_texcoord0, v_position
 
 #include "../common/common.sh"
 
+#ifndef S_HEIGHT_TEXTURE
+#define S_HEIGHT_TEXTURE
 SAMPLER2D(s_heightTexture, 0);
+
+#endif
 
 void main() {
     v_texcoord0 = a_texcoord0;
