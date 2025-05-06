@@ -205,7 +205,7 @@ void GameTest::Update() {
     return;
 
   // animate height map & day/night timer
-  _cycleTime += 0.001f;
+  _cycleTime += 0.01f;
 
   const uint16_t sz = 128;
   std::vector<uint8_t> h(sz * sz);
@@ -281,8 +281,8 @@ void GameTest::Render() {
 
     _sunColorArray[3] = 0.0f;
 
-    _parametersArray[0] = 0.08f;        // Sun size
-    _parametersArray[1] = 1.0f;        // Bloom factor
+    _parametersArray[0] = 0.008f;        // Sun size
+    _parametersArray[1] = 3.0f;        // Bloom factor
     _parametersArray[2] = 1.0f;        // Exposure (unused)
     _parametersArray[3] = _cycleTime;  // Time
 

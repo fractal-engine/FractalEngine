@@ -37,10 +37,10 @@ inline void CameraControls() {
 
     if (ImGui::Button("Reset Camera")) {
       cam.setDistance(100.0f);
-      cam.setPitch(0.5f);
-      cam.setYaw(0.0f);
-      cam.setRoll(0.0f);
-      float resetTarget[3] = {32.0f, 0.0f, 32.0f};
+      cam.setPitch(0.509f);
+      cam.setYaw(1.422f);
+      cam.setRoll(3.142f);
+      float resetTarget[3] = {32.0f, -147.826f, 200.0f};
       cam.setTarget(resetTarget);
     }
   }
