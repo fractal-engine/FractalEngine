@@ -156,7 +156,7 @@ private:
   SoundManager()
       : ambientStream(NULL),
         ambientInitialized(false),
-        ambientVolume(0.2f) {}  // Default ambient volume set to 20%
+        ambientVolume(0.5f) {}  // Default ambient volume 
   ~SoundManager() { terminate(); }
   SoundManager(const SoundManager&) = delete;
   SoundManager& operator=(const SoundManager&) = delete;
