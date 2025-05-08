@@ -4,6 +4,7 @@
 #include <memory>
 #include "editor/editor_base.h"
 #include "imgui.h"
+#include "imgui_internal.h"
 #include "renderer/renderer_graphics.h"
 #include "subsystem/input/key_map_sdl.h"
 
