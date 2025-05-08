@@ -42,8 +42,10 @@ void EditorLayer::Initialize() {
   IMGUI_CHECKVERSION();
   ImGui::CreateContext();
   Theme::Initialize();
-
   ImGuiIO& io = ImGui::GetIO();
+
+  io.IniFilename = nullptr;  // disable .ini settings
+
   io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;  // Enable Docking
   // io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;  // Enable Viewports
 
