@@ -21,7 +21,7 @@ bool WindowManager::Initialize(const char* title, int width, int height) {
 
   instance.window_ = SDL_CreateWindow(
       title, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, width, height,
-      SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
+      SDL_WINDOW_SHOWN | SDL_WINDOW_ALLOW_HIGHDPI);
   if (!instance.window_) {
     Logger::getInstance().Log(
         LogLevel::Error,

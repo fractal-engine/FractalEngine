@@ -2,7 +2,7 @@ set_languages("c++20")
 add_cxxflags("/Zc:__cplusplus")
 add_cxxflags("/Zc:preprocessor")
 add_requires("ftxui", "boost", "libsdl2", "libsdl2_ttf", "portaudio", "glm")
-add_requires("imgui 1.91.8-docking", { configs = { sdl2 = true, sdl2_renderer = true, docking = true } })
+add_requires("imgui 1.91.8-docking", { configs = { sdl2 = true, sdl2_renderer = true, docking = true} })
 
 if is_mode("debug") then
     add_defines("BX_CONFIG_DEBUG=1")
