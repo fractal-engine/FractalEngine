@@ -44,8 +44,6 @@ void EditorLayer::Initialize() {
   Theme::Initialize();
   ImGuiIO& io = ImGui::GetIO();
 
-  io.IniFilename = nullptr;  // disable .ini settings
-
   io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;  // Enable Docking
   // io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;  // Enable Viewports
 
@@ -189,16 +187,16 @@ void EditorLayer::Dockspace() {
   ImGui::SetNextWindowPos(viewport->Pos);
   ImGui::SetNextWindowSize(viewport->Size);
   ImGui::SetNextWindowViewport(viewport->ID);
-
   ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
   ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
   ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
 
-  ImGui::Begin("###Dockspace", nullptr, window_flags_);
-
-  ImGuiID dockspace_id = ImGui::GetID("Dockspace");
-  ImGui::DockSpace(dockspace_id, ImVec2(0, 0),
-                   ImGuiDockNodeFlags_PassthruCentralNode);
+  ImGui::Begin("Dockspace", nullptr, window_flags_);
+  {
+    ImGuiID dock_id_ = ImGui::GetID("Dockspace");
+    ImGui::DockSpace(dock_id_, ImVec2(0, 0),
+                     ImGuiDockNodeFlags_PassthruCentralNode);
+  }
 
   // main menu bar
   if (ImGui::BeginMenuBar()) {
@@ -270,7 +268,7 @@ void EditorLayer::RenderUI() {
                                         quit_ = true;
                                         editor_exit_pressed();
                                       }};
-  ImGui::Begin("Toolbar");
+  ImGui::Begin("Toolbar", nullptr);
   Components::Toolbar(cb);
   ImGui::End();
 
@@ -278,28 +276,28 @@ void EditorLayer::RenderUI() {
 
   static std::vector<std::string> demo_names_ = {"Camera", "Terrain", "Sun",
                                                  "Player"};
-  ImGui::Begin("Hierarchy");
+  ImGui::Begin("Hierarchy", nullptr);
   Components::HierarchyPanel(demo_names_, "assets");
   ImGui::End();
 
   // -------- MIDDLE : game view --------------------------------------------
-  ImGui::Begin("Scene");
+  ImGui::Begin("Scene", nullptr);
   Components::GameCanvas(is_game_started_, game_canvas_hovered_);
   ImGui::End();
 
   // -------- RIGHT : inspector ---------------------------------------------
   static std::vector<Components::Transform> demo_transform_(demo_names_.size());
-  ImGui::Begin("Inspector");
+  ImGui::Begin("Inspector", nullptr);
   Components::Inspector(demo_transform_);
   ImGui::End();
 
   //--------------------------- PANELS ------------------------------
-  ImGui::Begin("Console");
+  ImGui::Begin("Console", nullptr);
   Components::ConsolePanel();
   ImGui::End();
 
   // Camera Controls
-  ImGui::Begin("Camera");
+  ImGui::Begin("Camera", nullptr);
   Components::CameraControls();
   ImGui::End();
 

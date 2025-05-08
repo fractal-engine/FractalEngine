@@ -14,7 +14,7 @@ namespace Components {
 
 inline void HierarchyPanel(const std::vector<std::string>& entityNames,
                            const std::filesystem::path& assetsRoot) {
-  ImGui::Begin("Hierarchy");
+  ImGui::Begin("Hierarchy", nullptr);
 
   //------------------------- ENTITIES ---------------------------------------
   ImGui::TextUnformatted("Scene");

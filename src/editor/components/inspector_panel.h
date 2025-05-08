@@ -14,7 +14,7 @@ struct Transform {
 };
 
 inline void Inspector(const std::vector<Transform>& transforms) {
-  ImGui::Begin("Inspector");
+  ImGui::Begin("Inspector", nullptr);
 
   int sel = EditorLayer::Get()->GetSelectedEntity();
   if (sel < 0 || sel >= (int)transforms.size()) {
