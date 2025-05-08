@@ -14,8 +14,8 @@ inline void LoadFonts(ImGuiIO& io) {
   main_font_config.MergeMode = false;
   main_font_config.PixelSnapH = true;
   main_font_config.SizePixels = 16.0f;      
-  main_font_config.OversampleH = 1;    
-  main_font_config.OversampleV = 1;
+  main_font_config.OversampleH = 3;    
+  main_font_config.OversampleV = 2;
 
   io.Fonts->AddFontFromFileTTF("NotoSansMono_Regular.ttf", 16.0f, &main_font_config);
 

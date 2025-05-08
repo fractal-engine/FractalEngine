@@ -13,8 +13,8 @@ public:
   ~EditorLayer();
 
   static EditorLayer* Get();  // Singleton access
-  
-  void Initialize(); 
+
+  void Initialize();
   void Run() override;
   void RequestUpdate() override;
   void Shutdown() override;
@@ -25,10 +25,14 @@ public:
   int GetSelectedEntity() const;
   int GetLastSelectedEntity() const;
 
+  // debug for ImGui
+  void EnableImGuiDebug();
+  void DisableImGuiDebug();
+
 private:
   void HandleInput(Key key);
   void RenderUI();
-  void DockSpace();
+  void Dockspace();
 
   std::unique_ptr<RendererBase>& renderer_;
   bool quit_ = false;
@@ -40,10 +44,17 @@ private:
   int last_selected_entity_ = -1;
 
   ImGuiWindowFlags window_flags_;
-  bool built_layout_ = false; // guard for BuildDefaultLayout()
+  bool built_layout_ = false;  // guard for BuildDefaultLayout()
 
   // singleton pointer
   static EditorLayer* s_instance_;
+
+  // ImGui debug controls
+  bool debug_mode_ = false;
+  bool debug_highlight_ids_ = false;
+  bool debug_show_metrics_ = false;
+  bool debug_show_log_ = false;
+  bool debug_activate_picker_ = false;
 };
 
 #endif  // EDITOR_LAYER_H
