@@ -10,6 +10,8 @@
 #include "core/view_ids.h"
 #include "editor/resource/theme/dark_theme.hpp"
 #include "game/game_test.h"
+#include "imgui.h"
+#include "imgui_internal.h"
 #include "platform/platform_utils.h"
 #include "subsystem/subsystem_manager.h"
 #include "subsystem/window_manager.h"
@@ -42,9 +44,12 @@ void EditorLayer::Initialize() {
   Theme::Initialize();
 
   ImGuiIO& io = ImGui::GetIO();
-
   io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;  // Enable Docking
   // io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;  // Enable Viewports
+
+  // docking behavior
+  // ImGui::GetStyle().WindowMenuButtonPosition = ImGuiDir_None;
+  ImGui::GetStyle().WindowRounding = 0.0f;
 
   window_flags_ = ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoDocking |
                   ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse |
@@ -52,15 +57,15 @@ void EditorLayer::Initialize() {
                   ImGuiWindowFlags_NoBringToFrontOnFocus |
                   ImGuiWindowFlags_NoNavFocus;
 
+  // backends
+  ImGui_Implbgfx_Init(ViewID::UI);
+  ApplyImGuiShaders();
+  ImGui_ImplSDL2_InitForOther(WindowManager::GetWindow());
+
   io.DisplaySize = ImVec2((float)WindowManager::GetWidth(),
                           (float)WindowManager::GetHeight());
   io.DisplayFramebufferScale =
       ImVec2(WindowManager::GetDPIScale(), WindowManager::GetDPIScale());
-
-  // backends
-  ImGui_Implbgfx_Init(ViewID::UI);
-  InitImGui();  // TODO: change naming and move logic
-  ImGui_ImplSDL2_InitForOther(WindowManager::GetWindow());
 }
 
 void EditorLayer::Run() {
@@ -177,31 +182,25 @@ void EditorLayer::HandleInput(Key key) {
 }
 
 void EditorLayer::Dockspace() {
-  // Get main viewport
   ImGuiViewport* viewport = ImGui::GetMainViewport();
 
-  // Set window position and size to cover the entire viewport
   ImGui::SetNextWindowPos(viewport->Pos);
   ImGui::SetNextWindowSize(viewport->Size);
   ImGui::SetNextWindowViewport(viewport->ID);
 
-  // Remove padding and borders to cover entire viewport
   ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
   ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
   ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
 
-  // Create the dockspace window
   ImGui::Begin("###Dockspace", nullptr, window_flags_);
 
-  // Create the dockspace itself
   ImGuiID dockspace_id = ImGui::GetID("Dockspace");
   ImGui::DockSpace(dockspace_id, ImVec2(0, 0),
                    ImGuiDockNodeFlags_PassthruCentralNode);
 
-  // Add a main menu bar if needed
+  // main menu bar
   if (ImGui::BeginMenuBar()) {
     if (ImGui::BeginMenu("File")) {
-      // Add menu items here
       if (ImGui::MenuItem("Exit")) {
         quit_ = true;
         editor_exit_pressed();
