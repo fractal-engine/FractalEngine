@@ -33,19 +33,21 @@ public:
 private:
   void HandleInput(Key key);
   void RenderUI();
-  void Dockspace();
+  void DockSpace();
 
   std::unique_ptr<RendererBase>& renderer_;
   bool quit_ = false;
   bool is_game_started_ = false;
   bool game_canvas_hovered_ = false;
+  bool built_layout_ = false;  // guard for BuildDefaultLayout()
 
   // back-store for selection
   int selected_entity_ = -1;
   int last_selected_entity_ = -1;
 
-  ImGuiWindowFlags window_flags_;
-  bool built_layout_ = false;  // guard for BuildDefaultLayout()
+  ImGuiDockNodeFlags dock_flags_;
+  ImGuiWindowFlags host_flags_;
+  ImGuiID dock_id_;
 
   // singleton pointer
   static EditorLayer* s_instance_;

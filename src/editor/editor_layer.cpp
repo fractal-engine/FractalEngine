@@ -42,20 +42,14 @@ void EditorLayer::Initialize() {
   IMGUI_CHECKVERSION();
   ImGui::CreateContext();
   Theme::Initialize();
-  ImGuiIO& io = ImGui::GetIO();
 
+  ImGuiIO& io = ImGui::GetIO();
   io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;  // Enable Docking
   // io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;  // Enable Viewports
 
   // docking behavior
   // ImGui::GetStyle().WindowMenuButtonPosition = ImGuiDir_None;
   ImGui::GetStyle().WindowRounding = 0.0f;
-
-  window_flags_ = ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoDocking |
-                  ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse |
-                  ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
-                  ImGuiWindowFlags_NoBringToFrontOnFocus |
-                  ImGuiWindowFlags_NoNavFocus;
 
   // backends
   ImGui_Implbgfx_Init(ViewID::UI);
@@ -99,7 +93,7 @@ void EditorLayer::Run() {
       }
     }
 
-    /* 1 - Clear background first */
+    /* 1 - Clear background */
     bgfx::setViewClear(ViewID::UI_BACKGROUND, BGFX_CLEAR_COLOR, 0x1e1e1eff,
                        1.0f, 0);
     bgfx::touch(ViewID::UI_BACKGROUND);  // process background
@@ -110,7 +104,7 @@ void EditorLayer::Run() {
 
     /* 3 - Let game render into scene framebuffer */
     if (is_game_started_) {
-      SubsystemManager::GetGameManager()->Render();  // Renders to ViewID::SCENE
+      SubsystemManager::GetGameManager()->Render();  // Render to ViewID::SCENE
     }
 
     /* 4 - start ImGui frame, samples from scene texture */
@@ -181,70 +175,65 @@ void EditorLayer::HandleInput(Key key) {
                                                  input_event.pressed_frame_);
 }
 
-void EditorLayer::Dockspace() {
-  ImGuiViewport* viewport = ImGui::GetMainViewport();
+void EditorLayer::DockSpace() {
+  static constexpr const char* ROOT_DOCK_ =
+      "##MainDockHost";  // Set root dock ID
 
-  ImGui::SetNextWindowPos(viewport->Pos);
-  ImGui::SetNextWindowSize(viewport->Size);
-  ImGui::SetNextWindowViewport(viewport->ID);
+  ImGuiViewport* vp_ = ImGui::GetMainViewport();
+  ImGui::SetNextWindowPos(vp_->Pos);
+  ImGui::SetNextWindowSize(vp_->Size);
+  ImGui::SetNextWindowViewport(vp_->ID);
+
+  host_flags_ = ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize |
+                ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDocking;
+
   ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
   ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
-  ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
+  ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2{0, 0});
+  ImGui::Begin(ROOT_DOCK_, nullptr, host_flags_);
+  ImGui::PopStyleVar(3);
 
-  ImGui::Begin("Dockspace", nullptr, window_flags_);
-  {
-    ImGuiID dock_id_ = ImGui::GetID("Dockspace");
-    ImGui::DockSpace(dock_id_, ImVec2(0, 0),
-                     ImGuiDockNodeFlags_PassthruCentralNode);
-  }
+  dock_flags_ =
+      ImGuiDockNodeFlags_PassthruCentralNode | ImGuiDockNodeFlags_NoSplit;
 
-  // main menu bar
-  if (ImGui::BeginMenuBar()) {
-    if (ImGui::BeginMenu("File")) {
-      if (ImGui::MenuItem("Exit")) {
-        quit_ = true;
-        editor_exit_pressed();
-      }
-      ImGui::EndMenu();
-    }
-    ImGui::EndMenuBar();
-  }
+  dock_id_ = ImGui::GetID(ROOT_DOCK_);
+  ImGui::DockSpace(dock_id_, ImVec2(0, 0), dock_flags_);
 
   ImGui::End();
-  ImGui::PopStyleVar(3);
 }
 
 void EditorLayer::RenderUI() {
+  ImGuiIO& io = ImGui::GetIO();
+  io.IniFilename = nullptr;
 
-  Dockspace();
+  DockSpace();
 
   // ——— Build layout ———
   if (!built_layout_) {
-    ImGuiID dock_id = ImGui::GetID("Dockspace");
 
-    ImGui::DockBuilderRemoveNode(dock_id);
-    ImGui::DockBuilderAddNode(dock_id, ImGuiDockNodeFlags_None);
-    ImGui::DockBuilderSetNodeSize(dock_id, ImGui::GetIO().DisplaySize);
+    ImGui::DockBuilderRemoveNode(dock_id_);
+    ImGui::DockBuilderAddNode(dock_id_, ImGuiDockNodeFlags_None);
+    ImGui::DockBuilderSetNodeSize(dock_id_, ImGui::GetIO().DisplaySize);
 
     // splits:
-    ImGuiID left = ImGui::DockBuilderSplitNode(dock_id, ImGuiDir_Left, 0.20f,
-                                               nullptr, &dock_id);
-    ImGuiID right = ImGui::DockBuilderSplitNode(dock_id, ImGuiDir_Right, 0.20f,
-                                                nullptr, &dock_id);
-    ImGuiID bottom = ImGui::DockBuilderSplitNode(dock_id, ImGuiDir_Down, 0.25f,
-                                                 nullptr, &dock_id);
-    ImGuiID top = ImGui::DockBuilderSplitNode(dock_id, ImGuiDir_Up, 0.15f,
-                                              nullptr, &dock_id);
+    ImGuiID left = ImGui::DockBuilderSplitNode(dock_id_, ImGuiDir_Left, 0.20f,
+                                               nullptr, &dock_id_);
+    ImGuiID right = ImGui::DockBuilderSplitNode(dock_id_, ImGuiDir_Right, 0.20f,
+                                                nullptr, &dock_id_);
+    ImGuiID bottom = ImGui::DockBuilderSplitNode(dock_id_, ImGuiDir_Down, 0.25f,
+                                                 nullptr, &dock_id_);
+    ImGuiID top = ImGui::DockBuilderSplitNode(dock_id_, ImGuiDir_Up, 0.15f,
+                                              nullptr, &dock_id_);
 
     // docked panels
     ImGui::DockBuilderDockWindow("Toolbar", top);
     ImGui::DockBuilderDockWindow("Hierarchy", left);
     ImGui::DockBuilderDockWindow("Inspector", right);
-    ImGui::DockBuilderDockWindow("Scene", dock_id);
+    ImGui::DockBuilderDockWindow("Scene", dock_id_);
     ImGui::DockBuilderDockWindow("Console", bottom);
     ImGui::DockBuilderDockWindow("Camera", right);
 
-    ImGui::DockBuilderFinish(dock_id);
+    ImGui::DockBuilderFinish(dock_id_);
     built_layout_ = true;
   }
 
