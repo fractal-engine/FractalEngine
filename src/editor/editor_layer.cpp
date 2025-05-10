@@ -151,7 +151,7 @@ void EditorLayer::HandleInput(Key key) {
         game_end_pressed();
       }
       return;
-      default:
+    default:
       break;
   }
 
