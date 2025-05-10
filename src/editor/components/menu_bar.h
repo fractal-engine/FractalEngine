@@ -7,7 +7,7 @@ namespace Components {
 
 inline void MenuBar(bool& quit, bool& debugHighlight, bool& showMetrics,
                     bool& showLog, bool& activatePicker) {
-  if (ImGui::BeginMainMenuBar()) {
+  if (ImGui::BeginMenuBar()) {
     if (ImGui::BeginMenu("File")) {
       if (ImGui::MenuItem("Exit", "Ctrl+Q"))
         quit = true;
@@ -24,7 +24,7 @@ inline void MenuBar(bool& quit, bool& debugHighlight, bool& showMetrics,
       ImGui::EndMenu();
     }
 
-    ImGui::EndMainMenuBar();
+    ImGui::EndMenuBar();
   }
 }
 

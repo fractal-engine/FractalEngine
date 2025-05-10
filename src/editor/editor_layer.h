@@ -49,7 +49,6 @@ private:
   static EditorLayer* s_instance_;
 
   // ImGui debug controls
-  bool debug_mode_ = false;
   bool debug_highlight_ids_ = false;
   bool debug_show_metrics_ = false;
   bool debug_show_log_ = false;

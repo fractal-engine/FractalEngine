@@ -4,6 +4,7 @@
 #include "components/game_canvas.h"
 #include "components/hierarchy_panel.h"
 #include "components/inspector_panel.h"
+#include "components/menu_bar.h"
 #include "components/toolbar.h"
 #include "core/engine_globals.h"
 #include "core/logger.h"
@@ -175,9 +176,9 @@ void EditorLayer::DockSpace() {
   ImGui::SetNextWindowSize(vp_->Size);
   ImGui::SetNextWindowViewport(vp_->ID);
 
-  host_flags_ = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse |
-                ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
-                ImGuiWindowFlags_NoDocking;
+  host_flags_ = ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoTitleBar |
+                ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize |
+                ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDocking;
 
   ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
   ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
@@ -190,6 +191,9 @@ void EditorLayer::DockSpace() {
 
   dock_id_ = ImGui::GetID(ROOT_DOCK_);
   ImGui::DockSpace(dock_id_, ImVec2(0, 0), dock_flags_);
+
+  Components::MenuBar(quit_, debug_highlight_ids_, debug_show_metrics_,
+                      debug_show_log_, debug_activate_picker_);
 
   ImGui::End();
 }
@@ -254,7 +258,6 @@ void EditorLayer::RenderUI() {
   ImGui::End();
 
   // -------- LEFT : hierarchy + assets -------------------------------------
-
   static std::vector<std::string> demo_names_ = {"Camera", "Terrain", "Sun",
                                                  "Player"};
   ImGui::Begin("Hierarchy", nullptr);
@@ -282,37 +285,18 @@ void EditorLayer::RenderUI() {
   Components::CameraControls();
   ImGui::End();
 
-  // debug menu if enabled
-  if (debug_mode_) {
-    ImGui::GetIO().ConfigDebugHighlightIdConflicts = debug_highlight_ids_;
-    if (debug_show_metrics_) {
-      ImGui::SetNextWindowDockID(0, ImGuiCond_Always);
-      ImGui::ShowMetricsWindow(&debug_show_metrics_);
-    }
-    if (debug_show_log_) {
-      ImGui::SetNextWindowDockID(0, ImGuiCond_Always);
-      ImGui::ShowDebugLogWindow(&debug_show_log_);
-    }
-    if (debug_activate_picker_) {
-      ImGui::DebugStartItemPicker();
-      debug_activate_picker_ = false;
-    }
+  //------------------------- IMGUI DEBUG ---------------------------
+  if (debug_show_metrics_) {
+    ImGui::SetNextWindowDockID(0, ImGuiCond_Always);
+    ImGui::ShowMetricsWindow(&debug_show_metrics_);
   }
-
-  // debug menu if enabled
-  if (debug_mode_) {
-    if (ImGui::BeginMainMenuBar()) {
-      if (ImGui::BeginMenu("Debug")) {
-        ImGui::MenuItem("Highlight ID Conflicts", nullptr,
-                        &debug_highlight_ids_);
-        ImGui::MenuItem("Show Metrics Window", nullptr, &debug_show_metrics_);
-        ImGui::MenuItem("Show Debug Log", nullptr, &debug_show_log_);
-        if (ImGui::MenuItem("Activate Picker"))
-          debug_activate_picker_ = true;  // one-shot
-        ImGui::EndMenu();
-      }
-      ImGui::EndMainMenuBar();
-    }
+  if (debug_show_log_) {
+    ImGui::SetNextWindowDockID(0, ImGuiCond_Always);
+    ImGui::ShowDebugLogWindow(&debug_show_log_);
+  }
+  if (debug_activate_picker_) {
+    ImGui::DebugStartItemPicker();
+    debug_activate_picker_ = false;  // reset
   }
 }
 
