@@ -5,6 +5,7 @@
 #include "components/hierarchy_panel.h"
 #include "components/inspector_panel.h"
 #include "components/menu_bar.h"
+#include "components/status_bar.h"
 #include "components/toolbar.h"
 #include "core/engine_globals.h"
 #include "core/logger.h"
@@ -127,6 +128,7 @@ void EditorLayer::RequestUpdate() {}
 
 void EditorLayer::Shutdown() {
   Logger::getInstance().Log(LogLevel::Info, "Shutting down EditorLayer");
+  ImGui_Implbgfx_Shutdown();
   ImGui_ImplSDL2_Shutdown();
   ImGui::DestroyContext();
 }
@@ -183,6 +185,8 @@ void EditorLayer::DockSpace() {
   ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
   ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
   ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2{0, 0});
+
+  // ------------------------------
   ImGui::Begin(ROOT_DOCK_, nullptr, host_flags_);
   ImGui::PopStyleVar(3);
 
@@ -191,11 +195,13 @@ void EditorLayer::DockSpace() {
 
   dock_id_ = ImGui::GetID(ROOT_DOCK_);
   ImGui::DockSpace(dock_id_, ImVec2(0, 0), dock_flags_);
+  ImGui::End();
+  // ------------------------------
 
   Components::MenuBar(quit_, debug_highlight_ids_, debug_show_metrics_,
                       debug_show_log_, debug_activate_picker_);
 
-  ImGui::End();
+  Components::StatusBar();
 }
 
 void EditorLayer::RenderUI() {
