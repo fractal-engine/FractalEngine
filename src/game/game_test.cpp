@@ -102,6 +102,8 @@ void GameTest::Init() {
   _lightDirUniform = bgfx::createUniform("u_lightDir", bgfx::UniformType::Vec4);
 
   _timeUniform = bgfx::createUniform("u_time", bgfx::UniformType::Vec4);
+  _cameraPosUniform =
+      bgfx::createUniform("u_cameraPos", bgfx::UniformType::Vec4);
   _sunDirUniform =
       bgfx::createUniform("u_sunDirection", bgfx::UniformType::Vec4);
   _sunLumUniform =
@@ -174,8 +176,8 @@ void GameTest::Init() {
   for (uint16_t y = 0; y < sz; ++y) {
     for (uint16_t x = 0; x < sz; ++x) {
       // Use height from the texture (heightmap) to set vertex elevation
-      float height =
-          (hdata[y * sz + x] - 127) / 127.0f;  // Normalize the height
+      float height = 0.0f;
+      // Normalize the height
       terrainVertices.push_back({float(x), height, float(y),
                                  float(x) / (sz - 1), float(y) / (sz - 1)});
     }
@@ -350,11 +352,15 @@ void GameTest::Render() {
   bgfx::setTexture(1, _s_ormUniform, terrainORM);
   bgfx::setTexture(2, _s_normalUniform, terrainNormal);
 
-  // light direction from the sun to hit on terrain
-  const float lightDir3[3] = {0.3f, 1.f, 0.4f};  // Sun direction in world space
-  float tmp[4] = {lightDir3[0] * 2.5f, lightDir3[1] * 2.5f, lightDir3[2] * 2.5f,
-                  0};
-  bgfx::setUniform(_sunDirUniform, tmp);
+  // shared for both sky and terrain - sun light changes
+  bgfx::setUniform(_sunLumUniform, _sunColorArray);
+
+
+ float cameraPos[4] = {};
+  camera.getPosition(cameraPos);  // Fetch world position from orbit camera
+  cameraPos[3] = 0.0f;
+
+  bgfx::setUniform(_cameraPosUniform, cameraPos);
 
 
   bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A |

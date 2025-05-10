@@ -15,7 +15,7 @@ void main()
 
     // Apply scaling to exaggerate height (adjust as needed)
     vec3 pos = a_position;
-    height = height * 50.0; // Exaggerate height (increase the canyon effect)
+    height = height * 12.0; // Exaggerate height (increase the canyon effect)
     float canyonEffect = exp(-10.0 * (a_texcoord0.x - 0.5) * (a_texcoord0.x - 0.5)); // Strong canyon in the center
     height *= canyonEffect;  // Apply canyon depth effect
     pos.y = height; // Set the new height to the Y position

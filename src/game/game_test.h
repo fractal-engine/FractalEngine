@@ -47,7 +47,7 @@ private:
   bgfx::TextureHandle terrainDiffuse = BGFX_INVALID_HANDLE;
   bgfx::TextureHandle terrainORM = BGFX_INVALID_HANDLE;
   bgfx::TextureHandle terrainNormal = BGFX_INVALID_HANDLE;
-
+  bgfx::UniformHandle _cameraPosUniform = BGFX_INVALID_HANDLE;
 
 
   bgfx::UniformHandle _lightDirUniform = BGFX_INVALID_HANDLE;
