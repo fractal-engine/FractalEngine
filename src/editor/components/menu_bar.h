@@ -6,37 +6,35 @@
 
 namespace Components {
 
-inline void MenuBar(bool& quit, bool& debugHighlight, bool& showMetrics,
-                    bool& showLog, bool& activatePicker) {
+void MenuBar(bool& quit, bool& debug_highlight, bool& show_metrics, bool& show_log,
+             bool& activate_picker) {
   ImGuiViewport* viewport = ImGui::GetMainViewport();
+  float height = ImGui::GetFrameHeight();
   ImGuiWindowFlags window_flags =
       ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoSavedSettings |
       ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoTitleBar |
       ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove;
 
-  // handle positioning and sizing
   if (ImGui::BeginViewportSideBar("##MainMenuBar", viewport, ImGuiDir_Up,
-                                  ImGui::GetFrameHeight(), window_flags)) {
+                                  height, window_flags)) {
     if (ImGui::BeginMenuBar()) {
       if (ImGui::BeginMenu("File")) {
         if (ImGui::MenuItem("Exit", "Ctrl+Q"))
           quit = true;
         ImGui::EndMenu();
       }
-
       if (ImGui::BeginMenu("Debug")) {
-        ImGui::MenuItem("Highlight ID Conflicts", nullptr, &debugHighlight);
-        ImGui::MenuItem("Show Metrics Window", nullptr, &showMetrics);
-        ImGui::MenuItem("Show Debug Log Window", nullptr, &showLog);
+        ImGui::MenuItem("Highlight ID Conflicts", nullptr, &debug_highlight);
+        ImGui::MenuItem("Show Metrics Window", nullptr, &show_metrics);
+        ImGui::MenuItem("Show Debug Log Window", nullptr, &show_log);
         if (ImGui::MenuItem("Activate Picker"))
-          activatePicker = true;
+          activate_picker = true;
         ImGui::EndMenu();
       }
-
       ImGui::EndMenuBar();
     }
+    ImGui::End();
   }
-  ImGui::End();
 }
 
 }  // namespace Components

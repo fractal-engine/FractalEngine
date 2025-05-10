@@ -4,7 +4,7 @@
 #include "imgui.h"
 
 namespace Theme {
-inline ImFont* consoleFont = nullptr;  // Global font for console
+inline ImFont* console_font = nullptr;  // Global font for console
 
 inline void LoadFonts(ImGuiIO& io) {
   static const ImWchar icon_ranges[] = {ICON_MIN_FA, ICON_MAX_FA, 0};
@@ -37,7 +37,7 @@ inline void LoadFonts(ImGuiIO& io) {
   console_config.RasterizerMultiply = 1.0f;
 
   // load font for console
-  consoleFont = io.Fonts->AddFontFromFileTTF("TerminusTTF-4.49.3.ttf", 12.0f,
+  console_font = io.Fonts->AddFontFromFileTTF("TerminusTTF-4.49.3.ttf", 12.0f,
                                              &console_config);
 }
 

@@ -15,7 +15,7 @@ inline void ConsolePanel() {
   ImGui::BeginChild("LogScrollingRegion", ImVec2(0, 0), false,
                     ImGuiWindowFlags_HorizontalScrollbar);
 
-  ImGui::PushFont(Theme::consoleFont);  // Set console font
+  ImGui::PushFont(Theme::console_font);  // Set console font
 
   // Display log
   const auto& log_entries = Logger::getInstance().GetLogEntries();

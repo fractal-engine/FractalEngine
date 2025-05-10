@@ -162,46 +162,46 @@ void EditorLayer::HandleInput(Key key) {
     return;
 
   InputEvent input_event(key);
-  if (auto* gm_ = SubsystemManager::GetGameManager().get()) {
-    input_event.pressed_frame_ = gm_->GetFrameCount();
+  if (auto* gm = SubsystemManager::GetGameManager().get()) {
+    input_event.pressed_frame_ = gm->GetFrameCount();
   }
   SubsystemManager::GetInput()->FowardInputEvent(input_event,
                                                  input_event.pressed_frame_);
 }
 
 void EditorLayer::DockSpace() {
-  static constexpr const char* ROOT_DOCK_ =
+  static constexpr const char* root_dock =
       "##MainDockHost";  // Set root dock ID
 
-  ImGuiViewport* vp_ = ImGui::GetMainViewport();
-  ImGui::SetNextWindowPos(vp_->Pos);
-  ImGui::SetNextWindowSize(vp_->Size);
-  ImGui::SetNextWindowViewport(vp_->ID);
+  ImGuiViewport* vp = ImGui::GetMainViewport();
+  ImGui::SetNextWindowPos(vp->WorkPos);
+  ImGui::SetNextWindowSize(vp->WorkSize);
+  ImGui::SetNextWindowViewport(vp->ID);
 
-  host_flags_ = ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoTitleBar |
-                ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize |
-                ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDocking;
+  host_flags_ = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse |
+                ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
+                ImGuiWindowFlags_NoDocking;
 
   ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
   ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
   ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2{0, 0});
 
-  // ------------------------------
-  ImGui::Begin(ROOT_DOCK_, nullptr, host_flags_);
-  ImGui::PopStyleVar(3);
-
+  // ———— Dockspace —————
+  ImGui::Begin(root_dock, nullptr, host_flags_);
   dock_flags_ =
       ImGuiDockNodeFlags_PassthruCentralNode | ImGuiDockNodeFlags_NoSplit;
 
-  dock_id_ = ImGui::GetID(ROOT_DOCK_);
+  dock_id_ = ImGui::GetID(root_dock);
   ImGui::DockSpace(dock_id_, ImVec2(0, 0), dock_flags_);
   ImGui::End();
-  // ------------------------------
 
+  // ———— Menu bar —————
   Components::MenuBar(quit_, debug_highlight_ids_, debug_show_metrics_,
                       debug_show_log_, debug_activate_picker_);
 
+  // ———— Status bar —————
   Components::StatusBar();
+  ImGui::PopStyleVar(3);
 }
 
 void EditorLayer::RenderUI() {
@@ -264,10 +264,10 @@ void EditorLayer::RenderUI() {
   ImGui::End();
 
   // -------- LEFT : hierarchy + assets -------------------------------------
-  static std::vector<std::string> demo_names_ = {"Camera", "Terrain", "Sun",
+  static std::vector<std::string> demo_names = {"Camera", "Terrain", "Sun",
                                                  "Player"};
   ImGui::Begin("Hierarchy", nullptr);
-  Components::HierarchyPanel(demo_names_, "assets");
+  Components::HierarchyPanel(demo_names, "assets");
   ImGui::End();
 
   // -------- MIDDLE : game view --------------------------------------------
@@ -276,9 +276,9 @@ void EditorLayer::RenderUI() {
   ImGui::End();
 
   // -------- RIGHT : inspector ---------------------------------------------
-  static std::vector<Components::Transform> demo_transform_(demo_names_.size());
+  static std::vector<Components::Transform> demo_transform(demo_names.size());
   ImGui::Begin("Inspector", nullptr);
-  Components::Inspector(demo_transform_);
+  Components::Inspector(demo_transform);
   ImGui::End();
 
   //--------------------------- PANELS ------------------------------

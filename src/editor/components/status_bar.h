@@ -6,24 +6,25 @@
 
 namespace Components {
 
-inline void StatusBar() {
+void StatusBar() {
   ImGuiViewport* viewport = ImGui::GetMainViewport();
+  float height = ImGui::GetFrameHeight();
   ImGuiWindowFlags window_flags =
       ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoSavedSettings |
-      ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoTitleBar |
-      ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove;
+      ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoDocking |
+      ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
+      ImGuiWindowFlags_NoMove;
 
-  // handle positioning below MainMenuBar
-  if (ImGui::BeginViewportSideBar("##SecondaryMenuBar", viewport, ImGuiDir_Up,
-                                  ImGui::GetFrameHeight(), window_flags)) {
+  if (ImGui::BeginViewportSideBar("##SecondaryMenuBar", viewport, ImGuiDir_Down,
+                                  height, window_flags)) {
     if (ImGui::BeginMenuBar()) {
       ImGui::Text(
           "Project: [Placeholder] | Branch: [Placeholder] | Status: "
           "[Placeholder]");
       ImGui::EndMenuBar();
     }
+    ImGui::End();
   }
-  ImGui::End();
 }
 
 }  // namespace Components
