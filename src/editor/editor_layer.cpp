@@ -126,7 +126,6 @@ void EditorLayer::RequestUpdate() {}
 
 void EditorLayer::Shutdown() {
   Logger::getInstance().Log(LogLevel::Info, "Shutting down EditorLayer");
-  DisableImGuiDebug();
   ImGui_ImplSDL2_Shutdown();
   ImGui::DestroyContext();
 }
@@ -152,15 +151,7 @@ void EditorLayer::HandleInput(Key key) {
         game_end_pressed();
       }
       return;
-    case Key::DIGIT_9:
-      debug_mode_ = !debug_mode_;
-      if (debug_mode_) {
-        EnableImGuiDebug();
-      } else {
-        DisableImGuiDebug();
-      }
-      return;
-    default:
+      default:
       break;
   }
 
@@ -184,8 +175,9 @@ void EditorLayer::DockSpace() {
   ImGui::SetNextWindowSize(vp_->Size);
   ImGui::SetNextWindowViewport(vp_->ID);
 
-  host_flags_ = ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize |
-                ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDocking;
+  host_flags_ = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse |
+                ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
+                ImGuiWindowFlags_NoDocking;
 
   ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
   ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
@@ -328,29 +320,6 @@ void EditorLayer::BeginImGuiFrame(SDL_Window* window) {
   ImGui_ImplSDL2_NewFrame();  // platform backend
   ImGui_Implbgfx_NewFrame();  // renderer backend
   ImGui::NewFrame();          // ImGui begins
-}
-
-void EditorLayer::EnableImGuiDebug() {
-  auto& io = ImGui::GetIO();
-  io.ConfigDebugHighlightIdConflicts = true;
-
-  debug_highlight_ids_ = true;
-  debug_show_metrics_ = false;
-  debug_show_log_ = false;
-  debug_activate_picker_ = false;
-
-  Logger::getInstance().Log(LogLevel::Info, "ImGui Debug Mode ON");
-}
-
-void EditorLayer::DisableImGuiDebug() {
-  auto& io = ImGui::GetIO();
-  io.ConfigDebugHighlightIdConflicts = false;
-  debug_highlight_ids_ = false;
-  debug_show_metrics_ = false;
-  debug_show_log_ = false;
-  debug_activate_picker_ = false;
-
-  Logger::getInstance().Log(LogLevel::Info, "ImGui Debug Mode OFF");
 }
 
 // ── Selection API ─────────────────────────────────────────────────────────

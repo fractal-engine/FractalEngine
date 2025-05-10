@@ -26,10 +26,6 @@ public:
   int GetSelectedEntity() const;
   int GetLastSelectedEntity() const;
 
-  // debug for ImGui
-  void EnableImGuiDebug();
-  void DisableImGuiDebug();
-
 private:
   void HandleInput(Key key);
   void RenderUI();
