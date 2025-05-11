@@ -46,8 +46,8 @@ void EditorLayer::Initialize() {
   Theme::Initialize();
 
   ImGuiIO& io = ImGui::GetIO();
-  io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;  // Enable Docking
-  // io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;  // Enable Viewports
+  io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;    // Enable Docking
+  io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;  // Enable Viewports
 
   // docking behavior
   // ImGui::GetStyle().WindowMenuButtonPosition = ImGuiDir_None;
@@ -180,7 +180,9 @@ void EditorLayer::DockSpace() {
 
   host_flags_ = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse |
                 ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
-                ImGuiWindowFlags_NoDocking;
+                ImGuiWindowFlags_NoDocking |
+                ImGuiWindowFlags_NoBringToFrontOnFocus |
+                ImGuiWindowFlags_NoFocusOnAppearing;
 
   ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
   ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
@@ -265,7 +267,7 @@ void EditorLayer::RenderUI() {
 
   // -------- LEFT : hierarchy + assets -------------------------------------
   static std::vector<std::string> demo_names = {"Camera", "Terrain", "Sun",
-                                                 "Player"};
+                                                "Player"};
   ImGui::Begin("Hierarchy", nullptr);
   Components::HierarchyPanel(demo_names, "assets");
   ImGui::End();
