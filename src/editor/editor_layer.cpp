@@ -47,11 +47,13 @@ void EditorLayer::Initialize() {
 
   ImGuiIO& io = ImGui::GetIO();
   io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;    // Enable Docking
-  io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;  // Enable Viewports
+  io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;  // Enable Multi-Viewport
 
-  // docking behavior
+  io.ConfigViewportsNoAutoMerge = true;
+  io.ConfigViewportsNoTaskBarIcon = true;
+
+  // handle docking behavior
   // ImGui::GetStyle().WindowMenuButtonPosition = ImGuiDir_None;
-  ImGui::GetStyle().WindowRounding = 0.0f;
 
   // backends
   ImGui_Implbgfx_Init(ViewID::UI);
@@ -117,7 +119,14 @@ void EditorLayer::Run() {
     ImGui::Render();
     ImGui_Implbgfx_RenderDrawLists(ImGui::GetDrawData());
 
-    /* 6 - Present frame */
+    // 6 - Update platform windows
+    if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
+      bgfx::frame(false);
+      ImGui::UpdatePlatformWindows();
+      ImGui::RenderPlatformWindowsDefault();
+    }
+
+    /* 7 - Present frame */
     renderer_->Render();
     bgfx::frame();
   }
@@ -190,8 +199,7 @@ void EditorLayer::DockSpace() {
 
   // ———— Dockspace —————
   ImGui::Begin(root_dock, nullptr, host_flags_);
-  dock_flags_ =
-      ImGuiDockNodeFlags_PassthruCentralNode | ImGuiDockNodeFlags_NoSplit;
+  dock_flags_ = ImGuiDockNodeFlags_PassthruCentralNode;
 
   dock_id_ = ImGui::GetID(root_dock);
   ImGui::DockSpace(dock_id_, ImVec2(0, 0), dock_flags_);
