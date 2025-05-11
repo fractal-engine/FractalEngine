@@ -45,8 +45,8 @@ void main() {
 
     float dotSun = dot(viewDir, sunDir);
     float dist = 2.0 * (1.0 - dotSun); // Distance to the sun - angular distance approximation
-    float sunSize = u_parameters.x; // 0.008
-    float bloom = u_parameters.y;   // 3.0
+    float sunSize = u_parameters.x; 
+    float bloom = u_parameters.y;   
 
     // Make sun disk size relative to its apparent size, not fixed angular size
 
@@ -87,9 +87,11 @@ void main() {
     // Night
     float3 nightZenithCol   = float3(0.01, 0.02, 0.05);
     float3 nightHorizonCol  = float3(0.03, 0.04, 0.12); // Slightly brighter/desaturated for horizon
+
     // Day
     float3 dayZenithCol     = float3(0.20, 0.45, 0.85); // Brighter blue
     float3 dayHorizonCol    = float3(0.50, 0.70, 0.95); // Paler blue towards horizon
+
     // Sunrise/Sunset
     float3 sunriseZenithCol = float3(0.4, 0.25, 0.1);  // Orange/reddish zenith
     float3 sunriseHorizonCol= float3(0.9, 0.4, 0.15); // Brighter orange/red horizon
@@ -102,6 +104,7 @@ void main() {
     float3 currentHorizonColor = mix(nightHorizonCol, dayHorizonCol, dayNightFactor);
 
     // Add sunrise/sunset hues
+
     currentZenithColor = mix(currentZenithColor, sunriseZenithCol, sunriseSunsetFactor);
     currentHorizonColor = mix(currentHorizonColor, sunriseHorizonCol, sunriseSunsetFactor);
 
@@ -140,6 +143,7 @@ void main() {
 
     float cloudVisibility = dayNightFactor * (1.0 - sunriseSunsetFactor * 0.5);
     float3 cloudColor = float3(1.0, 1.0, 1.0); // Base cloud color
+
     // Tint clouds slightly by sun color during sunrise/sunset
 
     float3 sunLightForClouds = mix(float3(1.0,1.0,1.0), u_sunLuminance.rgb, sunriseSunsetFactor * 0.8);
@@ -157,8 +161,10 @@ void main() {
 
     float starVisibility = 1.0 - dayNightFactor; // Inverse of dayNightFactor
     starVisibility *= (1.0 - sunriseSunsetFactor); // Fade stars during sunrise/sunset too
+
     float starPattern = pow(noise(uv * 512.0), 100.0); // Sparse tiny specks
     float3 starColorEffect = float3(starPattern, starPattern, starPattern) * starVisibility;
+
     skyColor += starColorEffect;
 
     // --------------------------------------------
