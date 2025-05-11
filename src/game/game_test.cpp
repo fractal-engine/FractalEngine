@@ -244,7 +244,7 @@ void GameTest::Update() {
     return;
 
   // animate height map & day/night timer
-  _cycleTime += 0.01f;
+  _cycleTime += 0.0007f;
 
   const uint16_t sz = 128;
   std::vector<uint8_t> h(sz * sz);
@@ -294,14 +294,16 @@ void GameTest::Render() {
     bgfx::setVertexBuffer(0, _skyVbh);
     bgfx::setIndexBuffer(_skyIbh);
 
-    // Compute spherical sun direction (realistic arc)
-    const float phi = _cycleTime;         // full rotation over time (azimuth)
-    const float theta = bx::kPi * 0.25f;  // fixed elevation (45° above horizon)
+    // Animate the sun in a vertical arc (semi-circle)
+    const float phi =
+        _cycleTime;  // Time parameter controlling the sun’s motion
 
-    // Proper sun path using spherical coordinates
-    const float x = cosf(theta) * sinf(phi);  // left-right (X)
-    const float y = sinf(theta);              // up-down (Y, fixed)
-    const float z = cosf(theta) * cosf(phi);  // depth (Z)
+    // Create a full sun arc from horizon to horizon
+    const float x = sinf(phi);  // left-right sweep
+    const float y =
+        sinf(phi + bx::kPi * 0.5f);  // vertical rise/fall, offset to match arc
+    const float z = cosf(phi);  // depth (optional if only 2D arc is desired)
+
 
     const bx::Vec3 sunDir = bx::normalize(bx::Vec3(x, y, z));
 
@@ -313,15 +315,16 @@ void GameTest::Render() {
     float t = bx::clamp(sunDir.y * 0.5f + 0.5f, 0.0f, 1.0f);
 
     // Soften sun color range
-    _sunColorArray[0] = bx::lerp(0.6f, 2.0f, t);
-    _sunColorArray[1] = bx::lerp(0.4f, 1.2f, t);
-    _sunColorArray[2] = bx::lerp(0.2f, 0.8f, t);
+    _sunColorArray[0] = bx::lerp(1.0f, 1.0f, t);  // R stays 1.0
+    _sunColorArray[1] = bx::lerp(0.5f, 1.0f, t);  // G warms up
+    _sunColorArray[2] = bx::lerp(0.1f, 1.0f, t);  // B goes from warm to cool
+
 
     _sunColorArray[3] = 0.0f;
 
-    _parametersArray[0] = 0.008f;      // Sun size
+    _parametersArray[0] = 0.01f;      // Sun size
     _parametersArray[1] = 3.0f;        // Bloom factor
-    _parametersArray[2] = 1.0f;        // Exposure (unused)
+    _parametersArray[2] = 1.0f;        // Exposure 
     _parametersArray[3] = _cycleTime;  // Time
 
     bgfx::setUniform(_viewInvUniform, invView);
