@@ -80,6 +80,9 @@ private:
   bgfx::UniformHandle _s_ormUniform = BGFX_INVALID_HANDLE;
   bgfx::UniformHandle _s_normalUniform = BGFX_INVALID_HANDLE;
 
+  // Sky Ambient Light
+  bgfx::UniformHandle _skyAmbientUniform = BGFX_INVALID_HANDLE;
+
 
   float _cycleTime = 0.0f;  // day-night timerm keep it at 0
 

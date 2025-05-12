@@ -10,6 +10,9 @@
 #include "renderer/shaders/shader_utils.h"
 #include "subsystem/subsystem_manager.h"
 #include "tools/texture_utils.h"
+#include "lighting/sky_lighting.h"
+
+
 // ──────────────────────────────────────────────────────
 //  Vertex layouts
 // ──────────────────────────────────────────────────────
@@ -27,6 +30,8 @@ struct ScreenPosVertex {
   static bgfx::VertexLayout layout;
 };
 bgfx::VertexLayout ScreenPosVertex::layout;
+
+SkyLighting skyLighting;  // Declare the SkyLighting instance
 
 // ──────────────────────────────────────────────────────
 // helper to initialize vertex layouts
@@ -79,6 +84,8 @@ GameTest::~GameTest() = default;
 // ──────────────────────────────────────────────────────
 void GameTest::Init() {
   initLayouts();
+  skyLighting.Init();  // Start the sky lighting system
+
 
   float terrainCenter[3] = {77.5f, 0.0f, 77.5f};
   camera.setTarget(terrainCenter);
@@ -117,6 +124,11 @@ void GameTest::Init() {
   _s_ormUniform = bgfx::createUniform("s_orm", bgfx::UniformType::Sampler);
   _s_normalUniform =
       bgfx::createUniform("s_normal", bgfx::UniformType::Sampler);
+
+  // Sky ambient light Uniform
+  _skyAmbientUniform =
+      bgfx::createUniform("u_skyAmbient", bgfx::UniformType::Vec4);
+
 
   // Load terrain textures
   terrainDiffuse =
@@ -337,11 +349,15 @@ void GameTest::Render() {
     bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A |
                    BGFX_STATE_DEPTH_TEST_ALWAYS);
 
+    skyLighting.Update(sunDir, _cycleTime);  // from skybox sun animation
+    skyLighting.ApplyUniforms();
     /* std::string skyboxMessage =
         "Submitting SKYBOX to view " + std::to_string(skyView);
     Logger::getInstance().Log(LogLevel::Info, skyboxMessage); */
     bgfx::submit(skyView, _skyProgram);
   }
+
+ 
 
   // --- TERRAIN ---
   bx::mtxScale(world_matrix, 5.f, 5.f, 5.f);
