@@ -9,6 +9,12 @@
 
 namespace Components {
 
+// calculate squared distance between two vectors
+inline float DistanceSqr(const ImVec2& delta) {
+  return delta.x * delta.x + delta.y * delta.y;
+}
+
+// Resize is deferred until the viewport has stabilized
 inline void GameCanvas(bool isGameRunning, bool& hovered) {
   ImGui::BeginChild("GameCanvas", ImVec2(0, ImGui::GetContentRegionAvail().y),
                     true);
@@ -17,11 +23,31 @@ inline void GameCanvas(bool isGameRunning, bool& hovered) {
   ImVec2 size = ImGui::GetContentRegionAvail();
   ImVec2 scale = ImGui::GetIO().DisplayFramebufferScale;
 
-  // Set global viewport dimensions used by the game/renderer
+  // Always update position immediately
   canvasViewportX = static_cast<uint16_t>(pos.x * scale.x);
   canvasViewportY = static_cast<uint16_t>(pos.y * scale.y);
-  canvasViewportW = static_cast<uint16_t>(size.x * scale.x);
-  canvasViewportH = static_cast<uint16_t>(size.y * scale.y);
+
+  // Store raw size before applying
+  ImVec2 proposedSize = size;
+  ImVec2 scaledSize =
+      ImVec2(proposedSize.x * scale.x, proposedSize.y * scale.y);
+
+  // update if dimensions have stabilized
+  static ImVec2 lastSize = ImVec2(0, 0);
+  static int stableFrames = 0;
+
+  if (DistanceSqr(ImVec2(scaledSize.x - lastSize.x,
+                         scaledSize.y - lastSize.y)) < 4.0f) {
+    stableFrames++;
+  } else {
+    stableFrames = 0;
+  }
+  lastSize = scaledSize;
+
+  if (stableFrames >= 2) {
+    canvasViewportW = static_cast<uint16_t>(scaledSize.x);
+    canvasViewportH = static_cast<uint16_t>(scaledSize.y);
+  }
 
   hovered = ImGui::IsWindowHovered();  // hover detection for the canvas
 
@@ -29,7 +55,7 @@ inline void GameCanvas(bool isGameRunning, bool& hovered) {
       static_cast<GraphicsRenderer*>(SubsystemManager::GetRenderer().get());
 
   if (isGameRunning && canvasViewportW > 0 && canvasViewportH > 0) {
-    // try to render when we have valid dimensions
+    // render when we have valid dimensions
     ImTextureID texId = renderer->GetSceneTexId();
     if (texId) {
       ImGui::Image(texId, size,
