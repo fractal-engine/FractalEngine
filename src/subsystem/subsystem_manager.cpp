@@ -42,12 +42,13 @@ const std::unique_ptr<ShaderManager>& SubsystemManager::GetShaderManager() {
   return getInstance().shader_manager_;
 }
 
-// TODO: fix constructors/destructors to use .reset only
+// FIXME: fix constructors/destructors to use .reset only
+// Some functions might be more appropriate to use in window_manager
 void SubsystemManager::initialize() {
 // 1. Initialize window manager
 #if defined(DISPLAY_GRAPHICAL)
   window_manager_ = std::make_unique<WindowManager>();
-  if (!window_manager_->Initialize("Fractal", 1280, 720)) {
+  if (!window_manager_->Initialize("Fractal Engine", 1280, 720)) {
     Logger::getInstance().Log(LogLevel::Error,
                               "WindowManager failed to initialize.");
     std::exit(1);

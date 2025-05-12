@@ -54,7 +54,7 @@ void ApplyStyle() {
       ImVec4(0.098f, 0.102f, 0.110f, 1.00f);  // #191a1c
 
   // === Text & Icons ===
-  colors[ImGuiCol_Text] = ImVec4(0.90f, 0.90f, 0.90f, 1.00f);  // #E6E6E6
+  colors[ImGuiCol_Text] = ImVec4(0.95f, 0.95f, 0.95f, 1.00f);  // #F2F2F2
   colors[ImGuiCol_TextDisabled] =
       ImVec4(0.50f, 0.50f, 0.50f, 1.00f);  // #808080
   // colors[ImGuiCol_Text] = ImVec4(0.70f, 0.70f, 0.70f, 1.00f);  // #b3b3b3
@@ -104,7 +104,7 @@ void ApplyStyle() {
 
   // === Scroller ===
   colors[ImGuiCol_ScrollbarBg] =
-      ImVec4(0.10f, 0.10f, 0.10f, 0.00f);  // #19191900
+      ImVec4(0.10f, 0.10f, 0.10f, 0.60f);  // #19191900
   colors[ImGuiCol_ScrollbarGrab] =
       ImVec4(0.30f, 0.30f, 0.30f, 0.60f);  // #4C4C4C99
   colors[ImGuiCol_ScrollbarGrabHovered] =
