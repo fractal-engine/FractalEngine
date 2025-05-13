@@ -80,8 +80,20 @@ private:
   bgfx::UniformHandle _s_ormUniform = BGFX_INVALID_HANDLE;
   bgfx::UniformHandle _s_normalUniform = BGFX_INVALID_HANDLE;
 
+
+
   // Sky Ambient Light
   bgfx::UniformHandle _skyAmbientUniform = BGFX_INVALID_HANDLE;
+  bgfx::UniformHandle _lightMatrixUniform = BGFX_INVALID_HANDLE;
+
+  // Shadow Map Uniform
+  bgfx::UniformHandle _shadowSamplerUniform = BGFX_INVALID_HANDLE;
+  bgfx::TextureHandle shadowMapTexture = BGFX_INVALID_HANDLE;
+  bgfx::FrameBufferHandle shadowMapFB = BGFX_INVALID_HANDLE;
+  bgfx::ProgramHandle _terrainShadowProgram = BGFX_INVALID_HANDLE;
+  bgfx::VertexBufferHandle _shadowVbh = BGFX_INVALID_HANDLE;
+
+
 
 
   float _cycleTime = 0.0f;  // day-night timerm keep it at 0

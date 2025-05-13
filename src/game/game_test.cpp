@@ -12,6 +12,7 @@
 #include "tools/texture_utils.h"
 #include "lighting/sky_lighting.h"
 
+constexpr uint8_t SHADOW_PASS = ViewID::SCENE_N(10);
 
 // ──────────────────────────────────────────────────────
 //  Vertex layouts
@@ -31,6 +32,13 @@ struct ScreenPosVertex {
 };
 bgfx::VertexLayout ScreenPosVertex::layout;
 
+struct ShadowVertex {
+  float x, y, z;
+  static bgfx::VertexLayout layout;
+};
+bgfx::VertexLayout ShadowVertex::layout;
+
+
 SkyLighting skyLighting;  // Declare the SkyLighting instance
 
 // ──────────────────────────────────────────────────────
@@ -48,6 +56,10 @@ static void initLayouts() {
   ScreenPosVertex::layout.begin()
       .add(bgfx::Attrib::Position, 2, bgfx::AttribType::Float)
       .end();
+
+  ShadowVertex::layout.begin()
+      .add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float)
+      .end();
 }
 
 // ──────────────────────────────────────────────────────
@@ -62,6 +74,9 @@ GameTest::GameTest()
       _lightDirUniform(BGFX_INVALID_HANDLE),
       _terrainVbh(BGFX_INVALID_HANDLE),
       _terrainIbh(BGFX_INVALID_HANDLE),
+      _lightMatrixUniform(BGFX_INVALID_HANDLE),
+      _skyAmbientUniform(BGFX_INVALID_HANDLE),
+      _shadowSamplerUniform(BGFX_INVALID_HANDLE),
       _skyProgram(BGFX_INVALID_HANDLE),
       _sunProgram(BGFX_INVALID_HANDLE),
       _skyVbh(BGFX_INVALID_HANDLE),
@@ -70,6 +85,7 @@ GameTest::GameTest()
       _sunDirUniform(BGFX_INVALID_HANDLE),
       _sunLumUniform(BGFX_INVALID_HANDLE),
       _paramsUniform(BGFX_INVALID_HANDLE),
+      _terrainShadowProgram(BGFX_INVALID_HANDLE),
       _s_diffuseUniform(BGFX_INVALID_HANDLE),
       _s_ormUniform(BGFX_INVALID_HANDLE),
       _s_normalUniform(BGFX_INVALID_HANDLE),
@@ -103,6 +119,11 @@ void GameTest::Init() {
       shaderMgr.LoadProgram("skybox", "vs_skybox.bin", "fs_skybox.bin");
   _sunProgram = shaderMgr.LoadProgram("sun", "vs_sun.bin", "fs_sun.bin");
 
+  // ― Shadow-only terrain shader
+  _terrainShadowProgram = SubsystemManager::GetShaderManager()->LoadProgram(
+      "terrain_shadow", "vs_shadow.bin", "fs_shadow.bin");
+
+
   // ― Uniforms
   _heightUniform =
       bgfx::createUniform("s_heightTexture", bgfx::UniformType::Sampler);
@@ -128,6 +149,12 @@ void GameTest::Init() {
   // Sky ambient light Uniform
   _skyAmbientUniform =
       bgfx::createUniform("u_skyAmbient", bgfx::UniformType::Vec4);
+  // Light Matrix Uniform
+  _lightMatrixUniform =
+      bgfx::createUniform("u_lightMatrix", bgfx::UniformType::Mat4);
+
+  _shadowSamplerUniform =
+      bgfx::createUniform("s_shadowMap", bgfx::UniformType::Sampler);
 
 
   // Load terrain textures
@@ -216,7 +243,30 @@ void GameTest::Init() {
   _terrainIbh = bgfx::createIndexBuffer(bgfx::copy(
       terrainIndices.data(), terrainIndices.size() * sizeof(uint16_t)));
 
+  // Create shadow vertex buffer
+
+  std::vector<ShadowVertex> shadowVertices;
+  shadowVertices.reserve(terrainVertices.size());
+  for (const auto& v : terrainVertices) {
+    shadowVertices.push_back({v.x, v.y, v.z});
+  }
+
+  _shadowVbh = bgfx::createVertexBuffer(
+      bgfx::copy(shadowVertices.data(),
+                 shadowVertices.size() * sizeof(ShadowVertex)),
+      ShadowVertex::layout);
+
+
   createSkyboxBuffers();
+
+  // Shadow Map initialization
+
+  // 2048x2048 shadow map, depth-only
+  shadowMapTexture =
+      bgfx::createTexture2D(2048, 2048, false, 1, bgfx::TextureFormat::D16,
+                            BGFX_TEXTURE_RT | BGFX_SAMPLER_COMPARE_LESS);
+
+  shadowMapFB = bgfx::createFrameBuffer(1, &shadowMapTexture, true);
 }
 
 // ──────────────────────────────────────────────────────
@@ -286,10 +336,73 @@ void GameTest::Render() {
   // render sky into SCENE (view 1) and terrain into SCENE_N(1) (view 2):
   constexpr uint8_t skyView = ViewID::SCENE;
   constexpr uint8_t terrainView = ViewID::SCENE_N(1);
+  constexpr uint8_t shadowView = ViewID::SCENE_N(10);  //  new shadow pass view
 
   // upload camera matrices into both views:
   bgfx::setViewTransform(skyView, view, proj);
   bgfx::setViewTransform(terrainView, view, proj);
+
+  // Animate the sun in a vertical arc (semi-circle)
+  const float phi = _cycleTime;
+
+  // Create a full sun arc from horizon to horizon
+  const float x = sinf(phi);                   // left-right sweep
+  const float y = sinf(phi + bx::kPi * 0.5f);  // vertical rise/fall
+  const float z = cosf(phi);                   // depth sweep
+  const bx::Vec3 sunDir = bx::normalize(bx::Vec3(x, y, z));
+
+  float dir[4] = {sunDir.x, sunDir.y, sunDir.z, 0.0f};
+  float time[4] = {_cycleTime, 0, 0, 0};
+
+  // Clamp between 0 and 1 — 0 when sun is below, 1 when fully overhead
+  float t = bx::clamp(sunDir.y * 0.5f + 0.5f, 0.0f, 1.0f);
+
+  // Soften sun color range
+  _sunColorArray[0] = bx::lerp(1.0f, 1.0f, t);  // R stays 1.0
+  _sunColorArray[1] = bx::lerp(0.5f, 1.0f, t);  // G warms up
+  _sunColorArray[2] = bx::lerp(0.1f, 1.0f, t);  // B goes from warm to cool
+  _sunColorArray[3] = 0.0f;
+
+  _parametersArray[0] = 0.01f;       // Sun size
+  _parametersArray[1] = 3.0f;        // Bloom factor
+  _parametersArray[2] = 1.0f;        // Exposure
+  _parametersArray[3] = _cycleTime;  // Time
+
+  // --- SHADOW PASS: render depth from light’s point of view ---
+  bx::Vec3 lightPos = bx::mul(sunDir, -100.0f);  // pull back from origin
+  bx::Vec3 lightTarget = {0.0f, 0.0f, 0.0f};     // terrain center
+
+  float lightView[16], lightProj[16], lightVP[16];
+  bx::mtxLookAt(lightView, lightPos, lightTarget);
+  bx::mtxOrtho(lightProj, -80.0f, 80.0f, -80.0f, 80.0f, -80.0f, 80.0f, 0,
+               false);
+  bx::mtxMul(lightVP, lightProj, lightView);
+
+  bgfx::setViewFrameBuffer(shadowView, shadowMapFB);
+  bgfx::setViewTransform(shadowView, lightView, lightProj);
+  bgfx::setViewClear(shadowView, BGFX_CLEAR_DEPTH, 0, 1.0f, 0);
+
+  bx::mtxScale(world_matrix, 5.f, 5.f, 5.f);
+  bgfx::setTransform(world_matrix);
+  bgfx::setVertexBuffer(0, _shadowVbh);
+  bgfx::setVertexBuffer(0, _terrainVbh);
+  bgfx::setIndexBuffer(_terrainIbh);
+  bgfx::setState(BGFX_STATE_WRITE_Z | BGFX_STATE_DEPTH_TEST_LESS);
+
+  if (!bgfx::isValid(_terrainShadowProgram)) {
+    Logger::getInstance().Log(LogLevel::Error, "Shadow program not valid");
+  }
+
+  if (!bgfx::isValid(shadowMapFB)) {
+    Logger::getInstance().Log(LogLevel::Error, "Shadow framebuffer not valid");
+  }
+
+  bgfx::submit(shadowView, _terrainShadowProgram);  //  depth-only shader
+
+ 
+
+  // Upload light matrix for main terrain pass
+  bgfx::setUniform(_lightMatrixUniform, lightVP);
 
   // --- SKYBOX (procedural full-screen quad) ---
   if (bgfx::isValid(_skyProgram)) {
@@ -306,39 +419,6 @@ void GameTest::Render() {
     bgfx::setVertexBuffer(0, _skyVbh);
     bgfx::setIndexBuffer(_skyIbh);
 
-    // Animate the sun in a vertical arc (semi-circle)
-    const float phi =
-        _cycleTime;  // Time parameter controlling the sun’s motion
-
-    // Create a full sun arc from horizon to horizon
-    const float x = sinf(phi);  // left-right sweep
-    const float y =
-        sinf(phi + bx::kPi * 0.5f);  // vertical rise/fall, offset to match arc
-    const float z = cosf(phi);  // depth (optional if only 2D arc is desired)
-
-
-    const bx::Vec3 sunDir = bx::normalize(bx::Vec3(x, y, z));
-
-    float dir[4] = {sunDir.x, sunDir.y, sunDir.z, 0.0f};
-
-    float time[4] = {_cycleTime, 0, 0, 0};
-
-    // Clamp between 0 and 1 — 0 when sun is below, 1 when fully overhead
-    float t = bx::clamp(sunDir.y * 0.5f + 0.5f, 0.0f, 1.0f);
-
-    // Soften sun color range
-    _sunColorArray[0] = bx::lerp(1.0f, 1.0f, t);  // R stays 1.0
-    _sunColorArray[1] = bx::lerp(0.5f, 1.0f, t);  // G warms up
-    _sunColorArray[2] = bx::lerp(0.1f, 1.0f, t);  // B goes from warm to cool
-
-
-    _sunColorArray[3] = 0.0f;
-
-    _parametersArray[0] = 0.01f;      // Sun size
-    _parametersArray[1] = 3.0f;        // Bloom factor
-    _parametersArray[2] = 1.0f;        // Exposure 
-    _parametersArray[3] = _cycleTime;  // Time
-
     bgfx::setUniform(_viewInvUniform, invView);
     bgfx::setUniform(_projInvUniform, invProj);
     bgfx::setUniform(_timeUniform, time);
@@ -351,47 +431,40 @@ void GameTest::Render() {
 
     skyLighting.Update(sunDir, _cycleTime);  // from skybox sun animation
     skyLighting.ApplyUniforms();
-    /* std::string skyboxMessage =
-        "Submitting SKYBOX to view " + std::to_string(skyView);
-    Logger::getInstance().Log(LogLevel::Info, skyboxMessage); */
+
     bgfx::submit(skyView, _skyProgram);
   }
-
- 
 
   // --- TERRAIN ---
   bx::mtxScale(world_matrix, 5.f, 5.f, 5.f);
   bgfx::setTransform(world_matrix);
   bgfx::setVertexBuffer(0, _terrainVbh);
   bgfx::setIndexBuffer(_terrainIbh);
-  bgfx::setTexture(0, _heightUniform, _heightTexture);
 
-  // Load Textures
+  // Textures
+  bgfx::setTexture(0, _heightUniform, _heightTexture);
   bgfx::setTexture(0, _s_diffuseUniform, terrainDiffuse);
   bgfx::setTexture(1, _s_ormUniform, terrainORM);
   bgfx::setTexture(2, _s_normalUniform, terrainNormal);
+  bgfx::setTexture(3, _shadowSamplerUniform,
+                   shadowMapTexture);  //  bind shadow map
 
-  // shared for both sky and terrain - sun light changes
+  // Shared lighting
   bgfx::setUniform(_sunLumUniform, _sunColorArray);
+  bgfx::setUniform(_lightMatrixUniform, lightVP);
 
-
- float cameraPos[4] = {};
-  camera.getPosition(cameraPos);  // Fetch world position from orbit camera
+  float cameraPos[4] = {};
+  camera.getPosition(cameraPos);
   cameraPos[3] = 0.0f;
-
   bgfx::setUniform(_cameraPosUniform, cameraPos);
-
 
   bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A |
                  BGFX_STATE_WRITE_Z | BGFX_STATE_DEPTH_TEST_LESS |
                  BGFX_STATE_MSAA);
 
-  /* Logger::getInstance().Log(LogLevel::Debug, "Submitting terrain draw call");
-  std::string terrainMessage =
-      "Submitting TERRAIN to view " + std::to_string(terrainView);
-  Logger::getInstance().Log(LogLevel::Info, terrainMessage); */
   bgfx::submit(terrainView, _terrainProgramHeight);
 }
+
 
 // ──────────────────────────────────────────────────────
 //  Shutdown()
@@ -405,6 +478,7 @@ void GameTest::Shutdown() {
   };
 
   destroy(_terrainProgramHeight);
+  destroy(_terrainShadowProgram);
   destroy(_skyProgram);
   destroy(_sunProgram);
 
@@ -425,6 +499,15 @@ void GameTest::Shutdown() {
   destroy(_s_diffuseUniform);
   destroy(_s_ormUniform);
   destroy(_s_normalUniform);
+  destroy(_lightMatrixUniform);
+  destroy(_skyAmbientUniform);
+  destroy(_shadowSamplerUniform);
+  destroy(_cameraPosUniform);
+  destroy(shadowMapTexture);
+  destroy(shadowMapFB);
+  destroy(_shadowVbh);
+
+
   destroy(_skyVbh);
   destroy(_skyIbh);
 }
