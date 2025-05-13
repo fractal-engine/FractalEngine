@@ -6,8 +6,8 @@
 
 namespace Components {
 
-void MenuBar(bool& quit, bool& debug_highlight, bool& show_metrics, bool& show_log,
-             bool& activate_picker) {
+void MenuBar(std::function<void()> onExit, bool& debug_highlight,
+             bool& show_metrics, bool& show_log, bool& activate_picker) {
   ImGuiViewport* viewport = ImGui::GetMainViewport();
   float height = ImGui::GetFrameHeight();
   ImGuiWindowFlags window_flags =
@@ -19,8 +19,8 @@ void MenuBar(bool& quit, bool& debug_highlight, bool& show_metrics, bool& show_l
                                   height, window_flags)) {
     if (ImGui::BeginMenuBar()) {
       if (ImGui::BeginMenu("File")) {
-        if (ImGui::MenuItem("Exit", "Ctrl+Q"))
-          quit = true;
+        if (ImGui::MenuItem("Exit") && onExit)
+          onExit();
         ImGui::EndMenu();
       }
       if (ImGui::BeginMenu("Debug")) {

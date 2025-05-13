@@ -205,8 +205,13 @@ void EditorLayer::DockSpace() {
   ImGui::End();
 
   // ———— Menu bar —————
-  Components::MenuBar(quit_, debug_highlight_ids_, debug_show_metrics_,
-                      debug_show_log_, debug_activate_picker_);
+  Components::MenuBar(
+      [&]() {
+        quit_ = true;
+        editor_exit_pressed();
+      },
+      debug_highlight_ids_, debug_show_metrics_, debug_show_log_,
+      debug_activate_picker_);
 
   // ———— Status bar —————
   Components::StatusBar();
