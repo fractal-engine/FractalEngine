@@ -10,6 +10,7 @@
 namespace Components {
 
 // calculate squared distance between two vectors
+// Avoids rapid FBO recreation while resizing scene window
 inline float DistanceSqr(const ImVec2& delta) {
   return delta.x * delta.x + delta.y * delta.y;
 }

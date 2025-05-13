@@ -58,7 +58,7 @@ void SubsystemManager::initialize() {
 // 2. Initialize renderer + bgfx
 #if defined(DISPLAY_GRAPHICAL)
   renderer_ = std::make_unique<GraphicsRenderer>();
-  if (!static_cast<GraphicsRenderer*>(renderer_.get())->InitBGFX()) {
+  if (!static_cast<GraphicsRenderer*>(renderer_.get())->InitBgfx()) {
     Logger::getInstance().Log(LogLevel::Error,
                               "BGFX failed to initialize in renderer!");
     std::exit(1);

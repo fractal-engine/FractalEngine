@@ -97,38 +97,37 @@ void EditorLayer::Run() {
       }
     }
 
-    /* 1 - Clear background */
+    /* 1 - Clear background and initialize frame */
     bgfx::setViewClear(ViewID::UI_BACKGROUND, BGFX_CLEAR_COLOR, 0x1e1e1eff,
                        1.0f, 0);
     bgfx::touch(ViewID::UI_BACKGROUND);  // process background
 
-    /* 2 - Configure and prepare scene framebuffer */
-    auto* graphics = static_cast<GraphicsRenderer*>(renderer_.get());
-    graphics->PrepareFrame();  // set up scene framebuffer view
-
-    /* 3 - Let game render into scene framebuffer */
-    if (is_game_started_) {
-      SubsystemManager::GetGameManager()->Render();  // Render to ViewID::SCENE
-    }
-
-    /* 4 - start ImGui frame, samples from scene texture */
+    /* 2 - Build ImGui UI structure */
     BeginImGuiFrame(WindowManager::GetWindow());
     RenderUI();
 
-    /* 5 - Submit ImGui to UI view */
-    ImGui::Render();
-    ImGui_Implbgfx_RenderDrawLists(ImGui::GetDrawData());
+    /* 3 - Finalize ImGui frame definition */
+    ImGui::Render();  // prepre imgui draw data (no rendering yet)
 
-    // 6 - Update platform windows
-    if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
-      bgfx::frame(false);
-      ImGui::UpdatePlatformWindows();
-      ImGui::RenderPlatformWindowsDefault();
+    /* 4 - Prepare rendering target */
+    auto* graphics = static_cast<GraphicsRenderer*>(renderer_.get());
+    graphics->PrepareFrame();  // set up scene framebuffer view
+
+    /* 5 - Render game content to framebuffer */
+    if (is_game_started_) {
+      SubsystemManager::GetGameManager()->Render();  // Render 3D scene
     }
 
-    /* 7 - Present frame */
-    renderer_->Render();
-    bgfx::frame();
+    /* 6 - Render ImGui elements */
+    ImGui_Implbgfx_RenderDrawLists(ImGui::GetDrawData());  // main window UI
+
+    /* 7 - Handle multi-viewport (detached windows) */
+    ImGui::UpdatePlatformWindows();
+    ImGui::RenderPlatformWindowsDefault();
+
+    /* 8 - Submit frame to display */
+    renderer_->Render();  // finalize rendering
+    bgfx::frame();        // submit to GPU and swap buffers
   }
   Logger::getInstance().Log(LogLevel::Info, "EditorLayer loop exited");
 }
