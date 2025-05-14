@@ -320,6 +320,10 @@ void EditorLayer::RenderUI() {
   }
 }
 
+void EditorLayer::LoadIcons () {
+  // Load icons here
+}
+
 void EditorLayer::BeginImGuiFrame(SDL_Window* window) {
   ImGui_ImplSDL2_NewFrame();  // platform backend
   ImGui_Implbgfx_NewFrame();  // renderer backend

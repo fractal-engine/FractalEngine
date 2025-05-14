@@ -98,7 +98,7 @@ void ApplyStyle() {
       ImVec4(0.098f, 0.102f, 0.110f, 1.00f);  // #191a1c
 
   // === Separator ===
-  colors[ImGuiCol_Separator] = ImVec4(0.23f, 0.23f, 0.23f, 1.00f);
+  colors[ImGuiCol_Separator] = ImVec4(0.098f, 0.102f, 0.110f, 1.00f);  // #191a1c
   colors[ImGuiCol_SeparatorHovered] = ImVec4(0.26f, 0.26f, 0.26f, 1.00f);
   colors[ImGuiCol_SeparatorActive] = ImVec4(0.30f, 0.30f, 0.30f, 1.00f);
 
@@ -114,26 +114,27 @@ void ApplyStyle() {
 
   // === Border ===
   colors[ImGuiCol_Border] = ImVec4(0.098f, 0.102f, 0.110f, 1.00f);  // #191a1c
-  colors[ImGuiCol_BorderShadow] = ImVec4(0, 0, 0, 0);               // #00000000
+  colors[ImGuiCol_BorderShadow] = ImVec4(0.098f, 0.102f, 0.110f, 1.00f);              // #00000000
   colors[ImGuiCol_PlotLines] = ImVec4(0.61f, 0.61f, 0.61f, 1.00f);  // blue
 
   // === Slider ===
   colors[ImGuiCol_SliderGrab] =
-      ImVec4(0.251f, 0.541f, 0.894f, 1.00f);  // #408AE4
+      ImVec4(0.231f, 0.475f, 0.769f, 1.00f);  // #3B79C4
 
   // === Nav ===
   colors[ImGuiCol_NavWindowingHighlight] =
-      ImVec4(0.251f, 0.541f, 0.894f, 1.00f);  // #408AE4
-  colors[ImGuiCol_NavHighlight] = ImVec4(0.25f, 0.75f, 0.35f, 1.00f);
+      ImVec4(0.231f, 0.475f, 0.769f, 1.00f);  // #3B79C4
+  colors[ImGuiCol_NavHighlight] =
+      ImVec4(0.231f, 0.475f, 0.769f, 1.00f);  // #3B79C4
 
   // === Table ===
   // colors[ImGuiCol_TableBorderStrong] = ImVec4(0.27f, 0.23f, 0.29f, 1.00f);
 
   // === Grip ===
   colors[ImGuiCol_ResizeGripHovered] =
-      ImVec4(0.251f, 0.541f, 0.894f, 1.00f);  // #408AE4
+      ImVec4(0.231f, 0.475f, 0.769f, 1.00f);  // #3B79C4
   colors[ImGuiCol_ResizeGripActive] =
-      ImVec4(0.251f, 0.541f, 0.894f, 1.00f);  // #408AE4
+      ImVec4(0.231f, 0.475f, 0.769f, 1.00f);  // #3B79C4
 
   // === Docking ===
   colors[ImGuiCol_DockingPreview] =

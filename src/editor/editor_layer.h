@@ -30,7 +30,8 @@ private:
   void HandleInput(Key key);
   void RenderUI();
   void DockSpace();
-
+  void LoadIcons();
+  
   std::unique_ptr<RendererBase>& renderer_;
   bool quit_ = false;
   bool is_game_started_ = false;
