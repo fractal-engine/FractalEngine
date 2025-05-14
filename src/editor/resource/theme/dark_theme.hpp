@@ -81,14 +81,14 @@ void ApplyStyle() {
   // === Tabs ===
   colors[ImGuiCol_Tab] = ImVec4(0.14f, 0.16f, 0.18f, 1.00f);  // #25292e
   colors[ImGuiCol_TabHovered] =
-      ImVec4(0.16f, 0.18f, 0.20f, 1.00f);                           // #292E33FF
+      ImVec4(0.298f, 0.541f, 0.835f, 1.0f);                         // #4C8AD5
   colors[ImGuiCol_TabActive] = ImVec4(0.14f, 0.16f, 0.18f, 1.00f);  // #25292e
   colors[ImGuiCol_TabUnfocused] =
       ImVec4(0.14f, 0.16f, 0.18f, 1.00f);  // #25292e
   colors[ImGuiCol_TabUnfocusedActive] =
       ImVec4(0.14f, 0.16f, 0.18f, 1.00f);  // #25292e
-  // colors[ImGuiCol_TabSelected] = ImVec4(0.251f, 0.541f, 0.894f, 1.00f);  //
-  // #408AE4
+  colors[ImGuiCol_TabSelected] =
+      ImVec4(0.231f, 0.475f, 0.769f, 1.00f);  // #3B79C4
 
   // === Title ===
   colors[ImGuiCol_TitleBg] = ImVec4(0.098f, 0.102f, 0.110f, 1.00f);  // #191a1c
@@ -98,7 +98,8 @@ void ApplyStyle() {
       ImVec4(0.098f, 0.102f, 0.110f, 1.00f);  // #191a1c
 
   // === Separator ===
-  colors[ImGuiCol_Separator] = ImVec4(0.098f, 0.102f, 0.110f, 1.00f);  // #191a1c
+  colors[ImGuiCol_Separator] =
+      ImVec4(0.098f, 0.102f, 0.110f, 1.00f);  // #191a1c
   colors[ImGuiCol_SeparatorHovered] = ImVec4(0.26f, 0.26f, 0.26f, 1.00f);
   colors[ImGuiCol_SeparatorActive] = ImVec4(0.30f, 0.30f, 0.30f, 1.00f);
 
@@ -114,7 +115,8 @@ void ApplyStyle() {
 
   // === Border ===
   colors[ImGuiCol_Border] = ImVec4(0.098f, 0.102f, 0.110f, 1.00f);  // #191a1c
-  colors[ImGuiCol_BorderShadow] = ImVec4(0.098f, 0.102f, 0.110f, 1.00f);              // #00000000
+  colors[ImGuiCol_BorderShadow] =
+      ImVec4(0.098f, 0.102f, 0.110f, 1.00f);                        // #00000000
   colors[ImGuiCol_PlotLines] = ImVec4(0.61f, 0.61f, 0.61f, 1.00f);  // blue
 
   // === Slider ===
@@ -138,7 +140,7 @@ void ApplyStyle() {
 
   // === Docking ===
   colors[ImGuiCol_DockingPreview] =
-      ImVec4(0.251f, 0.541f, 0.894f, 0.60f);  // rgba(64, 138, 228, 0.6)
+      ImVec4(0.251f, 0.541f, 0.894f, 0.60f);  // #408ae4
   colors[ImGuiCol_DockingEmptyBg] =
       ImVec4(0.14f, 0.16f, 0.18f, 1.00f);  // Match background
 
