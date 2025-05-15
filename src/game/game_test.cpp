@@ -6,13 +6,13 @@
 #include <SDL.h>
 #include "core/logger.h"
 #include "core/view_ids.h"
+#include "lighting/sky_lighting.h"
 #include "renderer/renderer_graphics.h"
 #include "renderer/shaders/shader_utils.h"
 #include "subsystem/subsystem_manager.h"
 #include "tools/texture_utils.h"
-#include "lighting/sky_lighting.h"
 
-constexpr uint8_t SHADOW_PASS = ViewID::SCENE_N(10);
+constexpr uint8_t shadowView = ViewID::SHADOW_PASS;
 
 // ──────────────────────────────────────────────────────
 //  Vertex layouts
@@ -37,7 +37,6 @@ struct ShadowVertex {
   static bgfx::VertexLayout layout;
 };
 bgfx::VertexLayout ShadowVertex::layout;
-
 
 SkyLighting skyLighting;  // Declare the SkyLighting instance
 
@@ -78,7 +77,6 @@ GameTest::GameTest()
       _skyAmbientUniform(BGFX_INVALID_HANDLE),
       _shadowSamplerUniform(BGFX_INVALID_HANDLE),
       _skyProgram(BGFX_INVALID_HANDLE),
-      _sunProgram(BGFX_INVALID_HANDLE),
       _skyVbh(BGFX_INVALID_HANDLE),
       _skyIbh(BGFX_INVALID_HANDLE),
       _timeUniform(BGFX_INVALID_HANDLE),
@@ -99,9 +97,10 @@ GameTest::~GameTest() = default;
 //  Init()
 // ──────────────────────────────────────────────────────
 void GameTest::Init() {
+
   initLayouts();
   skyLighting.Init();  // Start the sky lighting system
-
+  Logger::getInstance().Log(LogLevel::Debug, "[GameTest] Init() called.");
 
   float terrainCenter[3] = {77.5f, 0.0f, 77.5f};
   camera.setTarget(terrainCenter);
@@ -112,17 +111,15 @@ void GameTest::Init() {
 
   // ― Terrain shader
   _terrainProgramHeight = SubsystemManager::GetShaderManager()->LoadProgram(
-      "terrain_height", "vs_terrain_height_texture.bin", "fs_terrain.bin");
+      "terrain_height", "vs_terrain.bin", "fs_terrain.bin");
 
   // ― Sky / Sun
   _skyProgram =
       shaderMgr.LoadProgram("skybox", "vs_skybox.bin", "fs_skybox.bin");
-  _sunProgram = shaderMgr.LoadProgram("sun", "vs_sun.bin", "fs_sun.bin");
 
   // ― Shadow-only terrain shader
   _terrainShadowProgram = SubsystemManager::GetShaderManager()->LoadProgram(
       "terrain_shadow", "vs_shadow.bin", "fs_shadow.bin");
-
 
   // ― Uniforms
   _heightUniform =
@@ -155,7 +152,6 @@ void GameTest::Init() {
 
   _shadowSamplerUniform =
       bgfx::createUniform("s_shadowMap", bgfx::UniformType::Sampler);
-
 
   // Load terrain textures
   terrainDiffuse =
@@ -256,17 +252,27 @@ void GameTest::Init() {
                  shadowVertices.size() * sizeof(ShadowVertex)),
       ShadowVertex::layout);
 
-
   createSkyboxBuffers();
 
   // Shadow Map initialization
 
   // 2048x2048 shadow map, depth-only
-  shadowMapTexture =
-      bgfx::createTexture2D(2048, 2048, false, 1, bgfx::TextureFormat::D16,
-                            BGFX_TEXTURE_RT | BGFX_SAMPLER_COMPARE_LESS);
+  shadowMapTexture = bgfx::createTexture2D(
+      2048, 2048, false, 1, bgfx::TextureFormat::D16,
+      BGFX_TEXTURE_RT_WRITE_ONLY | BGFX_SAMPLER_COMPARE_LESS);
 
   shadowMapFB = bgfx::createFrameBuffer(1, &shadowMapTexture, true);
+
+  Logger::getInstance().Log(
+      LogLevel::Debug,
+      std::string("[Shadow] shadowMapTexture valid=") +
+          (bgfx::isValid(shadowMapTexture) ? "true" : "false") +
+          ", handle=" + std::to_string(shadowMapTexture.idx));
+
+  Logger::getInstance().Log(
+      LogLevel::Debug, std::string("[Shadow] shadowMapFB valid=") +
+                           (bgfx::isValid(shadowMapFB) ? "true" : "false") +
+                           ", handle=" + std::to_string(shadowMapFB.idx));
 }
 
 // ──────────────────────────────────────────────────────
@@ -336,7 +342,7 @@ void GameTest::Render() {
   // render sky into SCENE (view 1) and terrain into SCENE_N(1) (view 2):
   constexpr uint8_t skyView = ViewID::SCENE;
   constexpr uint8_t terrainView = ViewID::SCENE_N(1);
-  constexpr uint8_t shadowView = ViewID::SCENE_N(10);  //  new shadow pass view
+  constexpr uint8_t shadowView = ViewID::SHADOW_PASS;  //  new shadow pass view
 
   // upload camera matrices into both views:
   bgfx::setViewTransform(skyView, view, proj);
@@ -378,28 +384,30 @@ void GameTest::Render() {
                false);
   bx::mtxMul(lightVP, lightProj, lightView);
 
+  if (!bgfx::isValid(shadowMapFB)) {
+    Logger::getInstance().Log(LogLevel::Error, "ShadowMapFB is invalid!");
+    return;  // Skip render to avoid crash
+  }
+
+  bgfx::setViewRect(shadowView, 0, 0, 2048, 2048);
   bgfx::setViewFrameBuffer(shadowView, shadowMapFB);
   bgfx::setViewTransform(shadowView, lightView, lightProj);
   bgfx::setViewClear(shadowView, BGFX_CLEAR_DEPTH, 0, 1.0f, 0);
 
   bx::mtxScale(world_matrix, 5.f, 5.f, 5.f);
   bgfx::setTransform(world_matrix);
-  bgfx::setVertexBuffer(0, _shadowVbh);
-  bgfx::setVertexBuffer(0, _terrainVbh);
-  bgfx::setIndexBuffer(_terrainIbh);
-  bgfx::setState(BGFX_STATE_WRITE_Z | BGFX_STATE_DEPTH_TEST_LESS);
 
-  if (!bgfx::isValid(_terrainShadowProgram)) {
-    Logger::getInstance().Log(LogLevel::Error, "Shadow program not valid");
+  // Safely submit if all resources are valid
+  if (bgfx::isValid(_shadowVbh) && bgfx::isValid(_terrainIbh) &&
+      bgfx::isValid(_terrainShadowProgram)) {
+    bgfx::setVertexBuffer(0, _shadowVbh);
+    bgfx::setIndexBuffer(_terrainIbh);
+    bgfx::setState(BGFX_STATE_WRITE_Z | BGFX_STATE_DEPTH_TEST_LESS);
+    bgfx::submit(shadowView, _terrainShadowProgram);
+  } else {
+    Logger::getInstance().Log(LogLevel::Error,
+                              "Shadow pass skipped — invalid resources.");
   }
-
-  if (!bgfx::isValid(shadowMapFB)) {
-    Logger::getInstance().Log(LogLevel::Error, "Shadow framebuffer not valid");
-  }
-
-  bgfx::submit(shadowView, _terrainShadowProgram);  //  depth-only shader
-
- 
 
   // Upload light matrix for main terrain pass
   bgfx::setUniform(_lightMatrixUniform, lightVP);
@@ -443,11 +451,11 @@ void GameTest::Render() {
 
   // Textures
   bgfx::setTexture(0, _heightUniform, _heightTexture);
-  bgfx::setTexture(0, _s_diffuseUniform, terrainDiffuse);
-  bgfx::setTexture(1, _s_ormUniform, terrainORM);
-  bgfx::setTexture(2, _s_normalUniform, terrainNormal);
-  bgfx::setTexture(3, _shadowSamplerUniform,
-                   shadowMapTexture);  //  bind shadow map
+  bgfx::setTexture(1, _s_diffuseUniform, terrainDiffuse);
+  bgfx::setTexture(2, _s_ormUniform, terrainORM);
+  bgfx::setTexture(3, _s_normalUniform, terrainNormal);
+  bgfx::setTexture(3, _shadowSamplerUniform, shadowMapTexture,
+                   BGFX_SAMPLER_COMPARE_LESS);//  bind shadow map
 
   // Shared lighting
   bgfx::setUniform(_sunLumUniform, _sunColorArray);
@@ -480,7 +488,7 @@ void GameTest::Shutdown() {
   destroy(_terrainProgramHeight);
   destroy(_terrainShadowProgram);
   destroy(_skyProgram);
-  destroy(_sunProgram);
+
 
   destroy(_heightTexture);
   destroy(_heightUniform);
@@ -506,7 +514,6 @@ void GameTest::Shutdown() {
   destroy(shadowMapTexture);
   destroy(shadowMapFB);
   destroy(_shadowVbh);
-
 
   destroy(_skyVbh);
   destroy(_skyIbh);

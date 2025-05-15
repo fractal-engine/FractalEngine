@@ -31,6 +31,8 @@ public:
   void Render() override;
   void Shutdown() override;
 
+
+
   // simple camera function call
   OrbitCamera camera;
   CameraSystem cameraSystem;
@@ -60,7 +62,7 @@ private:
 
   // ───── Sky-box & Sun
   bgfx::ProgramHandle _skyProgram = BGFX_INVALID_HANDLE;
-  bgfx::ProgramHandle _sunProgram = BGFX_INVALID_HANDLE;
+
 
   bgfx::VertexBufferHandle _skyVbh = BGFX_INVALID_HANDLE;
   bgfx::IndexBufferHandle _skyIbh = BGFX_INVALID_HANDLE;
