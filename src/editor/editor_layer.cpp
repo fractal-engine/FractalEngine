@@ -320,8 +320,14 @@ void EditorLayer::RenderUI() {
   }
 }
 
-void EditorLayer::LoadIcons () {
-  // Load icons here
+void EditorLayer::LoadIcons() {
+  tab_icons_.insert({"Hierarchy", ICON_FA_SITEMAP});
+  tab_icons_.insert({"Toolbar", ICON_FA_TOOLBOX});
+  tab_icons_.insert({"Scene", ICON_FA_GAMEPAD});
+  tab_icons_.insert({"Inspector", ICON_FA_LIST});
+  tab_icons_.insert({"Console", ICON_FA_TERMINAL});
+  tab_icons_.insert({"Camera", ICON_FA_VIDEO});
+  tab_icons_.insert({"Assets", ICON_FA_FOLDER_OPEN});
 }
 
 void EditorLayer::BeginImGuiFrame(SDL_Window* window) {
