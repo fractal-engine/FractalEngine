@@ -54,6 +54,7 @@ private:
   bool debug_show_metrics_ = false;
   bool debug_show_log_ = false;
   bool debug_activate_picker_ = false;
+  bool debug_show_style_editor_ = false;
 
   // Map component names to icons
   std::unordered_map<std::string, std::string> tab_icons_;

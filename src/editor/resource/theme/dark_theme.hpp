@@ -47,8 +47,8 @@ void ApplyStyle() {
   ImVec4* colors = style.Colors;
 
   // === Core Layout ===
-  colors[ImGuiCol_WindowBg] = ImVec4(0.14f, 0.16f, 0.18f, 1.00f);    // #24292e
-  colors[ImGuiCol_ChildBg] = ImVec4(0.14f, 0.16f, 0.18f, 1.00f);     // #24292e
+  colors[ImGuiCol_WindowBg] = ImVec4(0.14f, 0.16f, 0.18f, 1.00f);    // #25292e
+  colors[ImGuiCol_ChildBg] = ImVec4(0.14f, 0.16f, 0.18f, 1.00f);     // #25292e
   colors[ImGuiCol_PopupBg] = ImVec4(0.098f, 0.102f, 0.110f, 0.95f);  // #191a1c
   colors[ImGuiCol_MenuBarBg] =
       ImVec4(0.098f, 0.102f, 0.110f, 1.00f);  // #191a1c
@@ -89,6 +89,7 @@ void ApplyStyle() {
       ImVec4(0.14f, 0.16f, 0.18f, 1.00f);  // #25292e
   colors[ImGuiCol_TabSelected] =
       ImVec4(0.231f, 0.475f, 0.769f, 1.00f);  // #3B79C4
+  style.Colors[ImGuiCol_TabSelectedOverline] = ImVec4(0, 0, 0, 0);
 
   // === Title ===
   colors[ImGuiCol_TitleBg] = ImVec4(0.098f, 0.102f, 0.110f, 1.00f);  // #191a1c
@@ -142,7 +143,7 @@ void ApplyStyle() {
   colors[ImGuiCol_DockingPreview] =
       ImVec4(0.251f, 0.541f, 0.894f, 0.60f);  // #408ae4
   colors[ImGuiCol_DockingEmptyBg] =
-      ImVec4(0.14f, 0.16f, 0.18f, 1.00f);  // Match background
+      ImVec4(0.14f, 0.16f, 0.18f, 1.00f);  // #25292e
 
   // === Style Tuning ===
   style.FrameBorderSize = 0.0f;
@@ -173,6 +174,7 @@ inline void Initialize() {
   ImGuiStyle& style = ImGui::GetStyle();
   style.TabRounding = 0.0f;
   style.TabBorderSize = 0.0f;
+  style.TabBarOverlineSize = 0.0f;
 #endif
 }
 }  // namespace Theme

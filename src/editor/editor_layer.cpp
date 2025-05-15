@@ -211,7 +211,7 @@ void EditorLayer::DockSpace() {
         editor_exit_pressed();
       },
       debug_highlight_ids_, debug_show_metrics_, debug_show_log_,
-      debug_activate_picker_);
+      debug_activate_picker_, debug_show_style_editor_);
 
   // ———— Status bar —————
   Components::StatusBar();
@@ -313,6 +313,12 @@ void EditorLayer::RenderUI() {
   if (debug_show_log_) {
     ImGui::SetNextWindowDockID(0, ImGuiCond_Always);
     ImGui::ShowDebugLogWindow(&debug_show_log_);
+  }
+  if (debug_show_style_editor_) {
+    ImGui::SetNextWindowDockID(0, ImGuiCond_Always);
+    ImGui::Begin("Style Editor", &debug_show_style_editor_);
+    ImGui::ShowStyleEditor();
+    ImGui::End();
   }
   if (debug_activate_picker_) {
     ImGui::DebugStartItemPicker();

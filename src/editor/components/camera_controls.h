@@ -10,7 +10,7 @@ namespace Components {
 inline void CameraControls() {
   ImGui::BeginChild("CameraControls", ImVec2(300, 0), true);
   ImGui::Text("Camera Controls");
-  ImGui::Separator();
+  ImGui::Separator(); //TODO: create custom UI separator 
 
   auto* game =
       dynamic_cast<GameTest*>(SubsystemManager::GetGameManager()->GetGame());
