@@ -162,13 +162,17 @@ void ApplyStyle() {
   style.TabRounding = 4.0f;
 }
 
-#ifdef IMGUI_HAS_DOCK
-
-#endif
-
 inline void Initialize() {
   ImGuiIO& io = ImGui::GetIO();
   LoadFonts(io);
   ApplyStyle();
+
+#ifdef IMGUI_HAS_DOCK
+  ImGui::GetStyle().WindowMenuButtonPosition = ImGuiDir_None;
+
+  ImGuiStyle& style = ImGui::GetStyle();
+  style.TabRounding = 0.0f;
+  style.TabBorderSize = 0.0f;
+#endif
 }
 }  // namespace Theme
