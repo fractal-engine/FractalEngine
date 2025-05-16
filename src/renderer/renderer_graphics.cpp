@@ -157,6 +157,16 @@ void GraphicsRenderer::PrepareFrame() {
     bgfx::setViewFrameBuffer(v, scene_framebuffer_);
   }
 
+  // FIXME: organise viewIDs, passes and FBO in a more
+  // centralised and stable way, there's no clear
+  // approach on how the passes are being handled
+  static constexpr uint8_t kActiveScenePasses = 2;  // 0 = terrain, 1 = post-FX
+  for (uint8_t i = 0; i < kActiveScenePasses; ++i) {
+    const auto vid = ViewID::SCENE_N(i);
+    bgfx::setViewRect(vid, 0, 0, fbw, fbh);
+    bgfx::setViewFrameBuffer(vid, scene_framebuffer_);
+  }
+
   // Debug check
   if (!bgfx::isValid(scene_framebuffer_)) {
     Logger::getInstance().Log(LogLevel::Error,
@@ -178,8 +188,8 @@ void GraphicsRenderer::CreateFramebuffers(uint16_t w, uint16_t h) {
 
   // destroy old framebuffer after new one is ready
   const bgfx::TextureHandle attachments[2] = {new_color, new_depth};
-  bgfx::FrameBufferHandle new_framebuffer = bgfx::createFrameBuffer(
-      BX_COUNTOF(attachments), attachments, false);
+  bgfx::FrameBufferHandle new_framebuffer =
+      bgfx::createFrameBuffer(BX_COUNTOF(attachments), attachments, false);
 
   if (bgfx::isValid(new_framebuffer)) {
     // If success, clean up old and switch to new
@@ -282,7 +292,8 @@ void GraphicsRenderer::UpdateCanvasSize(uint16_t w, uint16_t h) {
   bool significant_change = (abs((int)w - (int)canvasViewportW) > 5 ||
                              abs((int)h - (int)canvasViewportH) > 5);
 
-  if (significant_change || (frame_count_ - last_resize_frame_ > resize_throttle_)) {
+  if (significant_change ||
+      (frame_count_ - last_resize_frame_ > resize_throttle_)) {
     canvasViewportW = w;
     canvasViewportH = h;
     last_resize_frame_ = frame_count_;
