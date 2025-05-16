@@ -9,7 +9,19 @@
 namespace platform {
 
 void GetDrawableSize(SDL_Window* window, int* out_w, int* out_h) {
-  SDL_GetRendererOutputSize(SDL_GetRenderer(window), out_w, out_h);
+  // use SDL_Renderer
+  if (SDL_Renderer* r = SDL_GetRenderer(window)) {
+    SDL_GetRendererOutputSize(r, out_w, out_h);
+  } else  // fall back to GL / D3D drawable size.
+  {
+    SDL_GL_GetDrawableSize(window, out_w, out_h);
+  }
+
+  // never return 0×0 (happens during minimise)
+  if (*out_w < 2)
+    *out_w = 2;
+  if (*out_h < 2)
+    *out_h = 2;
 }
 
 float GetDPIScale(SDL_Window* window) {
@@ -49,6 +61,44 @@ void SetupBGFXPlatformData(bgfx::Init& init, SDL_Window* window) {
 
 void InitSDLForImGui(SDL_Window* window) {
   ImGui_ImplSDL2_InitForOther(window);
+}
+
+void ToggleBorderlessFullscreen(SDL_Window* w, bool enable)
+{
+  if (enable)
+    RestoreMinSize(w);  // let Cocoa expand
+  SDL_SetWindowFullscreen(w, enable ? SDL_WINDOW_FULLSCREEN_DESKTOP : 0);
+
+  if (!enable)
+    LockMinSize(w, 1280, 720);  // restore window clamp
+  RefreshFramebufferSize(w);
+}
+
+bool IsBorderlessFullscreen(SDL_Window* win) {
+  return SDL_GetWindowFlags(win) & SDL_WINDOW_FULLSCREEN_DESKTOP;
+}
+
+void RefreshFramebufferSize(SDL_Window* win) {
+  int dw, dh;
+  SDL_GL_GetDrawableSize(win, &dw, &dh);
+  bgfx::reset(dw, dh, BGFX_RESET_VSYNC);
+  ImGuiIO& io = ImGui::GetIO();
+  float dpi = GetDPIScale(win);
+  io.DisplaySize = ImVec2(dw / dpi, dh / dpi);
+  io.DisplayFramebufferScale = ImVec2(dpi, dpi);
+}
+
+bool InFullscreenSpace(SDL_Window* w) {
+  return SDL_GetWindowFlags(w) & SDL_WINDOW_FULLSCREEN_DESKTOP;
+}
+
+void LockMinSize(SDL_Window* w, int minW, int minH) {
+  SDL_SetWindowMinimumSize(w, minW, minH);
+  SDL_SetWindowMaximumSize(w, 0, 0);  // 0 = can enlarge
+}
+
+void RestoreMinSize(SDL_Window* w) {
+  SDL_SetWindowMinimumSize(w, 0, 0);  // remove lower bound
 }
 
 }  // namespace platform

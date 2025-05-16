@@ -8,12 +8,12 @@
 #include <memory>
 #include <thread>
 #include "audio/sound_manager.h"  // For SoundManager
-#include "base/game_base.h"
-#include "base/logger.h"
-#include "base/shader_utils.h"
+#include "core/logger.h"
+#include "game/game_base.h"
 #include "game/game_test.h"
+#include "renderer/shaders/shader_utils.h"
+#include "renderer/shaders/shader_manager.h"
 #include "subsystem/subsystem_manager.h"
-
 
 int main() {
   Logger::getInstance().Log(LogLevel::Info, "Starting Fractal Engine");
@@ -35,7 +35,7 @@ int main() {
   }
 
   // Optionally adjust ambient volume (e.g., to 10%)
-  SoundManager::Instance().setAmbientVolume(0.1f); // TODO: change this value
+  SoundManager::Instance().setAmbientVolume(0.1f);  // TODO: change this value
 
   // Start the ambient background sound
   if (!SoundManager::Instance().startAmbient()) {
@@ -56,7 +56,8 @@ int main() {
 
   // Shutdown subsystems
   SubsystemManager::Shutdown();
-  Logger::getInstance().Log(LogLevel::Debug, "SubsystemManager shutdown started in main");
+  Logger::getInstance().Log(LogLevel::Debug,
+                            "SubsystemManager shutdown started in main");
 
   // Clean up the sound system on exit
   SoundManager::Instance().terminate();

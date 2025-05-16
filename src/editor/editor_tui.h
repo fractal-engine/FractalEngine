@@ -7,8 +7,8 @@
 #include <thread>
 #include <vector>
 
-#include "base/editor_base.h"
-#include "subsystem/renderer_text.h"
+#include "editor/editor_base.h"
+#include "renderer/renderer_text.h"
 
 class EditorTUI : public EditorBase {
   friend class SubsystemManager;

@@ -13,7 +13,7 @@
 #include <mutex>
 #include <thread>
 
-#include "base/game_base.h"
+#include "game/game_base.h"
 
 #include "scene/scene_manager.h"
 
@@ -36,8 +36,6 @@ private:
   GameManager() = delete;
   GameManager(std::unique_ptr<GameBase>&& core);
   void LoadScene(std::unique_ptr<Scene> scene);
-  
-
 
   bool is_running_ = false;
 

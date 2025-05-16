@@ -2,9 +2,9 @@
 
 #include <ftxui/component/component.hpp>
 #include <ftxui/dom/elements.hpp>
-#include "audio/sound_manager.h" 
-#include "base/logger.h"
-#include "base/scroller.hpp"
+#include "audio/sound_manager.h"
+#include "core/logger.h"
+#include "editor/scroller.hpp"
 #include "subsystem/input/key_map_ftxui.h"
 
 using namespace ftxui;

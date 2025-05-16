@@ -5,8 +5,12 @@
 #include <mutex>
 #include <thread>
 
-#include "base/singleton.hpp"
+#include "core/singleton.hpp"
+
 #include "editor/editor_tui.h"
+
+#include "renderer/shaders/shader_manager.h"
+
 #include "subsystem/engine_implements.h.in"
 #include "subsystem/game_manager.h"
 #include "subsystem/input/input.h"
@@ -22,6 +26,7 @@ private:
   std::unique_ptr<GameManager> game_manager_;
   std::unique_ptr<Input> input_;
   std::unique_ptr<WindowManager> window_manager_;
+  std::unique_ptr<ShaderManager> shader_manager_;
 
   // initialize threads
   void initialize();
@@ -35,6 +40,7 @@ public:
   static const std::unique_ptr<GameManager>& GetGameManager();
   static const std::unique_ptr<Input>& GetInput();
   static const std::unique_ptr<WindowManager>& GetWindowManager();
+  static const std::unique_ptr<ShaderManager>& GetShaderManager();
 };
 
 #endif  // SUBSYSTEM_MANAGER_H

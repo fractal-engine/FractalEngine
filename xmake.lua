@@ -1,8 +1,8 @@
-set_languages("c++17")
+set_languages("c++20")
 add_cxxflags("/Zc:__cplusplus")
 add_cxxflags("/Zc:preprocessor")
-add_requires("ftxui", "boost", "libsdl2", "libsdl2_ttf", "portaudio") -- Add dependencies
-add_requires("imgui", {configs = {sdl2 = true, sdl2_renderer = true}})
+add_requires("ftxui", "boost", "libsdl2", "libsdl2_ttf", "portaudio", "glm")
+add_requires("imgui 1.91.8-docking", { configs = { sdl2 = true, sdl2_renderer = true, docking = true} })
 
 if is_mode("debug") then
     add_defines("BX_CONFIG_DEBUG=1")
@@ -32,15 +32,17 @@ target("fractal")
     add_defines("SDL_MAIN_HANDLED")  -- Prevent SDL from redefining main()
     add_files("src/subsystem/*.cpp")  -- Add source files from subsystem
     add_files("src/*.cpp")  -- Add main source files
-    add_files("src/base/*.cpp")  -- Add source files from base
+    add_files("src/core/*.cpp")  -- Add source files from base
+    add_files("src/renderer/*.cpp")
+    add_files("src/renderer/shaders/*.cpp")
     add_files("src/subsystem/input/*.cpp")  -- Add source files from base
     add_files("src/game/*.cpp")  -- Add source files from game
     add_files("src/editor/*.cpp")  -- Add source files from editor
-    add_files("src/drivers/*.cpp")  -- Add ImGuiRenderer, BGFX drivers
+    add_files("src/tools/*.cpp")  -- Add ImGuiBackend, BGFX drivers
     add_files("src/audio/*.cpp")
     add_files("src/scene/*.cpp")
-    add_files("src/shaders/**.sc|varying.def.sc|varying_imgui.def.sc|includes/**.sc", {rule = "bgfx_shaderc"}) --exclude any include files
-
+    add_files("src/editor/vendor/imgui/imgui_impl_bgfx.cpp")
+    add_files("src/shaders/**.sc|varying.def.sc|varying_imgui.def.sc|varying_sun.def.sc|varying_skybox.def.sc||includes/**.sc", {rule = "bgfx_shaderc"}) --exclude any include files
     add_files("src/platform/platform_utils.cpp")
 
     -- Add Metal frameworks for macOS
@@ -71,12 +73,15 @@ target("fractal")
         target:add("envs", { "PATH=" .. bgfx_tools_dir })
 
     end)
-    add_packages("ftxui", "boost", "libsdl2", "libsdl2_ttf", "imgui", "portaudio", "bgfx") -- Add packages
+    add_packages("ftxui", "boost", "libsdl2", "libsdl2_ttf", "imgui", "portaudio", "bgfx", "glm") -- Add packages
 
     after_build(function (target)
         os.cp("assets/shaders/**", path.join(target:targetdir(), "assets/shaders"))
-        os.cp("audio_lib", target:targetdir()) -- Copy audio folder to build directory
-        os.cp("resources/NotoSansMono_Regular.ttf", target:targetdir())
+        os.cp("audio_lib", target:targetdir())
+        os.cp("src/editor/resource/fonts/NotoSansMono_Regular.ttf", target:targetdir())
+        os.cp("src/editor/resource/fonts/fa-solid-900.ttf", target:targetdir())
+        os.cp("src/editor/resource/fonts/TerminusTTF-4.49.3.ttf", target:targetdir())
+        os.cp("src/editor/resource/fonts/moder-dos-437.ttf", target:targetdir())
     end)
 -- Define 'display' option
 option("display")
@@ -99,6 +104,8 @@ package("bgfx")
         local configs = {
             "-DBGFX_BUILD_EXAMPLES=OFF",
             "-DBGFX_BUILD_TOOLS=ON",
+            "-DCMAKE_USE_RELATIVE_PATHS=ON",
+            "-DBGFX_CUSTOM_TARGETS=ON", 
             "-DBGFX_BUILD_RENDERER_DIRECT3D12=ON",
             "-DBX_CONFIG_DEBUG=" .. (package:debug() and "1" or "0")
         }
@@ -180,10 +187,15 @@ rule("bgfx_shaderc")
         
         local shader_type = sourcefile:match("vs_") and "vertex" or sourcefile:match("fs_") and "fragment" or "compute"
 
-        local is_imgui = sourcefile:find("imgui") ~= nil
-        local varying_file = is_imgui
-            and path.join(os.projectdir(), "src/shaders/varying_imgui.def.sc")
-            or path.join(os.projectdir(), "src/shaders/varying.def.sc")
+        -- Shader definition files
+        local varying_file = path.join(os.projectdir(), "src/shaders/varying.def.sc")
+        if     sourcefile:find("imgui")  then
+            varying_file = path.join(os.projectdir(), "src/shaders/varying_imgui.def.sc")
+        elseif sourcefile:find("sun")    then
+            varying_file = path.join(os.projectdir(), "src/shaders/varying_sun.def.sc")
+        elseif sourcefile:find("skybox") then
+            varying_file = path.join(os.projectdir(), "src/shaders/varying_skybox.def.sc")
+        end
 
         -- Only compile for backends of the current platform
         for _, backend in ipairs(backends_to_compile) do
