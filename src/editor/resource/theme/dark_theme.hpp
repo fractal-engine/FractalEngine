@@ -81,14 +81,14 @@ void ApplyStyle() {
   // === Tabs ===
   colors[ImGuiCol_Tab] = ImVec4(0.14f, 0.16f, 0.18f, 1.00f);  // #25292e
   colors[ImGuiCol_TabHovered] =
-      ImVec4(0.298f, 0.541f, 0.835f, 1.0f);                         // #4C8AD5
+      ImVec4(0.216f, 0.518f, 0.886f, 1.0f);                         // #3784e2
   colors[ImGuiCol_TabActive] = ImVec4(0.14f, 0.16f, 0.18f, 1.00f);  // #25292e
   colors[ImGuiCol_TabUnfocused] =
       ImVec4(0.14f, 0.16f, 0.18f, 1.00f);  // #25292e
   colors[ImGuiCol_TabUnfocusedActive] =
       ImVec4(0.14f, 0.16f, 0.18f, 1.00f);  // #25292e
   colors[ImGuiCol_TabSelected] =
-      ImVec4(0.231f, 0.475f, 0.769f, 1.00f);  // #3B79C4
+      ImVec4(0.102f, 0.451f, 0.910f, 1.0f);  // #1a73e8
   style.Colors[ImGuiCol_TabSelectedOverline] = ImVec4(0, 0, 0, 0);
 
   // === Title ===
@@ -122,22 +122,22 @@ void ApplyStyle() {
 
   // === Slider ===
   colors[ImGuiCol_SliderGrab] =
-      ImVec4(0.231f, 0.475f, 0.769f, 1.00f);  // #3B79C4
+      ImVec4(0.102f, 0.451f, 0.910f, 1.0f);  // #1a73e8
 
   // === Nav ===
   colors[ImGuiCol_NavWindowingHighlight] =
-      ImVec4(0.231f, 0.475f, 0.769f, 1.00f);  // #3B79C4
+      ImVec4(0.102f, 0.451f, 0.910f, 1.0f);  // #1a73e8
   colors[ImGuiCol_NavHighlight] =
-      ImVec4(0.231f, 0.475f, 0.769f, 1.00f);  // #3B79C4
+      ImVec4(0.102f, 0.451f, 0.910f, 1.0f);  // #1a73e8
 
   // === Table ===
   // colors[ImGuiCol_TableBorderStrong] = ImVec4(0.27f, 0.23f, 0.29f, 1.00f);
 
   // === Grip ===
   colors[ImGuiCol_ResizeGripHovered] =
-      ImVec4(0.231f, 0.475f, 0.769f, 1.00f);  // #3B79C4
+      ImVec4(0.102f, 0.451f, 0.910f, 1.0f);  // #1a73e8
   colors[ImGuiCol_ResizeGripActive] =
-      ImVec4(0.231f, 0.475f, 0.769f, 1.00f);  // #3B79C4
+      ImVec4(0.102f, 0.451f, 0.910f, 1.0f);  // #1a73e8
 
   // === Docking ===
   colors[ImGuiCol_DockingPreview] =

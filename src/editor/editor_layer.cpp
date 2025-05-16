@@ -10,6 +10,7 @@
 #include "core/engine_globals.h"
 #include "core/logger.h"
 #include "core/view_ids.h"
+#include "editor/resource/decorators/drop_shadows.h"
 #include "editor/resource/theme/dark_theme.hpp"
 #include "game/game_test.h"
 #include "imgui.h"
@@ -352,6 +353,11 @@ void EditorLayer::BeginImGuiFrame(SDL_Window* window) {
   ImGui_ImplSDL2_NewFrame();  // platform backend
   ImGui_Implbgfx_NewFrame();  // renderer backend
   ImGui::NewFrame();          // ImGui begins
+
+  // ---- decorators start here ----
+  // drop shadow effect
+  // static bool shadowOn = true;
+  // ui::shadow::BeginFrame(shadowOn);
 }
 
 // ── Selection API ─────────────────────────────────────────────────────────
