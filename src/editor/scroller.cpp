@@ -17,10 +17,10 @@
 namespace ftxui {
 
 class ScrollerBase : public ComponentBase {
- public:
+public:
   ScrollerBase(Component child) { Add(child); }
 
- private:
+private:
   virtual Element Render() final {
     auto focused = Focused() ? focus : ftxui::select;
     auto style = Focused() ? inverted : nothing;

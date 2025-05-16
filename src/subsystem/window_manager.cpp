@@ -2,8 +2,11 @@
 #include <bgfx/bgfx.h>
 #include <bgfx/platform.h>
 #include "core/logger.h"
+#include "imgui.h"
 
 #include "platform/platform_utils.h"
+
+bool WindowManager::fullscreen_ = false;
 
 bool WindowManager::Initialize(const char* title, int width, int height) {
   WindowManager& instance = getInstance();
@@ -21,7 +24,7 @@ bool WindowManager::Initialize(const char* title, int width, int height) {
 
   instance.window_ = SDL_CreateWindow(
       title, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, width, height,
-      SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
+      SDL_WINDOW_SHOWN | SDL_WINDOW_ALLOW_HIGHDPI | SDL_WINDOW_RESIZABLE);
   if (!instance.window_) {
     Logger::getInstance().Log(
         LogLevel::Error,
@@ -31,6 +34,8 @@ bool WindowManager::Initialize(const char* title, int width, int height) {
   }
 
   SDL_RaiseWindow(instance.window_);
+  // platform::LockWindowSize(instance.window_, width, height);
+  platform::LockMinSize(instance.window_, width, height);
 
   // ------------------------------------------------
   //  Get display scale factor for Retina support
@@ -82,6 +87,13 @@ void WindowManager::OnWindowResize(int width, int height) {
   instance.width_ = width;
   instance.height_ = height;
 
+  if (!platform::InFullscreenSpace(instance.window_))
+    platform::LockMinSize(instance.window_, instance.width_, instance.height_);
+  else
+    platform::RestoreMinSize(instance.window_);
+
+  platform::RefreshFramebufferSize(instance.window_);  // rebuild swap-chain
+
   Logger::getInstance().Log(
       LogLevel::Debug, "Window resized to: " + std::to_string(width) + "x" +
                            std::to_string(height));
@@ -90,6 +102,34 @@ void WindowManager::OnWindowResize(int width, int height) {
   for (auto& callback : instance.resizeCallbacks_) {
     callback(width, height);
   }
+}
+
+bool WindowManager::SetFullscreen(bool enable) {
+  Uint32 target = enable ? SDL_WINDOW_FULLSCREEN_DESKTOP : 0;
+  if (SDL_SetWindowFullscreen(window_, target) != 0)  // ⚠ check error
+  {
+    Logger::getInstance().Log(LogLevel::Error, SDL_GetError());
+    return false;
+  }
+  return true;
+}
+
+bool WindowManager::SetBorderlessFullscreen(bool enable) {
+  WindowManager& instance = getInstance();
+
+  if (enable == platform::IsBorderlessFullscreen(instance.window_))
+    return true;
+
+  platform::ToggleBorderlessFullscreen(instance.window_, enable);
+  fullscreen_ = enable;
+  return true;
+}
+
+void WindowManager::ToggleFullscreen() {
+  SetBorderlessFullscreen(!fullscreen_);
+}
+bool WindowManager::IsFullscreen() {
+  return fullscreen_;
 }
 
 void WindowManager::InitBGFXPlatformData(bgfx::Init& init) {

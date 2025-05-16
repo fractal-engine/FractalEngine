@@ -19,7 +19,7 @@ public:
   virtual ~GraphicsRenderer();  // Virtual destructor
 
   // Initializes BGFX
-  bool InitBGFX();
+  bool InitBgfx();
 
   // RendererBase interface
   void ClearDisplay() override;
@@ -34,6 +34,7 @@ public:
   void EndImGuiFrame();
   void CreateFramebuffers(uint16_t w, uint16_t h);
   void SetSize(int w, int h) override;
+  void UpdateCanvasSize(uint16_t w, uint16_t h);
 
   // Called after drawing to present the frame.
   void Render() override;
@@ -65,8 +66,10 @@ private:
   // BGFX framebuffer handles
   // bgfx::FrameBufferHandle scene_framebuffer_ = BGFX_INVALID_HANDLE;
   // bgfx::TextureHandle scene_color_texture_;
-  int lastFramebufferWidth_ = -1;
-  int lastFramebufferHeight_ = -1;
+  int last_framebuffer_width_ = -1;
+  int last_framebuffer_height_ = -1;
+  uint32_t last_resize_frame_ = 0;
+  const uint32_t resize_throttle_ = 5;
 
   // game FBO
   bgfx::FrameBufferHandle scene_framebuffer_ = BGFX_INVALID_HANDLE;
@@ -82,7 +85,7 @@ private:
   int pos_y_ = 0;
 
   // Frame counter
-  uint32_t frameCount_ = 0;
+  uint32_t frame_count_ = 0;
 };
 
 #endif  // renderer_graphics_H

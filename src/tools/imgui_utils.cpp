@@ -7,11 +7,11 @@
 
 #include <backends/imgui_impl_sdl2.h>
 #include <imgui.h>
-#include "editor/vendor/imgui_impl_bgfx.h"
+#include "editor/vendor/imgui/imgui_impl_bgfx.h"
 
 extern "C" void ImGui_Implbgfx_SetCustomShader(bgfx::ProgramHandle handle);
 
-void InitImGui() {
+void ApplyImGuiShaders() {
   auto handle = SubsystemManager::GetShaderManager()->LoadProgram(
       "imgui", "vs_imgui.bin", "fs_imgui.bin");
 

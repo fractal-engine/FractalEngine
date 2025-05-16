@@ -4,6 +4,6 @@
 #include <SDL.h>
 #include <bgfx/bgfx.h>
 
-void InitImGui();
+void ApplyImGuiShaders();
 
 #endif  // IMGUI_UTILS_H

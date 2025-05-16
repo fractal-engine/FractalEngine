@@ -55,7 +55,7 @@ GraphicsRenderer::~GraphicsRenderer() {
 }
 
 // Initialize BGFX with platform data
-bool GraphicsRenderer::InitBGFX() {
+bool GraphicsRenderer::InitBgfx() {
   bgfx::Init init;
   platform::SetupBGFXPlatformData(init, window_);
 
@@ -116,7 +116,7 @@ void GraphicsRenderer::ConfigureViews() {
   platform::GetDrawableSize(window_, &fbw, &fbh);
 
   // Create/resize off-screen FBO only
-  if (fbw != lastFramebufferWidth_ || fbh != lastFramebufferHeight_)
+  if (fbw != last_framebuffer_width_ || fbh != last_framebuffer_height_)
     CreateFramebuffers(fbw, fbh);
 
   // UI background view lives in back-buffer, full window size
@@ -126,23 +126,23 @@ void GraphicsRenderer::ConfigureViews() {
 }
 
 void GraphicsRenderer::SetSize(int w, int h) {
-  lastFramebufferWidth_ = 0;  // force rebuild on next PrepareFrame()
-  lastFramebufferHeight_ = 0;
+  last_framebuffer_width_ = 0;  // force rebuild on next PrepareFrame()
+  last_framebuffer_height_ = 0;
   ConfigureViews();  // rebuild views for new window
 }
 
 // Set up per-frame and clear operations
 void GraphicsRenderer::PrepareFrame() {
-  // Get current viewport dimensions (taken from ImGui canvas)
+  // Get current viewport dimensions
   const uint16_t fbw = canvasViewportW ? canvasViewportW : 1;
   const uint16_t fbh = canvasViewportH ? canvasViewportH : 1;
 
-  // create framebuffers if size changed
-  if (fbw != lastFramebufferWidth_ || fbh != lastFramebufferHeight_) {
+  // ONLY recreate when size changes
+  if (fbw != last_framebuffer_width_ || fbh != last_framebuffer_height_) {
     CreateFramebuffers(fbw, fbh);
   }
 
-  // clear once for view 1 (SCENE)
+  // Scene view setup (this happens every frame)
   bgfx::setViewClear(ViewID::SCENE, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH,
                      0x303030ff, 1.0f, 0);
 
@@ -150,10 +150,24 @@ void GraphicsRenderer::PrepareFrame() {
   // view 1:
   bgfx::setViewRect(ViewID::SCENE, 0, 0, fbw, fbh);
   bgfx::setViewFrameBuffer(ViewID::SCENE, scene_framebuffer_);
-  // view 2:
-  bgfx::setViewRect(ViewID::SCENE_N(1), 0, 0, fbw, fbh);
-  bgfx::setViewFrameBuffer(ViewID::SCENE_N(1), scene_framebuffer_);
 
+  // Bind extra passes
+  for (uint8_t v = ViewID::SCENE_N(0); v < ViewID::UI_BACKGROUND; ++v) {
+    bgfx::setViewRect(v, 0, 0, fbw, fbh);
+    bgfx::setViewFrameBuffer(v, scene_framebuffer_);
+  }
+
+  // FIXME: organise viewIDs, passes and FBO in a more
+  // centralised and stable way, there's no clear
+  // approach on how the passes are being handled
+  static constexpr uint8_t kActiveScenePasses = 2;  // 0 = terrain, 1 = post-FX
+  for (uint8_t i = 0; i < kActiveScenePasses; ++i) {
+    const auto vid = ViewID::SCENE_N(i);
+    bgfx::setViewRect(vid, 0, 0, fbw, fbh);
+    bgfx::setViewFrameBuffer(vid, scene_framebuffer_);
+  }
+
+  // Debug check
   if (!bgfx::isValid(scene_framebuffer_)) {
     Logger::getInstance().Log(LogLevel::Error,
                               "Scene framebuffer is invalid in PrepareFrame!");
@@ -161,42 +175,41 @@ void GraphicsRenderer::PrepareFrame() {
 }
 
 // Framebuffer initialization and handling
+// Logic includes double buffering
 void GraphicsRenderer::CreateFramebuffers(uint16_t w, uint16_t h) {
-
-  // Ignore impossible sizes (window minimised, window-resize)
-  if (w < 2 || h < 2)
-    return;
-
-  // 1. If an old FBO exists, finish the *current* frame first
-  if (bgfx::isValid(scene_framebuffer_)) {
-    bgfx::frame();  // flush everything that still
-                    //  uses scene_framebuffer_
-    bgfx::destroy(scene_framebuffer_);
-    scene_framebuffer_ = BGFX_INVALID_HANDLE;
-  }
-
-  // 2. Create NEW colour & depth RT (no sRGB flag)
-  scene_color_texture_ = bgfx::createTexture2D(
+  // create new framebuffer before destroying old one
+  bgfx::TextureHandle new_color = bgfx::createTexture2D(
       w, h, false, 1, bgfx::TextureFormat::BGRA8,
       BGFX_TEXTURE_RT | BGFX_SAMPLER_U_CLAMP | BGFX_SAMPLER_V_CLAMP);
 
-  scene_depth_texture_ =
+  bgfx::TextureHandle new_depth =
       bgfx::createTexture2D(w, h, false, 1, bgfx::TextureFormat::D24S8,
                             BGFX_TEXTURE_RT | BGFX_TEXTURE_RT_WRITE_ONLY);
 
-  const bgfx::TextureHandle attachments[2] = {scene_color_texture_,
-                                              scene_depth_texture_};
-  scene_framebuffer_ = bgfx::createFrameBuffer(
-      BX_COUNTOF(attachments), attachments, /*destroyTextures*/ true);
+  // destroy old framebuffer after new one is ready
+  const bgfx::TextureHandle attachments[2] = {new_color, new_depth};
+  bgfx::FrameBufferHandle new_framebuffer =
+      bgfx::createFrameBuffer(BX_COUNTOF(attachments), attachments, false);
 
-  // 3. Pass handle to ImGui via helper overload (no raw cast)
-  scene_tex_id_ = (ImTextureID)(uintptr_t)scene_color_texture_.idx;
-  Logger::getInstance().Log(
-      LogLevel::Debug,
-      "[FBO] new colour RT idx = " + std::to_string(scene_color_texture_.idx));
+  if (bgfx::isValid(new_framebuffer)) {
+    // If success, clean up old and switch to new
+    if (bgfx::isValid(scene_framebuffer_))
+      bgfx::destroy(scene_framebuffer_);
 
-  lastFramebufferWidth_ = w;
-  lastFramebufferHeight_ = h;
+    scene_framebuffer_ = new_framebuffer;
+    scene_color_texture_ = new_color;
+    scene_depth_texture_ = new_depth;
+    scene_tex_id_ = (ImTextureID)(uintptr_t)scene_color_texture_.idx;
+
+    last_framebuffer_width_ = w;
+    last_framebuffer_height_ = h;
+  } else {
+    // If else failed, clean up the attempt
+    if (bgfx::isValid(new_color))
+      bgfx::destroy(new_color);
+    if (bgfx::isValid(new_depth))
+      bgfx::destroy(new_depth);
+  }
 }
 
 void GraphicsRenderer::Render() {
@@ -206,7 +219,7 @@ void GraphicsRenderer::Render() {
   // bgfx::touch(ViewID::SCENE);
 
   redrawn();
-  frameCount_++;
+  frame_count_++;
 }
 
 void GraphicsRenderer::ProcessEvents(bool& quit) {
@@ -255,7 +268,7 @@ void GraphicsRenderer::InitShaders() {
   };
 
   // use triangle strip topology
-  static FSVertex quadVertices[] = {
+  static FSVertex quad_vertices[] = {
       // Triangle strip order: TL -> TR -> BL -> BR
       {-1.0f, 1.0f, 0.0f, 0.0f, 1.0f},   // Top-left
       {1.0f, 1.0f, 0.0f, 1.0f, 1.0f},    // Top-right
@@ -271,4 +284,18 @@ void GraphicsRenderer::InitShaders() {
 // Getters for the SDL window and renderer.
 SDL_Window* GraphicsRenderer::GetWindow() const {
   return window_;
+}
+
+void GraphicsRenderer::UpdateCanvasSize(uint16_t w, uint16_t h) {
+  // Only update if significantly different or enough frames have passed since
+  // last resize
+  bool significant_change = (abs((int)w - (int)canvasViewportW) > 5 ||
+                             abs((int)h - (int)canvasViewportH) > 5);
+
+  if (significant_change ||
+      (frame_count_ - last_resize_frame_ > resize_throttle_)) {
+    canvasViewportW = w;
+    canvasViewportH = h;
+    last_resize_frame_ = frame_count_;
+  }
 }

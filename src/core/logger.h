@@ -18,7 +18,6 @@ public:
   void Log(LogLevel level, const std::string& message);  // Log message
   std::vector<std::string> GetLogEntries();              // Get log entries
 
-public:
   Logger();
   ~Logger();
 
