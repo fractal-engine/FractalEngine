@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://i.imgur.com/TDnw90c.png" alt="Fractal Logo"/>
+  <img src="https://i.imgur.com/5Ssv6YY.png" alt="Fractal Logo"/>
 </p>
 
 <p align="center">

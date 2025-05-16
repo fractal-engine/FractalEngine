@@ -1,12 +1,24 @@
 #include "core/logger.h"
+#include <filesystem>
 
-Logger::Logger() : logfile_("enginelog.txt", std::ios::app) {
-  if (!logfile_) {
-    std::cerr << "Log File failed to open" << std::endl;  // no log file
-  } else {
-    std::cerr << "Log File successfully opened at enginelog.txt"
-              << std::endl;  // if log exists or sucessfully created
-  }
+Logger::Logger() : logfile_() {
+
+  // TODO: Improve logic here
+  // Logger only stores 2 consecutive iterations of log files
+  // overwrites old log with new one as a new session is started
+  namespace fs = std::filesystem;
+
+  // --- log checker ----------------------------------
+  if (fs::exists("oldlog.txt"))
+    fs::remove("oldlog.txt");
+  if (fs::exists("enginelog.txt"))
+    fs::rename("enginelog.txt", "oldlog.txt");
+  // -----Open new log---------------------------------
+  logfile_.open("enginelog.txt", std::ios::trunc);
+  if (!logfile_)
+    std::cerr << "Log File failed to open\n";
+  else
+    std::cerr << "Log File successfully opened at enginelog.txt\n";
 }
 
 Logger::~Logger() {  // destructor to close logger class if it is still open
