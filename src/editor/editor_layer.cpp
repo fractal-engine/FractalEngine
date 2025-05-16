@@ -44,6 +44,7 @@ void EditorLayer::Initialize() {
   IMGUI_CHECKVERSION();
   ImGui::CreateContext();
   Theme::Initialize();
+  LoadIcons();
 
   ImGuiIO& io = ImGui::GetIO();
   io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;    // Enable Docking
@@ -83,12 +84,23 @@ void EditorLayer::Run() {
           HandleInput(key);
       }
 
+      // FIXME: revise event below, we do not allow resize anymore
       if (event.type == SDL_WINDOWEVENT &&
           event.window.event == SDL_WINDOWEVENT_SIZE_CHANGED) {
         WindowManager::OnWindowResize(event.window.data1, event.window.data2);
         ImGui::GetIO().DisplaySize =
             ImVec2((float)event.window.data1, (float)event.window.data2);
         built_layout_ = false;
+      }
+
+      if (event.type == SDL_WINDOWEVENT &&
+          event.window.event == SDL_WINDOWEVENT_MAXIMIZED) {
+        WindowManager::ToggleFullscreen();
+      }
+      if (event.type == SDL_WINDOWEVENT &&
+          event.window.event == SDL_WINDOWEVENT_RESTORED &&
+          WindowManager::IsFullscreen()) {
+        WindowManager::ToggleFullscreen();  // leave FS on restore
       }
 
       if (event.type == SDL_QUIT) {

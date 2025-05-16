@@ -19,6 +19,7 @@ private:
   std::vector<std::function<void(int, int)>> resizeCallbacks_;
 
   void initialize();
+  bool SetFullscreen(bool enable);
 
 public:
   WindowManager()
@@ -50,6 +51,12 @@ public:
 
   // BGFX platform data
   static void InitBGFXPlatformData(bgfx::Init& init);
+
+  // Handle fullscreen
+  static void ToggleFullscreen();
+  static bool IsFullscreen();
+  static bool SetBorderlessFullscreen(bool enable);
+  static bool fullscreen_;
 };
 
 #endif  // WINDOW_MANAGER_H
