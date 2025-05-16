@@ -15,22 +15,33 @@ inline void CameraControls() {
   auto* game =
       dynamic_cast<GameTest*>(SubsystemManager::GetGameManager()->GetGame());
   if (game) {
-    ImGui::SliderFloat3("Eye Position", game->cameraEye, -200.0f, 200.0f);
-    ImGui::SliderFloat3("Look At", game->cameraAt, -200.0f, 200.0f);
-    ImGui::SliderFloat3("Up Vector", game->cameraUp, -1.0f, 1.0f);
-    ImGui::SliderFloat("FOV", &game->cameraFOV, 10.0f, 120.0f);
+    OrbitCamera& cam = game->camera;
+
+    float pitch = cam.getPitch();
+    float yaw = cam.getYaw();
+    float roll = cam.getRoll();
+    float dist = cam.getDistance();
+    float target[3];
+    std::memcpy(target, cam.getTarget(), sizeof(target));
+
+    if (ImGui::SliderFloat("Pitch", &pitch, -bx::kPi, bx::kPi))
+      cam.setPitch(pitch);
+    if (ImGui::SliderFloat("Yaw", &yaw, -bx::kPi, bx::kPi))
+      cam.setYaw(yaw);
+    if (ImGui::SliderFloat("Roll", &roll, -bx::kPi, bx::kPi))
+      cam.setRoll(roll);
+    if (ImGui::SliderFloat("Distance", &dist, 1.0f, 500.0f))
+      cam.setDistance(dist);
+    if (ImGui::SliderFloat3("Target", target, -200.0f, 200.0f))
+      cam.setTarget(target);
 
     if (ImGui::Button("Reset Camera")) {
-      game->cameraEye[0] = 120.0f;
-      game->cameraEye[1] = 60.0f;
-      game->cameraEye[2] = 32.0f;
-      game->cameraAt[0] = 32.0f;
-      game->cameraAt[1] = 0.0f;
-      game->cameraAt[2] = 32.0f;
-      game->cameraUp[0] = 1.0f;
-      game->cameraUp[1] = 0.0f;
-      game->cameraUp[2] = 0.0f;
-      game->cameraFOV = 80.0f;
+      cam.setDistance(100.0f);
+      cam.setPitch(0.509f);
+      cam.setYaw(1.422f);
+      cam.setRoll(3.142f);
+      float resetTarget[3] = {32.0f, -147.826f, 200.0f};
+      cam.setTarget(resetTarget);
     }
   }
 

@@ -145,6 +145,9 @@ void GraphicsRenderer::PrepareFrame() {
   // Scene view setup (this happens every frame)
   bgfx::setViewClear(ViewID::SCENE, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH,
                      0x303030ff, 1.0f, 0);
+
+  // bind both view 1 and view 2 to the same offscreen FBO
+  // view 1:
   bgfx::setViewRect(ViewID::SCENE, 0, 0, fbw, fbh);
   bgfx::setViewFrameBuffer(ViewID::SCENE, scene_framebuffer_);
 

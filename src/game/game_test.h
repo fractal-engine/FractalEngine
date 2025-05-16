@@ -3,6 +3,8 @@
 
 #include <bgfx/bgfx.h>
 #include <vector>
+#include "editor/components/orbit_camera.h"
+#include "editor/systems/camera_system.h"
 #include "game/game_base.h"
 
 // ──────────────────────────────────────────────────────
@@ -29,11 +31,11 @@ public:
   void Render() override;
   void Shutdown() override;
 
-  // simple camera (keep it public so we can tweak it from the editor)
-  float cameraEye[3] = {120.0f, 60.0f, 32.0f};
-  float cameraAt[3] = {32.0f, 0.0f, 32.0f};
-  float cameraUp[3] = {1.0f, 0.0f, 0.0f};
-  float cameraFOV = 80.0f;
+
+
+  // simple camera function call
+  OrbitCamera camera;
+  CameraSystem cameraSystem;
 
   int canvasViewportW = 800;
   int canvasViewportH = 600;
@@ -42,7 +44,14 @@ private:
   // ───── Terrain
   bgfx::ProgramHandle _terrainProgramHeight = BGFX_INVALID_HANDLE;
   bgfx::UniformHandle _heightUniform = BGFX_INVALID_HANDLE;
+
   bgfx::TextureHandle _heightTexture = BGFX_INVALID_HANDLE;
+  bgfx::TextureHandle terrainDiffuse = BGFX_INVALID_HANDLE;
+  bgfx::TextureHandle terrainORM = BGFX_INVALID_HANDLE;
+  bgfx::TextureHandle terrainNormal = BGFX_INVALID_HANDLE;
+  bgfx::UniformHandle _cameraPosUniform = BGFX_INVALID_HANDLE;
+
+
   bgfx::UniformHandle _lightDirUniform = BGFX_INVALID_HANDLE;
 
   bgfx::VertexBufferHandle _terrainVbh = BGFX_INVALID_HANDLE;
@@ -53,20 +62,43 @@ private:
 
   // ───── Sky-box & Sun
   bgfx::ProgramHandle _skyProgram = BGFX_INVALID_HANDLE;
-  bgfx::ProgramHandle _sunProgram = BGFX_INVALID_HANDLE;
+
 
   bgfx::VertexBufferHandle _skyVbh = BGFX_INVALID_HANDLE;
   bgfx::IndexBufferHandle _skyIbh = BGFX_INVALID_HANDLE;
-
-  bgfx::VertexBufferHandle _sunVbh = BGFX_INVALID_HANDLE;
-  bgfx::IndexBufferHandle _sunIbh = BGFX_INVALID_HANDLE;
 
   bgfx::UniformHandle _timeUniform = BGFX_INVALID_HANDLE;
   bgfx::UniformHandle _sunDirUniform = BGFX_INVALID_HANDLE;
   bgfx::UniformHandle _sunLumUniform = BGFX_INVALID_HANDLE;
   bgfx::UniformHandle _paramsUniform = BGFX_INVALID_HANDLE;
 
-  float _cycleTime = 0.0f;  // day-night timer
+  // New skybox uniforms
+  bgfx::UniformHandle _viewInvUniform = BGFX_INVALID_HANDLE;
+  bgfx::UniformHandle _projInvUniform = BGFX_INVALID_HANDLE;
+
+  // Texture Uniforms
+
+  bgfx::UniformHandle _s_diffuseUniform = BGFX_INVALID_HANDLE;
+  bgfx::UniformHandle _s_ormUniform = BGFX_INVALID_HANDLE;
+  bgfx::UniformHandle _s_normalUniform = BGFX_INVALID_HANDLE;
+
+
+
+  // Sky Ambient Light
+  bgfx::UniformHandle _skyAmbientUniform = BGFX_INVALID_HANDLE;
+  bgfx::UniformHandle _lightMatrixUniform = BGFX_INVALID_HANDLE;
+
+  // Shadow Map Uniform
+  bgfx::UniformHandle _shadowSamplerUniform = BGFX_INVALID_HANDLE;
+  bgfx::TextureHandle shadowMapTexture = BGFX_INVALID_HANDLE;
+  bgfx::FrameBufferHandle shadowMapFB = BGFX_INVALID_HANDLE;
+  bgfx::ProgramHandle _terrainShadowProgram = BGFX_INVALID_HANDLE;
+  bgfx::VertexBufferHandle _shadowVbh = BGFX_INVALID_HANDLE;
+
+
+
+
+  float _cycleTime = 0.0f;  // day-night timerm keep it at 0
 
   // colour / param arrays passed to both sky & sun shaders
   float _sunColorArray[4] = {5.0f, 5.0f, 5.0f, 0.0f};
@@ -74,7 +106,6 @@ private:
 
   // small helpers that build vertex / index buffers
   void createSkyboxBuffers();
-  void createSunBuffers();
 
   // world transform for the terrain
   float world_matrix[16];

@@ -35,7 +35,7 @@ int main() {
   }
 
   // Optionally adjust ambient volume (e.g., to 10%)
-  SoundManager::Instance().setAmbientVolume(0.1f);  // TODO: change this value
+  SoundManager::Instance().setAmbientVolume(0.7f);  // TODO: change this value
 
   // Start the ambient background sound
   if (!SoundManager::Instance().startAmbient()) {

@@ -7,7 +7,6 @@
 
 #include "core/singleton.hpp"
 
-#include "editor/editor_tui.h"
 
 #include "renderer/shaders/shader_manager.h"
 
