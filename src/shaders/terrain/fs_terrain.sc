@@ -6,7 +6,7 @@ $input v_position, v_texcoord0
 SAMPLER2D(s_diffuse,  0);
 SAMPLER2D(s_orm,      1);
 SAMPLER2D(s_normal,   2);
-SAMPLER2DSHADOW(s_shadowMap, 3); // Use depth comparison sampler for shadow map
+SAMPLER2DSHADOW(s_shadowMap, 4); // Use depth comparison sampler for shadow map
 
 uniform vec4 u_sunDirection;
 uniform vec4 u_sunLuminance;
@@ -78,6 +78,10 @@ void main()
     vec3 worldPos = v_position.xyz;
     vec4 shadowCoord = mul(u_lightMatrix, vec4(v_position.x, v_position.y, v_position.z, 1.0));
 
+    //  Normalize coordinates
+    shadowCoord.xyz /= shadowCoord.w;
+    shadowCoord.xyz = shadowCoord.xyz * 0.5 + 0.5;  // Convert NDC [-1,1] to [0,1]
+    shadowCoord.z -= 0.005;  // Optional bias
 
     // Sample shadow map using projected coordinates
     float shadowFactor = bgfxShadow2DProj(s_shadowMap, shadowCoord);
@@ -97,4 +101,6 @@ void main()
     vec3 finalColor = ambientSky + Lo + ambientSpec;
 
     gl_FragColor = vec4(finalColor, 1.0);
+
+
 }

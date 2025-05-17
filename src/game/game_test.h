@@ -31,7 +31,11 @@ public:
   void Render() override;
   void Shutdown() override;
 
-
+  // ──────────────────────────────────────────────────────
+  //  Terrain Size
+  static constexpr float TerrainScale = 255.0f;
+  static constexpr uint16_t TerrainSize = 128;
+  static constexpr float TerrainExtent = (TerrainSize * TerrainScale) * 0.5f;
 
   // simple camera function call
   OrbitCamera camera;

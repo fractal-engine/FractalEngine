@@ -102,7 +102,9 @@ void GameTest::Init() {
   skyLighting.Init();  // Start the sky lighting system
   Logger::getInstance().Log(LogLevel::Debug, "[GameTest] Init() called.");
 
-  float terrainCenter[3] = {77.5f, 0.0f, 77.5f};
+  // We have class-defined TerrainExtent
+  float terrainCenter[3] = {TerrainExtent, 0.0f, TerrainExtent};
+
   camera.setTarget(terrainCenter);
   camera.setPitch(0.4f);
   camera.setYaw(0.75f);
@@ -161,8 +163,7 @@ void GameTest::Init() {
       TextureUtils::LoadTexture("assets/textures/terrain/Normal.tga");
 
   // --------------- TERRAIN GENERATION ------------------
-  const uint16_t sz =
-      128;  // Increase terrain resolution, remember to update in Update()
+  const uint16_t sz = TerrainSize;  // Terrain resolution
   std::vector<uint8_t> hdata(sz * sz);
 
   for (int y = 0; y < sz; ++y) {
@@ -313,6 +314,8 @@ void GameTest::Update() {
 
   // animate height map & day/night timer
   _cycleTime += 0.0007f;
+  const float TWO_PI = bx::kPi * 2.0f;
+  _cycleTime = fmod(_cycleTime, TWO_PI);  // Keep cycle time between [0, 2π]
 
   const uint16_t sz = 128;
   std::vector<uint8_t> h(sz * sz);
@@ -363,6 +366,11 @@ void GameTest::Render() {
   // Clamp between 0 and 1 — 0 when sun is below, 1 when fully overhead
   float t = bx::clamp(sunDir.y * 0.5f + 0.5f, 0.0f, 1.0f);
 
+  char buffer[128];
+  snprintf(buffer, sizeof(buffer), "SunDir: (%.2f, %.2f, %.2f)", sunDir.x,
+           sunDir.y, sunDir.z);
+  Logger::getInstance().Log(LogLevel::Debug, buffer);
+
   // Soften sun color range
   _sunColorArray[0] = bx::lerp(1.0f, 1.0f, t);  // R stays 1.0
   _sunColorArray[1] = bx::lerp(0.5f, 1.0f, t);  // G warms up
@@ -376,12 +384,16 @@ void GameTest::Render() {
 
   // --- SHADOW PASS: render depth from light’s point of view ---
   bx::Vec3 lightPos = bx::mul(sunDir, -100.0f);  // pull back from origin
-  bx::Vec3 lightTarget = {0.0f, 0.0f, 0.0f};     // terrain center
+
+  // Update light target to center of terrain using TerrainExtent
+  bx::Vec3 lightTarget = {TerrainExtent, 0.0f, TerrainExtent};
 
   float lightView[16], lightProj[16], lightVP[16];
   bx::mtxLookAt(lightView, lightPos, lightTarget);
-  bx::mtxOrtho(lightProj, -80.0f, 80.0f, -80.0f, 80.0f, -80.0f, 80.0f, 0,
-               false);
+
+  bx::mtxOrtho(lightProj, -TerrainExtent, TerrainExtent, -TerrainExtent,
+               TerrainExtent, -TerrainExtent, TerrainExtent, 0, false);
+
   bx::mtxMul(lightVP, lightProj, lightView);
 
   if (!bgfx::isValid(shadowMapFB)) {
@@ -394,7 +406,9 @@ void GameTest::Render() {
   bgfx::setViewTransform(shadowView, lightView, lightProj);
   bgfx::setViewClear(shadowView, BGFX_CLEAR_DEPTH, 0, 1.0f, 0);
 
-  bx::mtxScale(world_matrix, 5.f, 5.f, 5.f);
+  // Scale the terrain using class-defined TerrainScale
+  bx::mtxScale(world_matrix, TerrainScale, TerrainScale, TerrainScale);
+
   bgfx::setTransform(world_matrix);
 
   // Safely submit if all resources are valid
@@ -454,8 +468,8 @@ void GameTest::Render() {
   bgfx::setTexture(1, _s_diffuseUniform, terrainDiffuse);
   bgfx::setTexture(2, _s_ormUniform, terrainORM);
   bgfx::setTexture(3, _s_normalUniform, terrainNormal);
-  bgfx::setTexture(3, _shadowSamplerUniform, shadowMapTexture,
-                   BGFX_SAMPLER_COMPARE_LESS);//  bind shadow map
+  bgfx::setTexture(4, _shadowSamplerUniform, shadowMapTexture,
+                   BGFX_SAMPLER_COMPARE_LESS);  //  bind shadow map
 
   // Shared lighting
   bgfx::setUniform(_sunLumUniform, _sunColorArray);
@@ -473,7 +487,6 @@ void GameTest::Render() {
   bgfx::submit(terrainView, _terrainProgramHeight);
 }
 
-
 // ──────────────────────────────────────────────────────
 //  Shutdown()
 // ──────────────────────────────────────────────────────
@@ -488,7 +501,6 @@ void GameTest::Shutdown() {
   destroy(_terrainProgramHeight);
   destroy(_terrainShadowProgram);
   destroy(_skyProgram);
-
 
   destroy(_heightTexture);
   destroy(_heightUniform);
