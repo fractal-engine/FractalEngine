@@ -1,7 +1,10 @@
 $input a_position, a_texcoord0
-$output v_texcoord0, v_position, v_worldPos, v_view
+$output v_texcoord0, v_position, v_worldPos, v_view, v_shadowCoord
 
 #include "../common/common.sh"
+
+
+uniform mat4 u_lightMatrix[1];
 
 #ifndef S_HEIGHT_TEXTURE
 #define S_HEIGHT_TEXTURE
@@ -27,6 +30,8 @@ void main() {
 
     // v_view = vector from camera to fragment, in view space
     v_view = -viewPos.xyz;
+
+    v_shadowCoord = mul(u_lightMatrix[0], worldPos);
 
 
     // Final projected position

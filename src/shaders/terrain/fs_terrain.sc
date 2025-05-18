@@ -3,7 +3,7 @@
  * License: https://github.com/bkaradzic/bgfx/blob/master/LICENSE
  */
 
-$input v_position, v_texcoord0, v_worldPos, v_view
+$input v_position, v_texcoord0, v_worldPos, v_view, v_shadowCoord
 
 #include "../common/common.sh"
 #include <bgfx_shader.sh>
@@ -116,7 +116,8 @@ void main()
      
 
     // Shadow calculation
-    vec4 shadowCoord = mul(u_lightMatrix[0], vec4(v_worldPos, 1.0));
+    vec4 shadowCoord = v_shadowCoord; //  using interpolated value
+
 
     float bias = 0.005;
     vec2 texelSize = vec2_splat(1.0 / 2048.0); // match shadow map resolution
@@ -132,9 +133,7 @@ void main()
     // Gamma correct
     finalColor = toGamma(finalColor);
 
-  
     gl_FragColor = vec4(finalColor, 1.0);
     
-
 }
 

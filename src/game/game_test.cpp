@@ -155,7 +155,6 @@ void GameTest::Init() {
   _shadowSamplerUniform =
       bgfx::createUniform("s_shadowMap", bgfx::UniformType::Sampler);
 
-  _uModelUniform = bgfx::createUniform("u_model", bgfx::UniformType::Mat4, 1);
 
   // Load terrain textures
   terrainDiffuse =
@@ -482,11 +481,6 @@ void GameTest::Render() {
                  BGFX_STATE_WRITE_Z | BGFX_STATE_DEPTH_TEST_LESS |
                  BGFX_STATE_MSAA);
 
-  float modelArray[16 * 1] = {};
-  memcpy(modelArray, world_matrix, sizeof(world_matrix));
-  // bgfx::setUniform(_uModelUniform, modelArray, 1);  // count = 1 but
-  // uncommenting causes a memory access error
-
   bgfx::submit(terrainView, _terrainProgramHeight);
 }
 
@@ -529,7 +523,6 @@ void GameTest::Shutdown() {
   destroy(shadowMapTexture);
   destroy(shadowMapFB);
   destroy(_shadowVbh);
-  destroy(_uModelUniform);
 
   destroy(_skyVbh);
   destroy(_skyIbh);

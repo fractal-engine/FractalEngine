@@ -1,6 +1,7 @@
 vec4 v_position : TEXCOORD0;
 vec2 v_texcoord0 : TEXCOORD1;
 vec3 v_worldPos : TEXCOORD3;
+vec4 v_shadowCoord : TEXCOORD4;
 
 
 vec3 v_view      : TEXCOORD2 = vec3(0.0, 0.0, 0.0);

@@ -95,8 +95,7 @@ private:
   bgfx::ProgramHandle _terrainShadowProgram = BGFX_INVALID_HANDLE;
   bgfx::VertexBufferHandle _shadowVbh = BGFX_INVALID_HANDLE;
 
-  // Matrix Uniform for shadow map
-  bgfx::UniformHandle _uModelUniform = BGFX_INVALID_HANDLE;
+
 
   float _cycleTime = 0.0f;  // day-night timerm keep it at 0
 
