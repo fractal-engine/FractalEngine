@@ -155,6 +155,8 @@ void GameTest::Init() {
   _shadowSamplerUniform =
       bgfx::createUniform("s_shadowMap", bgfx::UniformType::Sampler);
 
+  _uModelUniform = bgfx::createUniform("u_model", bgfx::UniformType::Mat4, 1);
+
   // Load terrain textures
   terrainDiffuse =
       TextureUtils::LoadTexture("assets/textures/terrain/basecolor.tga");
@@ -355,9 +357,10 @@ void GameTest::Render() {
   const float phi = _cycleTime;
 
   // Create a full sun arc from horizon to horizon
-  const float x = sinf(phi);                   // left-right sweep
-  const float y = sinf(phi + bx::kPi * 0.5f);  // vertical rise/fall
-  const float z = cosf(phi);                   // depth sweep
+  const float x = cosf(phi);
+  const float y = sinf(phi);
+  const float z = sinf(phi) * 0.0f;
+
   const bx::Vec3 sunDir = bx::normalize(bx::Vec3(x, y, z));
 
   float dir[4] = {sunDir.x, sunDir.y, sunDir.z, 0.0f};
@@ -365,11 +368,6 @@ void GameTest::Render() {
 
   // Clamp between 0 and 1 — 0 when sun is below, 1 when fully overhead
   float t = bx::clamp(sunDir.y * 0.5f + 0.5f, 0.0f, 1.0f);
-
-  char buffer[128];
-  snprintf(buffer, sizeof(buffer), "SunDir: (%.2f, %.2f, %.2f)", sunDir.x,
-           sunDir.y, sunDir.z);
-  Logger::getInstance().Log(LogLevel::Debug, buffer);
 
   // Soften sun color range
   _sunColorArray[0] = bx::lerp(1.0f, 1.0f, t);  // R stays 1.0
@@ -484,6 +482,11 @@ void GameTest::Render() {
                  BGFX_STATE_WRITE_Z | BGFX_STATE_DEPTH_TEST_LESS |
                  BGFX_STATE_MSAA);
 
+  float modelArray[16 * 1] = {};
+  memcpy(modelArray, world_matrix, sizeof(world_matrix));
+  // bgfx::setUniform(_uModelUniform, modelArray, 1);  // count = 1 but
+  // uncommenting causes a memory access error
+
   bgfx::submit(terrainView, _terrainProgramHeight);
 }
 
@@ -526,6 +529,7 @@ void GameTest::Shutdown() {
   destroy(shadowMapTexture);
   destroy(shadowMapFB);
   destroy(_shadowVbh);
+  destroy(_uModelUniform);
 
   destroy(_skyVbh);
   destroy(_skyIbh);
