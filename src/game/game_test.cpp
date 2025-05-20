@@ -13,6 +13,13 @@
 #include "tools/texture_utils.h"
 
 constexpr uint8_t shadowView = ViewID::SHADOW_PASS;
+constexpr float TERRAIN_GLOBAL_SCALE = 5.0f;
+
+// smoothStep function
+inline float smoothStep(float edge0, float edge1, float x) {
+  float t = bx::clamp((x - edge0) / (edge1 - edge0), 0.0f, 1.0f);
+  return t * t * (3.0f - 2.0f * t);
+}
 
 // ──────────────────────────────────────────────────────
 //  Vertex layouts
@@ -34,8 +41,10 @@ bgfx::VertexLayout ScreenPosVertex::layout;
 
 struct ShadowVertex {
   float x, y, z;
+  float u, v;
   static bgfx::VertexLayout layout;
 };
+
 bgfx::VertexLayout ShadowVertex::layout;
 
 SkyLighting skyLighting;  // Declare the SkyLighting instance
@@ -58,6 +67,7 @@ static void initLayouts() {
 
   ShadowVertex::layout.begin()
       .add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float)
+      .add(bgfx::Attrib::TexCoord0, 2, bgfx::AttribType::Float)
       .end();
 }
 
@@ -97,6 +107,12 @@ GameTest::~GameTest() = default;
 //  Init()
 // ──────────────────────────────────────────────────────
 void GameTest::Init() {
+
+  const bgfx::Caps* caps = bgfx::getCaps();
+
+  std::string msg = "[BGFX] Max texture samplers supported: " +
+                    std::to_string(caps->limits.maxTextureSamplers);
+  Logger::getInstance().Log(LogLevel::Debug, msg);
 
   initLayouts();
   skyLighting.Init();  // Start the sky lighting system
@@ -155,7 +171,6 @@ void GameTest::Init() {
   _shadowSamplerUniform =
       bgfx::createUniform("s_shadowMap", bgfx::UniformType::Sampler);
 
-
   // Load terrain textures
   terrainDiffuse =
       TextureUtils::LoadTexture("assets/textures/terrain/basecolor.tga");
@@ -169,34 +184,30 @@ void GameTest::Init() {
 
   for (int y = 0; y < sz; ++y) {
     for (int x = 0; x < sz; ++x) {
-      // Normalize the coordinates to [-1, 1] for terrain manipulation
-      float nx = (x - sz / 2.0f) / (sz / 2.0f);
-      float ny = (y - sz / 2.0f) / (sz / 2.0f);
+      float nx = (x - sz * 0.5f) / (sz * 0.5f);  // [-1, 1]
+      float ny = (y - sz * 0.5f) / (sz * 0.5f);  // [-1, 1]
 
-      // Canyon-like depth carved along X (stronger canyon in the center)
-      // The canyon is deeper and steeper around the center, simulating the
-      // Grand Canyon
-      float canyon =
-          expf(-10.0f * nx * nx);  // Steep center, shallows out at the edges
-      canyon =
-          std::max(canyon, 0.2f);  // Ensure a minimum depth for visual realism
+      float dx = fabsf(nx);
 
-      // Combine with sine and cosine functions for undulating terrain (canyon
-      // ridges, mesas)
-      float height = (sinf(x * 0.1f) + cosf(y * 0.1f)) * 0.5f;
+      // Central erosion-shaped canyon (wider falloff)
+      float canyonDepth = smoothStep(0.1f, 0.5f, dx);
+      canyonDepth = 1.0f - canyonDepth;
 
-      // Simulate more varied terrain with the canyon effect
-      height *= canyon;
+      // Erosion-based slope smoothing using exponential decay
+      float canyon = bx::clamp(expf(-15.0f * dx * dx), 0.0f, 1.0f);
 
-      // Add some noise or randomness for variation (representing erosion,
-      // randomness)
-      float noise =
-          (rand() % 100) / 100.0f;  // Random variation between 0.0 and 1.0
-      height +=
-          noise *
-          0.1f;  // Slight variation in height to make terrain less uniform
+      // Combine: canyon has base flattening and sloped edges
+      float height = -0.6f * canyonDepth + 0.2f * canyon;
 
-      // Store the final height value in the heightmap (clamped to range)
+      // Smooth undulation (no sharp sin/cos anymore)
+      float broadWaves = sinf(nx * bx::kPi * 2.0f) * cosf(ny * bx::kPi * 2.0f);
+      height += broadWaves * 0.05f;
+
+      // Noise (small amplitude)
+      float noise = ((rand() % 100) / 100.0f - 0.5f) * 0.02f;
+      height += noise;
+
+      height = bx::clamp(height, -1.0f, 1.0f);
       hdata[y * sz + x] = uint8_t(127 + 127 * height);
     }
   }
@@ -245,8 +256,9 @@ void GameTest::Init() {
 
   std::vector<ShadowVertex> shadowVertices;
   shadowVertices.reserve(terrainVertices.size());
+
   for (const auto& v : terrainVertices) {
-    shadowVertices.push_back({v.x, v.y, v.z});
+    shadowVertices.push_back({v.x, v.y, v.z, v.u, v.v});
   }
 
   _shadowVbh = bgfx::createVertexBuffer(
@@ -258,10 +270,10 @@ void GameTest::Init() {
 
   // Shadow Map initialization
 
-  // 2048x2048 shadow map, depth-only
+  // 2048x2048 shadow map
   shadowMapTexture = bgfx::createTexture2D(
-      2048, 2048, false, 1, bgfx::TextureFormat::D16,
-      BGFX_TEXTURE_RT_WRITE_ONLY | BGFX_SAMPLER_COMPARE_LESS);
+      2048, 2048, false, 1, bgfx::TextureFormat::RGBA8,
+      BGFX_TEXTURE_RT | BGFX_TEXTURE_BLIT_DST);  // no depth format
 
   shadowMapFB = bgfx::createFrameBuffer(1, &shadowMapTexture, true);
 
@@ -334,6 +346,14 @@ void GameTest::Update() {
 void GameTest::Render() {
   if (!bgfx::isValid(_terrainProgramHeight))
     return;
+  // Ensure views are active
+  bgfx::touch(ViewID::SHADOW_PASS);
+  bgfx::touch(ViewID::SCENE);
+  bgfx::touch(ViewID::SCENE_N(1));
+
+  bx::mtxIdentity(world_matrix);  // Reset each frame
+  bx::mtxScale(world_matrix, TERRAIN_GLOBAL_SCALE, TERRAIN_GLOBAL_SCALE,
+               TERRAIN_GLOBAL_SCALE);
 
   // --- Camera view and projection ---
   float view[16], proj[16];
@@ -369,9 +389,11 @@ void GameTest::Render() {
   float t = bx::clamp(sunDir.y * 0.5f + 0.5f, 0.0f, 1.0f);
 
   // Soften sun color range
-  _sunColorArray[0] = bx::lerp(1.0f, 1.0f, t);  // R stays 1.0
-  _sunColorArray[1] = bx::lerp(0.5f, 1.0f, t);  // G warms up
-  _sunColorArray[2] = bx::lerp(0.1f, 1.0f, t);  // B goes from warm to cool
+  float sunEnergy = bx::clamp(sunDir.y * 2.0f, 0.0f, 2.0f);  // brighter at noon
+
+  _sunColorArray[0] = bx::lerp(1.0f, 1.0f, t) * sunEnergy;  // R
+  _sunColorArray[1] = bx::lerp(0.5f, 1.0f, t) * sunEnergy;  // G
+  _sunColorArray[2] = bx::lerp(0.1f, 1.0f, t) * sunEnergy;  // B
   _sunColorArray[3] = 0.0f;
 
   _parametersArray[0] = 0.01f;       // Sun size
@@ -379,49 +401,81 @@ void GameTest::Render() {
   _parametersArray[2] = 1.0f;        // Exposure
   _parametersArray[3] = _cycleTime;  // Time
 
+  // Sky ambient light
+  _skyAmbientArray[0] = bx::lerp(0.05f, 0.3f, t);  // R
+  _skyAmbientArray[1] = bx::lerp(0.1f, 0.4f, t);   // G
+  _skyAmbientArray[2] = bx::lerp(0.2f, 0.5f, t);   // B
+  _skyAmbientArray[3] = 0.0f;
+
+  const float ambientBoost = 2000.0f;  // we can try different values here
+  float boostedAmbient[4] = {
+      _skyAmbientArray[0] * ambientBoost, _skyAmbientArray[1] * ambientBoost,
+      _skyAmbientArray[2] * ambientBoost, _skyAmbientArray[3]};
+
+  bgfx::setUniform(_skyAmbientUniform, boostedAmbient);
+
   // --- SHADOW PASS: render depth from light’s point of view ---
-  bx::Vec3 lightPos = bx::mul(sunDir, -100.0f);  // pull back from origin
+  // World center of terrain
+  bx::Vec3 lightTarget = bx::Vec3(TerrainExtent, 0.0f, TerrainExtent);
 
-  // Update light target to center of terrain using TerrainExtent
-  bx::Vec3 lightTarget = {TerrainExtent, 0.0f, TerrainExtent};
+  // Position sun back far enough
+  bx::Vec3 lightPos =
+      bx::mad(sunDir, -300.0f, lightTarget);  // Pull it back more
 
-  float lightView[16], lightProj[16], lightVP[16];
+  float lightView[16], lightProj[16];
   bx::mtxLookAt(lightView, lightPos, lightTarget);
 
-  bx::mtxOrtho(lightProj, -TerrainExtent, TerrainExtent, -TerrainExtent,
-               TerrainExtent, -TerrainExtent, TerrainExtent, 0, false);
+  // Much wider orthographic box
+  float orthoSize =
+      TerrainExtent * 2.0f * TERRAIN_GLOBAL_SCALE;  // Cover the SCALED terrain
+  bx::mtxOrtho(lightProj, -orthoSize, orthoSize, -orthoSize, orthoSize, -500.0f,
+               500.0f, 0, bgfx::getCaps()->homogeneousDepth);
 
+  // Multiply view and projection
+  float lightVP[16];
   bx::mtxMul(lightVP, lightProj, lightView);
 
-  if (!bgfx::isValid(shadowMapFB)) {
-    Logger::getInstance().Log(LogLevel::Error, "ShadowMapFB is invalid!");
-    return;  // Skip render to avoid crash
-  }
+  // Apply model transform
+  float lightWorldVP[16];
+  bx::mtxMul(lightWorldVP, lightVP, world_matrix);
 
+  // Bias matrix from NDC [-1,1] to texture space [0,1]
+  const float bias[16] = {
+      0.5f, 0.0f, 0.0f, 0.0f, 0.0f, 0.5f, 0.0f, 0.0f,
+      0.0f, 0.0f, 0.5f, 0.0f, 0.5f, 0.5f, 0.5f, 1.0f,
+  };
+
+  // Final biased light projection matrix
+  float biasedLightVP[16];
+  bx::mtxMul(biasedLightVP, bias, lightWorldVP);
+
+  // Upload to shader *before* terrain or skybox
+  bgfx::setUniform(_lightMatrixUniform, biasedLightVP);
+
+  // Set view
   bgfx::setViewRect(shadowView, 0, 0, 2048, 2048);
   bgfx::setViewFrameBuffer(shadowView, shadowMapFB);
   bgfx::setViewTransform(shadowView, lightView, lightProj);
-  bgfx::setViewClear(shadowView, BGFX_CLEAR_DEPTH, 0, 1.0f, 0);
+  bgfx::setViewClear(
+      shadowView,
+      BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH,  // Use BGFX_CLEAR_COLOR
+      0xffffffff,  // Clear color to white (represents max depth if your packing
+                   // works that way)
+      1.0f,        // Depth clear value
+      0);          // Stencil clear value
 
-  // Scale the terrain using class-defined TerrainScale
-  bx::mtxScale(world_matrix, TerrainScale, TerrainScale, TerrainScale);
+  bgfx::setTransform(world_matrix);  // sends model matrix
 
-  bgfx::setTransform(world_matrix);
-
-  // Safely submit if all resources are valid
+  // Submit terrain to shadow map
   if (bgfx::isValid(_shadowVbh) && bgfx::isValid(_terrainIbh) &&
       bgfx::isValid(_terrainShadowProgram)) {
+
     bgfx::setVertexBuffer(0, _shadowVbh);
     bgfx::setIndexBuffer(_terrainIbh);
     bgfx::setState(BGFX_STATE_WRITE_Z | BGFX_STATE_DEPTH_TEST_LESS);
+    bgfx::setTexture(0, _heightUniform, _heightTexture);
     bgfx::submit(shadowView, _terrainShadowProgram);
-  } else {
-    Logger::getInstance().Log(LogLevel::Error,
-                              "Shadow pass skipped — invalid resources.");
   }
-
-  // Upload light matrix for main terrain pass
-  bgfx::setUniform(_lightMatrixUniform, lightVP);
 
   // --- SKYBOX (procedural full-screen quad) ---
   if (bgfx::isValid(_skyProgram)) {
@@ -455,7 +509,7 @@ void GameTest::Render() {
   }
 
   // --- TERRAIN ---
-  bx::mtxScale(world_matrix, 5.f, 5.f, 5.f);
+
   bgfx::setTransform(world_matrix);
   bgfx::setVertexBuffer(0, _terrainVbh);
   bgfx::setIndexBuffer(_terrainIbh);
@@ -465,22 +519,28 @@ void GameTest::Render() {
   bgfx::setTexture(1, _s_diffuseUniform, terrainDiffuse);
   bgfx::setTexture(2, _s_ormUniform, terrainORM);
   bgfx::setTexture(3, _s_normalUniform, terrainNormal);
-  bgfx::setTexture(4, _shadowSamplerUniform, shadowMapTexture,
-                   BGFX_SAMPLER_COMPARE_LESS);  //  bind shadow map
+  bgfx::setTexture(4, _shadowSamplerUniform,
+                   shadowMapTexture);  // bind shadow map
 
   // Shared lighting
   bgfx::setUniform(_sunLumUniform, _sunColorArray);
-  bgfx::setUniform(_lightMatrixUniform, lightVP);
+  bgfx::setUniform(_lightMatrixUniform, biasedLightVP);
 
   float cameraPos[4] = {};
   camera.getPosition(cameraPos);
   cameraPos[3] = 0.0f;
   bgfx::setUniform(_cameraPosUniform, cameraPos);
 
-  bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A |
-                 BGFX_STATE_WRITE_Z | BGFX_STATE_DEPTH_TEST_LESS |
-                 BGFX_STATE_MSAA);
+  // --- Render state setup ---
+  uint64_t state = BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A |
+                   BGFX_STATE_WRITE_Z | BGFX_STATE_DEPTH_TEST_LESS |
+                   BGFX_STATE_MSAA;
 
+  bgfx::setState(state);
+
+  bgfx::setTransform(world_matrix);  // sends model matrix
+
+  // Submit terrain pass
   bgfx::submit(terrainView, _terrainProgramHeight);
 }
 
@@ -513,6 +573,7 @@ void GameTest::Shutdown() {
   destroy(terrainDiffuse);
   destroy(terrainORM);
   destroy(terrainNormal);
+
   destroy(_s_diffuseUniform);
   destroy(_s_ormUniform);
   destroy(_s_normalUniform);

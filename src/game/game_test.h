@@ -60,6 +60,8 @@ private:
   bgfx::VertexBufferHandle _terrainVbh = BGFX_INVALID_HANDLE;
   bgfx::IndexBufferHandle _terrainIbh = BGFX_INVALID_HANDLE;
 
+
+
   std::vector<PosTexCoord0Vertex> terrainVertices;
   std::vector<uint16_t> terrainIndices;
 
@@ -98,6 +100,8 @@ private:
 
 
   float _cycleTime = 0.0f;  // day-night timerm keep it at 0
+  float _skyAmbientArray[4];  // Holds current ambient sky light
+
 
   // colour / param arrays passed to both sky & sun shaders
   float _sunColorArray[4] = {5.0f, 5.0f, 5.0f, 0.0f};

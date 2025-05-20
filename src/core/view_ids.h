@@ -15,7 +15,9 @@ inline constexpr uint8_t SCENE_N(std::size_t n) {
 }
 
 //define shadow pass using SCENE
-constexpr uint8_t SHADOW_PASS = SCENE + 10;
+constexpr uint8_t SHADOW_PASS = SCENE + 2;
+constexpr uint8_t DEBUG_PASS = SHADOW_PASS + 1;
+
 
 constexpr uint8_t UI = 254; // IMGUI
 constexpr uint8_t COUNT = 255;
