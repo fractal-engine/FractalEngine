@@ -136,8 +136,9 @@ void GameTest::Init() {
       shaderMgr.LoadProgram("skybox", "vs_skybox.bin", "fs_skybox.bin");
 
   // ― Shadow-only terrain shader
-  _terrainShadowProgram = SubsystemManager::GetShaderManager()->LoadProgram(
-      "terrain_shadow", "vs_shadow.bin", "fs_shadow.bin");
+  bgfx::ShaderHandle vsShadow = loadShader("vs_shadow.bin");
+  _terrainShadowProgram =
+      bgfx::createProgram(vsShadow, BGFX_INVALID_HANDLE, true);
 
   // ― Uniforms
   _heightUniform =
@@ -271,9 +272,12 @@ void GameTest::Init() {
   // Shadow Map initialization
 
   // 2048x2048 shadow map
+  // Shadow Map initialization
+
+  // NOTE: Use D16 depth format for hardware depth testing
   shadowMapTexture = bgfx::createTexture2D(
-      2048, 2048, false, 1, bgfx::TextureFormat::RGBA8,
-      BGFX_TEXTURE_RT | BGFX_TEXTURE_BLIT_DST);  // no depth format
+      2048, 2048, false, 1, bgfx::TextureFormat::D16,
+      BGFX_TEXTURE_RT_WRITE_ONLY | BGFX_SAMPLER_COMPARE_LESS);
 
   shadowMapFB = bgfx::createFrameBuffer(1, &shadowMapTexture, true);
 
@@ -456,26 +460,17 @@ void GameTest::Render() {
   bgfx::setViewRect(shadowView, 0, 0, 2048, 2048);
   bgfx::setViewFrameBuffer(shadowView, shadowMapFB);
   bgfx::setViewTransform(shadowView, lightView, lightProj);
-  bgfx::setViewClear(
-      shadowView,
-      BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH,  // Use BGFX_CLEAR_COLOR
-      0xffffffff,  // Clear color to white (represents max depth if your packing
-                   // works that way)
-      1.0f,        // Depth clear value
-      0);          // Stencil clear value
+  bgfx::setViewClear(shadowView, BGFX_CLEAR_DEPTH, 0, 1.0f, 0);
 
   bgfx::setTransform(world_matrix);  // sends model matrix
 
   // Submit terrain to shadow map
-  if (bgfx::isValid(_shadowVbh) && bgfx::isValid(_terrainIbh) &&
-      bgfx::isValid(_terrainShadowProgram)) {
 
-    bgfx::setVertexBuffer(0, _shadowVbh);
-    bgfx::setIndexBuffer(_terrainIbh);
-    bgfx::setState(BGFX_STATE_WRITE_Z | BGFX_STATE_DEPTH_TEST_LESS);
-    bgfx::setTexture(0, _heightUniform, _heightTexture);
-    bgfx::submit(shadowView, _terrainShadowProgram);
-  }
+  bgfx::setVertexBuffer(0, _shadowVbh);
+  bgfx::setIndexBuffer(_terrainIbh);
+  bgfx::setState(BGFX_STATE_WRITE_Z | BGFX_STATE_DEPTH_TEST_LESS);
+  bgfx::setTexture(0, _heightUniform, _heightTexture);
+  bgfx::submit(shadowView, _terrainShadowProgram);
 
   // --- SKYBOX (procedural full-screen quad) ---
   if (bgfx::isValid(_skyProgram)) {

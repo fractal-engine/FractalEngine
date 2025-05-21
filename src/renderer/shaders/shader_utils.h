@@ -2,7 +2,6 @@
 #define SHADER_UTILS_H
 
 #include <bgfx/bgfx.h>
-#include <thirdparty/bgfx.cmake/bgfx/include/bgfx/bgfx.h>
 #include <string>
 
 // Function to get the shader folder based on the backend

@@ -9,7 +9,8 @@ $input v_position, v_texcoord0, v_worldPos, v_view, v_shadowCoord
 SAMPLER2D(s_diffuse, 0);
 SAMPLER2D(s_orm,     1);
 SAMPLER2D(s_normal,  3);
-SAMPLER2D(s_shadowMap, 4); 
+SAMPLER2DSHADOW(s_shadowMap, 4);
+
 
 // ---------------------------------------------
 // Uniforms
@@ -23,42 +24,15 @@ uniform mat4 u_lightMatrix[1];
 #define PI 3.14159265359
 
 // ---------------------------------------------
-// Shadow Sampling (Manual PCF)
+// Shadow Sampling (Auto PCF)
 // ---------------------------------------------
-float getShadow(sampler2D shadowMap, vec4 shadowCoord)
+float getShadow(sampler2DShadow shadowMap, vec4 shadowCoord)
 {
-    vec3 projCoord = shadowCoord.xyz / shadowCoord.w;
+    // Automatically does hardware depth comparison
+    return bgfxShadow2D(shadowMap, shadowCoord);
 
-    // Early out: outside shadow map bounds
-    if (projCoord.x < 0.0 || projCoord.x > 1.0 ||
-        projCoord.y < 0.0 || projCoord.y > 1.0 ||
-        projCoord.z < 0.0 || projCoord.z > 1.0)
-    {
-        return 1.0;
-    }
-
-    float result = 0.0;
-    float bias = 0.005;
-    vec2 texelSize = vec2_splat(1.0 / 2048.0); // match shadow map resolution
-
-    for (int y = -1; y <= 1; ++y)
-    {
-        for (int x = -1; x <= 1; ++x)
-        {
-            vec2 offset = vec2(float(x), float(y)) * texelSize;
-            vec2 sampleUV = projCoord.xy + offset;
-
-            vec4 packedDepth = texture2D(shadowMap, sampleUV);
-            float sampledDepth = unpackRgbaToFloat(packedDepth);  
-            float currentDepth = projCoord.z - bias;
-
-            if (currentDepth <= sampledDepth)
-                result += 1.0;
-        }
-    }
-
-    return result / 9.0;
 }
+
 
 // ---------------------------------------------
 // GGX PBR Lighting
