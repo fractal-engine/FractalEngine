@@ -43,10 +43,23 @@ struct ScreenPosVertex {
 bgfx::VertexLayout ScreenPosVertex::layout;  // Also define for ScreenPosVertex
                                              // if not done elsewhere
 
+struct ShadowVertex {
+  float x, y, z;
+  float u, v;
+  static bgfx::VertexLayout layout;
+};
+bgfx::VertexLayout ShadowVertex::layout;
+
+
 void PosTexCoord0Vertex::init() {
   // The definition 'PosTexCoord0Vertex::layout;' ensures memory is allocated.
   // Now we initialize its content.
   PosTexCoord0Vertex::layout.begin()
+      .add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float)
+      .add(bgfx::Attrib::TexCoord0, 2, bgfx::AttribType::Float)
+      .end();
+
+  ShadowVertex::layout.begin()
       .add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float)
       .add(bgfx::Attrib::TexCoord0, 2, bgfx::AttribType::Float)
       .end();
@@ -231,6 +244,16 @@ void GameTest::Init() {
   _terrainIbh = bgfx::createIndexBuffer(bgfx::copy(
       terrainIndices.data(), terrainIndices.size() * sizeof(uint16_t)));
 
+  std::vector<ShadowVertex> shadowVertices;
+  for (const auto& v : terrainVertices) {
+    shadowVertices.push_back({v.x, v.y, v.z, v.u, v.v});
+  }
+  _shadowVbh = bgfx::createVertexBuffer(
+      bgfx::copy(shadowVertices.data(),
+                 shadowVertices.size() * sizeof(ShadowVertex)),
+      ShadowVertex::layout);
+
+
   createSkyboxBuffers();
 
   shadowMapTexture = bgfx::createTexture2D(
@@ -239,7 +262,21 @@ void GameTest::Init() {
       BGFX_TEXTURE_RT_WRITE_ONLY | BGFX_SAMPLER_COMPARE_LESS);
   shadowMapFB = bgfx::createFrameBuffer(1, &shadowMapTexture, true);
 
-  bx::mtxScale(this->world_matrix, TerrainScale, TerrainScale, TerrainScale);
+  bx::mtxIdentity(this->world_matrix);  // Start with identity
+  float modelScaleMatrix[16];
+  bx::mtxScale(modelScaleMatrix, TerrainScale, 1.0f,
+               TerrainScale);  // Scale X and Z by TerrainScale, Y by 1.0
+                               // The height comes from the shader.
+  // If you want to translate the terrain so its corner is at (0,0,0)
+  // instead of its center being far away, you can adjust this.
+  // For now, let's assume it's placed based on vertex coords 0..Size-1.
+  // If your vertex positions are 0 to TerrainSize-1, and TerrainScale is the
+  // spacing: The world_matrix should primarily be for positioning the *entire
+  // grid* if needed, or just scaling the grid spacing.
+
+  // If your a_position in vs_terrain.sc is the grid index (0 to TerrainSize-1)
+  // then world_matrix should scale these indices to world space.
+  bx::mtxScale(this->world_matrix, TerrainScale, 1.0f, TerrainScale);
 }
 
 void GameTest::createSkyboxBuffers() {
@@ -274,37 +311,76 @@ void GameTest::createSkyboxBuffers() {
 void GameTest::Update() {
   cameraSystem.UpdateFromKeyboard();
 
-  if (!bgfx::isValid(_terrainProgramHeight)) {
-    return;
-  }
+  // Early exit if terrain program isn't ready (though if it's invalid,
+  // rendering won't happen anyway) if (!bgfx::isValid(_terrainProgramHeight)) {
+  //   return;
+  // }
 
   _cycleTime += 0.0007f;
   if (_cycleTime > bx::kPi * 2.0f) {
     _cycleTime -= bx::kPi * 2.0f;
   }
 
-  const uint16_t hm_sz = TerrainSize;
-  std::vector<uint8_t> heightmap_dynamic_data(hm_sz * hm_sz);
-  for (uint16_t y = 0; y < hm_sz; ++y) {
-    for (uint16_t x = 0; x < hm_sz; ++x) {
-      float nx = (float(x) / float(hm_sz - 1) - 0.5f) * 2.0f;
-      float ny = (float(y) / float(hm_sz - 1) - 0.5f) * 2.0f;
-      float base_h = bx::sin(nx * 3.0f + _cycleTime * 0.5f) *
-                     bx::cos(ny * 3.0f - _cycleTime * 0.3f);
-      float detail_h = bx::sin((nx + _cycleTime * 0.01f) * 10.f) *
-                       bx::cos((ny - _cycleTime * 0.01f) * 10.f) * 0.3f;
-      float final_h = (base_h + detail_h) * 0.5f + 0.5f;
-      heightmap_dynamic_data[y * hm_sz + x] =
-          uint8_t(local_clamp(final_h, 0.0f, 1.0f) * 255.0f);
+  // --- Dynamic Heightmap Update Logic ---
+  const uint16_t hm_sz_update =
+      TerrainSize;  // Declare hm_sz for this scope (can use a different name if
+                    // you prefer)
+  std::vector<uint8_t> heightmap_update_data(
+      hm_sz_update * hm_sz_update);  // Declare data buffer for this update
+
+  for (uint16_t y = 0; y < hm_sz_update;
+       ++y) {  // Use the locally declared hm_sz_update
+    for (uint16_t x = 0; x < hm_sz_update;
+         ++x) {  // Use the locally declared hm_sz_update
+      float nx = (float(x) / float(hm_sz_update - 1) - 0.5f) * 2.0f;
+      float ny = (float(y) / float(hm_sz_update - 1) - 0.5f) * 2.0f;
+
+      // Your canyon/noise logic from Update()
+      // Example:
+      float dx = fabsf(nx);
+      float canyonDepth = local_smoothStep(
+          0.1f, 0.5f, dx);  // Assuming local_smoothStep is defined
+      canyonDepth = 1.0f - canyonDepth;
+
+      float canyon =
+          bx::clamp(expf(-15.0f * dx * dx), 0.0f, 1.0f);  // bx::clamp is fine
+      float height = -0.6f * canyonDepth + 0.2f * canyon;
+
+      float broadWaves = sinf(nx * bx::kPi * 2.0f) * cosf(ny * bx::kPi * 2.0f);
+      height += broadWaves * 0.05f;
+
+      // Use a simple random function or bx::frnd if available for more
+      // controlled noise
+      float simple_noise_val =
+          ((rand() % 1000) / 999.0f - 0.5f) * 0.02f;  // Basic rand
+      height += simple_noise_val;
+
+      height = bx::clamp(height, -1.0f, 1.0f);  // bx::clamp
+      heightmap_update_data[y * hm_sz_update + x] =
+          uint8_t(127 + 127 * height);  // Store in the local buffer
     }
   }
+
+  // Update the texture if it's valid
   if (bgfx::isValid(_heightTexture)) {
-    bgfx::updateTexture2D(_heightTexture, 0, 0, 0, 0, hm_sz, hm_sz,
-                          bgfx::copy(heightmap_dynamic_data.data(),
-                                     heightmap_dynamic_data.size()));
+    // Ensure the data buffer isn't empty before trying to get .data()
+    if (!heightmap_update_data.empty()) {
+      const bgfx::Memory* mem = bgfx::copy(heightmap_update_data.data(),
+                                           heightmap_update_data.size());
+      bgfx::updateTexture2D(_heightTexture,
+                            0,             // mip
+                            0,             // layer
+                            0,             // x
+                            0,             // y
+                            hm_sz_update,  // width
+                            hm_sz_update,  // height
+                            mem            // data
+                            // pitch can often be 0/UINT16_MAX for bgfx to
+                            // auto-calculate for non-subrect updates
+      );
+    }
   }
 }
-
 void GameTest::Render() {
 
   if (!bgfx::isValid(_terrainProgramHeight) || !bgfx::isValid(_skyProgram) ||
@@ -377,7 +453,7 @@ void GameTest::Render() {
   bgfx::setVertexBuffer(0, _terrainVbh);
   bgfx::setIndexBuffer(_terrainIbh);
   bgfx::setState(BGFX_STATE_WRITE_Z | BGFX_STATE_DEPTH_TEST_LESS |
-                 BGFX_STATE_CULL_CW | BGFX_STATE_MSAA);
+                 BGFX_STATE_CULL_CCW | BGFX_STATE_MSAA);
   bgfx::submit(SHADOW_MAP_VIEW_ID, _terrainShadowProgram);
 
   bgfx::setViewRect(ViewID::SCENE, 0, 0, canvasViewportW, canvasViewportH);
@@ -445,7 +521,7 @@ void GameTest::Render() {
 
   bgfx::setVertexBuffer(0, _terrainVbh);
   bgfx::setIndexBuffer(_terrainIbh);
-  bgfx::setState(BGFX_STATE_DEFAULT | BGFX_STATE_CULL_CW | BGFX_STATE_MSAA);
+  bgfx::setState(BGFX_STATE_DEFAULT | BGFX_STATE_CULL_CCW | BGFX_STATE_MSAA);
   bgfx::submit(terrainViewID, _terrainProgramHeight);
 }
 
@@ -471,6 +547,8 @@ void GameTest::Shutdown() {
   destroyHandle(_terrainIbh);
   destroyHandle(_skyVbh);
   destroyHandle(_skyIbh);
+  destroyHandle(_shadowVbh);
+  destroyHandle(shadowMapTexture);
   destroyHandle(_heightUniform);
   destroyHandle(_s_diffuseUniform);
   destroyHandle(_s_ormUniform);

@@ -61,7 +61,7 @@ vec3 FresnelSchlick(float cosTheta, vec3 F0) {
 
 // --- Main Fragment Shader ---
 void main() {
-    vec2 uv = v_out_uv * 32.0; // UV scaling for texture detail
+    vec2 uv = v_out_uv * 150.0; // UV scaling for texture detail
 
     vec3 albedo     = texture2D(s_diffuse, uv).rgb;
     vec3 orm        = texture2D(s_orm, uv).rgb;
@@ -102,4 +102,5 @@ void main() {
     vec3 color = toGamma(Lo + ambient);
 
     gl_FragColor = vec4(color, 1.0);
+   // gl_FragColor = vec4(1.0, 0.0, 1.0, 1.0); for debugging
 }
