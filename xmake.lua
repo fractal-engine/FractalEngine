@@ -218,6 +218,7 @@ rule("bgfx_shaderc")
             }
 
             print("Shaderc Command: " .. table.concat(args, " "))
+            print("Using varying.def.sc: " .. varying_file)
             local ok, out, err = os.iorunv(shaderc, args)
             if not ok then
                 print("Shaderc failed for " .. sourcefile .. ": " .. (err or out))
