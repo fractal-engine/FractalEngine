@@ -121,12 +121,26 @@ void GameTest::Init() {
   camera.setYaw(bx::toRad(45.0f));
 
   auto& shaderMgr = *SubsystemManager::GetShaderManager();
+
   _terrainProgramHeight =
       shaderMgr.LoadProgram("terrain_pbr", "vs_terrain.bin", "fs_terrain.bin");
+  Logger::getInstance().Log(
+      LogLevel::Debug,
+      std::string("[DEBUG] _terrainPBR valid = ") +
+          (bgfx::isValid(_terrainProgramHeight) ? "true" : "false"));
+
   _skyProgram =
       shaderMgr.LoadProgram("skybox_proc", "vs_skybox.bin", "fs_skybox.bin");
-  _terrainShadowProgram = shaderMgr.LoadProgram(
-      "terrain_shadow_depth", "vs_shadow.bin", "fs_shadow.bin");
+  Logger::getInstance().Log(
+      LogLevel::Debug, std::string("[DEBUG] _Skybox valid = ") +
+                           (bgfx::isValid(_skyProgram) ? "true" : "false"));
+
+  _terrainShadowProgram =
+      shaderMgr.LoadProgram("terrain_shadow", "vs_shadow.bin", "fs_shadow.bin");
+  Logger::getInstance().Log(
+      LogLevel::Debug,
+      std::string("[DEBUG] _terrainShadowProgram valid = ") +
+          (bgfx::isValid(_terrainShadowProgram) ? "true" : "false"));
 
   _heightUniform =
       bgfx::createUniform("s_heightTexture", bgfx::UniformType::Sampler);
@@ -291,6 +305,7 @@ void GameTest::Update() {
 }
 
 void GameTest::Render() {
+
   if (!bgfx::isValid(_terrainProgramHeight) || !bgfx::isValid(_skyProgram) ||
       !bgfx::isValid(_terrainShadowProgram)) {
     return;

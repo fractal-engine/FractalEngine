@@ -43,7 +43,7 @@ target("fractal")
     add_files("src/scene/*.cpp")
     add_files("src/lighting/*.cpp")
     add_files("src/editor/vendor/imgui/imgui_impl_bgfx.cpp")
-    add_files("src/shaders/**.sc|varying.def.sc|varying_imgui.def.sc|varying_skybox.def.sc||includes/**.sc", {rule = "bgfx_shaderc"}) --exclude any include files
+    add_files("src/shaders/**.sc", {rule = "bgfx_shaderc"}) 
     add_files("src/platform/platform_utils.cpp")
 
     -- Add Metal frameworks for macOS
@@ -138,6 +138,35 @@ rule("bgfx_shaderc")
     set_extensions(".sc")
 
     on_build_file(function (target, sourcefile)
+
+        local filename = path.filename(sourcefile)
+        local normalized_sourcefile = path.normalize(sourcefile)
+
+        -- 1. Exclude varying definition files
+        if filename:startswith("varying") then
+            -- print("Shaderc rule: Skipping varying def file: " .. sourcefile)
+            return 
+        end
+
+        -- 2. Exclude files in "includes" subdirectories
+        --    (Adjust if your include folder name is different or path structure varies)
+        if normalized_sourcefile:find(path.join("", "includes", ""), 1, true) then
+             -- print("Shaderc rule: Skipping include file: " .. sourcefile)
+            return
+        end
+
+        -- 3. Ensure it's a primary shader type (vs_*, fs_*, cs_*)
+        local shader_type_prefix = filename:match("^(vs_).*%..sc$") or
+                                   filename:match("^(fs_).*%..sc$") or
+                                   filename:match("^(cs_).*%..sc$")
+        
+        if not shader_type_prefix then
+            -- print("Shaderc rule: Skipping non-primary shader file: " .. sourcefile)
+            return -- Not a vs, fs, or cs file we want to compile as a standalone shader
+        end
+
+        -- If we reach here, it's a file we want to compile.
+        print("Shaderc rule: Processing primary shader: " .. sourcefile)
         -- Get the correct path to shaderc based on platform
         local shaderc = ""
         if is_plat("windows") then
@@ -192,11 +221,14 @@ rule("bgfx_shaderc")
         local shader_type = sourcefile:match("vs_") and "vertex" or sourcefile:match("fs_") and "fragment" or "compute"
 
         -- Shader definition files
-        local varying_file = path.join(os.projectdir(), "src/shaders/varying.def.sc")
-        if     sourcefile:find("imgui")  then
+        if sourcefile:find("imgui", 1, true) then -- path.normalize(sourcefile):find("imgui")
             varying_file = path.join(os.projectdir(), "src/shaders/varying_imgui.def.sc")
-        elseif sourcefile:find("skybox") then
+        elseif sourcefile:find("skybox", 1, true) then
             varying_file = path.join(os.projectdir(), "src/shaders/varying_skybox.def.sc")
+        elseif sourcefile:find("terrain", 1, true) then -- For vs_terrain.sc and fs_terrain.sc
+            varying_file = path.join(os.projectdir(), "src/shaders/varying_terrain_pbr.def.sc")
+        elseif sourcefile:find("shadow", 1, true) then -- For vs_shadow.sc and fs_shadow.sc
+            varying_file = path.join(os.projectdir(), "src/shaders/varying_shadow.def.sc")
         end
 
         -- Only compile for backends of the current platform

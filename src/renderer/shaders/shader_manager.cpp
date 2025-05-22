@@ -56,6 +56,24 @@ bgfx::ProgramHandle ShaderManager::LoadProgram(const std::string& name,
   }
 
   bgfx::ProgramHandle program = bgfx::createProgram(vs, fs, true);
+
+  if (!bgfx::isValid(program)) {
+    Logger::getInstance().Log(
+        LogLevel::Error,
+        "ShaderManager: bgfx::createProgram FAILED for VS_handle=" +
+            std::to_string(vs.idx) + " FS_handle=" + std::to_string(fs.idx) +
+            " for program '" + name + "'");
+  } else {
+    Logger::getInstance().Log(
+        LogLevel::Debug,
+        "ShaderManager: bgfx::createProgram SUCCEEDED for program '" + name +
+            "', handle=" + std::to_string(program.idx));
+  }
+  // To catch linker errors
   program_cache_[name] = program;
   return program;
+
+  
+
+  
 }
