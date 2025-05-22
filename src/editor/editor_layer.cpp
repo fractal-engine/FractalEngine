@@ -1,24 +1,23 @@
 #include "editor/editor_layer.h"
-#include "components/camera_controls.h"
-#include "components/console_panel.h"
-#include "components/game_canvas.h"
-#include "components/hierarchy_panel.h"
-#include "components/inspector_panel.h"
-#include "components/menu_bar.h"
-#include "components/status_bar.h"
-#include "components/toolbar.h"
-#include "core/engine_globals.h"
-#include "core/logger.h"
-#include "core/view_ids.h"
-#include "editor/resource/decorators/drop_shadows.h"
-#include "editor/resource/theme/dark_theme.hpp"
-#include "game/game_test.h"
+#include "editor/resources/theme/dark_theme.hpp"
+#include "editor/runtime/application.h"
+#include "engine/core/engine_globals.h"
+#include "engine/core/logger.h"
+#include "engine/core/view_ids.h"
 #include "imgui.h"
 #include "imgui_internal.h"
+#include "imgui_utils.h"
+#include "panels/camera_controls.h"
+#include "panels/console_panel.h"
+#include "panels/game_canvas.h"
+#include "panels/hierarchy_panel.h"
+#include "panels/inspector_panel.h"
+#include "panels/menu_bar.h"
+#include "panels/status_bar.h"
+#include "panels/toolbar.h"
 #include "platform/platform_utils.h"
-#include "subsystem/subsystem_manager.h"
-#include "subsystem/window_manager.h"
-#include "tools/imgui_utils.h"
+#include "platform/window_manager.h"
+#include "resources/decorators/drop_shadows.h"
 
 #include <backends/imgui_impl_sdl2.h>
 #include "editor/vendor/imgui/imgui_impl_bgfx.h"
@@ -128,7 +127,7 @@ void EditorLayer::Run() {
 
     /* 5 - Render game content to framebuffer */
     if (is_game_started_) {
-      SubsystemManager::GetGameManager()->Render();  // Render 3D scene
+      Application::GetGameManager()->Render();  // Render 3D scene
     }
 
     /* 6 - Render ImGui elements */
@@ -183,11 +182,11 @@ void EditorLayer::HandleInput(Key key) {
     return;
 
   InputEvent input_event(key);
-  if (auto* gm = SubsystemManager::GetGameManager().get()) {
+  if (auto* gm = Application::GetGameManager().get()) {
     input_event.pressed_frame_ = gm->GetFrameCount();
   }
-  SubsystemManager::GetInput()->FowardInputEvent(input_event,
-                                                 input_event.pressed_frame_);
+  Application::GetInput()->FowardInputEvent(input_event,
+                                            input_event.pressed_frame_);
 }
 
 void EditorLayer::DockSpace() {
@@ -218,7 +217,7 @@ void EditorLayer::DockSpace() {
   ImGui::End();
 
   // ———— Menu bar —————
-  Components::MenuBar(
+  Panels::MenuBar(
       [&]() {
         quit_ = true;
         editor_exit_pressed();
@@ -227,7 +226,7 @@ void EditorLayer::DockSpace() {
       debug_activate_picker_, debug_show_style_editor_);
 
   // ———— Status bar —————
-  Components::StatusBar();
+  Panels::StatusBar();
   ImGui::PopStyleVar(3);
 }
 
@@ -254,7 +253,7 @@ void EditorLayer::RenderUI() {
     ImGuiID top = ImGui::DockBuilderSplitNode(dock_id_, ImGuiDir_Up, 0.15f,
                                               nullptr, &dock_id_);
 
-    // docked panels
+    // docked Panels
     ImGui::DockBuilderDockWindow("Toolbar", top);
     ImGui::DockBuilderDockWindow("Hierarchy", left);
     ImGui::DockBuilderDockWindow("Inspector", right);
@@ -267,55 +266,55 @@ void EditorLayer::RenderUI() {
   }
 
   //--------------------------- TOP TOOLBAR ----------------------------------
-  Components::ToolbarCallbacks cb{.onStart =
-                                      [&] {
-                                        if (!is_game_started_) {
-                                          is_game_started_ = true;
-                                          game_start_pressed();
-                                        }
-                                      },
-                                  .onStop =
-                                      [&] {
-                                        if (is_game_started_) {
-                                          is_game_started_ = false;
-                                          game_end_pressed();
-                                        }
-                                      },
-                                  .onQuit =
-                                      [&] {
-                                        quit_ = true;
-                                        editor_exit_pressed();
-                                      }};
+  Panels::ToolbarCallbacks cb{.onStart =
+                                  [&] {
+                                    if (!is_game_started_) {
+                                      is_game_started_ = true;
+                                      game_start_pressed();
+                                    }
+                                  },
+                              .onStop =
+                                  [&] {
+                                    if (is_game_started_) {
+                                      is_game_started_ = false;
+                                      game_end_pressed();
+                                    }
+                                  },
+                              .onQuit =
+                                  [&] {
+                                    quit_ = true;
+                                    editor_exit_pressed();
+                                  }};
   ImGui::Begin("Toolbar", nullptr);
-  Components::Toolbar(cb);
+  Panels::Toolbar(cb);
   ImGui::End();
 
   // -------- LEFT : hierarchy + assets -------------------------------------
   static std::vector<std::string> demo_names = {"Camera", "Terrain", "Sun",
                                                 "Player"};
   ImGui::Begin("Hierarchy", nullptr);
-  Components::HierarchyPanel(demo_names, "assets");
+  Panels::HierarchyPanel(demo_names, "assets");
   ImGui::End();
 
   // -------- MIDDLE : game view --------------------------------------------
   ImGui::Begin("Scene", nullptr);
-  Components::GameCanvas(is_game_started_, game_canvas_hovered_);
+  Panels::GameCanvas(is_game_started_, game_canvas_hovered_);
   ImGui::End();
 
   // -------- RIGHT : inspector ---------------------------------------------
-  static std::vector<Components::Transform> demo_transform(demo_names.size());
+  static std::vector<Panels::Transform> demo_transform(demo_names.size());
   ImGui::Begin("Inspector", nullptr);
-  Components::Inspector(demo_transform);
+  Panels::Inspector(demo_transform);
   ImGui::End();
 
-  //--------------------------- PANELS ------------------------------
+  //--------------------------- Panels ------------------------------
   ImGui::Begin("Console", nullptr);
-  Components::ConsolePanel();
+  Panels::ConsolePanel();
   ImGui::End();
 
   // Camera Controls
   ImGui::Begin("Camera", nullptr);
-  Components::CameraControls();
+  Panels::CameraControls();
   ImGui::End();
 
   //------------------------- IMGUI DEBUG ---------------------------

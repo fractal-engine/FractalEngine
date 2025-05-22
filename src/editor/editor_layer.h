@@ -2,11 +2,12 @@
 #define EDITOR_LAYER_H
 
 #include <memory>
-#include "editor/editor_base.h"
+#include "editor_base.h"
+#include "engine/renderer/renderer_graphics.h"
 #include "imgui.h"
 #include "imgui_internal.h"
-#include "renderer/renderer_graphics.h"
-#include "subsystem/input/key_map_sdl.h"
+#include "platform/input/key_map_sdl.h"
+#include "game/game_test.h"
 
 class EditorLayer : public EditorBase {
 public:

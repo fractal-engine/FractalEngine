@@ -1,18 +1,18 @@
 #include <bgfx/bgfx.h>
 #include <bx/math.h>
 
-#include "game/game_test.h"
+#include "game_test.h"
 
 #include <SDL.h>
-#include "core/logger.h"
-#include "core/view_ids.h"
-#include "lighting/sky_lighting.h"
-#include "renderer/renderer_graphics.h"
-#include "renderer/shaders/shader_utils.h"
-#include "subsystem/subsystem_manager.h"
-#include "tools/texture_utils.h"
+#include "editor/runtime/application.h"
+#include "engine/core/logger.h"
+#include "engine/core/view_ids.h"
+#include "engine/renderer/lighting/sky_lighting.h"
+#include "engine/renderer/renderer_graphics.h"
+#include "engine/resources/shader_utils.h"
+#include "engine/resources/textures/texture_utils.h"
 
-constexpr uint8_t shadowView = ViewID::SHADOW_PASS;
+// constexpr uint8_t shadowView = ViewID::SHADOW_PASS;
 
 // ──────────────────────────────────────────────────────
 //  Vertex layouts
@@ -107,10 +107,10 @@ void GameTest::Init() {
   camera.setPitch(0.4f);
   camera.setYaw(0.75f);
 
-  auto& shaderMgr = *SubsystemManager::GetShaderManager();
+  auto& shaderMgr = *Application::GetShaderManager();
 
   // ― Terrain shader
-  _terrainProgramHeight = SubsystemManager::GetShaderManager()->LoadProgram(
+  _terrainProgramHeight = Application::GetShaderManager()->LoadProgram(
       "terrain_height", "vs_terrain.bin", "fs_terrain.bin");
 
   // ― Sky / Sun
@@ -118,7 +118,7 @@ void GameTest::Init() {
       shaderMgr.LoadProgram("skybox", "vs_skybox.bin", "fs_skybox.bin");
 
   // ― Shadow-only terrain shader
-  _terrainShadowProgram = SubsystemManager::GetShaderManager()->LoadProgram(
+  _terrainShadowProgram = Application::GetShaderManager()->LoadProgram(
       "terrain_shadow", "vs_shadow.bin", "fs_shadow.bin");
 
   // ― Uniforms
@@ -340,9 +340,9 @@ void GameTest::Render() {
   cameraSystem.GetProjectionMatrix(proj, aspect, 60.0f);
 
   // render sky into SCENE (view 1) and terrain into SCENE_N(1) (view 2):
-  constexpr uint8_t skyView = ViewID::SCENE;
-  constexpr uint8_t terrainView = ViewID::SCENE_N(1);
-  constexpr uint8_t shadowView = ViewID::SHADOW_PASS;  //  new shadow pass view
+  constexpr uint8_t skyView = ViewID::SCENE;              // clear & sky
+  constexpr uint8_t terrainView = ViewID::SceneExtra(0);  // terrain & opaque
+  constexpr uint8_t shadowView = ViewID::Shadow(0);       // shadow map
 
   // upload camera matrices into both views:
   bgfx::setViewTransform(skyView, view, proj);
@@ -455,7 +455,7 @@ void GameTest::Render() {
   bgfx::setTexture(2, _s_ormUniform, terrainORM);
   bgfx::setTexture(3, _s_normalUniform, terrainNormal);
   bgfx::setTexture(3, _shadowSamplerUniform, shadowMapTexture,
-                   BGFX_SAMPLER_COMPARE_LESS);//  bind shadow map
+                   BGFX_SAMPLER_COMPARE_LESS);  //  bind shadow map
 
   // Shared lighting
   bgfx::setUniform(_sunLumUniform, _sunColorArray);
@@ -473,7 +473,6 @@ void GameTest::Render() {
   bgfx::submit(terrainView, _terrainProgramHeight);
 }
 
-
 // ──────────────────────────────────────────────────────
 //  Shutdown()
 // ──────────────────────────────────────────────────────
@@ -488,7 +487,6 @@ void GameTest::Shutdown() {
   destroy(_terrainProgramHeight);
   destroy(_terrainShadowProgram);
   destroy(_skyProgram);
-
 
   destroy(_heightTexture);
   destroy(_heightUniform);

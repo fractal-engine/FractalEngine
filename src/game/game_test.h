@@ -3,9 +3,9 @@
 
 #include <bgfx/bgfx.h>
 #include <vector>
-#include "editor/components/orbit_camera.h"
+#include "editor/panels/orbit_camera.h"
 #include "editor/systems/camera_system.h"
-#include "game/game_base.h"
+#include "game_base.h"
 
 // ──────────────────────────────────────────────────────
 //  Vertex layout used by terrain + sun billboard
@@ -31,8 +31,6 @@ public:
   void Render() override;
   void Shutdown() override;
 
-
-
   // simple camera function call
   OrbitCamera camera;
   CameraSystem cameraSystem;
@@ -51,7 +49,6 @@ private:
   bgfx::TextureHandle terrainNormal = BGFX_INVALID_HANDLE;
   bgfx::UniformHandle _cameraPosUniform = BGFX_INVALID_HANDLE;
 
-
   bgfx::UniformHandle _lightDirUniform = BGFX_INVALID_HANDLE;
 
   bgfx::VertexBufferHandle _terrainVbh = BGFX_INVALID_HANDLE;
@@ -62,7 +59,6 @@ private:
 
   // ───── Sky-box & Sun
   bgfx::ProgramHandle _skyProgram = BGFX_INVALID_HANDLE;
-
 
   bgfx::VertexBufferHandle _skyVbh = BGFX_INVALID_HANDLE;
   bgfx::IndexBufferHandle _skyIbh = BGFX_INVALID_HANDLE;
@@ -82,8 +78,6 @@ private:
   bgfx::UniformHandle _s_ormUniform = BGFX_INVALID_HANDLE;
   bgfx::UniformHandle _s_normalUniform = BGFX_INVALID_HANDLE;
 
-
-
   // Sky Ambient Light
   bgfx::UniformHandle _skyAmbientUniform = BGFX_INVALID_HANDLE;
   bgfx::UniformHandle _lightMatrixUniform = BGFX_INVALID_HANDLE;
@@ -94,9 +88,6 @@ private:
   bgfx::FrameBufferHandle shadowMapFB = BGFX_INVALID_HANDLE;
   bgfx::ProgramHandle _terrainShadowProgram = BGFX_INVALID_HANDLE;
   bgfx::VertexBufferHandle _shadowVbh = BGFX_INVALID_HANDLE;
-
-
-
 
   float _cycleTime = 0.0f;  // day-night timerm keep it at 0
 
