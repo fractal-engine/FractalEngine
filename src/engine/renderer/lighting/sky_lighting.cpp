@@ -1,4 +1,4 @@
-#include "engine/renderer/lighting/sky_lighting.h"
+#include "sky_lighting.h"
 
 // Helper function for cubic Hermite ease-in/ease-out function
 static float smoothStepRange(float edge0, float edge1, float x) {

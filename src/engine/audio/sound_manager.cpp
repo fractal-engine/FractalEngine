@@ -5,5 +5,5 @@
 
 
 // Define the constant filenames here.
-const std::string SoundManager::kClickSoundFilename = "audio_lib/click.wav";
-const std::string SoundManager::kAmbientSoundFilename = "audio_lib/ambient.wav";
+const std::string SoundManager::kClickSoundFilename = "src/assets/audio/click.wav";
+const std::string SoundManager::kAmbientSoundFilename = "src/assets/audio/ambient.wav";

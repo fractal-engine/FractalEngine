@@ -146,11 +146,8 @@ rule("bgfx_shaderc")
 
         -- Only compile for backends of the current platform
         for _, backend in ipairs(backends_to_compile) do
-            local output_dir = path.join("assets/shaders", backend.folder)
+            local output_dir = path.join(os.projectdir(), "assets/shaders", backend.folder)
             os.mkdir(output_dir)
-
-            -- create the full directory path
-            -- os.mkdir(path.join("src", output_dir))
 
             local args = {
                 "--type", shader_type:sub(1, 1),
@@ -159,7 +156,7 @@ rule("bgfx_shaderc")
                 "--varyingdef", varying_file,
                 "-i", path.join(os.projectdir(), "src/thirdparty/bgfx.cmake/bgfx/src"),
                 "-i", path.join(os.projectdir(), "src/thirdparty/bgfx.cmake/bgfx/examples/common"),
-                "-i", path.join(os.projectdir(), "assets/shaders/includes"),
+                "-i", path.join(os.projectdir(), "src/assets/shaders/includes"),
                 "--entry", "main",
                 "-f", sourcefile,
                 "-o", path.join(output_dir, path.basename(sourcefile) .. ".bin")

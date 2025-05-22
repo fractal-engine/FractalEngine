@@ -22,12 +22,6 @@ if is_plat("macosx") then
     add_frameworks("Metal", "MetalKit", "QuartzCore")
 end
 
--- copy assets next to _every_ binary
-after_build(function (target)
-    os.cp("assets", target:targetdir())
-    os.cp("src/editor/resources", path.join(target:targetdir(),"resources"))
-end)
-
 ----------------------------------------------------------------
 --  per-module build scripts
 ----------------------------------------------------------------
