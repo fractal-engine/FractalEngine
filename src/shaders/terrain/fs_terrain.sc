@@ -3,7 +3,8 @@
  * License: https://github.com/bkaradzic/bgfx/blob/master/LICENSE
  */
 
-$input v_out_uv, v_out_worldPos, v_out_shadowCoord, v_out_worldTangent, v_out_worldBitangent, v_out_worldNormalGeom
+$input v_out_uv, v_out_worldPos, v_out_shadowCoord, v_out_viewVec, v_out_worldTangent, v_out_worldBitangent, v_out_worldNormalGeom
+
 #include <bgfx_shader.sh>
 #include "../common/common.sh"
 

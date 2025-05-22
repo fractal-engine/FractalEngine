@@ -112,12 +112,13 @@ void GameTest::Init() {
         .end();
   }
 
-  float terrainGridSize = (TerrainSize - 1) * TerrainScale;
-  float terrainCenterPos[3] = {terrainGridSize * 0.5f, 0.0f,
-                               terrainGridSize * 0.5f};
-  camera.setTarget(terrainCenterPos);
+  float terrainCenterPos[3] = {TerrainExtent, 0.0f, TerrainExtent};
+
+  float targetPos[3] = {TerrainExtent, 0.0f, TerrainExtent};
+  camera.setTarget(targetPos);
+
   camera.setDistance(TerrainScale * 20.0f);
-  camera.setPitch(bx::toRad(30.0f));
+  camera.setPitch(bx::toRad(30.0f));  // Look downward
   camera.setYaw(bx::toRad(45.0f));
 
   auto& shaderMgr = *SubsystemManager::GetShaderManager();
@@ -238,7 +239,7 @@ void GameTest::Init() {
       BGFX_TEXTURE_RT_WRITE_ONLY | BGFX_SAMPLER_COMPARE_LESS);
   shadowMapFB = bgfx::createFrameBuffer(1, &shadowMapTexture, true);
 
-  bx::mtxScale(this->world_matrix, TerrainScale, 1.0f, TerrainScale);
+  bx::mtxScale(this->world_matrix, TerrainScale, TerrainScale, TerrainScale);
 }
 
 void GameTest::createSkyboxBuffers() {
@@ -368,6 +369,7 @@ void GameTest::Render() {
   bgfx::setViewTransform(SHADOW_MAP_VIEW_ID, lightViewMatrix, lightProjMatrix);
 
   float terrainParamsArr[4] = {TERRAIN_MAX_ACTUAL_HEIGHT, 0.0f, 1.0f, 1.0f};
+
   bgfx::setUniform(_terrainParamsUniform, terrainParamsArr);
   bgfx::setTexture(0, _heightUniform, _heightTexture);
 

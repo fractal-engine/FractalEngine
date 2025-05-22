@@ -1,5 +1,5 @@
 $input a_position, a_texcoord0
-$output v_out_uv, v_out_worldPos, v_out_shadowCoord, v_out_viewVec, v_out_worldTangent, v_out_worldBitangent, v_out_worldNormalGeom, v_sys_normal, v_sys_tangent, v_sys_bitangent
+$output v_out_uv, v_out_worldPos, v_out_shadowCoord, v_out_viewVec, v_out_worldTangent, v_out_worldBitangent, v_out_worldNormalGeom
 
 #include "../common/common.sh"
 #include <bgfx_shader.sh>
@@ -65,11 +65,6 @@ void main() {
 
     // Shadow projection
     v_out_shadowCoord = mul(u_lightMatrix[0], worldPos4);
-
-    // Optional system outputs
-    v_sys_normal    = v_out_worldNormalGeom;
-    v_sys_tangent   = v_out_worldTangent;
-    v_sys_bitangent = v_out_worldBitangent;
 
     gl_Position = mul(u_viewProj, worldPos4);
 }

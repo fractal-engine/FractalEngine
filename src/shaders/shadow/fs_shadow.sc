@@ -1,3 +1,4 @@
+$input v_out_uv
 #include "../common/common.sh"
 
 void main() {
