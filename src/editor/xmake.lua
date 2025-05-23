@@ -11,8 +11,12 @@ target("fractal")
 
     add_packages("imgui", "boost", "libsdl2", "bgfx", "glm", "libsdl2_ttf", "portaudio")
 
+    -- copy all assets 
     after_build(function (target)
-        os.cp("assets", target:targetdir())                       -- shaders + textures
-        os.cp("src/editor/resources", path.join(target:targetdir(), "resources"))
+        local bindir = target:targetdir()
+        os.cp("assets/shaders",    path.join(bindir, "assets/shaders"))
+        os.cp("src/assets/textures", path.join(bindir, "assets/textures"))
+        os.cp("src/assets/audio",    path.join(bindir, "assets/audio"))
+        os.cp("src/editor/resources", path.join(bindir, "resources"))
     end)
 target_end()
