@@ -1,8 +1,16 @@
+---------------------------------------------------------------
+--  platform target
+---------------------------------------------------------------
 target("platform")
     set_kind("static")
 
-    add_files("*.cpp", "*.mm", "input/*.cpp")
+    add_files("*.cpp", "input/*.cpp")
     add_headerfiles("*.h", "input/*.h")
+
+     -- macOS-specific file
+    if is_plat("macosx") then
+        add_files("*.mm")
+    end
 
     add_packages("libsdl2", "bgfx", "imgui", "boost")
 
