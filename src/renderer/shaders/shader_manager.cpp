@@ -14,16 +14,18 @@ void ShaderManager::Init() {
 }
 
 void ShaderManager::Shutdown() {
-  for (auto& pair : program_cache_)
+  // Destroy all programs (this automatically destroys shaders, because of the
+  // 'true' flag)
+  for (auto& pair : program_cache_) {
     if (bgfx::isValid(pair.second))
       bgfx::destroy(pair.second);
+  }
   program_cache_.clear();
 
-  for (auto& pair : shader_cache_)
-    if (bgfx::isValid(pair.second))
-      bgfx::destroy(pair.second);
+  // Don't manually destroy shaders that were auto-destroyed
   shader_cache_.clear();
 }
+
 
 bgfx::ShaderHandle ShaderManager::LoadShader(const std::string& path) {
   if (shader_cache_.count(path))
@@ -72,8 +74,5 @@ bgfx::ProgramHandle ShaderManager::LoadProgram(const std::string& name,
   // To catch linker errors
   program_cache_[name] = program;
   return program;
-
-  
-
-  
+ 
 }
