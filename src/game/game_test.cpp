@@ -302,7 +302,24 @@ void GameTest::Init() {
   bx::mtxIdentity(this->world_matrix);
   // Scale terrain grid vertices to world space; height (Y) is determined by
   // shader from heightmap
-  bx::mtxScale(this->world_matrix, TerrainScale, 1.0f, TerrainScale);
+  // 1. Compute center offset in mesh local space
+  float terrainCenterOffset = (TerrainSize - 1) * 0.5f;  // Local-space center
+
+  // 2. Create scale and translation matrices
+  float scaleMtx[16];
+  float translateMtx[16];
+  bx::mtxScale(scaleMtx, TerrainScale, 1.0f, TerrainScale);
+
+  // 3. Compute the world offset that brings terrain center to desired position
+  float desiredTerrainCenter[3] = {-31.683f, 0.0f, -27.185f};
+  bx::mtxTranslate(
+      translateMtx,
+      desiredTerrainCenter[0] - terrainCenterOffset * TerrainScale,
+      desiredTerrainCenter[1],
+      desiredTerrainCenter[2] - terrainCenterOffset * TerrainScale);
+
+  // 4. Combine translation and scale into world matrix
+  bx::mtxMul(this->world_matrix, scaleMtx, translateMtx);
 }
 
 // Creates vertex and index buffers for the skybox (a full-screen quad)

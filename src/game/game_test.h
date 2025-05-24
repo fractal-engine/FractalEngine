@@ -35,8 +35,8 @@ public:
   //  Terrain Size
   static constexpr float TerrainScale = 1024.0f;
   static constexpr uint16_t TerrainSize = 128;
-  static constexpr float TerrainExtent = (TerrainSize * TerrainScale) * 0.5f;
-  
+  static constexpr float TerrainExtent =
+      ((TerrainSize - 1) * TerrainScale) * 0.5f;
 
   // simple camera function call
   OrbitCamera camera;
