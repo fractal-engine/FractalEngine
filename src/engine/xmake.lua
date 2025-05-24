@@ -27,8 +27,6 @@ target("engine")
     if is_plat("macosx") then
         add_frameworks("Metal", "MetalKit", "QuartzCore")
     end
-
-    add_defines("SDL_MAIN_HANDLED", "DISPLAY_GRAPHICAL")
 target_end()
 
 ---------------------------------------------------------------
@@ -138,9 +136,9 @@ rule("bgfx_shaderc")
         -- Shader definition files
         local varying_base = path.join(os.projectdir(), "src/assets/shaders")
         local varying_file = path.join(varying_base, "varying.def.sc")
-        if sourcefile:find("/imgui/")  then
+        if sourcefile:find("imgui")  then
             varying_file = path.join(varying_base, "varying_imgui.def.sc")
-        elseif sourcefile:find("/skybox/") then
+        elseif sourcefile:find("skybox") then
             varying_file = path.join(varying_base, "varying_skybox.def.sc")
         end
 

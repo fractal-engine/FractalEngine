@@ -3,7 +3,12 @@
 ----------------------------------------------------------------
 set_languages("c++20")
 
-set_xmakever("2.8.7")
+-- default compiler flags - MSVC only
+if is_plat("windows") then
+    add_cxxflags("/Zc:__cplusplus", "/Zc:preprocessor")
+end
+
+-- set_xmakever("2.8.7")
 add_rules("mode.debug", "mode.release")
 set_policy("check.auto_ignore_flags", false)
 
