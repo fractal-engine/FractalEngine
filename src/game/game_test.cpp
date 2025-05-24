@@ -441,10 +441,15 @@ void GameTest::Render() {
                          lightProjMatrix);  // Set transform for shadow pass
 
   // Set uniforms and state for shadow pass
-  float terrainParamsArr[4] = {TERRAIN_MAX_ACTUAL_HEIGHT, 0.0f, 1.0f,
-                               1.0f};  // Terrain height scale, unused params
+  float terrainParamsArr[4] = {
+      TERRAIN_MAX_ACTUAL_HEIGHT,  // x: height scale
+      0.0f,                       // y: unused
+      TerrainScale,               // z: world step X
+      TerrainScale                // w: world step Z
+  };
+
   bgfx::setUniform(_terrainParamsUniform, terrainParamsArr);
-  bgfx::setTexture(0, _heightUniform,
+  bgfx::setTexture(3, _heightUniform,
                    _heightTexture);  // Bind heightmap texture for displacement
   bgfx::setTransform(this->world_matrix);  // Set terrain world matrix
   bgfx::setVertexBuffer(
@@ -550,6 +555,11 @@ void GameTest::Render() {
   bgfx::setState(
       BGFX_STATE_DEFAULT | BGFX_STATE_CULL_CW |
       BGFX_STATE_MSAA);  // Default render state with backface culling and MSAA
+  /*
+  bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_WRITE_Z
+    | BGFX_STATE_DEPTH_TEST_LESS | BGFX_STATE_MSAA);
+    // Use this state if culling is not needed, but depth testing is
+  */
   bgfx::submit(terrainViewID,
                _terrainProgramHeight);  // Submit terrain draw call
 }
