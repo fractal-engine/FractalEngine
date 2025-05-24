@@ -74,7 +74,8 @@ void EditorLayer::Run() {
 
   SDL_Event event;
   while (!quit_) {
-    // 0. SDL events
+
+    // ── 0. SDL EVENTS ───────────────────────────────────────────
     while (SDL_PollEvent(&event)) {
       ImGui_ImplSDL2_ProcessEvent(&event);
 
@@ -84,29 +85,48 @@ void EditorLayer::Run() {
           HandleInput(key);
       }
 
-      // FIXME: revise event below, we do not allow resize anymore
-      if (event.type == SDL_WINDOWEVENT &&
-          event.window.event == SDL_WINDOWEVENT_SIZE_CHANGED) {
-        WindowManager::OnWindowResize(event.window.data1, event.window.data2);
-        ImGui::GetIO().DisplaySize =
-            ImVec2((float)event.window.data1, (float)event.window.data2);
-        built_layout_ = false;
+      // ── WINDOW EVENTS ────────────────────────
+      if (event.type == SDL_WINDOWEVENT) {
+        switch (event.window.event) {
+          case SDL_WINDOWEVENT_SIZE_CHANGED:
+            if (!WindowManager::IsFullscreen() && !WindowManager::minimized) {
+              WindowManager::OnWindowResize(event.window.data1,
+                                            event.window.data2);
+              ImGui::GetIO().DisplaySize =
+                  ImVec2((float)event.window.data1, (float)event.window.data2);
+              built_layout_ = false;
+            }
+            break;
+
+          case SDL_WINDOWEVENT_MINIMIZED:
+            WindowManager::minimized = true;
+            break;
+
+          case SDL_WINDOWEVENT_RESTORED:
+            WindowManager::minimized = false;
+            WindowManager::OnWindowResize(event.window.data1,
+                                          event.window.data2);
+            break;
+
+          default:
+            break;
+        }
       }
 
-      if (event.type == SDL_WINDOWEVENT &&
-          event.window.event == SDL_WINDOWEVENT_MAXIMIZED) {
+      // toggle biorderless fullscreen with F11
+      if (event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_F11)
         WindowManager::ToggleFullscreen();
-      }
-      if (event.type == SDL_WINDOWEVENT &&
-          event.window.event == SDL_WINDOWEVENT_RESTORED &&
-          WindowManager::IsFullscreen()) {
-        WindowManager::ToggleFullscreen();  // leave FS on restore
-      }
 
       if (event.type == SDL_QUIT) {
         quit_ = true;
         editor_exit_pressed();
       }
+    } // end PollEvent loop
+
+    // Skip while window is minimised
+    if (WindowManager::minimized) {
+      SDL_Delay(16);  // ~60 FPS idle
+      continue;
     }
 
     /* 1 - Clear background and initialize frame */

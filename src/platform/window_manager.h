@@ -1,4 +1,4 @@
-#ifndef SDL_PLATFORM_H
+﻿#ifndef SDL_PLATFORM_H
 #define SDL_PLATFORM_H
 
 #include <SDL.h>
@@ -56,6 +56,10 @@ public:
   static void ToggleFullscreen();
   static bool IsFullscreen();
   static bool SetBorderlessFullscreen(bool enable);
+
+  // ───── TRACK WINDOW STATE ─────
+  static SDL_Rect windowedBounds;
+  static bool minimized;
   static bool fullscreen_;
 };
 

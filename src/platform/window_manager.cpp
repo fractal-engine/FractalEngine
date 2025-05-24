@@ -6,7 +6,10 @@
 #include "window_manager.h"
 #include "platform/platform_utils.h"
 
+// Track window state
 bool WindowManager::fullscreen_ = false;
+SDL_Rect WindowManager::windowedBounds = {};
+bool WindowManager::minimized = false;
 
 bool WindowManager::Initialize(const char* title, int width, int height) {
   WindowManager& instance = getInstance();
@@ -87,6 +90,9 @@ void WindowManager::OnWindowResize(int width, int height) {
   instance.width_ = width;
   instance.height_ = height;
 
+  if (fullscreen_ || minimized)  // ignore resize on fullscreen or minimized
+    return;
+
   if (!platform::InFullscreenSpace(instance.window_))
     platform::LockMinSize(instance.window_, instance.width_, instance.height_);
   else
@@ -125,9 +131,24 @@ bool WindowManager::SetBorderlessFullscreen(bool enable) {
   return true;
 }
 
+
 void WindowManager::ToggleFullscreen() {
-  SetBorderlessFullscreen(!fullscreen_);
+  WindowManager& inst = getInstance();
+  fullscreen_ = !fullscreen_;
+
+  if (fullscreen_) {  // FULLSCREEN
+    SDL_GetWindowPosition(inst.window_, &windowedBounds.x, &windowedBounds.y);
+    SDL_GetWindowSize(inst.window_, &windowedBounds.w, &windowedBounds.h);
+    SDL_SetWindowFullscreen(inst.window_, SDL_WINDOW_FULLSCREEN_DESKTOP);
+  } else {  // WINDOWED
+    SDL_SetWindowFullscreen(inst.window_, 0);
+    SDL_SetWindowBordered(inst.window_, SDL_TRUE);
+    SDL_SetWindowPosition(inst.window_, windowedBounds.x, windowedBounds.y);
+    SDL_SetWindowSize(inst.window_, windowedBounds.w, windowedBounds.h);
+  }
+  platform::RefreshFramebufferSize(inst.window_);
 }
+
 bool WindowManager::IsFullscreen() {
   return fullscreen_;
 }

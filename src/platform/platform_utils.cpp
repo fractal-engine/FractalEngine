@@ -16,12 +16,6 @@ void GetDrawableSize(SDL_Window* window, int* out_w, int* out_h) {
   {
     SDL_GL_GetDrawableSize(window, out_w, out_h);
   }
-
-  // never return 0×0 (happens during minimise)
-  if (*out_w < 2)
-    *out_w = 2;
-  if (*out_h < 2)
-    *out_h = 2;
 }
 
 float GetDPIScale(SDL_Window* window) {
@@ -86,6 +80,9 @@ void RefreshFramebufferSize(SDL_Window* win) {
   float dpi = GetDPIScale(win);
   io.DisplaySize = ImVec2(dw / dpi, dh / dpi);
   io.DisplayFramebufferScale = ImVec2(dpi, dpi);
+
+  if (dw == 0 || dh == 0)  // window is minimised or off-screen
+    return; // skip reset
 }
 
 bool InFullscreenSpace(SDL_Window* w) {
