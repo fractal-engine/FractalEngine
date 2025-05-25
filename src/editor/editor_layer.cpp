@@ -121,7 +121,7 @@ void EditorLayer::Run() {
         quit_ = true;
         editor_exit_pressed();
       }
-    } // end PollEvent loop
+    }  // end PollEvent loop
 
     // Skip while window is minimised
     if (WindowManager::minimized) {

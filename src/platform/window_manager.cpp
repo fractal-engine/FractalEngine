@@ -3,8 +3,8 @@
 #include "engine/core/logger.h"
 #include "imgui.h"
 
-#include "window_manager.h"
 #include "platform/platform_utils.h"
+#include "window_manager.h"
 
 // Track window state
 bool WindowManager::fullscreen_ = false;
@@ -130,7 +130,6 @@ bool WindowManager::SetBorderlessFullscreen(bool enable) {
   fullscreen_ = enable;
   return true;
 }
-
 
 void WindowManager::ToggleFullscreen() {
   WindowManager& inst = getInstance();

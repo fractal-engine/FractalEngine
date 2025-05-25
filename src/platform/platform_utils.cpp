@@ -57,8 +57,7 @@ void InitSDLForImGui(SDL_Window* window) {
   ImGui_ImplSDL2_InitForOther(window);
 }
 
-void ToggleBorderlessFullscreen(SDL_Window* w, bool enable)
-{
+void ToggleBorderlessFullscreen(SDL_Window* w, bool enable) {
   if (enable)
     RestoreMinSize(w);  // let Cocoa expand
   SDL_SetWindowFullscreen(w, enable ? SDL_WINDOW_FULLSCREEN_DESKTOP : 0);
@@ -82,7 +81,7 @@ void RefreshFramebufferSize(SDL_Window* win) {
   io.DisplayFramebufferScale = ImVec2(dpi, dpi);
 
   if (dw == 0 || dh == 0)  // window is minimised or off-screen
-    return; // skip reset
+    return;                // skip reset
 }
 
 bool InFullscreenSpace(SDL_Window* w) {
