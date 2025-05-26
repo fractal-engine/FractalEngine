@@ -14,16 +14,18 @@ void ShaderManager::Init() {
 }
 
 void ShaderManager::Shutdown() {
-  for (auto& pair : program_cache_)
+  // Destroy all programs (this automatically destroys shaders, because of the
+  // 'true' flag)
+  for (auto& pair : program_cache_) {
     if (bgfx::isValid(pair.second))
       bgfx::destroy(pair.second);
+  }
   program_cache_.clear();
 
-  for (auto& pair : shader_cache_)
-    if (bgfx::isValid(pair.second))
-      bgfx::destroy(pair.second);
+  // Don't manually destroy shaders that were auto-destroyed
   shader_cache_.clear();
 }
+
 
 bgfx::ShaderHandle ShaderManager::LoadShader(const std::string& path) {
   if (shader_cache_.count(path))
@@ -56,6 +58,21 @@ bgfx::ProgramHandle ShaderManager::LoadProgram(const std::string& name,
   }
 
   bgfx::ProgramHandle program = bgfx::createProgram(vs, fs, true);
+
+  if (!bgfx::isValid(program)) {
+    Logger::getInstance().Log(
+        LogLevel::Error,
+        "ShaderManager: bgfx::createProgram FAILED for VS_handle=" +
+            std::to_string(vs.idx) + " FS_handle=" + std::to_string(fs.idx) +
+            " for program '" + name + "'");
+  } else {
+    Logger::getInstance().Log(
+        LogLevel::Debug,
+        "ShaderManager: bgfx::createProgram SUCCEEDED for program '" + name +
+            "', handle=" + std::to_string(program.idx));
+  }
+  // To catch linker errors
   program_cache_[name] = program;
   return program;
+ 
 }

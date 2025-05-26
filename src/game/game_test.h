@@ -31,14 +31,19 @@ public:
   void Render() override;
   void Shutdown() override;
 
-
+  // ──────────────────────────────────────────────────────
+  //  Terrain Size
+  static constexpr float TerrainScale = 1024.0f;
+  static constexpr uint16_t TerrainSize = 128;
+  static constexpr float TerrainExtent =
+      ((TerrainSize - 1) * TerrainScale) * 0.5f;
 
   // simple camera function call
   OrbitCamera camera;
   CameraSystem cameraSystem;
 
-  int canvasViewportW = 800;
-  int canvasViewportH = 600;
+  int canvasViewportW = 1600;
+  int canvasViewportH = 900;
 
 private:
   // ───── Terrain
@@ -51,18 +56,19 @@ private:
   bgfx::TextureHandle terrainNormal = BGFX_INVALID_HANDLE;
   bgfx::UniformHandle _cameraPosUniform = BGFX_INVALID_HANDLE;
 
-
   bgfx::UniformHandle _lightDirUniform = BGFX_INVALID_HANDLE;
 
   bgfx::VertexBufferHandle _terrainVbh = BGFX_INVALID_HANDLE;
   bgfx::IndexBufferHandle _terrainIbh = BGFX_INVALID_HANDLE;
+
+  bgfx::UniformHandle _terrainParamsUniform = BGFX_INVALID_HANDLE;
+  bgfx::UniformHandle _heightmapTexelSizeUniform = BGFX_INVALID_HANDLE;
 
   std::vector<PosTexCoord0Vertex> terrainVertices;
   std::vector<uint16_t> terrainIndices;
 
   // ───── Sky-box & Sun
   bgfx::ProgramHandle _skyProgram = BGFX_INVALID_HANDLE;
-
 
   bgfx::VertexBufferHandle _skyVbh = BGFX_INVALID_HANDLE;
   bgfx::IndexBufferHandle _skyIbh = BGFX_INVALID_HANDLE;
@@ -82,8 +88,6 @@ private:
   bgfx::UniformHandle _s_ormUniform = BGFX_INVALID_HANDLE;
   bgfx::UniformHandle _s_normalUniform = BGFX_INVALID_HANDLE;
 
-
-
   // Sky Ambient Light
   bgfx::UniformHandle _skyAmbientUniform = BGFX_INVALID_HANDLE;
   bgfx::UniformHandle _lightMatrixUniform = BGFX_INVALID_HANDLE;
@@ -95,10 +99,8 @@ private:
   bgfx::ProgramHandle _terrainShadowProgram = BGFX_INVALID_HANDLE;
   bgfx::VertexBufferHandle _shadowVbh = BGFX_INVALID_HANDLE;
 
-
-
-
-  float _cycleTime = 0.0f;  // day-night timerm keep it at 0
+  float _cycleTime = 0.0f;    // day-night timerm keep it at 0
+  float _skyAmbientArray[4];  // Holds current ambient sky light
 
   // colour / param arrays passed to both sky & sun shaders
   float _sunColorArray[4] = {5.0f, 5.0f, 5.0f, 0.0f};

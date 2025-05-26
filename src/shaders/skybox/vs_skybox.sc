@@ -9,7 +9,8 @@ uniform mat4 u_viewInv;
 
 void main()
 {
-    float2 ndc = a_position.xy;
+
+float2 ndc = a_position.xy;
 // a_position.xy is expected to be in NDC space [-1, 1].
 // This is the position of the vertex on the screen quad.
 
