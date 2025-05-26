@@ -206,30 +206,34 @@ void GameTest::Init() {
   // Generate initial heightmap data
   const uint16_t hm_sz = TerrainSize;
   std::vector<uint8_t> heightmapData(hm_sz * hm_sz);
+
   for (uint16_t y = 0; y < hm_sz; ++y) {
     for (uint16_t x = 0; x < hm_sz; ++x) {
       float nx = (x - hm_sz * 0.5f) / (hm_sz * 0.5f);  // [-1, 1]
       float ny = (y - hm_sz * 0.5f) / (hm_sz * 0.5f);  // [-1, 1]
-      float dist = sqrtf(nx * nx + ny * ny);
 
-      // Flat center plateau with cliff walls
-      float cliff = local_smoothStep(0.35f, 0.3f, dist);
-      float height = cliff * 0.8f;  // Raise plateau
+      // Smooth sine-based dunes
+      float dune = sinf(nx * 3.5f) * cosf(ny * 2.7f) * 0.3f;
 
-      // Add ripples
-      float ripple = sinf(nx * 12.0f) * cosf(ny * 12.0f);
-      height += ripple * 0.1f;
+      // Add large smooth oasis depressions at random points
+      float oasis = 0.0f;
+      for (int i = 0; i < 4; ++i) {  // 4 random oasis spots
+        float ox = ((rand() % 1000) / 1000.0f) * 2.0f - 1.0f;
+        float oy = ((rand() % 1000) / 1000.0f) * 2.0f - 1.0f;
+        float dx = nx - ox;
+        float dy = ny - oy;
+        float dist = sqrtf(dx * dx + dy * dy);
+        oasis -= expf(-dist * 12.0f) * 0.2f;  // Wide shallow dip
+      }
 
-      // Erosion pattern
-      float erosion = sinf((nx + ny) * 4.0f);
-      height -= erosion * 0.05f;
+      // Slight noise for natural feel
+      float noise = ((rand() % 1000) / 1000.0f - 0.5f) * 0.01f;
 
-      // Small random noise
-      float noise = ((rand() % 1000) / 1000.0f - 0.5f) * 0.02f;
-      height += noise;
-
+      float height = dune + oasis + noise;
       height = bx::clamp(height, -1.0f, 1.0f);
-      heightmapData[y * hm_sz + x] = uint8_t(127 + 127 * height);
+
+      // Map to [0, 255] RGBA8 texture
+      heightmapData[y * hm_sz + x] = static_cast<uint8_t>(127 + 127 * height);
     }
   }
 
