@@ -235,7 +235,7 @@ void GameTest::Init() {
 
   // Create heightmap texture
   _heightTexture = bgfx::createTexture2D(
-      hm_sz, hm_sz, false, 1, bgfx::TextureFormat::R8,
+      hm_sz, hm_sz, false, 1, bgfx::TextureFormat::RGBA8,
       BGFX_TEXTURE_NONE | BGFX_SAMPLER_U_CLAMP |
           BGFX_SAMPLER_V_CLAMP,  // Clamp sampling for heightmap
       bgfx::copy(heightmapData.data(), heightmapData.size()));
@@ -293,7 +293,7 @@ void GameTest::Init() {
   shadowMapTexture = bgfx::createTexture2D(
       KNOWN_SHADOW_MAP_SIZE, KNOWN_SHADOW_MAP_SIZE, false, 1,
       bgfx::TextureFormat::D16,  // 16-bit depth texture
-      BGFX_TEXTURE_RT_WRITE_ONLY |
+      BGFX_TEXTURE_RT |
           BGFX_SAMPLER_COMPARE_LESS);  // Render target, enable depth comparison
   shadowMapFB = bgfx::createFrameBuffer(1, &shadowMapTexture,
                                         true);  // Depth-only framebuffer
