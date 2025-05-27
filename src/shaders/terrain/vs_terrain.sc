@@ -1,5 +1,5 @@
 $input a_position, a_texcoord0
-$output v_out_uv, v_out_worldPos, v_out_shadowCoord, v_out_viewVec, v_out_worldTangent, v_out_worldBitangent, v_out_worldNormalGeom
+$output v_out_uv, v_out_worldPos, v_out_shadowCoord, v_out_viewVec, v_out_worldTangent, v_out_worldBitangent, v_out_worldNormalGeom, v_out_oasisMask
 
 #include "../common/common.sh"
 #include <bgfx_shader.sh>
@@ -26,6 +26,13 @@ void main() {
     // Center position
     float h_center = getScaledHeight(a_texcoord0);
     vec3 p_center = vec3(a_position.x, h_center, a_position.z);
+
+     // Water height calculation
+    vec2 centerUV = vec2(0.5, 0.5);       // center in [0, 1] UV space
+    float d = distance(a_texcoord0, centerUV);
+    v_out_oasisMask = smoothstep(0.2, 0.05, d);  // 0 at edge, 1 at center
+
+
 
     // Neighbor in +U (x) direction
     vec2 uv_u = a_texcoord0 + vec2(u_heightmapTexelSize.x, 0.0);

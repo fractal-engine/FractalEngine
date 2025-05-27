@@ -195,6 +195,15 @@ void GameTest::Init() {
   _projInvUniform = bgfx::createUniform(
       "u_projInv",
       bgfx::UniformType::Mat4);  // Inverse projection matrix for skybox
+  // Water uniforms
+  _u_waterColor = bgfx::createUniform("u_waterColor", bgfx::UniformType::Vec4);
+  _s_waterTexUniform =
+      bgfx::createUniform("s_waterTex", bgfx::UniformType::Sampler);
+  _s_waterNormUniform =
+      bgfx::createUniform("s_waterNorm", bgfx::UniformType::Sampler);
+
+  // Timer uniform
+  _timeUniform = bgfx::createUniform("u_time", bgfx::UniformType::Vec4);
 
   // Load terrain textures
   terrainDiffuse =
@@ -202,37 +211,46 @@ void GameTest::Init() {
   terrainORM = TextureUtils::LoadTexture("assets/textures/terrain/ORM.tga");
   terrainNormal =
       TextureUtils::LoadTexture("assets/textures/terrain/Normal.tga");
+  // Load water textures
+  bgfx::TextureHandle waterDiffuse =
+      TextureUtils::LoadTexture("assets/textures/water/water_diffuse.tga");
+  bgfx::TextureHandle waterNormal =
+      TextureUtils::LoadTexture("assets/textures/water/water_normal.tga");
 
   // Generate initial heightmap data
   const uint16_t hm_sz = TerrainSize;
   std::vector<uint8_t> heightmapData(hm_sz * hm_sz);
 
+  // Controls the radius/size of the central oasis
+  const float OasisFalloff = 20.0f;  // Higher = smaller oasis
+  // Controls how deep the oasis depression goes (negative value)
+  const float OasisDepth = -0.25f;
+
   for (uint16_t y = 0; y < hm_sz; ++y) {
     for (uint16_t x = 0; x < hm_sz; ++x) {
-      float nx = (x - hm_sz * 0.5f) / (hm_sz * 0.5f);  // [-1, 1]
-      float ny = (y - hm_sz * 0.5f) / (hm_sz * 0.5f);  // [-1, 1]
+      // Convert grid coordinates to normalized range [-1, 1]
+      float nx = (x - hm_sz * 0.5f) / (hm_sz * 0.5f);
+      float ny = (y - hm_sz * 0.5f) / (hm_sz * 0.5f);
 
-      // Smooth sine-based dunes
+      // Generate dune pattern using sine waves
       float dune = sinf(nx * 3.5f) * cosf(ny * 2.7f) * 0.3f;
 
-      // Add large smooth oasis depressions at random points
-      float oasis = 0.0f;
-      for (int i = 0; i < 4; ++i) {  // 4 random oasis spots
-        float ox = ((rand() % 1000) / 1000.0f) * 2.0f - 1.0f;
-        float oy = ((rand() % 1000) / 1000.0f) * 2.0f - 1.0f;
-        float dx = nx - ox;
-        float dy = ny - oy;
-        float dist = sqrtf(dx * dx + dy * dy);
-        oasis -= expf(-dist * 12.0f) * 0.2f;  // Wide shallow dip
-      }
+      // Compute distance from terrain center
+      float dx = nx;
+      float dy = ny;
+      float dist = sqrtf(dx * dx + dy * dy);
 
-      // Slight noise for natural feel
+      // Oasis dip at center using exponential falloff
+      float oasis = expf(-dist * OasisFalloff) * OasisDepth;
+
+      // Add minor random noise for natural variation
       float noise = ((rand() % 1000) / 1000.0f - 0.5f) * 0.01f;
 
+      // Final height is a blend of dunes, oasis, and noise
       float height = dune + oasis + noise;
       height = bx::clamp(height, -1.0f, 1.0f);
 
-      // Map to [0, 255] RGBA8 texture
+      // Convert to [0, 255] for texture storage
       heightmapData[y * hm_sz + x] = static_cast<uint8_t>(127 + 127 * height);
     }
   }
@@ -346,11 +364,14 @@ void GameTest::Update() {
   // Update camera from keyboard input
   cameraSystem.UpdateFromKeyboard();
 
-  // Update sun angle for rendering
+  // Increment time
   _cycleTime += 0.0007f;
   if (_cycleTime > bx::kPi * 2.0f) {
     _cycleTime -= bx::kPi * 2.0f;
   }
+
+  float dt = bx::kPi * 0.002f;  // water time step
+  _waterTime += dt;
 }
 
 // Renders the game scene
@@ -553,6 +574,17 @@ void GameTest::Render() {
   bgfx::setTexture(4, _shadowSamplerUniform,
                    shadowMapTexture);  // Shadow map for shadowing
 
+  // Set time uniform for water animation
+  float timeVec[4] = {_waterTime, 0.0f, 0.0f, 0.0f};
+  bgfx::setUniform(_timeUniform, timeVec);
+
+  // Water Render submission
+  float waterColorVec[4] = {0.2f, 0.4f, 0.5f, 1.0f};  // Soft cyan
+  bgfx::setUniform(_u_waterColor, waterColorVec);
+
+  bgfx::setTexture(5, _s_waterTexUniform, _waterTex);
+  bgfx::setTexture(6, _s_waterNormUniform, _waterNormalTex);
+
   // Set terrain geometry and render state
   bgfx::setVertexBuffer(0, _terrainVbh);  // Terrain vertices
   bgfx::setIndexBuffer(_terrainIbh);      // Terrain indices
@@ -618,6 +650,7 @@ void GameTest::Shutdown() {
   destroyHandle(_paramsUniform);
   destroyHandle(_viewInvUniform);
   destroyHandle(_projInvUniform);
+  destroyHandle(_timeUniform);
 
   Logger::getInstance().Log(LogLevel::Debug, "[GameTest] Shutdown() completed");
 }
