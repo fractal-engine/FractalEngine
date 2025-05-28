@@ -27,10 +27,17 @@ void main() {
     float h_center = getScaledHeight(a_texcoord0);
     vec3 p_center = vec3(a_position.x, h_center, a_position.z);
 
-     // Water height calculation
-    vec2 centerUV = vec2(0.5, 0.5);       // center in [0, 1] UV space
+     
+    // --- Oasis Mask ---
+    vec2 centerUV = vec2(0.5, 0.5);   // Center of terrain in UV space
     float d = distance(a_texcoord0, centerUV);
-    v_out_oasisMask = smoothstep(0.2, 0.05, d);  // 0 at edge, 1 at center
+
+    const float oasisRadius = 0.0012;    // Radius of the oasis
+    const float oasisFalloff = 0.05;   // Smooth transition area
+
+    // Smooth circular mask: 1 at center, fades to 0
+    v_out_oasisMask = 1.0 - smoothstep(oasisRadius, oasisRadius + oasisFalloff, d);
+
 
 
 

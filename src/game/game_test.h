@@ -78,6 +78,11 @@ private:
   bgfx::UniformHandle _sunLumUniform = BGFX_INVALID_HANDLE;
   bgfx::UniformHandle _paramsUniform = BGFX_INVALID_HANDLE;
 
+  bgfx::UniformHandle _scatterParamsUniform;  // vec4: x = g
+  bgfx::UniformHandle _betaRUniform;  // vec4: RGB of Rayleigh coefficients
+  bgfx::UniformHandle _betaMUniform;  // vec4: RGB of Mie coefficients
+
+
   // New skybox uniforms
   bgfx::UniformHandle _viewInvUniform = BGFX_INVALID_HANDLE;
   bgfx::UniformHandle _projInvUniform = BGFX_INVALID_HANDLE;

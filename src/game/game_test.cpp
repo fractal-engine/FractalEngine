@@ -190,6 +190,12 @@ void GameTest::Init() {
       bgfx::createUniform("u_skyAmbient", bgfx::UniformType::Vec4);
   _paramsUniform = bgfx::createUniform(
       "u_parameters", bgfx::UniformType::Vec4);  // Skybox parameters
+
+  _scatterParamsUniform =
+      bgfx::createUniform("u_scatterParams", bgfx::UniformType::Vec4);
+  _betaRUniform = bgfx::createUniform("u_betaR", bgfx::UniformType::Vec4);
+  _betaMUniform = bgfx::createUniform("u_betaM", bgfx::UniformType::Vec4);
+
   _viewInvUniform = bgfx::createUniform(
       "u_viewInv", bgfx::UniformType::Mat4);  // Inverse view matrix for skybox
   _projInvUniform = bgfx::createUniform(
@@ -221,6 +227,7 @@ void GameTest::Init() {
   const uint16_t hm_sz = TerrainSize;
   std::vector<uint8_t> heightmapData(hm_sz * hm_sz);
 
+  // Uniform integration for oasis is not done, shader controls it, this is just a sample
   // Controls the radius/size of the central oasis
   const float OasisFalloff = 20.0f;  // Higher = smaller oasis
   // Controls how deep the oasis depression goes (negative value)
@@ -424,9 +431,9 @@ void GameTest::Render() {
     _skyAmbientArray[i] *= ambientBoost;
 
   // Skybox parameters (e.g., scattering coefficients, mie phase, time)
-  _parametersArray[0] = 0.005f;      // Rayleigh scattering coefficient
-  _parametersArray[1] = 0.1f;        // Mie scattering coefficient
-  _parametersArray[2] = 1.0f;        // Sun intensity factor for sky
+  _parametersArray[0] = 0.005f;        // Sun Size
+  _parametersArray[1] = 0.7f;        // Bloom
+  _parametersArray[2] = 1.0f;        // Exposure
   _parametersArray[3] = _cycleTime;  // Current time for procedural sky effects
 
   // --- Shadow Map Pass ---
@@ -518,6 +525,16 @@ void GameTest::Render() {
                    _sunColorArray);  // Sun luminance for sky color
   bgfx::setUniform(_paramsUniform,
                    _parametersArray);  // Sky scattering parameters
+
+  // Set scattering coefficients and phase parameter g
+  float scatterParams[4] = {0.76f, 0.0f, 0.0f, 0.0f};    // x = g
+  float betaR[4] = {5.8e-6f, 13.5e-6f, 33.1e-6f, 0.0f};  // Rayleigh RGB
+  float betaM[4] = {21e-6f, 21e-6f, 21e-6f, 0.0f};       // Mie RGB
+
+  bgfx::setUniform(_scatterParamsUniform, scatterParams);
+  bgfx::setUniform(_betaRUniform, betaR);
+  bgfx::setUniform(_betaMUniform, betaM);
+
   bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A |
                  BGFX_STATE_DEPTH_TEST_LEQUAL);  // Skybox render state (LEQUAL
                                                  // for sky at infinity)
@@ -651,6 +668,10 @@ void GameTest::Shutdown() {
   destroyHandle(_viewInvUniform);
   destroyHandle(_projInvUniform);
   destroyHandle(_timeUniform);
+  destroyHandle(_scatterParamsUniform);
+  destroyHandle(_betaRUniform);
+  destroyHandle(_betaMUniform);
+
 
   Logger::getInstance().Log(LogLevel::Debug, "[GameTest] Shutdown() completed");
 }

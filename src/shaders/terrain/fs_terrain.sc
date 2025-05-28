@@ -79,7 +79,8 @@ void main() {
     // --- UV Coordinates ---
     vec2 uv = v_out_uv * 150.0;                                 // Terrain tiling
     vec2 flowDir = vec2(0.3, 0.7);                              // arbitrary flow direction
-    vec2 uvWater = v_out_uv * 25.0 + flowDir * u_time.x * 0.2;  // Animated water UVs
+    vec2 worldXZ = v_out_worldPos.xz;
+    vec2 uvWater = worldXZ * 0.05 + flowDir * u_time.x * 0.2;   // 0.05 can be tuned for animated water UVs
     vec2 uvMask = v_out_uv * 2.0;                               // Oasis mask scale
     float time = u_time.x;                                      // Animation time for water
 
@@ -89,7 +90,7 @@ void main() {
     vec3 normalMap  = texture2D(s_normal, uv).rgb * 2.0 - 1.0;
 
     // --- Water ---
-    vec3 waterColor    = vec3(0.02, 0.3, 0.4);
+    vec3 waterColor = vec3(0.06, 0.13, 0.15);
     vec3 waterNormal   = texture2D(s_waterNormal, uvWater).rgb * 2.0 - 1.0;
     float waterMetal   = 0.0;
     float waterRough   = 0.05;
@@ -151,7 +152,12 @@ void main() {
     vec3 skyReflection = mix(vec3(0.0, 0.1, 0.3), u_skyAmbient.rgb, fresnel);
     float scatter = smoothstep(0.0, 0.2, 1.0 - clamp(texture2D(s_waterNormal, uvMask).r, 0.0, 1.0));
     vec3 shallowColor = mix(waterColor, vec3(0.0, 0.6, 0.8), scatter);
-    vec3 waterFinal = mix(shallowColor, Lo_water + ambientW + skyReflection, fresnel);
+    vec2 distortion = N_water.xz * 0.01;
+    vec3 refractedColor = texture2D(s_diffuse, uv + distortion).rgb;
+    vec3 terrainBehind = texture2D(s_diffuse, uv + distortion).rgb;
+    vec3 waterFinal = mix(terrainBehind, waterColor, 0.6);  // 60% water color, 40% terrain behind
+
+
 
     // --- Blend ---
     float mask = v_out_oasisMask;

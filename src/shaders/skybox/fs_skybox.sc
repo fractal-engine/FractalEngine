@@ -1,14 +1,28 @@
 $input v_viewDir
 
-uniform vec4 u_parameters;     // x: sun size, y: bloom, z: exposure, w: time
-uniform vec4 u_sunDirection;   // xyz = direction to sun
-uniform vec4 u_sunLuminance;   // rgb = sun color
+uniform vec4 u_parameters;       // x: sun size, y: bloom, z: exposure, w: time
+uniform vec4 u_sunDirection;     // xyz = direction to sun
+uniform vec4 u_sunLuminance;     // rgb = sun color
+uniform vec4 u_scatterParams;    // x: g (Mie phase)
+uniform vec4 u_betaR;            // xyz: Rayleigh coefficients
+uniform vec4 u_betaM;            // xyz: Mie coefficients
 
 #include "../common/common.sh"
 
 #define PI 3.14159265359
 
-// Hash, noise, fbm functions (unchanged)
+// ------ scattering helpers ------
+
+float rayleighPhase(float cosTheta) {
+    return (3.0 / (16.0 * PI)) * (1.0 + cosTheta * cosTheta);
+}
+
+float hgPhase(float cosTheta, float g) {
+    return (1.0 / (4.0 * PI)) * ((1.0 - g * g) / pow(1.0 + g * g - 2.0 * g * cosTheta, 1.5));
+}
+
+// ------ noise and fbm ------
+
 float hash(vec2 p) {
     p = frac(p * 0.3183099 + vec2(0.71, 0.113));
     return frac(43758.5453 * p.x * p.y);
@@ -36,152 +50,116 @@ float fbm(vec2 p) {
     return result;
 }
 
+// ------ main shading ------
+
 void main() {
     float3 viewDir = normalize(v_viewDir);
     float3 sunDir = normalize(u_sunDirection.xyz);
 
-    // --------------------------------------------
-    // SUN DISK & GLOW
+    // ------ sun disk & glow ------
 
     float dotSun = dot(viewDir, sunDir);
-    float dist = 2.0 * (1.0 - dotSun); // Distance to the sun - angular distance approximation
+    float dist = 2.0 * (1.0 - dotSun);
     float sunSize = u_parameters.x; 
     float bloom = u_parameters.y;   
 
-    // Make sun disk size relative to its apparent size, not fixed angular size
-
     float sunDisk = smoothstep(sunSize * 0.05, 0.0, dist - sunSize * sunSize * 0.5);
-    float sunGlow = exp(-dist / (bloom * sunSize * sunSize)) + sunDisk; // Adjusted bloom sensitivity
+    float glowFalloff = exp(-pow(dist / (sunSize * bloom * 0.5), 2.0));
+    float sunGlow = glowFalloff * 4.0 + sunDisk;
     float sunIntensity = saturate(sunGlow);
 
-    // variables for sun disk and glow to change color based on time
     float sunDiskFactor = sunDisk; 
     float sunGlowFactor = sunGlow; 
 
-    // --------------------------------------------
-    // SPHERICAL COORDINATES (Equirectangular for noise)
+    // ------ spherical coordinates (for procedural sampling) ------
 
     float longitude = atan2(viewDir.x, viewDir.z);
     float latitude  = asin(viewDir.y);
     float2 uv = float2(longitude / (2.0 * PI) + 0.5, latitude / PI + 0.5);
 
-    // --------------------------------------------
-    // DAY/NIGHT & SUN ELEVATION FACTORS
-    // sunH ranges from -1 to 1
+    // ------ time-of-day factors ------
 
     float sunH = sunDir.y;
-
-    // dayNightFactor: 0 for night (sun well below horizon), 1 for day (sun well above horizon)
-
     float dayNightFactor = smoothstep(-0.15, 0.2, sunH);
-
-    // sunriseSunsetFactor: peaks when sun is near horizon
-    // Strongest when sunH is between 0.0 and 0.2, fades out otherwise
-
     float sunriseSunsetFactor = smoothstep(0.0, 0.2, sunH) * (1.0 - smoothstep(0.1, 0.3, sunH));
-    sunriseSunsetFactor = saturate(sunriseSunsetFactor * 3.0); // Amplify the peak
+    sunriseSunsetFactor = saturate(sunriseSunsetFactor * 3.0);
 
-    // --------------------------------------------
-    // SKY COLORS DEFINITIONS
+    // ------ base sky colors ------
 
-    // Night
     float3 nightZenithCol   = float3(0.01, 0.02, 0.05);
-    float3 nightHorizonCol  = float3(0.03, 0.04, 0.12); // Slightly brighter/desaturated for horizon
-
-    // Day
-    float3 dayZenithCol     = float3(0.20, 0.45, 0.85); // Brighter blue
-    float3 dayHorizonCol    = float3(0.50, 0.70, 0.95); // Paler blue towards horizon
-
-    // Sunrise/Sunset
-    float3 sunriseZenithCol = float3(0.4, 0.25, 0.1);  // Orange/reddish zenith
-    float3 sunriseHorizonCol= float3(0.9, 0.4, 0.15); // Brighter orange/red horizon
-
-    // --------------------------------------------
-    // INTERPOLATE SKY COLORS BASED ON TIME OF DAY
-    // Start with night-to-day transition
+    float3 nightHorizonCol  = float3(0.03, 0.04, 0.12);
+    float3 dayZenithCol     = float3(0.20, 0.45, 0.85);
+    float3 dayHorizonCol    = float3(0.50, 0.70, 0.95);
+    float3 sunriseZenithCol = float3(0.4, 0.25, 0.1);
+    float3 sunriseHorizonCol= float3(0.9, 0.4, 0.15);
 
     float3 currentZenithColor = mix(nightZenithCol, dayZenithCol, dayNightFactor);
     float3 currentHorizonColor = mix(nightHorizonCol, dayHorizonCol, dayNightFactor);
 
-    // Add sunrise/sunset hues
-
     currentZenithColor = mix(currentZenithColor, sunriseZenithCol, sunriseSunsetFactor);
     currentHorizonColor = mix(currentHorizonColor, sunriseHorizonCol, sunriseSunsetFactor);
 
-    // --------------------------------------------
-    // VERTICAL SKY GRADIENT (Pixel's elevation)
-    // viewElevationFactor: 0 for horizon/below, 1 for zenith. Power helps shape the gradient.
+    // ------ vertical sky gradient ------
 
     float viewElevationFactor = pow(saturate(viewDir.y * 0.5 + 0.5), 0.6);
     float3 skyGradientColor = mix(currentHorizonColor, currentZenithColor, viewElevationFactor);
+    
 
-    // --------------------------------------------
-    // DEFINE SUN DISK'S VISUAL COLOR
-  
-    float3 sunDiskVisualColorDay    = float3(1.0, 0.98, 0.9);  // Bright, slightly off-white for midday sun disk
-    float3 sunDiskVisualColorSunset = float3(1.0, 0.6, 0.2);  // Orange/Red for sunset sun disk
-    float3 sunDiskVisualColorNight  = float3(0.8, 0.4, 0.1);  // Dimmer, reddish if sun is just below horizon but disk might still "conceptually" contribute a color
+    // ------ sun disk color ------
 
-
-    // Interpolate the sun disk's visual color using the SAME time of day factors:
+    float3 sunDiskVisualColorDay    = float3(1.0, 0.98, 0.9);
+    float3 sunDiskVisualColorSunset = float3(1.0, 0.6, 0.2);
+    float3 sunDiskVisualColorNight  = float3(0.8, 0.4, 0.1);
 
     float3 currentSunDiskVisualColor = mix(sunDiskVisualColorNight, sunDiskVisualColorDay, dayNightFactor);
     currentSunDiskVisualColor = mix(currentSunDiskVisualColor, sunDiskVisualColorSunset, sunriseSunsetFactor);
-    
-    // Modulate by u_sunLuminance to respect overall light intensity
+    currentSunDiskVisualColor *= (u_sunLuminance.rgb * 0.7 + 0.3);
 
-    currentSunDiskVisualColor *= (u_sunLuminance.rgb * 0.7 + 0.3); // need to adjust multipliers as needed
+    // ------ clouds ------
 
-    // --------------------------------------------
-    // CLOUDS (animated & fading with dayNightFactor)
-
-    float2 cloudUV = uv + float2(u_parameters.w * 0.002, 0.0); // Time from u_parameters.w
+    float2 cloudUV = uv + float2(u_parameters.w * 0.002, 0.0);
     float cloudNoise = fbm(cloudUV * 10.0);
     float cloudMask = smoothstep(0.5, 0.7, cloudNoise);
-
-    // Reduce cloud contribution based on dayNightFactor and also slightly by sunrise factor
-
     float cloudVisibility = dayNightFactor * (1.0 - sunriseSunsetFactor * 0.5);
-    float3 cloudColor = float3(1.0, 1.0, 1.0); // Base cloud color
-
-    // Tint clouds slightly by sun color during sunrise/sunset
-
-    float3 sunLightForClouds = mix(float3(1.0,1.0,1.0), u_sunLuminance.rgb, sunriseSunsetFactor * 0.8);
+    float3 cloudColor = float3(1.0, 1.0, 1.0);
+    float3 sunLightForClouds = mix(float3(1.0, 1.0, 1.0), u_sunLuminance.rgb, sunriseSunsetFactor * 0.8);
     cloudColor *= sunLightForClouds;
 
-    float3 blendedSky = mix(skyGradientColor, cloudColor, cloudMask * cloudVisibility * 0.3); // Cloud opacity
+    float3 blendedSky = mix(skyGradientColor, cloudColor, cloudMask * cloudVisibility * 0.3);
 
-    // --------------------------------------------
-    // ADD SUN LIGHT TO SKY
-    
+    // ------ sky scattering effects ------
+
     float3 skyColor = blendedSky;
+    float cosTheta = dot(viewDir, sunDir);
 
-    // --------------------------------------------
-    // STARS — Procedural and visible only when dark
+    float rayleigh = rayleighPhase(cosTheta);
+    float mie = hgPhase(cosTheta, u_scatterParams.x); // g from uniform
 
-    float starVisibility = 1.0 - dayNightFactor; // Inverse of dayNightFactor
-    starVisibility *= (1.0 - sunriseSunsetFactor); // Fade stars during sunrise/sunset too
+    float3 betaR = u_betaR.rgb;
+    float3 betaM = u_betaM.rgb;
 
-    float starPattern = pow(noise(uv * 512.0), 100.0); // Sparse tiny specks
+    float3 scattering = rayleigh * betaR + mie * betaM;
+    scattering *= u_sunLuminance.rgb * 20.0;
+    skyGradientColor += scattering * 1.0; 
+    skyColor += scattering;
+
+    // ------ stars ------
+
+    float starVisibility = 1.0 - dayNightFactor;
+    starVisibility *= (1.0 - sunriseSunsetFactor);
+    float starPattern = pow(noise(uv * 512.0), 100.0);
     float3 starColorEffect = float3(starPattern, starPattern, starPattern) * starVisibility;
-
     skyColor += starColorEffect;
 
-    // --------------------------------------------
+    // ------ sun addition ------
 
-    float pureGlowFactor = saturate(sunGlowFactor - sunDiskFactor); // Glow outside the hard disk
-    skyColor += pureGlowFactor * u_sunLuminance.rgb;
+    skyColor += currentSunDiskVisualColor * glowFalloff * 4.0;
 
-    // Add sun disk (colored by its own modulated visual color) to the sky
-
-    skyColor += sunDiskFactor * currentSunDiskVisualColor;
-
-    // --------------------------------------------
-    // FINAL ADJUSTMENTS
-
-    // Exposure: Brighter during day, darker at night
+    // ------ final tone mapping & output ------
 
     skyColor *= mix(0.8, 1.8, dayNightFactor);
-    float horizonMask = saturate(viewDir.y * 0.5 + 0.5); // fade to black below horizon
+    float horizonMask = saturate(viewDir.y * 0.5 + 0.5); // Fade to black under horizon
     gl_FragColor = float4(toGamma(skyColor) * horizonMask, 1.0);
+   // gl_FragColor = float4(toGamma(scattering * 100.0), 1.0); // Debug
+
 }
