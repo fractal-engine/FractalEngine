@@ -23,32 +23,36 @@ void main() {
     // UV passthrough
     v_out_uv = a_texcoord0;
 
-    // Center position
-    float h_center = getScaledHeight(a_texcoord0);
-    vec3 p_center = vec3(a_position.x, h_center, a_position.z);
-
-     
     // --- Oasis Mask ---
     vec2 centerUV = vec2(0.5, 0.5);   // Center of terrain in UV space
     float d = distance(a_texcoord0, centerUV);
 
-    const float oasisRadius = 0.0012;    // Radius of the oasis
-    const float oasisFalloff = 0.05;   // Smooth transition area
+    // --- Set Parameters for mask ---
+    const float oasisRadius = 0.0012;
+    const float oasisFalloff = 0.05;
 
-    // Smooth circular mask: 1 at center, fades to 0
-    v_out_oasisMask = 1.0 - smoothstep(oasisRadius, oasisRadius + oasisFalloff, d);
+    float oasisMask = 1.0 - smoothstep(oasisRadius, oasisRadius + oasisFalloff, d);
+    v_out_oasisMask = oasisMask;  // Now safe to write to output
 
+    // Center position
+    float h_center = getScaledHeight(a_texcoord0);
+    h_center = mix(h_center, 0.0, oasisMask);  // Use the local variable
+    vec3 p_center = vec3(a_position.x, h_center, a_position.z);
 
 
 
     // Neighbor in +U (x) direction
     vec2 uv_u = a_texcoord0 + vec2(u_heightmapTexelSize.x, 0.0);
     float h_u = getScaledHeight(uv_u);
+    float mask_u = 1.0 - smoothstep(oasisRadius, oasisRadius + oasisFalloff, distance(uv_u, centerUV));
+    h_u = mix(h_u, 0.0, mask_u);
     vec3 p_u = vec3(a_position.x + u_worldStepX, h_u, a_position.z);
 
     // Neighbor in +V (z) direction
     vec2 uv_v = a_texcoord0 + vec2(0.0, u_heightmapTexelSize.y);
     float h_v = getScaledHeight(uv_v);
+    float mask_v = 1.0 - smoothstep(oasisRadius, oasisRadius + oasisFalloff, distance(uv_v, centerUV));
+    h_v = mix(h_v, 0.0, mask_v);
     vec3 p_v = vec3(a_position.x, h_v, a_position.z + u_worldStepZ);
 
     // Local TBN from neighbors
