@@ -11,13 +11,13 @@ public:
   void UpdateFromKeyboard() {
     const Uint8* keys = SDL_GetKeyboardState(nullptr);
     if (keys[SDL_SCANCODE_W])
-      camera_->pan(0.0f, 0.30f);
+      camera_->pan(0.0f, 70.30f);
     if (keys[SDL_SCANCODE_S])
-      camera_->pan(0.0f, -0.30f);
+      camera_->pan(0.0f, -70.30f);
     if (keys[SDL_SCANCODE_A])
-      camera_->pan(-0.30f, 0.0f);
+      camera_->pan(-70.30f, 0.0f);
     if (keys[SDL_SCANCODE_D])
-      camera_->pan(0.30f, 0.0f);
+      camera_->pan(70.30f, 0.0f);
   }
 
   void Reset() {

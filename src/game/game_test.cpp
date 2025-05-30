@@ -233,38 +233,51 @@ void GameTest::Init() {
 
   // Generate initial heightmap data
   const uint16_t hm_sz = TerrainSize;
-  std::vector<uint8_t> heightmapData(hm_sz * hm_sz);
+  std::vector<uint32_t> heightmapData(hm_sz * hm_sz);
 
-  // Controls overall dune shape and surface noise only — no oasis depression
+  // Controls exaggerated terrain height for stylized dunes
   for (uint16_t y = 0; y < hm_sz; ++y) {
     for (uint16_t x = 0; x < hm_sz; ++x) {
       // Normalized coordinates in [-1, 1] range
       float nx = (x - hm_sz * 0.5f) / (hm_sz * 0.5f);
       float ny = (y - hm_sz * 0.5f) / (hm_sz * 0.5f);
 
-      // Rolling dunes with wider frequency and falloff
+      // Radial falloff from center (used to soften edges)
       float falloff = expf(-0.5f * (nx * nx + ny * ny));
-      float dune = sinf(nx * 1.5f) * cosf(ny * 1.3f) * 0.3f * falloff;
 
-      // Random noise
+      // Exaggerated rolling dunes: increased frequency and amplitude
+      float dune = sinf(nx * 6.0f) * cosf(ny * 4.0f) * 15.0f * falloff;
+
+      // Optional noise (low weight to preserve overall form)
       float noise = ((rand() % 1000) / 1000.0f - 0.5f) * 0.01f;
 
+      // Final height value
       float height = dune + noise;
 
+      // Exaggerate height for stylized effect
+      float exaggeration = 20.0f;
+      height *= exaggeration;
 
-      // Clamp and convert to [0, 255] encoded into red channel
+      // Clamp height to valid range [-1, 1]
       height = bx::clamp(height, -1.0f, 1.0f);
-      heightmapData[y * hm_sz + x] = static_cast<uint8_t>(127 + 127 * height);
+
+      // Encode height to [0,255] and write to RED and ALPHA
+      uint8_t encodedHeight = static_cast<uint8_t>(127 + 127 * height);
+      uint32_t rgba = (encodedHeight << 24) |  // Alpha (used by shader)
+                      (0 << 16) |              // Blue (unused)
+                      (0 << 8) |               // Green (unused)
+                      (encodedHeight);         // Red (debug or duplicate)
+
+      heightmapData[y * hm_sz + x] = rgba;
     }
   }
 
-
-  // Create heightmap texture
+  // Create RGBA8 texture for heightmap
   _heightTexture = bgfx::createTexture2D(
       hm_sz, hm_sz, false, 1, bgfx::TextureFormat::RGBA8,
-      BGFX_TEXTURE_NONE | BGFX_SAMPLER_U_CLAMP |
-          BGFX_SAMPLER_V_CLAMP,  // Clamp sampling for heightmap
-      bgfx::copy(heightmapData.data(), heightmapData.size()));
+      BGFX_TEXTURE_NONE | BGFX_SAMPLER_U_CLAMP | BGFX_SAMPLER_V_CLAMP,
+      bgfx::copy(heightmapData.data(),
+                 heightmapData.size() * sizeof(uint32_t)));
 
   // Generate terrain mesh (grid)
   terrainVertices.clear();
@@ -328,16 +341,16 @@ void GameTest::Init() {
   bx::mtxIdentity(this->world_matrix);
   // Scale terrain grid vertices to world space; height (Y) is determined by
   // shader from heightmap
-  // 1. Compute center offset in mesh local space
+  // Compute center offset in mesh local space
   float terrainCenterOffset = (TerrainSize - 1) * 0.5f;  // Local-space center
 
-  // 2. Create scale and translation matrices
+  // Create scale and translation matrices
   float scaleMtx[16];
   float translateMtx[16];
-  bx::mtxScale(scaleMtx, TerrainScale, 4.0f,
-               TerrainScale);  // Increase Y scale for better visibility
+  // Height scale only in shader
+  bx::mtxScale(scaleMtx, TerrainScale, 10.0f, TerrainScale);
 
-  // 3. Compute the world offset that brings terrain center to desired position
+  // Compute the world offset that brings terrain center to desired position
   float desiredTerrainCenter[3] = {-31.683f, 0.0f, -27.185f};
   bx::mtxTranslate(
       translateMtx,
@@ -345,7 +358,7 @@ void GameTest::Init() {
       desiredTerrainCenter[1],
       desiredTerrainCenter[2] - terrainCenterOffset * TerrainScale);
 
-  // 4. Combine translation and scale into world matrix
+  // Combine translation and scale into world matrix
   bx::mtxMul(this->world_matrix, scaleMtx, translateMtx);
 }
 
@@ -429,7 +442,7 @@ void GameTest::Render() {
     _skyAmbientArray[i] *= ambientBoost;
 
   // Skybox parameters (e.g., scattering coefficients, mie phase, time)
-  _parametersArray[0] = 0.005f;        // Sun Size
+  _parametersArray[0] = 0.005f;      // Sun Size
   _parametersArray[1] = 0.7f;        // Bloom
   _parametersArray[2] = 1.0f;        // Exposure
   _parametersArray[3] = _cycleTime;  // Current time for procedural sky effects
@@ -471,14 +484,15 @@ void GameTest::Render() {
                          lightProjMatrix);  // Set transform for shadow pass
 
   // Set uniforms and state for shadow pass
+  // Set height multiplier explicitly
   float terrainParamsArr[4] = {
-      TERRAIN_MAX_ACTUAL_HEIGHT,  // x: height scale
-      0.0f,                       // y: unused
-      TerrainScale,               // z: world step X
-      TerrainScale                // w: world step Z
+      TERRAIN_MAX_ACTUAL_HEIGHT,  // Height scale in shader
+      0.0f,                       // unused
+      TerrainScale,               // world X spacing
+      TerrainScale                // world Z spacing
   };
-
   bgfx::setUniform(_terrainParamsUniform, terrainParamsArr);
+
   bgfx::setTexture(3, _heightUniform,
                    _heightTexture);  // Bind heightmap texture for displacement
   bgfx::setTransform(this->world_matrix);  // Set terrain world matrix
@@ -677,7 +691,6 @@ void GameTest::Shutdown() {
 
   destroyHandle(_waterTex);
   destroyHandle(_waterNormalTex);
-
 
   Logger::getInstance().Log(LogLevel::Debug, "[GameTest] Shutdown() completed");
 }

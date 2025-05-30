@@ -27,17 +27,18 @@ void main() {
     vec2 centerUV = vec2(0.5, 0.5);
     float dist = distance(a_texcoord0, centerUV);
 
-    // Core oasis (used for water blend and depression)
-    const float oasisRadius = 0.0012;
-    const float oasisFalloff = 0.05;
-    float oasisMask = 1.0 - smoothstep(oasisRadius, oasisRadius + oasisFalloff, dist);
+    // Core oasis crater depression (water + crater depth)
+    const float oasisRadius = 0.012;
+    const float oasisFalloff = 0.0005;
+    float rawOasis = 1.0 - smoothstep(oasisRadius, oasisRadius + oasisFalloff, dist);
+    float oasisMask = pow(rawOasis, 48.0); // Sharper edge profile
     v_out_oasisMask = oasisMask;
 
-    // Extended mask to suppress terrain height beyond visible oasis
+    // Extended zone for flattening dunes outside crater
     const float suppressRadius = oasisRadius + oasisFalloff;
-    const float suppressFalloff = 0.05; // Add gradual suppression buffer
-    float suppressionMask = 1.0 - smoothstep(suppressRadius, suppressRadius + suppressFalloff, dist);
-
+    const float suppressFalloff = 0.05;
+    float rawSuppression = 1.0 - smoothstep(suppressRadius, suppressRadius + suppressFalloff, dist);
+    float suppressionMask = pow(rawSuppression, 2.0); // Optional: slightly sharper edge
 
     // --- Terrain Height ---
     float h_center = getScaledHeight(a_texcoord0);
