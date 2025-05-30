@@ -107,6 +107,14 @@ GameTest::GameTest()
       _shadowSamplerUniform(BGFX_INVALID_HANDLE),
       shadowMapTexture(BGFX_INVALID_HANDLE),
       shadowMapFB(BGFX_INVALID_HANDLE),
+      _scatterParamsUniform(BGFX_INVALID_HANDLE),
+      _betaRUniform(BGFX_INVALID_HANDLE),
+      _betaMUniform(BGFX_INVALID_HANDLE),
+      _u_waterColor(BGFX_INVALID_HANDLE),
+      _s_waterTexUniform(BGFX_INVALID_HANDLE),
+      _s_waterNormUniform(BGFX_INVALID_HANDLE),
+      _waterTex(BGFX_INVALID_HANDLE),
+      _waterNormalTex(BGFX_INVALID_HANDLE),
       _terrainShadowProgram(BGFX_INVALID_HANDLE),
       _cycleTime(0.0f) {
   bx::mtxIdentity(world_matrix);  // Initialize world matrix to identity
@@ -227,40 +235,29 @@ void GameTest::Init() {
   const uint16_t hm_sz = TerrainSize;
   std::vector<uint8_t> heightmapData(hm_sz * hm_sz);
 
-  // Uniform integration for oasis is not done, shader controls it, this is just a sample
-  // Controls the radius/size of the central oasis
-  const float OasisFalloff = 20.0f;  // Higher = smaller oasis
-  // Controls how deep the oasis depression goes (negative value)
-  const float OasisDepth = -0.25f;
-
+  // Controls overall dune shape and surface noise only — no oasis depression
   for (uint16_t y = 0; y < hm_sz; ++y) {
     for (uint16_t x = 0; x < hm_sz; ++x) {
-      // Convert grid coordinates to normalized range [-1, 1]
+      // Normalized coordinates in [-1, 1] range
       float nx = (x - hm_sz * 0.5f) / (hm_sz * 0.5f);
       float ny = (y - hm_sz * 0.5f) / (hm_sz * 0.5f);
 
-      // Generate dune pattern using sine waves
-      float dune = sinf(nx * 3.5f) * cosf(ny * 2.7f) * 0.3f;
+      // Rolling dunes with wider frequency and falloff
+      float falloff = expf(-0.5f * (nx * nx + ny * ny));
+      float dune = sinf(nx * 1.5f) * cosf(ny * 1.3f) * 0.3f * falloff;
 
-      // Compute distance from terrain center
-      float dx = nx;
-      float dy = ny;
-      float dist = sqrtf(dx * dx + dy * dy);
-
-      // Oasis dip at center using exponential falloff
-      float oasis = expf(-dist * OasisFalloff) * OasisDepth;
-
-      // Add minor random noise for natural variation
+      // Random noise
       float noise = ((rand() % 1000) / 1000.0f - 0.5f) * 0.01f;
 
-      // Final height is a blend of dunes, oasis, and noise
-      float height = dune + oasis + noise;
-      height = bx::clamp(height, -1.0f, 1.0f);
+      float height = dune + noise;
 
-      // Convert to [0, 255] for texture storage
+
+      // Clamp and convert to [0, 255] encoded into red channel
+      height = bx::clamp(height, -1.0f, 1.0f);
       heightmapData[y * hm_sz + x] = static_cast<uint8_t>(127 + 127 * height);
     }
   }
+
 
   // Create heightmap texture
   _heightTexture = bgfx::createTexture2D(
@@ -337,7 +334,8 @@ void GameTest::Init() {
   // 2. Create scale and translation matrices
   float scaleMtx[16];
   float translateMtx[16];
-  bx::mtxScale(scaleMtx, TerrainScale, 1.0f, TerrainScale);
+  bx::mtxScale(scaleMtx, TerrainScale, 4.0f,
+               TerrainScale);  // Increase Y scale for better visibility
 
   // 3. Compute the world offset that brings terrain center to desired position
   float desiredTerrainCenter[3] = {-31.683f, 0.0f, -27.185f};
@@ -671,6 +669,14 @@ void GameTest::Shutdown() {
   destroyHandle(_scatterParamsUniform);
   destroyHandle(_betaRUniform);
   destroyHandle(_betaMUniform);
+
+  // Destroy water uniforms
+  destroyHandle(_u_waterColor);
+  destroyHandle(_s_waterTexUniform);
+  destroyHandle(_s_waterNormUniform);
+
+  destroyHandle(_waterTex);
+  destroyHandle(_waterNormalTex);
 
 
   Logger::getInstance().Log(LogLevel::Debug, "[GameTest] Shutdown() completed");

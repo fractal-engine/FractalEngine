@@ -23,37 +23,53 @@ void main() {
     // UV passthrough
     v_out_uv = a_texcoord0;
 
-    // --- Oasis Mask ---
-    vec2 centerUV = vec2(0.5, 0.5);   // Center of terrain in UV space
-    float d = distance(a_texcoord0, centerUV);
+    // --- Oasis Masks ---
+    vec2 centerUV = vec2(0.5, 0.5);
+    float dist = distance(a_texcoord0, centerUV);
 
-    // --- Set Parameters for mask ---
+    // Core oasis (used for water blend and depression)
     const float oasisRadius = 0.0012;
     const float oasisFalloff = 0.05;
+    float oasisMask = 1.0 - smoothstep(oasisRadius, oasisRadius + oasisFalloff, dist);
+    v_out_oasisMask = oasisMask;
 
-    float oasisMask = 1.0 - smoothstep(oasisRadius, oasisRadius + oasisFalloff, d);
-    v_out_oasisMask = oasisMask;  // Now safe to write to output
+    // Extended mask to suppress terrain height beyond visible oasis
+    const float suppressRadius = oasisRadius + oasisFalloff;
+    const float suppressFalloff = 0.05; // Add gradual suppression buffer
+    float suppressionMask = 1.0 - smoothstep(suppressRadius, suppressRadius + suppressFalloff, dist);
 
-    // Center position
+
+    // --- Terrain Height ---
     float h_center = getScaledHeight(a_texcoord0);
-    h_center = mix(h_center, 0.0, oasisMask);  // Use the local variable
+    float depressionDepth = 5.0;                      // Max depression depth for oasis
+
+    // Depress center based on oasis mask
+    h_center -= oasisMask * depressionDepth;
+
+    // Additionally flatten dunes near edges using suppression mask
+    h_center = mix(h_center, 0.0, suppressionMask);
     vec3 p_center = vec3(a_position.x, h_center, a_position.z);
-
-
 
     // Neighbor in +U (x) direction
     vec2 uv_u = a_texcoord0 + vec2(u_heightmapTexelSize.x, 0.0);
     float h_u = getScaledHeight(uv_u);
-    float mask_u = 1.0 - smoothstep(oasisRadius, oasisRadius + oasisFalloff, distance(uv_u, centerUV));
-    h_u = mix(h_u, 0.0, mask_u);
+    float dist_u = distance(uv_u, centerUV);
+    float mask_u = 1.0 - smoothstep(oasisRadius, oasisRadius + oasisFalloff, dist_u);
+    float suppress_u = 1.0 - smoothstep(suppressRadius, suppressRadius + suppressFalloff, dist_u);
+    h_u -= mask_u * depressionDepth;
+    h_u = mix(h_u, 0.0, suppress_u);
     vec3 p_u = vec3(a_position.x + u_worldStepX, h_u, a_position.z);
 
     // Neighbor in +V (z) direction
     vec2 uv_v = a_texcoord0 + vec2(0.0, u_heightmapTexelSize.y);
     float h_v = getScaledHeight(uv_v);
-    float mask_v = 1.0 - smoothstep(oasisRadius, oasisRadius + oasisFalloff, distance(uv_v, centerUV));
-    h_v = mix(h_v, 0.0, mask_v);
+    float dist_v = distance(uv_v, centerUV);
+    float mask_v = 1.0 - smoothstep(oasisRadius, oasisRadius + oasisFalloff, dist_v);
+    float suppress_v = 1.0 - smoothstep(suppressRadius, suppressRadius + suppressFalloff, dist_v);
+    h_v -= mask_v * depressionDepth;
+    h_v = mix(h_v, 0.0, suppress_v);
     vec3 p_v = vec3(a_position.x, h_v, a_position.z + u_worldStepZ);
+
 
     // Local TBN from neighbors
     vec3 tangent   = normalize(p_u - p_center);
