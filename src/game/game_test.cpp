@@ -421,14 +421,21 @@ void GameTest::Render() {
   float sunElevationFactor = local_smoothStep(
       -0.15f, 0.2f,
       sunDirectionVec.y);  // Smooth transition for sun color/intensity
-  float sunIntensity = bx::lerp(
-      0.3f, 3.0f, sunElevationFactor);  // Sun intensity based on elevation
+  float baseSunLuminance = 10.0f;
 
-  // Sun color (luminance) based on elevation and intensity
-  _sunColorArray[0] = bx::lerp(0.8f, 1.0f, sunElevationFactor) * sunIntensity;
-  _sunColorArray[1] = bx::lerp(0.6f, 1.0f, sunElevationFactor) * sunIntensity;
-  _sunColorArray[2] = bx::lerp(0.4f, 1.0f, sunElevationFactor) * sunIntensity;
+  _sunColorArray[0] =
+      bx::lerp(0.8f, 1.0f, sunElevationFactor) * baseSunLuminance;
+  _sunColorArray[1] =
+      bx::lerp(0.6f, 0.95f, sunElevationFactor) * baseSunLuminance;
+  _sunColorArray[2] =
+      bx::lerp(0.4f, 0.9f, sunElevationFactor) * baseSunLuminance;
   _sunColorArray[3] = 0.0f;
+  bgfx::setUniform(_sunLumUniform, _sunColorArray);
+
+  _parametersArray[0] = 0.00465f;  // Sun Angular Radius
+  _parametersArray[1] = 1.0f;  // Procedural Bloom (tune after sky is visible)
+  _parametersArray[2] = 0.25f;  // Exposure
+  _parametersArray[3] = _cycleTime;  // Time
 
   // Sky ambient color based on sun elevation
   _skyAmbientArray[0] = bx::lerp(0.02f, 0.3f, sunElevationFactor);
@@ -437,15 +444,9 @@ void GameTest::Render() {
   _skyAmbientArray[3] = 0.0f;
 
   // Apply a global boost to ambient light for better visibility
-  const float ambientBoost = 0.05f;
+  const float ambientBoost = 0.005f;
   for (int i = 0; i < 3; ++i)
     _skyAmbientArray[i] *= ambientBoost;
-
-  // Skybox parameters (e.g., scattering coefficients, mie phase, time)
-  _parametersArray[0] = 0.005f;      // Sun Size
-  _parametersArray[1] = 0.7f;        // Bloom
-  _parametersArray[2] = 1.0f;        // Exposure
-  _parametersArray[3] = _cycleTime;  // Current time for procedural sky effects
 
   // --- Shadow Map Pass ---
   bgfx::setViewFrameBuffer(SHADOW_MAP_VIEW_ID,
@@ -539,13 +540,35 @@ void GameTest::Render() {
                    _parametersArray);  // Sky scattering parameters
 
   // Set scattering coefficients and phase parameter g
-  float scatterParams[4] = {0.76f, 0.0f, 0.0f, 0.0f};    // x = g
-  float betaR[4] = {5.8e-6f, 13.5e-6f, 33.1e-6f, 0.0f};  // Rayleigh RGB
-  float betaM[4] = {21e-6f, 21e-6f, 21e-6f, 0.0f};       // Mie RGB
+  const float H_R = 8000.0f;  // Rayleigh scale height
+  const float H_M = 1200.0f;  // Mie scale height
 
+  float k_betaR_per_meter[3] = {5.8e-6f, 13.5e-6f, 33.1e-6f};
+  // For the hazy sunrise, Mie needs to be stronger.
+  // Example: Make Mie scattering as significant as Rayleigh, or more, and
+  // slightly colored.
+  float MieColoration[3] = {1.0f, 0.95f,
+                            0.85f};  // Slightly yellowish/orangish haze
+  float MieBaseDensity = 20.0e-6f;   // Base Mie density (tune this)
+
+  float totalBetaR[4] = {k_betaR_per_meter[0] * H_R, k_betaR_per_meter[1] * H_R,
+                         k_betaR_per_meter[2] * H_R, 0.0f};
+  // Increase Mie for hazy sunrise:
+  // totalBetaM might be comparable to or even larger than totalBetaR for strong
+  // haze.
+  float totalBetaM[4] = {MieBaseDensity * MieColoration[0] * H_M *
+                             5.0f,  // Multiplier for haze intensity
+                         MieBaseDensity * MieColoration[1] * H_M * 5.0f,
+                         MieBaseDensity * MieColoration[2] * H_M * 5.0f, 0.0f};
+
+  bgfx::setUniform(_betaRUniform, totalBetaR);
+  bgfx::setUniform(_betaMUniform, totalBetaM);
+
+  // Mie phase function 'g' (controls glow around sun)
+  // 0.76 is common. Higher (e.g., 0.85-0.9) makes a tighter, more intense
+  // forward glow.
+  float scatterParams[4] = {0.85f, 0.0f, 0.0f, 0.0f};  // x = g
   bgfx::setUniform(_scatterParamsUniform, scatterParams);
-  bgfx::setUniform(_betaRUniform, betaR);
-  bgfx::setUniform(_betaMUniform, betaM);
 
   bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A |
                  BGFX_STATE_DEPTH_TEST_LEQUAL);  // Skybox render state (LEQUAL
