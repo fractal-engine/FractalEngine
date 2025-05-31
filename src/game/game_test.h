@@ -112,6 +112,10 @@ private:
   bgfx::TextureHandle _waterTex = BGFX_INVALID_HANDLE;
   bgfx::TextureHandle _waterNormalTex = BGFX_INVALID_HANDLE;
 
+  bgfx::VertexBufferHandle _waterVbh = BGFX_INVALID_HANDLE;
+  bgfx::IndexBufferHandle _waterIbh = BGFX_INVALID_HANDLE;
+  bgfx::ProgramHandle _waterProgram = BGFX_INVALID_HANDLE;
+  float waterModelMatrix[16];  // for position/scale of water mesh
 
   float _cycleTime = 0.0f;    // day-night timerm keep it at 0
   float _skyAmbientArray[4];  // Holds current ambient sky light

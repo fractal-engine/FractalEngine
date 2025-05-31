@@ -3,8 +3,7 @@
  * License: https://github.com/bkaradzic/bgfx/blob/master/LICENSE
  */
 
-$input v_out_uv, v_out_worldPos, v_out_shadowCoord, v_out_viewVec, v_out_worldTangent, v_out_worldBitangent, v_out_worldNormalGeom, v_out_oasisMask
-
+$input v_out_uv, v_out_worldPos, v_out_shadowCoord, v_out_viewVec, v_out_worldTangent, v_out_worldBitangent, v_out_worldNormalGeom
 #include <bgfx_shader.sh>
 #include "../common/common.sh"
 
@@ -12,7 +11,6 @@ $input v_out_uv, v_out_worldPos, v_out_shadowCoord, v_out_viewVec, v_out_worldTa
 SAMPLER2D(s_diffuse,      0);   // Terrain base color
 SAMPLER2D(s_orm,          1);   // Occlusion, Roughness, Metalness
 SAMPLER2D(s_normal,       2);   // Terrain normal map
-SAMPLER2D(s_waterNorm,  5);   // Water surface normal map (for reflections)
 SAMPLER2DSHADOW(s_shadowMap, 4); // Shadow map from directional light
 
 // --- Uniforms ---
@@ -20,7 +18,7 @@ uniform vec4 u_sunDirection;    // xyz = sun direction, w = unused
 uniform vec4 u_sunLuminance;    // xyz = sun color, w = intensity
 uniform vec4 u_cameraPos;       // Camera position in world space
 uniform vec4 u_skyAmbient;      // Ambient lighting from sky
-uniform vec4 u_time;            // x = time in seconds (used for water animation)
+
 
 #define PI 3.14159265359
 
@@ -78,22 +76,7 @@ void main() {
     // --- UV Coordinates ---
 
     vec2 uv = v_out_uv * 150.0; // Terrain UV tiling scale
-    vec2 flowDir = vec2(0.3, 0.7); // Water flow direction
     vec2 worldXZ = v_out_worldPos.xz;
-    float time = u_time.x;
-
-    // --- Dual-layer Animated Water UVs ---
-
-    vec2 flowDir1 = vec2(0.3, 0.7);
-    vec2 flowDir2 = vec2(-0.6, 0.2);
-
-    // Use fract (tiling logic) to create animated UVs for water flow
-    vec2 uv_base = v_out_uv * 150.0;
-
-    vec2 uv1 = fract(uv_base + flowDir1 * time * 0.05);
-    vec2 uv2 = fract(uv_base + flowDir2 * time * 0.05);
-
-
 
 
     // --- Terrain Textures ---
@@ -102,18 +85,6 @@ void main() {
     vec3 orm        = texture2D(s_orm, uv).rgb;
     vec3 normalMap  = texture2D(s_normal, uv).rgb * 2.0 - 1.0;
 
-    // --- Water Normals (Blended flow layers) ---
-
-    vec3 n1 = texture2D(s_waterNorm, uv1).rgb * 2.0 - 1.0;
-    vec3 n2 = texture2D(s_waterNorm, uv2).rgb * 2.0 - 1.0;
-    vec3 waterNormal = normalize(n1 + n2); // Combine both flows
-
-    // --- Water Parameters ---
-
-    vec3 waterColor   = vec3(0.06, 0.13, 0.15);
-    float waterMetal  = 0.0;
-    float waterRough  = 0.05;
-    float waterAO     = 1.0;
 
     // --- Unpack Terrain ORM ---
 
@@ -127,7 +98,7 @@ void main() {
     float3 B = normalize(v_out_worldBitangent);
     float3 N = normalize(v_out_worldNormalGeom);
     vec3 N_terrain = normalize(mul(mat3(T, B, N), normalMap));
-    vec3 N_water   = normalize(mul(mat3(T, B, N), waterNormal));
+
 
     // --- View & Light Vectors ---
 
@@ -148,19 +119,7 @@ void main() {
     vec3  kS_T = F_T;
     vec3  kD_T = (vec3_splat(1.0) - kS_T) * (1.0 - metalness);
 
-    // --- Water PBR Lighting ---
-
-    vec3 F0_water = vec3_splat(0.04);
-    float NdotL_W = max(dot(N_water, L), 0.0);
-    float NdotV_W = max(dot(N_water, V), 0.0);
-    float LdotH_W = max(dot(L, H), 0.0);
-    float D_W = DistributionGGX(N_water, H, waterRough);
-    float G_W = GeometrySmith(N_water, V, L, waterRough);
-    vec3  F_W = FresnelSchlick(LdotH_W, F0_water);
-    vec3  specularW = (D_W * G_W * F_W) / (4.0 * NdotL_W * NdotV_W + 0.0001);
-    vec3  kS_W = F_W;
-    vec3  kD_W = (vec3_splat(1.0) - kS_W) * (1.0 - waterMetal);
-
+   
     // --- Shadow Mapping ---
 
     float shadow = PCF(s_shadowMap, v_out_shadowCoord, 0.005, vec2_splat(1.0 / 2048.0));
@@ -175,41 +134,11 @@ void main() {
     vec3 Lo_terrain = (kD_T * albedo / PI + specularT) * u_sunLuminance.rgb * NdotL_T * shadow;
     vec3 ambientT = u_skyAmbient.rgb * albedo * aoCombined;
 
-    // --- Water Lighting Components ---
 
-    vec3 Lo_water = (kD_W * waterColor / PI + specularW) * u_sunLuminance.rgb * NdotL_W * shadow;
-    vec3 ambientW = u_skyAmbient.rgb * waterColor * waterAO;
+    // --- Final Blending ---
 
-    // --- Fresnel and Optical Effects for Water ---
+    vec3 finalColor = Lo_terrain + ambientT;
 
-    float fresnel = pow(1.0 - max(dot(N_water, V), 0.0), 3.0) * 0.5;
-    vec3 skyTint = mix(vec3(0.1, 0.2, 0.3), u_skyAmbient.rgb, fresnel * 0.8);
-    vec2 refractOffset = N_water.xz * 0.03 * fresnel;
-    vec3 terrainRefract = texture2D(s_diffuse, uv + refractOffset).rgb * 0.6;
-    float scatter = smoothstep(0.0, 0.2, v_out_oasisMask);
-    vec3 scatterTint = mix(vec3(0.0, 0.4, 0.6), vec3(0.05, 0.6, 0.8), scatter);
-
-    // --- Final Water Composition ---
-
-    // Calculate glint effect based on water normal and light direction
-    float glint = pow(max(dot(N_water, L), 0.0), 64.0) * fresnel * 2.0;
-    vec3 sparkle = vec3(1.0, 1.0, 1.0) * glint; // Additive sparkle
-
-    vec3 waterFinal = mix(terrainRefract, Lo_water + skyTint + ambientW, fresnel);
-    waterFinal += sparkle;
-    waterFinal = mix(waterFinal, scatterTint, 0.3); // Inject color variation
-
-    // --- (Optional) Screen Space Reflection Placeholder ---
-
-    // vec2 screenUV = gl_FragCoord.xy / u_resolution.xy;
-    // vec3 reflDir = reflect(-V, N_water);
-    // vec2 reflOffset = reflDir.xy * 0.05;
-    // vec3 screenRefl = texture2D(u_sceneColor, screenUV + reflOffset).rgb;
-    // skyTint = mix(skyTint, screenRefl, 0.4);
-
-    // --- Final Blending Between Terrain and Water ---
-    float mask = v_out_oasisMask;
-    vec3 finalColor = mix(Lo_terrain + ambientT, waterFinal, mask);
 
     // --- Output Final Color ---
     gl_FragColor = vec4(toGamma(finalColor), 1.0);

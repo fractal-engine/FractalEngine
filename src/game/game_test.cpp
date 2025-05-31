@@ -93,6 +93,7 @@ GameTest::GameTest()
       _skyProgram(BGFX_INVALID_HANDLE),
       _skyVbh(BGFX_INVALID_HANDLE),
       _skyIbh(BGFX_INVALID_HANDLE),
+      _shadowVbh(BGFX_INVALID_HANDLE),
       _timeUniform(BGFX_INVALID_HANDLE),
       _sunDirUniform(BGFX_INVALID_HANDLE),
       _sunLumUniform(BGFX_INVALID_HANDLE),
@@ -153,6 +154,7 @@ void GameTest::Init() {
         .add(bgfx::Attrib::Position, 2, bgfx::AttribType::Float)
         .end();
   }
+  
 
   // Setup camera
   float terrainCenterPos[3] = {TerrainExtent, 0.0f, TerrainExtent};
@@ -176,7 +178,6 @@ void GameTest::Init() {
   _waterNormalTex =
       TextureUtils::LoadTexture("assets/textures/water/water_normal.tga");
 
-
   // Load shader programs
   auto& shaderMgr = *SubsystemManager::GetShaderManager();
   _terrainProgramHeight =
@@ -196,6 +197,8 @@ void GameTest::Init() {
       LogLevel::Debug,
       std::string("[DEBUG] _terrainShadowProgram valid = ") +
           (bgfx::isValid(_terrainShadowProgram) ? "true" : "false"));
+  _waterProgram =
+      shaderMgr.LoadProgram("water", "vs_water.bin", "fs_water.bin");
 
   // Create uniform handles
   _heightUniform =
@@ -242,7 +245,6 @@ void GameTest::Init() {
   // Timer uniform
   _timeUniform = bgfx::createUniform("u_time", bgfx::UniformType::Vec4);
 
-
   // Generate initial heightmap data
   const uint16_t hm_sz = TerrainSize;
   std::vector<uint32_t> heightmapData(hm_sz * hm_sz);
@@ -270,6 +272,43 @@ void GameTest::Init() {
       BGFX_TEXTURE_NONE | BGFX_SAMPLER_U_CLAMP | BGFX_SAMPLER_V_CLAMP,
       bgfx::copy(heightmapData.data(),
                  heightmapData.size() * sizeof(uint32_t)));
+
+  // Create water mesh data
+  std::vector<PosTexCoord0Vertex> waterVertices;
+  std::vector<uint16_t> waterIndices;
+
+  for (uint16_t y = 0; y < TerrainSize; ++y) {
+    for (uint16_t x = 0; x < TerrainSize; ++x) {
+      // Reuse UVs and flat Y
+      float u = float(x) / (TerrainSize - 1);
+      float v = float(y) / (TerrainSize - 1);
+
+      // compute mask (same logic as previous vs_terrain oasisMask)
+      float dx = u - 0.5f;
+      float dy = v - 0.5f;
+      float dist = sqrtf(dx * dx + dy * dy);
+      float mask = 1.0f - local_smoothStep(0.012f, 0.012f + 0.0005f, dist);
+      mask = powf(mask, 48.0f);
+
+      waterVertices.push_back({float(x), 0.0f, float(y), u, v});
+    }
+  }
+
+  // Create waterIndices using same grid method as terrain
+  const uint16_t gridSize = TerrainSize;
+  for (uint16_t y = 0; y < gridSize - 1; ++y) {
+    for (uint16_t x = 0; x < gridSize - 1; ++x) {
+      uint16_t i = y * gridSize + x;
+
+      waterIndices.push_back(i);
+      waterIndices.push_back(i + 1);
+      waterIndices.push_back(i + gridSize);
+
+      waterIndices.push_back(i + 1);
+      waterIndices.push_back(i + gridSize + 1);
+      waterIndices.push_back(i + gridSize);
+    }
+  }
 
   // Generate terrain mesh (grid)
   terrainVertices.clear();
@@ -311,6 +350,15 @@ void GameTest::Init() {
                  shadowVertices.size() * sizeof(ShadowVertex)),
       ShadowVertex::layout);
 
+  // Create water vertex buffer
+
+  _waterVbh = bgfx::createVertexBuffer(
+      bgfx::copy(waterVertices.data(),
+                 waterVertices.size() * sizeof(PosTexCoord0Vertex)),
+      PosTexCoord0Vertex::layout);
+  _waterIbh = bgfx::createIndexBuffer(
+      bgfx::copy(waterIndices.data(), waterIndices.size() * sizeof(uint16_t)));
+
   // Create skybox geometry buffers
   createSkyboxBuffers();
 
@@ -333,6 +381,18 @@ void GameTest::Init() {
       desiredTerrainCenter[1],
       desiredTerrainCenter[2] - terrainCenterOffset * TerrainScale);
   bx::mtxMul(this->world_matrix, scaleMtx, translateMtx);
+
+  // Initialize water model matrix (flat plane)
+  // Create water matrix
+  float waterModelMatrix[16];
+  bx::mtxIdentity(waterModelMatrix);
+  bx::mtxScale(scaleMtx, TerrainScale, 1.0f, TerrainScale);
+  bx::mtxTranslate(
+      translateMtx,
+      desiredTerrainCenter[0] - terrainCenterOffset * TerrainScale,
+      desiredTerrainCenter[1] + 0.1f,  // Slight Y offset to sit above terrain
+      desiredTerrainCenter[2] - terrainCenterOffset * TerrainScale);
+  bx::mtxMul(waterModelMatrix, scaleMtx, translateMtx);
 }
 
 // Updates game state per frame
@@ -519,17 +579,35 @@ void GameTest::Render() {
   bgfx::setTexture(3, _heightUniform, _heightTexture);
   bgfx::setTexture(4, _shadowSamplerUniform, shadowMapTexture);
 
-  float timeVec[4] = {_waterTime, 0.0f, 0.0f, 0.0f};
-  bgfx::setUniform(_timeUniform, timeVec);
-  float waterColorVec[4] = {0.2f, 0.4f, 0.5f, 1.0f};
-  bgfx::setUniform(_u_waterColor, waterColorVec);
-  bgfx::setTexture(5, _s_waterTexUniform, _waterTex);
-  bgfx::setTexture(6, _s_waterNormUniform, _waterNormalTex);
 
   bgfx::setVertexBuffer(0, _terrainVbh);
   bgfx::setIndexBuffer(_terrainIbh);
   bgfx::setState(BGFX_STATE_DEFAULT | BGFX_STATE_CULL_CW | BGFX_STATE_MSAA);
   bgfx::submit(terrainViewID, _terrainProgramHeight);
+
+  // --- Water Pass ---
+  bgfx::setViewTransform(ViewID::SCENE_N(2), viewMatrix, projMatrix);
+  bgfx::setTransform(waterModelMatrix);  // Flat plane or positioned
+  float timeVec[4] = {_waterTime, 0.0f, 0.0f, 0.0f};
+  float waterColorVec[4] = {0.2f, 0.4f, 0.5f, 1.0f};
+
+  // Set uniforms for water shader
+  bgfx::setUniform(_cameraPosUniform, camPos);
+  bgfx::setUniform(_sunDirUniform, sunDirShader);
+  bgfx::setUniform(_sunLumUniform, _sunColorArray);
+  bgfx::setUniform(_skyAmbientUniform, _skyAmbientArray);
+  bgfx::setUniform(_timeUniform, timeVec);
+  bgfx::setUniform(_u_waterColor, waterColorVec);
+
+  bgfx::setTexture(5, _s_waterTexUniform, _waterTex);
+  bgfx::setTexture(6, _s_waterNormUniform, _waterNormalTex);
+
+  bgfx::setVertexBuffer(0, _waterVbh);
+  bgfx::setIndexBuffer(_waterIbh);
+  bgfx::setState(BGFX_STATE_DEFAULT | BGFX_STATE_MSAA | BGFX_STATE_WRITE_RGB |
+                 BGFX_STATE_BLEND_ALPHA | BGFX_STATE_DEPTH_TEST_LEQUAL);
+
+  bgfx::submit(ViewID::SCENE_N(2), _waterProgram);
 }
 
 // Releases all BGFX resources
@@ -548,6 +626,7 @@ void GameTest::Shutdown() {
   destroyHandle(_terrainProgramHeight);
   destroyHandle(_skyProgram);
   destroyHandle(_terrainShadowProgram);
+  destroyHandle(_waterProgram);
 
   // Destroy textures
   destroyHandle(_heightTexture);
@@ -565,6 +644,8 @@ void GameTest::Shutdown() {
   destroyHandle(_skyVbh);
   destroyHandle(_skyIbh);
   destroyHandle(_shadowVbh);
+  destroyHandle(_waterVbh);
+  destroyHandle(_waterIbh);
 
   // Destroy uniform handles
   destroyHandle(_heightUniform);

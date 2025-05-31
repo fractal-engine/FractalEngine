@@ -8,7 +8,7 @@ vec3 v_out_viewVec          : TEXCOORD3;
 vec3 v_out_worldTangent     : TEXCOORD4;
 vec3 v_out_worldBitangent   : TEXCOORD5;
 vec3 v_out_worldNormalGeom  : TEXCOORD6;
-vec2 v_out_oasisMask		: TEXCOORD7;
+
 
 
 

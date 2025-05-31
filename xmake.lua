@@ -240,7 +240,7 @@ rule("bgfx_shaderc")
         end
 
         local shader_type = sourcefile:match("vs_") and "vertex" or sourcefile:match("fs_") and "fragment" or "compute"
-
+        -- Determine varying definition file based on sourcefile
         local varying_file = path.join(projectdir, "src/shaders/varying.def.sc")
         if sourcefile:find("imgui", 1, true) then
             varying_file = path.join(projectdir, "src/shaders/varying_imgui.def.sc")
@@ -250,6 +250,8 @@ rule("bgfx_shaderc")
             varying_file = path.join(projectdir, "src/shaders/varying_terrain_pbr.def.sc")
         elseif sourcefile:find("shadow", 1, true) then
             varying_file = path.join(projectdir, "src/shaders/varying_shadow.def.sc")
+        elseif sourcefile:find("water", 1, true) then
+            varying_file = path.join(projectdir, "src/shaders/varying_water.def.sc")
         end
 
         for _, backend in ipairs(backends_to_compile) do
