@@ -171,10 +171,11 @@ void GameTest::Init() {
   terrainNormal =
       TextureUtils::LoadTexture("assets/textures/terrain/Normal.tga");
   // Load water textures
-  bgfx::TextureHandle waterDiffuse =
+  _waterTex =
       TextureUtils::LoadTexture("assets/textures/water/water_diffuse.tga");
-  bgfx::TextureHandle waterNormal =
+  _waterNormalTex =
       TextureUtils::LoadTexture("assets/textures/water/water_normal.tga");
+
 
   // Load shader programs
   auto& shaderMgr = *SubsystemManager::GetShaderManager();
@@ -240,6 +241,7 @@ void GameTest::Init() {
 
   // Timer uniform
   _timeUniform = bgfx::createUniform("u_time", bgfx::UniformType::Vec4);
+
 
   // Generate initial heightmap data
   const uint16_t hm_sz = TerrainSize;
@@ -529,7 +531,6 @@ void GameTest::Render() {
   bgfx::setState(BGFX_STATE_DEFAULT | BGFX_STATE_CULL_CW | BGFX_STATE_MSAA);
   bgfx::submit(terrainViewID, _terrainProgramHeight);
 }
-
 
 // Releases all BGFX resources
 void GameTest::Shutdown() {
