@@ -142,32 +142,38 @@ void GraphicsRenderer::PrepareFrame() {
     CreateFramebuffers(fbw, fbh);
   }
 
-  // Scene view setup (this happens every frame)
+  // Configure views that render into the scene_framebuffer_
+  uint8_t sceneViews[] = {
+      ViewID::SCENE,       // ID 1 (Skybox)
+      ViewID::SCENE_N(1),  // ID 2 (Terrain)
+      // Add other views that belong to this scene FBO
+      ViewID::WATER_PASS,  // ID 5 (Water)
+      ViewID::SHADOW_PASS, 
+      // ViewID::DEBUG_PASS,  // ID 4 (If it should render to
+      // scene_framebuffer_)
+  };
+
+  // Common clear for the scene_framebuffer_ (done by the first view using it)
   bgfx::setViewClear(ViewID::SCENE, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH,
                      0x303030ff, 1.0f, 0);
 
-  // bind both view 1 and view 2 to the same offscreen FBO
-  // view 1:
-  bgfx::setViewRect(ViewID::SCENE, 0, 0, fbw, fbh);
-  bgfx::setViewFrameBuffer(ViewID::SCENE, scene_framebuffer_);
-
-  // Bind extra passes
-  for (uint8_t v = ViewID::SCENE_N(0); v < ViewID::UI_BACKGROUND; ++v) {
-    bgfx::setViewRect(v, 0, 0, fbw, fbh);
-    bgfx::setViewFrameBuffer(v, scene_framebuffer_);
+  for (uint8_t viewId : sceneViews) {
+    bgfx::setViewRect(viewId, 0, 0, fbw, fbh);
+    bgfx::setViewFrameBuffer(viewId, scene_framebuffer_);
+    // Individual view transforms will be set in GameTest::Render()
   }
 
-  // FIXME: organise viewIDs, passes and FBO in a more
-  // centralised and stable way, there's no clear
-  // approach on how the passes are being handled
-  static constexpr uint8_t kActiveScenePasses = 2;  // 0 = terrain, 1 = post-FX
-  for (uint8_t i = 0; i < kActiveScenePasses; ++i) {
-    const auto vid = ViewID::SCENE_N(i);
-    bgfx::setViewRect(vid, 0, 0, fbw, fbh);
-    bgfx::setViewFrameBuffer(vid, scene_framebuffer_);
-  }
+  // ViewID::UI_BACKGROUND (ID 0) - Clears the actual window backbuffer
+  bgfx::setViewClear(
+      ViewID::UI_BACKGROUND,
+      BGFX_CLEAR_COLOR /* no depth clear needed if nothing 3D draws here */,
+      0x1e1e1eff, 1.0f, 0);
+  bgfx::setViewRect(ViewID::UI_BACKGROUND, 0, 0, fbw,
+                    fbh);  // Assuming fbw/fbh here match window size
+  bgfx::setViewFrameBuffer(
+      ViewID::UI_BACKGROUND,
+      BGFX_INVALID_HANDLE);  // Ensure it targets default backbuffer
 
-  // Debug check
   if (!bgfx::isValid(scene_framebuffer_)) {
     Logger::getInstance().Log(LogLevel::Error,
                               "Scene framebuffer is invalid in PrepareFrame!");

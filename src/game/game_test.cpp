@@ -51,8 +51,6 @@ bgfx::VertexLayout PosTexCoord0Vertex::layout;
 
 // Maximum height of the terrain in world units
 constexpr float TERRAIN_MAX_ACTUAL_HEIGHT = 150.0f;
-// View ID for the shadow map rendering pass
-constexpr uint8_t SHADOW_MAP_VIEW_ID = ViewID::SHADOW_PASS;
 // Fixed size for the shadow map texture
 constexpr uint16_t KNOWN_SHADOW_MAP_SIZE = 2048;
 
@@ -489,12 +487,11 @@ void GameTest::Render() {
     _skyAmbientArray[i] *= ambientBoost;
 
   // --- Shadow Map Pass ---
-  bgfx::setViewFrameBuffer(SHADOW_MAP_VIEW_ID,
+  bgfx::setViewFrameBuffer(ViewID::SHADOW_PASS,
                            shadowMapFB);  // Set render target to shadow map
-  bgfx::setViewRect(SHADOW_MAP_VIEW_ID, 0, 0, KNOWN_SHADOW_MAP_SIZE,
+  bgfx::setViewRect(ViewID::SHADOW_PASS, 0, 0, KNOWN_SHADOW_MAP_SIZE,
                     KNOWN_SHADOW_MAP_SIZE);  // Set viewport for shadow map
-  bgfx::setViewClear(SHADOW_MAP_VIEW_ID, BGFX_CLEAR_DEPTH, 0x000000ff, 1.0f,
-                     0);  // Clear depth buffer
+  bgfx::setViewClear(ViewID::SHADOW_PASS, BGFX_CLEAR_NONE, 0, 1.0f, 0);
 
   // Setup light view and projection matrices for shadow mapping
   float lightViewMatrix[16], lightProjMatrix[16];
@@ -511,7 +508,7 @@ void GameTest::Render() {
   bx::mtxOrtho(lightProjMatrix, -orthoHalfSize, orthoHalfSize, -orthoHalfSize,
                orthoHalfSize, 0.1f, terrainWorldSize * 3.0f, 0.0f,
                bgfx::getCaps()->homogeneousDepth);
-  bgfx::setViewTransform(SHADOW_MAP_VIEW_ID, lightViewMatrix, lightProjMatrix);
+  bgfx::setViewTransform(ViewID::SHADOW_PASS, lightViewMatrix, lightProjMatrix);
   bgfx::setTransform(this->world_matrix);
 
   float terrainParamsArr[4] = {TERRAIN_MAX_ACTUAL_HEIGHT, 0.0f, TerrainScale,
@@ -524,7 +521,7 @@ void GameTest::Render() {
   bgfx::setIndexBuffer(_terrainIbh);
   bgfx::setState(BGFX_STATE_WRITE_Z | BGFX_STATE_DEPTH_TEST_LESS |
                  BGFX_STATE_CULL_CW | BGFX_STATE_MSAA);
-  bgfx::submit(SHADOW_MAP_VIEW_ID, _terrainShadowProgram);
+  bgfx::submit(ViewID::SHADOW_PASS, _terrainShadowProgram);
 
   // --- Main Scene Pass ---
   bgfx::setViewRect(ViewID::SCENE, 0, 0, canvasViewportW, canvasViewportH);
@@ -609,9 +606,7 @@ void GameTest::Render() {
 
   // --- Water Pass ---
 
-  bgfx::setViewClear(ViewID::WATER_PASS, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH,
-                     0x00FF00FF,  // Clear to BRIGHT GREEN
-                     1.0f, 0);
+  bgfx::setViewClear(ViewID::WATER_PASS, BGFX_CLEAR_NONE, 0, 1.0f, 0);
   bgfx::setViewRect(ViewID::WATER_PASS, 0, 0, canvasViewportW, canvasViewportH);
   bgfx::setViewTransform(ViewID::WATER_PASS, viewMatrix, projMatrix);
 
