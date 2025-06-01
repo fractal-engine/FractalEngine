@@ -122,8 +122,8 @@ void main() {
     // --- Shadow Mapping ---
 
     float NdotL = max(dot(N_terrain, L), 0.0);
-    float bias = max(0.0025 * (1.0 - NdotL), 0.0005);
-    float shadow = PCF(s_shadowMap, v_out_shadowCoord, bias, vec2_splat(1.0 / 1024.0)); // use larger texel size
+    float bias = max(0.0025 * (1.0 - NdotL), 0.0001);
+    float shadow = PCF(s_shadowMap, v_out_shadowCoord, bias, vec2_splat(1.0 / 2048.0)); // use larger texel size
 
     // --- Fake AO (based on slope) ---
 

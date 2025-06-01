@@ -154,7 +154,7 @@ void main() {
 
         // Influence of sun transmittance on cloud color, more pronounced during sunrise/sunset
         float3 cloudSunInfluence = mix(float3(1.0, 1.0, 1.0), sunLightTransmittance, sunriseSunsetFactor * 0.8 + 0.2);
-        float3 litCloudColor = cloudBaseColor * initialSunColorAndIntensity * cloudSunInfluence * 0.5; // Calculate lit cloud color
+        float3 litCloudColor = cloudBaseColor * initialSunColorAndIntensity * cloudSunInfluence * 0.5;                      // Calculate lit cloud color
 
         // Mix base sky color with lit cloud color based on coverage and visibility
         skyWithClouds = mix(skyWithClouds, litCloudColor, cloudCoverageMask * cloudOverallVisibility * 0.4);

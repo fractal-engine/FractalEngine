@@ -357,7 +357,7 @@ void GameTest::Init() {
   // Create shadow map texture and framebuffer
   shadowMapTexture = bgfx::createTexture2D(
       KNOWN_SHADOW_MAP_SIZE, KNOWN_SHADOW_MAP_SIZE, false, 1,
-      bgfx::TextureFormat::D16, BGFX_TEXTURE_RT | BGFX_SAMPLER_COMPARE_LESS);
+      bgfx::TextureFormat::D32, BGFX_TEXTURE_RT | BGFX_SAMPLER_COMPARE_LESS);
   shadowMapFB = bgfx::createFrameBuffer(1, &shadowMapTexture, true);
 
   // Initialize terrain world matrix (scale)
@@ -485,6 +485,7 @@ void GameTest::Render() {
                orthoHalfSize, 0.1f, terrainWorldSize * 3.0f, 0.0f,
                bgfx::getCaps()->homogeneousDepth);
   bgfx::setViewTransform(SHADOW_MAP_VIEW_ID, lightViewMatrix, lightProjMatrix);
+  bgfx::setTransform(this->world_matrix);
 
   float terrainParamsArr[4] = {TERRAIN_MAX_ACTUAL_HEIGHT, 0.0f, TerrainScale,
                                TerrainScale};
