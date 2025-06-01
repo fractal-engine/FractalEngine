@@ -56,6 +56,8 @@ ShaderManager* Application::GetShaderManager() {
 
 // ───────────────────────────────────────────
 //  boot sequence (should run once)
+//  TODO: change friend constructors to static
+//  Create/factory functions 
 // ───────────────────────────────────────────
 void Application::InitializeInternal() {
   Logger::getInstance().Log(LogLevel::Info, "Application::Initialize");
@@ -68,17 +70,18 @@ void Application::InitializeInternal() {
   }
 
   /* 2 – cache subsystem references */
-  window_manager_ = &runtime::window();
-  renderer_ = &runtime::renderer();
-  shader_manager_ = &runtime::shaderManager();
-  input_ = &runtime::input();
+  window_manager_ = &runtime::Window();
+  renderer_ = &runtime::Renderer();
+  shader_manager_ = &runtime::Shader();
+  input_ = &runtime::Input();
 
   /* 3 – initialize editor layer */
   editor_ = std::make_unique<EditorLayer>(renderer_);
   Logger::getInstance().Log(LogLevel::Info, "Editor initialized");
 
   /* 4 – initialize game manager */
-  game_manager_ = std::make_unique<GameManager>(std::make_unique<GameTest>());
+  game_manager_ = std::unique_ptr<GameManager>(
+      new GameManager(std::make_unique<GameTest>()));
   Logger::getInstance().Log(LogLevel::Info, "GameManager initialized");
 
   /* 5 – connect editor event handles */

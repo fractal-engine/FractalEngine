@@ -14,7 +14,7 @@ namespace runtime {
 class SubsystemList {
 public:
   template <class T, class... Args>
-  T* RegisterSubsystem(Args&&... args) {
+  T* Add(Args&&... args) {
     auto subsystem_ptr = std::make_unique<T>(std::forward<Args>(args)...);
     T* raw_ptr = subsystem_ptr.get();
     subsystems_.emplace_back(std::move(subsystem_ptr));

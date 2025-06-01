@@ -28,14 +28,14 @@
 
 EditorLayer* EditorLayer::s_instance_ = nullptr;
 
-EditorLayer::EditorLayer(std::unique_ptr<RendererBase>& renderer)
-    : renderer_(renderer) {
+EditorLayer::EditorLayer(RendererBase* renderer) : renderer_(renderer) {
   s_instance_ = this;
 }
 
-EditorLayer::~EditorLayer() {}
+EditorLayer::~EditorLayer() {
+  s_instance_ = nullptr;  // clear on destroy
+}
 
-// static accessor:
 EditorLayer* EditorLayer::Get() {
   return s_instance_;
 }
@@ -142,7 +142,7 @@ void EditorLayer::Run() {
     ImGui::Render();  // prepre imgui draw data (no rendering yet)
 
     /* 4 - Prepare rendering target */
-    auto* graphics = static_cast<GraphicsRenderer*>(renderer_.get());
+    auto* graphics = static_cast<GraphicsRenderer*>(renderer_);
     graphics->PrepareFrame();  // set up scene framebuffer view
 
     /* 5 - Render game content to framebuffer */
@@ -202,7 +202,7 @@ void EditorLayer::HandleInput(Key key) {
     return;
 
   InputEvent input_event(key);
-  if (auto* gm = Application::GetGameManager().get()) {
+  if (auto* gm = Application::GetGameManager()) {
     input_event.pressed_frame_ = gm->GetFrameCount();
   }
   Application::GetInput()->FowardInputEvent(input_event,

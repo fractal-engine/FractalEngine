@@ -2,42 +2,45 @@
 #include "engine/core/logger.h"
 #include "engine/renderer/renderer_graphics.h"
 #include "engine/renderer/shaders/shader_manager.h"
+#include "engine/runtime/subsystem_list.h"
 #include "platform/input/input.h"
 #include "platform/window_manager.h"
 
 namespace runtime {
 
 // ------------------------------------------------------------------
-//  Static singletons
+//  Process-wide singletons
 // ------------------------------------------------------------------
+static std::unique_ptr<::WindowManager> window_manager_instance_;
+static std::unique_ptr<::GraphicsRenderer> graphics_renderer_instance_;
+static std::unique_ptr<::ShaderManager> shader_manager_instance_;
+static std::unique_ptr<::Input> input_device_instance_;
 
-static runtime::SubsystemList subs_;
-static std::unique_ptr<::WindowManager> window_;
-static std::unique_ptr<::GraphicsRenderer> renderer_;
-static std::unique_ptr<::ShaderManager> shaders_;
-static std::unique_ptr<::Input> input_;
+// ------------------------------------------------------------------
+//  Hot-reload registry (not used yet)
+// ------------------------------------------------------------------
+static SubsystemList dynamic_registry;
 
 // ------------------------------------------------------------------
 //  Init / Tick / Shutdown
 // ------------------------------------------------------------------
-
 bool Init(const Config& config) {
-  window_ = std::make_unique<::WindowManager>();
-  if (!window_->Initialize(config.window_title, config.width, config.height))
+  window_manager_instance_ = std::make_unique<::WindowManager>();
+  if (!window_manager_instance_->Initialize(config.window_title, config.width,
+                                            config.height))
     return false;
 
-  renderer_ = std::make_unique<::GraphicsRenderer>();
-  if (!renderer_->InitBgfx())
+  graphics_renderer_instance_ = std::make_unique<::GraphicsRenderer>();
+  if (!graphics_renderer_instance_->InitBgfx())
     return false;
 
-  shaders_ = std::make_unique<::ShaderManager>();
-  shaders_->Init();
-  input_ = std::make_unique<::Input>();
+  shader_manager_instance_ = std::make_unique<::ShaderManager>();
+  shader_manager_instance_->Init();
 
-  subs_.RegisterSubsystem<::WindowManager>(window_.get());
-  subs_.RegisterSubsystem<::Input>(input_.get());
-  subs_.RegisterSubsystem<::GraphicsRenderer>(renderer_.get());
-  return subs_.InitAll();
+  input_device_instance_ = std::make_unique<::Input>();
+
+  // TODO: for future subsystems only (hot-reload, live editing, etc)
+  return dynamic_registry.InitAll();
 }
 
 bool Tick() {
@@ -47,33 +50,33 @@ bool Tick() {
   double dt = std::chrono::duration<double>(now - previous).count();
   previous = now;
 
-  subs_.TickAll(dt);
+  dynamic_registry.TickAll(dt);
   return !::WindowManager::WindowShouldClose();
 }
 
 void Shutdown() {
-  subs_.ShutdownAll();
-  shaders_.reset();
-  renderer_.reset();
-  input_.reset();
-  window_.reset();
+  dynamic_registry.ShutdownAll();
+
+  input_device_instance_.reset();
+  shader_manager_instance_.reset();
+  graphics_renderer_instance_.reset();
+  window_manager_instance_.reset();
 }
 
 // ------------------------------------------------------------------
-//  Getters
+//  Accessors
 // ------------------------------------------------------------------
-
 ::WindowManager& Window() {
-  return *window_;
+  return *window_manager_instance_;
 }
 ::RendererBase& Renderer() {
-  return *renderer_;
-}  // implicit up-cast
-::Input& InputDevice() {
-  return *input_;
+  return *graphics_renderer_instance_;
 }
-::ShaderManager& ShaderManager() {
-  return *shaders_;
+::Input& Input() {
+  return *input_device_instance_;
+}
+::ShaderManager& Shader() {
+  return *shader_manager_instance_;
 }
 
 }  // namespace runtime

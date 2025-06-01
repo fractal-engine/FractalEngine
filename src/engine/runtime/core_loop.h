@@ -1,11 +1,20 @@
 #ifndef CORE_LOOP_H
 #define CORE_LOOP_H
 
-#include <chrono>
 #include <memory>
-#include "engine/runtime/subsystem_list.h"
+#include "engine/renderer/renderer_base.h"
+#include "engine/renderer/shaders/shader_manager.h"
+#include "platform/input/input.h"
+#include "platform/window_manager.h"
+
+class WindowManager;
+class RendererBase;
+class Input;
+class ShaderManager;
 
 namespace runtime {
+
+// -------------------- config --------------------
 struct Config {
   const char* window_title = "Fractal Engine";
   int width = 1280;
@@ -13,20 +22,16 @@ struct Config {
   bool vsync = true;
 };
 
-/// Initialise all engine-level subsystems (window, bgfx, input, …)
-bool Init(const Config&);
-
-/// Advance one frame; returns false when the OS asks to quit
-bool Tick();
-
-/// Shut everything down in reverse order
+// ---------------------- life-cycle ----------------
+bool Init(const Config& config);
+bool Tick();  // returns false when SDL quit requested
 void Shutdown();
 
-/// Handy getters used by the editor façade
-class WindowManager& window();
-class RendererBase& renderer();
-class Input& input();
-class ShaderManager& shaderManager();
+// --------------- global singletons ----------------
+::WindowManager& Window();
+::RendererBase& Renderer();
+::Input& Input();
+::ShaderManager& Shader();
 
 }  // namespace runtime
 #endif  // CORE_LOOP_H

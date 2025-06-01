@@ -53,7 +53,7 @@ inline void GameCanvas(bool isGameRunning, bool& hovered) {
   hovered = ImGui::IsWindowHovered();  // hover detection for the canvas
 
   auto* renderer =
-      static_cast<GraphicsRenderer*>(Application::GetRenderer().get());
+      static_cast<GraphicsRenderer*>(Application::GetRenderer());
 
   if (isGameRunning && canvasViewportW > 0 && canvasViewportH > 0) {
     // render when we have valid dimensions
