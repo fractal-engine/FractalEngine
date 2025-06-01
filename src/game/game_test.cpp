@@ -2,14 +2,30 @@
 
 #include <bgfx/bgfx.h>
 #include <bx/math.h>
+#include <string.h>
 #include <vector>
-
 #include "core/logger.h"
 #include "core/view_ids.h"
 #include "renderer/shaders/shader_utils.h"
 #include "subsystem/subsystem_manager.h"
 #include "tools/texture_utils.h"
 
+// Helper to make logging BGFX handles easier
+std::string handle_to_string(bgfx::ProgramHandle h) {
+  return h.idx == bgfx::kInvalidHandle ? "INVALID" : std::to_string(h.idx);
+}
+std::string handle_to_string(bgfx::VertexBufferHandle h) {
+  return h.idx == bgfx::kInvalidHandle ? "INVALID" : std::to_string(h.idx);
+}
+std::string handle_to_string(bgfx::IndexBufferHandle h) {
+  return h.idx == bgfx::kInvalidHandle ? "INVALID" : std::to_string(h.idx);
+}
+std::string handle_to_string(bgfx::TextureHandle h) {
+  return h.idx == bgfx::kInvalidHandle ? "INVALID" : std::to_string(h.idx);
+}
+std::string handle_to_string(bgfx::UniformHandle h) {
+  return h.idx == bgfx::kInvalidHandle ? "INVALID" : std::to_string(h.idx);
+}
 // --- Local Math Workarounds  ---
 inline float local_min(float _a, float _b) {
   return _a < _b ? _a : _b;
@@ -154,17 +170,6 @@ void GameTest::Init() {
         .add(bgfx::Attrib::Position, 2, bgfx::AttribType::Float)
         .end();
   }
-  
-
-  // Setup camera
-  float terrainCenterPos[3] = {TerrainExtent, 0.0f, TerrainExtent};
-  float targetPos[3] = {
-      TerrainExtent, 0.0f,
-      TerrainExtent};           // Define the camera's initial target position
-  camera.setTarget(targetPos);  // Set the camera to look at the target position
-  camera.setDistance(TerrainScale * 2.0f);  // Set initial camera distance
-  camera.setPitch(bx::toRad(30.0f));        // Look downward
-  camera.setYaw(bx::toRad(45.0f));          // Set initial yaw
 
   // Load terrain textures
   terrainDiffuse =
@@ -197,6 +202,9 @@ void GameTest::Init() {
       LogLevel::Debug,
       std::string("[DEBUG] _terrainShadowProgram valid = ") +
           (bgfx::isValid(_terrainShadowProgram) ? "true" : "false"));
+  Logger::getInstance().Log(
+      LogLevel::Info,
+      "[GameTest::Init] Loading water shaders: vs_water.bin, fs_water.bin");
   _waterProgram =
       shaderMgr.LoadProgram("water", "vs_water.bin", "fs_water.bin");
 
@@ -245,6 +253,16 @@ void GameTest::Init() {
   // Timer uniform
   _timeUniform = bgfx::createUniform("u_time", bgfx::UniformType::Vec4);
 
+  if (bgfx::isValid(_waterProgram)) {
+    Logger::getInstance().Log(LogLevel::Info,
+                              "[GameTest::Init] Water program (_waterProgram) "
+                              "loaded successfully. Handle: " +
+                                  std::to_string(_waterProgram.idx));
+  } else {
+    Logger::getInstance().Log(LogLevel::Error,
+                              "[GameTest::Init] FAILED to load water program "
+                              "(_waterProgram). Handle is invalid.");
+  }
   // Generate initial heightmap data
   const uint16_t hm_sz = TerrainSize;
   std::vector<uint32_t> heightmapData(hm_sz * hm_sz);
@@ -284,7 +302,6 @@ void GameTest::Init() {
       waterVertices.push_back({(float)x, 0.0f, (float)y, u, v});
     }
   }
-
 
   // Create waterIndices using same grid method as terrain
   const uint16_t gridSize = TerrainSize;
@@ -360,13 +377,23 @@ void GameTest::Init() {
       bgfx::TextureFormat::D32, BGFX_TEXTURE_RT | BGFX_SAMPLER_COMPARE_LESS);
   shadowMapFB = bgfx::createFrameBuffer(1, &shadowMapTexture, true);
 
+  // Setup camera
+  float terrainCenterPos[3] = {TerrainExtent, 0.0f, TerrainExtent};
+  float targetPos[3] = {
+      TerrainExtent, 0.0f,
+      TerrainExtent};           // Define the camera's initial target position
+  camera.setTarget(targetPos);  // Set the camera to look at the target position
+  camera.setDistance(TerrainScale * 2.0f);  // Set initial camera distance
+  camera.setPitch(bx::toRad(30.0f));        // Look downward
+  camera.setYaw(bx::toRad(45.0f));          // Set initial yaw
+
   // Initialize terrain world matrix (scale)
   bx::mtxIdentity(this->world_matrix);
   float terrainCenterOffset = (TerrainSize - 1) * 0.5f;
   float scaleMtx[16];
   float translateMtx[16];
   bx::mtxScale(scaleMtx, TerrainScale, 10.0f, TerrainScale);
-  float desiredTerrainCenter[3] = {-31.683f, 0.0f, -27.185f};
+  float desiredTerrainCenter[3] = {32.0f, -147.826f, 200.0f};
   bx::mtxTranslate(
       translateMtx,
       desiredTerrainCenter[0] - terrainCenterOffset * TerrainScale,
@@ -375,16 +402,16 @@ void GameTest::Init() {
   bx::mtxMul(this->world_matrix, scaleMtx, translateMtx);
 
   // Initialize water model matrix (flat plane)
-  // Create water matrix
-  float waterModelMatrix[16];
-  bx::mtxIdentity(waterModelMatrix);
+  // Bring in the water matrix member
+
+  bx::mtxIdentity(this->waterModelMatrix);
   bx::mtxScale(scaleMtx, TerrainScale, 1.0f, TerrainScale);
   bx::mtxTranslate(
       translateMtx,
       desiredTerrainCenter[0] - terrainCenterOffset * TerrainScale,
       desiredTerrainCenter[1] + 0.1f,  // Slight Y offset to sit above terrain
       desiredTerrainCenter[2] - terrainCenterOffset * TerrainScale);
-  bx::mtxMul(waterModelMatrix, scaleMtx, translateMtx);
+  bx::mtxMul(this->waterModelMatrix, scaleMtx, translateMtx);
 }
 
 // Updates game state per frame
@@ -441,7 +468,7 @@ void GameTest::Render() {
       bx::lerp(0.6f, 0.95f, sunElevationFactor) * baseSunLuminance;
   _sunColorArray[2] =
       bx::lerp(0.4f, 0.9f, sunElevationFactor) * baseSunLuminance;
-  _sunColorArray[3] = sunIntensity;   
+  _sunColorArray[3] = sunIntensity;
 
   bgfx::setUniform(_sunLumUniform, _sunColorArray);
 
@@ -575,14 +602,19 @@ void GameTest::Render() {
   bgfx::setTexture(3, _heightUniform, _heightTexture);
   bgfx::setTexture(4, _shadowSamplerUniform, shadowMapTexture);
 
-
   bgfx::setVertexBuffer(0, _terrainVbh);
   bgfx::setIndexBuffer(_terrainIbh);
   bgfx::setState(BGFX_STATE_DEFAULT | BGFX_STATE_CULL_CW | BGFX_STATE_MSAA);
   bgfx::submit(terrainViewID, _terrainProgramHeight);
 
   // --- Water Pass ---
-  bgfx::setViewTransform(ViewID::SCENE_N(2), viewMatrix, projMatrix);
+
+  bgfx::setViewClear(ViewID::WATER_PASS, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH,
+                     0x00FF00FF,  // Clear to BRIGHT GREEN
+                     1.0f, 0);
+  bgfx::setViewRect(ViewID::WATER_PASS, 0, 0, canvasViewportW, canvasViewportH);
+  bgfx::setViewTransform(ViewID::WATER_PASS, viewMatrix, projMatrix);
+
   bgfx::setTransform(waterModelMatrix);  // Flat plane or positioned
   float timeVec[4] = {_waterTime, 0.0f, 0.0f, 0.0f};
   float waterColorVec[4] = {0.2f, 0.4f, 0.5f, 1.0f};
@@ -603,7 +635,7 @@ void GameTest::Render() {
   bgfx::setState(BGFX_STATE_DEFAULT | BGFX_STATE_MSAA | BGFX_STATE_WRITE_RGB |
                  BGFX_STATE_BLEND_ALPHA | BGFX_STATE_DEPTH_TEST_LEQUAL);
 
-  bgfx::submit(ViewID::SCENE_N(2), _waterProgram);
+  bgfx::submit(ViewID::WATER_PASS, _waterProgram);
 }
 
 // Releases all BGFX resources
