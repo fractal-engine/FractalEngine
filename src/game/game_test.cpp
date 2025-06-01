@@ -279,20 +279,12 @@ void GameTest::Init() {
 
   for (uint16_t y = 0; y < TerrainSize; ++y) {
     for (uint16_t x = 0; x < TerrainSize; ++x) {
-      // Reuse UVs and flat Y
       float u = float(x) / (TerrainSize - 1);
       float v = float(y) / (TerrainSize - 1);
-
-      // compute mask (same logic as previous vs_terrain oasisMask)
-      float dx = u - 0.5f;
-      float dy = v - 0.5f;
-      float dist = sqrtf(dx * dx + dy * dy);
-      float mask = 1.0f - local_smoothStep(0.012f, 0.012f + 0.0005f, dist);
-      mask = powf(mask, 48.0f);
-
-      waterVertices.push_back({float(x), 0.0f, float(y), u, v});
+      waterVertices.push_back({(float)x, 0.0f, (float)y, u, v});
     }
   }
+
 
   // Create waterIndices using same grid method as terrain
   const uint16_t gridSize = TerrainSize;
@@ -401,7 +393,7 @@ void GameTest::Update() {
   cameraSystem.UpdateFromKeyboard();
 
   // Increment time
-  _cycleTime += 0.007f;
+  _cycleTime += 0.0007f;
   if (_cycleTime > bx::kPi * 2.0f) {
     _cycleTime -= bx::kPi * 2.0f;
   }
@@ -439,7 +431,9 @@ void GameTest::Render() {
   float sunElevationFactor = local_smoothStep(
       -0.15f, 0.2f,
       sunDirectionVec.y);  // Smooth transition for sun color/intensity
+
   float baseSunLuminance = 10.0f;
+  float sunIntensity = 5.0f;
 
   _sunColorArray[0] =
       bx::lerp(0.8f, 1.0f, sunElevationFactor) * baseSunLuminance;
@@ -447,7 +441,8 @@ void GameTest::Render() {
       bx::lerp(0.6f, 0.95f, sunElevationFactor) * baseSunLuminance;
   _sunColorArray[2] =
       bx::lerp(0.4f, 0.9f, sunElevationFactor) * baseSunLuminance;
-  _sunColorArray[3] = 0.0f;
+  _sunColorArray[3] = sunIntensity;   
+
   bgfx::setUniform(_sunLumUniform, _sunColorArray);
 
   _parametersArray[0] = 0.00465f;  // Sun Angular Radius

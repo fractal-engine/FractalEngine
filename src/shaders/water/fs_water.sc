@@ -44,6 +44,19 @@ vec3 FresnelSchlick(float cosTheta, vec3 F0) {
 }
 
 void main() {
+
+    // --- Oasis mask (early discard) ---
+    float dx = v_out_uv.x - 0.5;
+    float dy = v_out_uv.y - 0.5;
+    float dist = sqrt(dx * dx + dy * dy);
+
+    float mask = 1.0 - smoothstep(0.012, 0.012 + 0.0005, dist);
+    mask = pow(mask, 48.0);
+
+    if (mask < 0.01) {
+        discard; // Skip rendering outside oasis area
+    }
+
     // --- Animated UV flow ---
     vec2 flow1 = vec2(0.4, 0.2);
     vec2 flow2 = vec2(-0.3, 0.6);

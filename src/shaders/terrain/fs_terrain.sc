@@ -114,15 +114,16 @@ void main() {
     float LdotH_T = max(dot(L, H), 0.0);
     float D_T = DistributionGGX(N_terrain, H, roughness);
     float G_T = GeometrySmith(N_terrain, V, L, roughness);
-    vec3  F_T = FresnelSchlick(LdotH_T, F0_terrain);
-    vec3  specularT = (D_T * G_T * F_T) / (4.0 * NdotL_T * NdotV_T + 0.0001);
-    vec3  kS_T = F_T;
-    vec3  kD_T = (vec3_splat(1.0) - kS_T) * (1.0 - metalness);
+    vec3 F_T = FresnelSchlick(max(dot(V, H), 0.0), F0_terrain);
+    vec3 specularT = (D_T * G_T * F_T) / (4.0 * NdotL_T * NdotV_T + 0.0001);
+    vec3 kS_T = F_T;
+    vec3 kD_T = (vec3_splat(1.0) - kS_T) * (1.0 - metalness);
 
-   
     // --- Shadow Mapping ---
 
-    float shadow = PCF(s_shadowMap, v_out_shadowCoord, 0.005, vec2_splat(1.0 / 2048.0));
+    float NdotL = max(dot(N_terrain, L), 0.0);
+    float bias = max(0.0025 * (1.0 - NdotL), 0.0005);
+    float shadow = PCF(s_shadowMap, v_out_shadowCoord, bias, vec2_splat(1.0 / 1024.0)); // use larger texel size
 
     // --- Fake AO (based on slope) ---
 
@@ -131,17 +132,40 @@ void main() {
 
     // --- Terrain Lighting Components ---
 
-    vec3 Lo_terrain = (kD_T * albedo / PI + specularT) * u_sunLuminance.rgb * NdotL_T * shadow;
+    vec3 sunlight = u_sunLuminance.rgb * u_sunLuminance.w;
+    vec3 Lo_terrain = (kD_T * albedo / PI + specularT) * sunlight * NdotL_T * shadow;
     vec3 ambientT = u_skyAmbient.rgb * albedo * aoCombined;
-
 
     // --- Final Blending ---
 
     vec3 finalColor = Lo_terrain + ambientT;
 
+    // --- Exposure control + Reinhard ToneMapping ---
+
+    float sunElevation = u_sunDirection.y; 
+
+    // Define exposure range
+    float minExposureDawnDusk = 0.0007; 
+    float maxExposureMidday   = 0.07;  
+
+    // Define sun elevation thresholds for the transition.
+    float dawnElevationThreshold   = 0.0;  // Sun at/near horizon
+    float middayElevationThreshold = 0.6;  // Sun elevation at which maxExposureMidday is reached
+                                           
+
+    // Calculate an interpolation factor based on sun elevation.
+  
+    float exposureInterpFactor = smoothstep(dawnElevationThreshold, middayElevationThreshold, sunElevation);
+
+    // Interpolate the exposure value
+    float dynamicExposure = mix(minExposureDawnDusk, maxExposureMidday, exposureInterpFactor);
+
+    // --- Tonemapping (before Gamma) ---
+    vec3 exposedColor = finalColor * dynamicExposure;
+    vec3 tonemappedColor = exposedColor / (exposedColor + vec3_splat(1.0)); // Reinhard
 
     // --- Output Final Color ---
-    gl_FragColor = vec4(toGamma(finalColor), 1.0);
+    gl_FragColor = vec4(toGamma(tonemappedColor), 1.0);
 }
 
 
