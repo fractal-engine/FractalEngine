@@ -19,8 +19,6 @@
 #include "engine/renderer/shaders/shader_manager.h"
 #include "engine/resources/shader_utils.h"
 
-#include "editor/runtime/subsystem.h"
-
 #include "platform/platform_utils.h"
 
 GraphicsRenderer::GraphicsRenderer() {

@@ -15,6 +15,7 @@ target("engine")
     add_files("renderer/*.cpp", "renderer/lighting/*.cpp",
               "renderer/shaders/*.cpp")
     add_files("resources/*.cpp", "resources/textures/*.cpp", "scene/*.cpp")
+    add_files("runtime/*.cpp")
 
     -- compile .sc shaders from assets with our rule
     add_files("../assets/shaders/**/vs_*.sc")

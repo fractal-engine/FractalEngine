@@ -61,6 +61,9 @@ public:
   static SDL_Rect windowedBounds;
   static bool minimized;
   static bool fullscreen_;
+
+  // ───── WINDOW UTILS ─────
+  static bool WindowShouldClose() { return SDL_QuitRequested(); }
 };
 
 #endif  // SDL_PLATFORM_H

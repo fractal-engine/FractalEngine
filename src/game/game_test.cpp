@@ -107,7 +107,7 @@ void GameTest::Init() {
   camera.setPitch(0.4f);
   camera.setYaw(0.75f);
 
-  auto& shaderMgr = *Application::GetShaderManager();
+  auto& ShaderManager = *Application::GetShaderManager();
 
   // ― Terrain shader
   _terrainProgramHeight = Application::GetShaderManager()->LoadProgram(
@@ -115,7 +115,7 @@ void GameTest::Init() {
 
   // ― Sky / Sun
   _skyProgram =
-      shaderMgr.LoadProgram("skybox", "vs_skybox.bin", "fs_skybox.bin");
+      ShaderManager.LoadProgram("skybox", "vs_skybox.bin", "fs_skybox.bin");
 
   // ― Shadow-only terrain shader
   _terrainShadowProgram = Application::GetShaderManager()->LoadProgram(

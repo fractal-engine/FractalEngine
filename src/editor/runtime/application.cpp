@@ -1,130 +1,97 @@
 #include "application.h"
 #include "engine/core/logger.h"
+#include "engine/runtime/core_loop.h"
 #include "game/game_test.h"
-#include "game/game_manager.h"
-#include "engine/renderer/renderer_graphics.h"
-#include "platform/window_manager.h"
 
-using namespace std;
-
+// ───────────────────────────────────────────
+//  system initialization and lifecycle
+// ───────────────────────────────────────────
 void Application::Initialize() {
-  getInstance().initialize();
-}
-
-// Function to get the editor instance
-const unique_ptr<EditorBase>& Application::GetEditor() {
-  return getInstance().editor_;
-}
-
-// Function to get the renderer instance
-const std::unique_ptr<RendererBase>& Application::GetRenderer() {
-  return getInstance().renderer_;
-}
-
-// Function to get the game manager instance
-const std::unique_ptr<GameManager>& Application::GetGameManager() {
-  return getInstance().game_manager_;
-}
-
-const std::unique_ptr<Input>& Application::GetInput() {
-  return getInstance().input_;
-}
-
-const std::unique_ptr<WindowManager>& Application::GetWindowManager() {
-  return getInstance().window_manager_;
-}
-
-const std::unique_ptr<ShaderManager>& Application::GetShaderManager() {
-  return getInstance().shader_manager_;
-}
-
-// FIXME: fix constructors/destructors to use .reset only
-// Some functions might be more appropriate to use in window_manager
-void Application::initialize() {
-  // 1. Initialize window manager
-  window_manager_ = std::make_unique<WindowManager>();
-  if (!window_manager_->Initialize("Fractal Engine", 1280, 720)) {
-    Logger::getInstance().Log(LogLevel::Error,
-                              "WindowManager failed to initialize.");
-    std::exit(1);
-  }
-
-  // 2. Initialize renderer + bgfx
-  renderer_ = std::make_unique<GraphicsRenderer>();
-  if (!static_cast<GraphicsRenderer*>(renderer_.get())->InitBgfx()) {
-    Logger::getInstance().Log(LogLevel::Error,
-                              "BGFX failed to initialize in renderer!");
-    std::exit(1);
-  }
-
-  Logger::getInstance().Log(LogLevel::Info, "Renderer initialized");
-
-  // 3. Initialize ShaderManager
-  shader_manager_ = std::make_unique<ShaderManager>();
-  shader_manager_->Init();
-  Logger::getInstance().Log(LogLevel::Info, "Shader Manager initialized");
-
-  // 4. Initialize Input
-  input_ = std::make_unique<Input>();
-  Logger::getInstance().Log(LogLevel::Info, "Input initialized");
-
-  // 5. Initialize Editor
-  editor_.reset(new EditorLayer(renderer_));
-  Logger::getInstance().Log(LogLevel::Info, "Editor initialized");
-
-  // TODO - Read Game Manager read games from filesystem
-  // 6. Initialize GameManager
-  game_manager_.reset(new GameManager(std::make_unique<GameTest>()));
-  Logger::getInstance().Log(LogLevel::Info, "Game Manager initialized");
-
-  // Connect editor signals to game manager
-  editor_->game_start_pressed.connect([&] { game_manager_->StartGame(); });
-  editor_->game_end_pressed.connect([&] { game_manager_->EndGame(); });
-  editor_->editor_exit_pressed.connect([&] { game_manager_->Terminate(); });
-  editor_->game_inputed.connect([&](InputEvent event) {
-    input_->FowardInputEvent(event, game_manager_->GetFrameCount());
-  });
-  renderer_->redrawn.connect([&] { editor_->RequestUpdate(); });
-
-  game_manager_->StartGame();  // Start the game
+  getInstance().InitializeInternal();
 }
 
 void Application::Shutdown() {
-  Logger::getInstance().Log(LogLevel::Info,
-                            "=== Application::Shutdown called ===");
+  Logger::getInstance().Log(LogLevel::Info, "Application::Shutdown");
 
-  // 1. Stop the game thread
-  if (getInstance().game_manager_) {
-    getInstance().game_manager_->Shutdown();   // destroy BGFX resources
-    getInstance().game_manager_->Terminate();  // stop thread
+  auto& self = getInstance();  // shorthand
+
+  /* 1 – stop game logic */
+  if (self.game_manager_) {
+    self.game_manager_->Shutdown();
+    self.game_manager_->Terminate();
+    self.game_manager_.reset();
   }
 
-  // 2. Shutdown ImGui and Editor
-  if (getInstance().editor_) {
-    Logger::getInstance().Log(LogLevel::Info, "Shutting down Editor");
-    getInstance().editor_->Shutdown();
+  /* 2 – destroy editor subsystems */
+  if (self.editor_) {
+    self.editor_->Shutdown();
+    self.editor_.reset();
   }
 
-  // 3. Shutdown ShaderManager
-  if (getInstance().shader_manager_) {
-    Logger::getInstance().Log(LogLevel::Info, "Shutting down Shader Manager");
-    getInstance().shader_manager_->Shutdown();
+  /* 3 – shutdown engine runtime */
+  runtime::Shutdown();
+}
+
+// ───────────────────────────────────────────
+//  getters
+// ───────────────────────────────────────────
+EditorBase* Application::GetEditor() {
+  return getInstance().editor_.get();
+}
+RendererBase* Application::GetRenderer() {
+  return getInstance().renderer_;
+}
+GameManager* Application::GetGameManager() {
+  return getInstance().game_manager_.get();
+}
+Input* Application::GetInput() {
+  return getInstance().input_;
+}
+WindowManager* Application::GetWindowManager() {
+  return getInstance().window_manager_;
+}
+ShaderManager* Application::GetShaderManager() {
+  return getInstance().shader_manager_;
+}
+
+// ───────────────────────────────────────────
+//  boot sequence (should run once)
+// ───────────────────────────────────────────
+void Application::InitializeInternal() {
+  Logger::getInstance().Log(LogLevel::Info, "Application::Initialize");
+
+  /* 1 – initialize engine runtime subsystems */
+  runtime::Config config;
+  if (!runtime::Init(config)) {
+    Logger::getInstance().Log(LogLevel::Error, "runtime::Init() failed");
+    std::exit(1);
   }
 
-  // 4. Shutdown graphics renderer
-  if (getInstance().renderer_) {
-    Logger::getInstance().Log(LogLevel::Info, "Shutting down Renderer");
-    getInstance().renderer_->Shutdown();
-  }
+  /* 2 – cache subsystem references */
+  window_manager_ = &runtime::window();
+  renderer_ = &runtime::renderer();
+  shader_manager_ = &runtime::shaderManager();
+  input_ = &runtime::input();
 
-  // 5. reset all subsystems
-  getInstance().game_manager_.reset();
-  getInstance().input_.reset();
-  getInstance().editor_.reset();
-  getInstance().renderer_.reset();
-  getInstance().window_manager_.reset();
-  getInstance().shader_manager_.reset();
+  /* 3 – initialize editor layer */
+  editor_ = std::make_unique<EditorLayer>(renderer_);
+  Logger::getInstance().Log(LogLevel::Info, "Editor initialized");
 
-  Logger::getInstance().Log(LogLevel::Info,
-                            "=== Application::Shutdown complete ===");
+  /* 4 – initialize game manager */
+  game_manager_ = std::make_unique<GameManager>(std::make_unique<GameTest>());
+  Logger::getInstance().Log(LogLevel::Info, "GameManager initialized");
+
+  /* 5 – connect editor event handles */
+  editor_->game_start_pressed.connect([&] { game_manager_->StartGame(); });
+  editor_->game_end_pressed.connect([&] { game_manager_->EndGame(); });
+  editor_->editor_exit_pressed.connect([&] { game_manager_->Terminate(); });
+
+  editor_->game_inputed.connect([&](InputEvent event) {
+    input_->FowardInputEvent(event, game_manager_->GetFrameCount());
+  });
+
+  renderer_->redrawn.connect([&] { editor_->RequestUpdate(); });
+
+  /* 6 – start game execution */
+  game_manager_->StartGame();
 }
