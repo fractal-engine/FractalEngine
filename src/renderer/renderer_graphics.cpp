@@ -11,6 +11,7 @@
 #include <iostream>
 #include <sstream>
 #include <string>
+#include <cstdio>
 
 #include "core/engine_globals.h"
 #include "core/logger.h"
@@ -183,40 +184,111 @@ void GraphicsRenderer::PrepareFrame() {
 // Framebuffer initialization and handling
 // Logic includes double buffering
 void GraphicsRenderer::CreateFramebuffers(uint16_t w, uint16_t h) {
-  // create new framebuffer before destroying old one
-  bgfx::TextureHandle new_color = bgfx::createTexture2D(
+  if (w == 0 || h == 0) {
+    Logger::getInstance().Log(
+        LogLevel::Error,
+        "CreateFramebuffers called with zero dimensions, skipping.");
+    return;
+  }
+
+  char log_buffer[512];  // Shared buffer for log messages
+
+  snprintf(log_buffer, sizeof(log_buffer),
+           "CreateFramebuffers: Attempting with w=%u, h=%u",
+           static_cast<unsigned int>(w), static_cast<unsigned int>(h));
+  Logger::getInstance().Log(LogLevel::Debug, log_buffer);
+
+  // Create new textures
+  bgfx::TextureHandle new_color_th = bgfx::createTexture2D(
       w, h, false, 1, bgfx::TextureFormat::BGRA8,
       BGFX_TEXTURE_RT | BGFX_SAMPLER_U_CLAMP | BGFX_SAMPLER_V_CLAMP);
+  snprintf(
+      log_buffer, sizeof(log_buffer),
+      "CreateFramebuffers: new_color_th created, handle: %s",
+      (bgfx::isValid(new_color_th) ? std::to_string(new_color_th.idx).c_str()
+                                   : "INVALID"));
+  Logger::getInstance().Log(LogLevel::Debug, log_buffer);
 
-  bgfx::TextureHandle new_depth =
+  bgfx::TextureHandle new_depth_th =
       bgfx::createTexture2D(w, h, false, 1, bgfx::TextureFormat::D24S8,
                             BGFX_TEXTURE_RT | BGFX_TEXTURE_RT_WRITE_ONLY);
+  snprintf(
+      log_buffer, sizeof(log_buffer),
+      "CreateFramebuffers: new_depth_th created, handle: %s",
+      (bgfx::isValid(new_depth_th) ? std::to_string(new_depth_th.idx).c_str()
+                                   : "INVALID"));
+  Logger::getInstance().Log(LogLevel::Debug, log_buffer);
 
-  // destroy old framebuffer after new one is ready
-  const bgfx::TextureHandle attachments[2] = {new_color, new_depth};
-  bgfx::FrameBufferHandle new_framebuffer =
-      bgfx::createFrameBuffer(BX_COUNTOF(attachments), attachments, false);
+  if (!bgfx::isValid(new_color_th) || !bgfx::isValid(new_depth_th)) {
+    snprintf(log_buffer, sizeof(log_buffer),
+             "CreateFramebuffers: Texture creation failed. new_color valid: "
+             "%s, new_depth valid: %s",
+             bgfx::isValid(new_color_th) ? "true" : "false",
+             bgfx::isValid(new_depth_th) ? "true" : "false");
+    Logger::getInstance().Log(LogLevel::Error, log_buffer);
 
-  if (bgfx::isValid(new_framebuffer)) {
-    // If success, clean up old and switch to new
-    if (bgfx::isValid(scene_framebuffer_))
-      bgfx::destroy(scene_framebuffer_);
+    if (bgfx::isValid(new_color_th))
+      bgfx::destroy(new_color_th);
+    if (bgfx::isValid(new_depth_th))
+      bgfx::destroy(new_depth_th);
+    return;
+  }
 
-    scene_framebuffer_ = new_framebuffer;
-    scene_color_texture_ = new_color;
-    scene_depth_texture_ = new_depth;
+  const bgfx::TextureHandle attachments[2] = {new_color_th, new_depth_th};
+  // Create FBO, and tell it to destroy these new textures if the FBO itself is
+  // destroyed.
+  bgfx::FrameBufferHandle new_fbh =
+      bgfx::createFrameBuffer(BX_COUNTOF(attachments), attachments,
+                              true);  // true = destroy attachments with FBO
+
+  if (bgfx::isValid(new_fbh) &&
+      new_fbh.idx !=
+          0) {  // Explicitly check for non-zero handle for off-screen FBO
+    snprintf(log_buffer, sizeof(log_buffer),
+             "SUCCESS: Created new_framebuffer. Handle: %u, ColorTex: %u, "
+             "DepthTex: %u",
+             static_cast<unsigned int>(new_fbh.idx),
+             static_cast<unsigned int>(new_color_th.idx),
+             static_cast<unsigned int>(new_depth_th.idx));
+    Logger::getInstance().Log(LogLevel::Info, log_buffer);
+
+    if (bgfx::isValid(scene_framebuffer_)) {
+      snprintf(
+          log_buffer, sizeof(log_buffer),
+          "Destroying old scene_framebuffer_ (handle %u) and its textures.",
+          scene_framebuffer_.idx == bgfx::kInvalidHandle
+              ? 9999
+              : static_cast<unsigned int>(scene_framebuffer_.idx));
+      Logger::getInstance().Log(LogLevel::Debug, log_buffer);
+      bgfx::destroy(scene_framebuffer_);  // This will also destroy its
+                                          // attachments if created with 'true'
+    }
+
+    scene_framebuffer_ = new_fbh;
+    scene_color_texture_ = new_color_th;
+    scene_depth_texture_ = new_depth_th;
     scene_tex_id_ = (ImTextureID)(uintptr_t)scene_color_texture_.idx;
 
     last_framebuffer_width_ = w;
     last_framebuffer_height_ = h;
   } else {
-    // If else failed, clean up the attempt
-    if (bgfx::isValid(new_color))
-      bgfx::destroy(new_color);
-    if (bgfx::isValid(new_depth))
-      bgfx::destroy(new_depth);
+    snprintf(log_buffer, sizeof(log_buffer),
+             "FAILURE: bgfx::createFrameBuffer FAILED or returned handle 0. "
+             "New FBH idx: %u",
+             new_fbh.idx == bgfx::kInvalidHandle
+                 ? 9999
+                 : static_cast<unsigned int>(new_fbh.idx));
+    Logger::getInstance().Log(LogLevel::Error, log_buffer);
+
+    // If FBO creation failed, destroy the textures we just made for it, as they
+    // are not attached to a valid new FBO.
+    if (bgfx::isValid(new_color_th))
+      bgfx::destroy(new_color_th);
+    if (bgfx::isValid(new_depth_th))
+      bgfx::destroy(new_depth_th);
   }
 }
+
 
 void GraphicsRenderer::Render() {
 
