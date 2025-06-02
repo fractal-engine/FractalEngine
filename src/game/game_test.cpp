@@ -604,7 +604,7 @@ void GameTest::Render() {
     bgfx::setUniform(_betaMUniform, totalBetaM);
     bgfx::setUniform(_scatterParamsUniform, scatterParams);
     bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A |
-                   BGFX_STATE_DEPTH_TEST_LEQUAL | BGFX_STATE_CULL_CCW);
+                   BGFX_STATE_DEPTH_TEST_LEQUAL | BGFX_STATE_CULL_CW);
     bgfx::submit(ViewID::REFLECTION_PASS, _skyProgram);
   }
 
