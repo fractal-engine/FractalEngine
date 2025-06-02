@@ -1,25 +1,25 @@
 #pragma once
-#include <cstddef>
+#include <array>
 #include <cstdint>
 
 namespace ViewID {
+// back-buffer
+constexpr uint8_t UI_BACKGROUND = 0;
 
-constexpr uint8_t UI_BACKGROUND = 0; // default back-buffer - never point this at scene FBO
+// scene FBO (colour+depth) – MUST be consecutive
+constexpr uint8_t SCENE_SKYBOX = 1;
+constexpr uint8_t SCENE_TERRAIN = 2;
+constexpr uint8_t WATER_PASS = 3;
+constexpr uint8_t DEBUG_PASS = 4;
 
-// main scene – *always* bound to GraphicsRenderer::scene_framebuffer_
-constexpr uint8_t SCENE = 1;
+// shadow map (separate FBO)
+constexpr uint8_t SHADOW_PASS = 5;
 
-// extra passes that still belong to scene FBO
-inline constexpr uint8_t SCENE_N(std::size_t n) {
-  return static_cast<uint8_t>(SCENE + n);
-}
-
-//define shadow pass using SCENE
-constexpr uint8_t SHADOW_PASS = SCENE + 2;
-constexpr uint8_t DEBUG_PASS = SHADOW_PASS + 1;
-constexpr uint8_t WATER_PASS = DEBUG_PASS + 1;  // == 5
-
-constexpr uint8_t UI = 254; // IMGUI
+// miscellaneous
+constexpr uint8_t UI = 254;
 constexpr uint8_t COUNT = 255;
 
+/// every pass that is rendered **into scene_framebuffer_**
+inline constexpr std::array<uint8_t, 4> kSceneViews = {
+    SCENE_SKYBOX, SCENE_TERRAIN, WATER_PASS, DEBUG_PASS};
 }  // namespace ViewID

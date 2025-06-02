@@ -7,11 +7,11 @@
 #include <imgui.h>
 
 #include <bx/math.h>
+#include <cstdio>
 #include <cstdlib>
 #include <iostream>
 #include <sstream>
 #include <string>
-#include <cstdio>
 
 #include "core/engine_globals.h"
 #include "core/logger.h"
@@ -143,25 +143,14 @@ void GraphicsRenderer::PrepareFrame() {
     CreateFramebuffers(fbw, fbh);
   }
 
-  // Configure views that render into the scene_framebuffer_
-  uint8_t sceneViews[] = {
-      ViewID::SCENE,       // ID 1 (Skybox)
-      ViewID::SCENE_N(1),  // ID 2 (Terrain)
-      // Add other views that belong to this scene FBO
-      ViewID::WATER_PASS,  // ID 5 (Water)
-      ViewID::SHADOW_PASS, 
-      // ViewID::DEBUG_PASS,  // ID 4 (If it should render to
-      // scene_framebuffer_)
-  };
-
   // Common clear for the scene_framebuffer_ (done by the first view using it)
-  bgfx::setViewClear(ViewID::SCENE, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH,
+  // GraphicsRenderer::PrepareFrame()
+  bgfx::setViewClear(ViewID::SCENE_SKYBOX, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH,
                      0x303030ff, 1.0f, 0);
 
-  for (uint8_t viewId : sceneViews) {
-    bgfx::setViewRect(viewId, 0, 0, fbw, fbh);
-    bgfx::setViewFrameBuffer(viewId, scene_framebuffer_);
-    // Individual view transforms will be set in GameTest::Render()
+  for (uint8_t vid : ViewID::kSceneViews) {
+    bgfx::setViewRect(vid, 0, 0, fbw, fbh);
+    bgfx::setViewFrameBuffer(vid, scene_framebuffer_);
   }
 
   // ViewID::UI_BACKGROUND (ID 0) - Clears the actual window backbuffer
@@ -288,7 +277,6 @@ void GraphicsRenderer::CreateFramebuffers(uint16_t w, uint16_t h) {
       bgfx::destroy(new_depth_th);
   }
 }
-
 
 void GraphicsRenderer::Render() {
 

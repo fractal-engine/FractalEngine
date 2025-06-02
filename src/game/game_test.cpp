@@ -524,8 +524,9 @@ void GameTest::Render() {
   bgfx::submit(ViewID::SHADOW_PASS, _terrainShadowProgram);
 
   // --- Main Scene Pass ---
-  bgfx::setViewRect(ViewID::SCENE, 0, 0, canvasViewportW, canvasViewportH);
-  bgfx::setViewClear(ViewID::SCENE, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH,
+  bgfx::setViewRect(ViewID::SCENE_SKYBOX, 0, 0, canvasViewportW,
+                    canvasViewportH);
+  bgfx::setViewClear(ViewID::SCENE_SKYBOX, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH,
                      0x303030ff, 1.0f, 0);
 
   // Calculate inverse view and projection matrices for skybox
@@ -534,7 +535,7 @@ void GameTest::Render() {
   bx::mtxInverse(invProjMatrix, projMatrix);
 
   // Render Skybox
-  bgfx::setViewTransform(ViewID::SCENE, viewMatrix, projMatrix);
+  bgfx::setViewTransform(ViewID::SCENE_SKYBOX, viewMatrix, projMatrix);
   float skyboxModelMatrix[16];
   bx::mtxIdentity(skyboxModelMatrix);
   bgfx::setTransform(skyboxModelMatrix);
@@ -563,10 +564,10 @@ void GameTest::Render() {
 
   bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A |
                  BGFX_STATE_DEPTH_TEST_LEQUAL);
-  bgfx::submit(ViewID::SCENE, _skyProgram);
+  bgfx::submit(ViewID::SCENE_SKYBOX, _skyProgram);
 
   // --- Terrain Pass ---
-  uint8_t terrainViewID = ViewID::SCENE_N(1);
+  constexpr uint8_t terrainViewID = ViewID::SCENE_TERRAIN;
   bgfx::setViewRect(terrainViewID, 0, 0, canvasViewportW, canvasViewportH);
   bgfx::setViewTransform(terrainViewID, viewMatrix, projMatrix);
   bgfx::setTransform(this->world_matrix);
@@ -627,8 +628,11 @@ void GameTest::Render() {
 
   bgfx::setVertexBuffer(0, _waterVbh);
   bgfx::setIndexBuffer(_waterIbh);
-  bgfx::setState(BGFX_STATE_DEFAULT | BGFX_STATE_MSAA | BGFX_STATE_WRITE_RGB |
-                 BGFX_STATE_BLEND_ALPHA | BGFX_STATE_DEPTH_TEST_LEQUAL);
+  const uint64_t WATER_STATE = BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A |
+                               BGFX_STATE_MSAA | BGFX_STATE_BLEND_ALPHA |
+                               BGFX_STATE_DEPTH_TEST_LEQUAL;  // no DEPTH_WRITE
+
+  bgfx::setState(WATER_STATE);
 
   bgfx::submit(ViewID::WATER_PASS, _waterProgram);
 }
