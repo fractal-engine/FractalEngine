@@ -1,7 +1,7 @@
-#include <thirdparty/bgfx.cmake/bgfx/include/bgfx/bgfx.h>
-#include <thirdparty/bgfx.cmake/bx/include/bx/debug.h>
-#include <thirdparty/bgfx.cmake/bx/include/bx/file.h>
-#include <thirdparty/bgfx.cmake/bx/include/bx/readerwriter.h>
+#include <bgfx/bgfx.h>
+#include <bx/debug.h>
+#include <bx/file.h>
+#include <bx/readerwriter.h>
 
 #include "engine/core/logger.h"
 

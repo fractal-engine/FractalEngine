@@ -4,7 +4,7 @@
 #include <string>
 #include <thread>
 #include "engine/core/logger.h"
-#include "thirdparty/dr_wav.h"
+#include "../thirdparty/dr_wav.h"
 
 class SoundManager {
 public:

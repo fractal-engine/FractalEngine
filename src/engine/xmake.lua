@@ -6,9 +6,9 @@ target("engine")
 
     add_deps("platform")
     add_includedirs("..", {public = true})
-    add_includedirs("../thirdparty/bgfx.cmake/bgfx/include")
-    add_includedirs("../thirdparty/bgfx.cmake/bx/include")
-    add_includedirs("../thirdparty/bgfx.cmake/bimg/include")
+    add_includedirs("../../thirdparty/bgfx.cmake/bgfx/include")
+    add_includedirs("../../thirdparty/bgfx.cmake/bx/include")
+    add_includedirs("../../thirdparty/bgfx.cmake/bimg/include")
 
     add_files("core/*.cpp")
     add_files("audio/*.cpp")
@@ -35,7 +35,7 @@ target_end()
 ---------------------------------------------------------------
 package("bgfx")
     add_deps("cmake") -- Use CMake to build bgfx
-    set_sourcedir("src/thirdparty/bgfx.cmake") -- Path to the bgfx source directory
+    set_sourcedir("../../thirdparty/bgfx.cmake") -- Path to the bgfx source directory
     on_install(function (package)
         local configs = {
             "-DBGFX_BUILD_EXAMPLES=OFF",
@@ -84,11 +84,11 @@ rule("bgfx_shaderc")
         -- Get the correct path to shaderc based on platform
         local shaderc = ""
         if is_plat("windows") then
-            shaderc = path.join(os.projectdir(), "src/thirdparty/bgfx.cmake/.build/win64_vs2022/cmake/bgfx/Release/shaderc.exe")
+            shaderc = path.join(os.projectdir(), "thirdparty/bgfx.cmake/.build/win64_vs2022/cmake/bgfx/Release/shaderc.exe")
         elseif is_plat("macosx") then
-            shaderc = path.join(os.projectdir(), "src/thirdparty/bgfx.cmake/.build/osx/cmake/bgfx/shaderc")
+            shaderc = path.join(os.projectdir(), "thirdparty/bgfx.cmake/.build/osx/cmake/bgfx/shaderc")
         elseif is_plat("linux") then
-            shaderc = path.join(os.projectdir(), "src/thirdparty/bgfx.cmake/.build/linux/bin/shaderc")
+            shaderc = path.join(os.projectdir(), "thirdparty/bgfx.cmake/.build/linux/bin/shaderc")
         end
         
         if not os.isfile(shaderc) then
@@ -153,8 +153,8 @@ rule("bgfx_shaderc")
                 "--platform", backend.platform,
                 "--profile", backend.profile,
                 "--varyingdef", varying_file,
-                "-i", path.join(os.projectdir(), "src/thirdparty/bgfx.cmake/bgfx/src"),
-                "-i", path.join(os.projectdir(), "src/thirdparty/bgfx.cmake/bgfx/examples/common"),
+                "-i", path.join(os.projectdir(), "thirdparty/bgfx.cmake/bgfx/src"),
+                "-i", path.join(os.projectdir(), "thirdparty/bgfx.cmake/bgfx/examples/common"),
                 "-i", path.join(os.projectdir(), "src/assets/shaders/includes"),
                 "--entry", "main",
                 "-f", sourcefile,

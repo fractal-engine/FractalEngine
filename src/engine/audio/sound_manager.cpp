@@ -1,5 +1,5 @@
 #define DR_WAV_IMPLEMENTATION
-#include "thirdparty/dr_wav.h"
+#include "../thirdparty/dr_wav.h"
 
 #include "sound_manager.h" 
 

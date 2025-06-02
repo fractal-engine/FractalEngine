@@ -6,9 +6,9 @@ target("sample_game")
     add_deps("engine")
 
     add_includedirs("..", {public=true})
-    add_includedirs("../thirdparty/bgfx.cmake/bgfx/include")
-    add_includedirs("../thirdparty/bgfx.cmake/bx/include")
-    add_includedirs("../thirdparty/bgfx.cmake/bimg/include")
+    add_includedirs("../../thirdparty/bgfx.cmake/bgfx/include")
+    add_includedirs("../../thirdparty/bgfx.cmake/bx/include")
+    add_includedirs("../../thirdparty/bgfx.cmake/bimg/include")
     
     add_files("*.cpp")
     add_headerfiles("*.h")
