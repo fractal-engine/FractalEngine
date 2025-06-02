@@ -94,7 +94,4 @@ void Application::InitializeInternal() {
   });
 
   renderer_->redrawn.connect([&] { editor_->RequestUpdate(); });
-
-  /* 6 – start game execution */
-  game_manager_->StartGame();
 }
