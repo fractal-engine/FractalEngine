@@ -136,6 +136,7 @@ void main() {
 
     // --- Combine Physical and Artistic Sky ---
     float3 baseSkyColor = physicalSkyColor + artisticSkyInfluenceColor * u_artisticInfluence.x; // Add artistic influence to physical sky
+    baseSkyColor = baseSkyColor * 10;                                            // Boost ambient color for artistic effect
 
     // --- Cloud Layer Setup (call functions)---
     float longitude = atan2(viewDir.x, viewDir.z);                         // Calculate longitude from view direction

@@ -510,7 +510,8 @@ void GameTest::Render() {
                            shadowMapFB);  // Set render target to shadow map
   bgfx::setViewRect(ViewID::SHADOW_PASS, 0, 0, KNOWN_SHADOW_MAP_SIZE,
                     KNOWN_SHADOW_MAP_SIZE);  // Set viewport for shadow map
-  bgfx::setViewClear(ViewID::SHADOW_PASS, BGFX_CLEAR_NONE, 0, 1.0f, 0);
+  bgfx::setViewClear(ViewID::SHADOW_PASS, BGFX_CLEAR_DEPTH, 0x000000FF, 1.0f,
+                     0);
 
   // Setup light view and projection matrices for shadow mapping
   float lightViewMatrix[16], lightProjMatrix[16];
@@ -539,7 +540,7 @@ void GameTest::Render() {
   bgfx::setVertexBuffer(0, _shadowVbh);
   bgfx::setIndexBuffer(_terrainIbh);
   bgfx::setState(BGFX_STATE_WRITE_Z | BGFX_STATE_DEPTH_TEST_LESS |
-                 BGFX_STATE_CULL_CW | BGFX_STATE_MSAA);
+                 BGFX_STATE_CULL_CW);
   bgfx::submit(ViewID::SHADOW_PASS, _terrainShadowProgram);
 
   // --- Reflection Pass ---
@@ -632,10 +633,9 @@ void GameTest::Render() {
   bgfx::setUniform(_sunLumUniform, _sunColorArray);
   bgfx::setUniform(_paramsUniform, _parametersArray);
 
-  
   bgfx::setUniform(_betaRUniform, totalBetaR);
   bgfx::setUniform(_betaMUniform, totalBetaM);
-  
+
   bgfx::setUniform(_scatterParamsUniform, scatterParams);
 
   bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A |

@@ -107,7 +107,7 @@ void main() {
     vec2 distortion = normalTex.xy * 0.03;
     vec2 reflectUV = clamp(v_out_uv + distortion, vec2_splat(0.01), vec2_splat(0.99));
     vec3 reflectionColor = texture2D(s_reflection, reflectUV).rgb;
-
+    reflectionColor = reflectionColor * 0.37;                          // reduce reflection intensity
     float reflectFresnel = pow(1.0 - max(dot(N, V), 0.0), 5.0);
     finalColor = mix(finalColor, reflectionColor, reflectFresnel);
 
