@@ -6,6 +6,7 @@ $input v_out_uv, v_out_worldPos, v_out_shadowCoord, v_out_viewVec, v_out_worldTa
 // --- Samplers ---
 SAMPLER2D(s_waterNorm, 6);
 SAMPLER2DSHADOW(s_shadowMap, 4);
+SAMPLER2D(s_reflection, 8); // screen-space reflection
 
 // --- Uniforms ---
 uniform vec4 u_time;
@@ -14,6 +15,7 @@ uniform vec4 u_sunDirection;
 uniform vec4 u_sunLuminance;
 uniform vec4 u_skyAmbient;
 uniform vec4 u_waterColor;
+
 
 #define PI 3.14159265359
 
@@ -53,10 +55,6 @@ void main() {
     float mask = 1.0 - smoothstep(0.012, 0.012 + 0.0005, dist);
     mask = pow(mask, 48.0);
 
-    if (mask < 0.01) {
-        discard; // Skip rendering outside oasis area
-    }
-
     // --- Animated UV flow ---
     vec2 flow1 = vec2(0.4, 0.2);
     vec2 flow2 = vec2(-0.3, 0.6);
@@ -92,17 +90,28 @@ void main() {
     vec3 spec = (D * G * F) / (4.0 * max(NdotV * NdotL, 0.001));
 
     // --- Lighting ---
-    float shadow = 1.0; // optional: use PCF(s_shadowMap, ...) if needed
+    float shadow = 1.0; 
     vec3 ambient = u_skyAmbient.rgb * u_waterColor.rgb;
     vec3 light   = (spec + u_waterColor.rgb / PI) * u_sunLuminance.rgb * NdotL * shadow;
 
     // --- Sparkle / Glint ---
-    float glossPower = 32.0; // or 64.0 — stay within GPU-safe limits
-    float glint = pow(NdotL, glossPower) * fresnel;
+    float sparkleFresnel = pow(1.0 - max(dot(N, V), 0.0), 3.0);
+    float glossPower = 32.0;
+    float glint = pow(NdotL, glossPower) * sparkleFresnel;
+    vec3 sparkle = vec3_splat(glint);
 
-    vec3 sparkle = vec3(glint, glint, glint);
-
+    // --- Base lighting ---
     vec3 finalColor = ambient + light + sparkle;
 
+    // --- Reflections ---
+    vec2 distortion = normalTex.xy * 0.03;
+    vec2 reflectUV = clamp(v_out_uv + distortion, vec2_splat(0.01), vec2_splat(0.99));
+    vec3 reflectionColor = texture2D(s_reflection, reflectUV).rgb;
+
+    float reflectFresnel = pow(1.0 - max(dot(N, V), 0.0), 5.0);
+    finalColor = mix(finalColor, reflectionColor, reflectFresnel);
+
+    // --- Output color ---
     gl_FragColor = vec4(toGamma(finalColor), 1.0);
+
 }

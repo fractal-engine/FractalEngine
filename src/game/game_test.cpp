@@ -247,6 +247,8 @@ void GameTest::Init() {
       bgfx::createUniform("s_waterTex", bgfx::UniformType::Sampler);
   _s_waterNormUniform =
       bgfx::createUniform("s_waterNorm", bgfx::UniformType::Sampler);
+  _s_reflectionUniform =
+      bgfx::createUniform("s_reflection", bgfx::UniformType::Sampler);
 
   // Timer uniform
   _timeUniform = bgfx::createUniform("u_time", bgfx::UniformType::Vec4);
@@ -430,10 +432,27 @@ void GameTest::Update() {
 // Renders the game scene
 void GameTest::Render() {
   // Ensure essential shader programs are valid before attempting to render
-  if (!bgfx::isValid(_terrainProgramHeight) || !bgfx::isValid(_skyProgram) ||
-      !bgfx::isValid(_terrainShadowProgram)) {
+  if (!bgfx::isValid(_skyProgram) || !bgfx::isValid(_terrainProgramHeight) ||
+      !bgfx::isValid(_waterProgram) || !bgfx::isValid(_terrainShadowProgram)) {
+    Logger::getInstance().Log(LogLevel::Error,
+                              "[GameTest::Render] One or more game programs "
+                              "invalid. Aborting Render.");
     return;
   }
+
+  // --- Skybox Definition of Important Parameters ---
+
+  const float H_R = 8000.0f;
+  const float H_M = 1200.0f;
+  float k_betaR_per_meter[3] = {5.8e-6f, 13.5e-6f, 33.1e-6f};
+  float MieColoration[3] = {1.0f, 0.95f, 0.85f};
+  float MieBaseDensity = 20.0e-6f;
+  float totalBetaR[4] = {k_betaR_per_meter[0] * H_R, k_betaR_per_meter[1] * H_R,
+                         k_betaR_per_meter[2] * H_R, 0.0f};
+  float totalBetaM[4] = {MieBaseDensity * MieColoration[0] * H_M * 5.0f,
+                         MieBaseDensity * MieColoration[1] * H_M * 5.0f,
+                         MieBaseDensity * MieColoration[2] * H_M * 5.0f, 0.0f};
+  float scatterParams[4] = {0.85f, 0.0f, 0.0f, 0.0f};
 
   // --- Camera and Lighting Setup ---
   float viewMatrix[16], projMatrix[16];
@@ -523,6 +542,72 @@ void GameTest::Render() {
                  BGFX_STATE_CULL_CW | BGFX_STATE_MSAA);
   bgfx::submit(ViewID::SHADOW_PASS, _terrainShadowProgram);
 
+  // --- Reflection Pass ---
+
+  // Allow access to the renderer subsystem
+  // Get the GraphicsRenderer instance
+  GraphicsRenderer* graphicsRendererPtr = nullptr;  // Initialize to nullptr
+  auto& baseRendererPtr = SubsystemManager::GetRenderer();
+
+  if (baseRendererPtr) {
+    graphicsRendererPtr =
+        dynamic_cast<GraphicsRenderer*>(baseRendererPtr.get());
+  }
+
+  if (!graphicsRendererPtr) {
+    Logger::getInstance().Log(LogLevel::Error,
+                              "[GameTest::Render] Failed to get "
+                              "GraphicsRenderer instance. Aborting Render.");
+    return;
+  }
+  if (bgfx::isValid(graphicsRendererPtr->GetReflectionFramebuffer()) &&
+      bgfx::isValid(graphicsRendererPtr->GetReflectionColorTex())) {
+
+    uint16_t fbw = graphicsRendererPtr->GetFramebufferWidth();
+    uint16_t fbh = graphicsRendererPtr->GetFramebufferHeight();
+
+    bgfx::setViewRect(ViewID::REFLECTION_PASS, 0, 0, fbw, fbh);
+    bgfx::setViewFrameBuffer(ViewID::REFLECTION_PASS,
+                             graphicsRendererPtr->GetReflectionFramebuffer());
+
+    float viewMatrix[16], projMatrix[16];
+    camera.getViewMatrix(viewMatrix);
+    camera.getProjectionMatrix(projMatrix, float(fbw) / float(fbh));
+
+    float reflectMat[16];
+    bx::mtxIdentity(reflectMat);
+    reflectMat[5] = -1.0f;
+    reflectMat[13] = 2.0f * waterModelMatrix[13];  // Y of water plane
+
+    float reflectedView[16];
+    bx::mtxMul(reflectedView, viewMatrix, reflectMat);
+
+    bgfx::setViewTransform(ViewID::REFLECTION_PASS, reflectedView, projMatrix);
+
+    // Defined here for reflection pass, we cannot reuse the terrain's one
+    float camPos[4];
+    camera.getPosition(camPos);
+    camPos[3] = 1.0f;
+
+    // Skybox pass
+    float skyModel[16];
+    bx::mtxIdentity(skyModel);
+    bgfx::setTransform(skyModel);
+    bgfx::setVertexBuffer(0, _skyVbh);
+    bgfx::setIndexBuffer(_skyIbh);
+    bgfx::setUniform(_viewInvUniform, reflectedView);
+    bgfx::setUniform(_projInvUniform, projMatrix);
+    bgfx::setUniform(_sunDirUniform, sunDirShader);
+    bgfx::setUniform(_sunLumUniform, _sunColorArray);
+    bgfx::setUniform(_paramsUniform, _parametersArray);
+    bgfx::setUniform(_betaRUniform, totalBetaR);
+    bgfx::setUniform(_betaMUniform, totalBetaM);
+    bgfx::setUniform(_scatterParamsUniform, scatterParams);
+    bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A |
+                   BGFX_STATE_DEPTH_TEST_LEQUAL | BGFX_STATE_CULL_CCW);
+    bgfx::submit(ViewID::REFLECTION_PASS, _skyProgram);
+  }
+
   // --- Main Scene Pass ---
   bgfx::setViewRect(ViewID::SCENE_SKYBOX, 0, 0, canvasViewportW,
                     canvasViewportH);
@@ -547,19 +632,10 @@ void GameTest::Render() {
   bgfx::setUniform(_sunLumUniform, _sunColorArray);
   bgfx::setUniform(_paramsUniform, _parametersArray);
 
-  const float H_R = 8000.0f;
-  const float H_M = 1200.0f;
-  float k_betaR_per_meter[3] = {5.8e-6f, 13.5e-6f, 33.1e-6f};
-  float MieColoration[3] = {1.0f, 0.95f, 0.85f};
-  float MieBaseDensity = 20.0e-6f;
-  float totalBetaR[4] = {k_betaR_per_meter[0] * H_R, k_betaR_per_meter[1] * H_R,
-                         k_betaR_per_meter[2] * H_R, 0.0f};
-  float totalBetaM[4] = {MieBaseDensity * MieColoration[0] * H_M * 5.0f,
-                         MieBaseDensity * MieColoration[1] * H_M * 5.0f,
-                         MieBaseDensity * MieColoration[2] * H_M * 5.0f, 0.0f};
+  
   bgfx::setUniform(_betaRUniform, totalBetaR);
   bgfx::setUniform(_betaMUniform, totalBetaM);
-  float scatterParams[4] = {0.85f, 0.0f, 0.0f, 0.0f};
+  
   bgfx::setUniform(_scatterParamsUniform, scatterParams);
 
   bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A |
@@ -625,6 +701,8 @@ void GameTest::Render() {
 
   bgfx::setTexture(5, _s_waterTexUniform, _waterTex);
   bgfx::setTexture(6, _s_waterNormUniform, _waterNormalTex);
+  bgfx::setTexture(8, _s_reflectionUniform,
+                   graphicsRendererPtr->GetReflectionColorTex());
 
   bgfx::setVertexBuffer(0, _waterVbh);
   bgfx::setIndexBuffer(_waterIbh);
@@ -699,7 +777,7 @@ void GameTest::Shutdown() {
   destroyHandle(_u_waterColor);
   destroyHandle(_s_waterTexUniform);
   destroyHandle(_s_waterNormUniform);
-
+  destroyHandle(_s_reflectionUniform);
   destroyHandle(_waterTex);
   destroyHandle(_waterNormalTex);
 

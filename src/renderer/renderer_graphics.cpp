@@ -164,6 +164,17 @@ void GraphicsRenderer::PrepareFrame() {
       ViewID::UI_BACKGROUND,
       BGFX_INVALID_HANDLE);  // Ensure it targets default backbuffer
 
+  // Separete reflection pass framebuffer
+  if (bgfx::isValid(reflectionFB)) {
+    bgfx::setViewRect(ViewID::REFLECTION_PASS, 0, 0, fbw, fbh);
+    bgfx::setViewFrameBuffer(ViewID::REFLECTION_PASS, reflectionFB);
+
+    // Optional: clear reflection buffer
+    bgfx::setViewClear(ViewID::REFLECTION_PASS,
+                       BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH, 0x000000ff, 1.0f,
+                       0);
+  }
+
   if (!bgfx::isValid(scene_framebuffer_)) {
     Logger::getInstance().Log(LogLevel::Error,
                               "Scene framebuffer is invalid in PrepareFrame!");
@@ -207,6 +218,21 @@ void GraphicsRenderer::CreateFramebuffers(uint16_t w, uint16_t h) {
       (bgfx::isValid(new_depth_th) ? std::to_string(new_depth_th.idx).c_str()
                                    : "INVALID"));
   Logger::getInstance().Log(LogLevel::Debug, log_buffer);
+
+  // --- REFLECTION framebuffer ---
+  if (bgfx::isValid(reflectionFB)) {
+    bgfx::destroy(reflectionFB);
+    bgfx::destroy(reflectionColorTex);
+    reflectionFB = BGFX_INVALID_HANDLE;
+    reflectionColorTex = BGFX_INVALID_HANDLE;
+  }
+
+  // Create a color-only reflection texture
+  reflectionColorTex = bgfx::createTexture2D(
+      w, h, false, 1, bgfx::TextureFormat::BGRA8,
+      BGFX_TEXTURE_RT | BGFX_SAMPLER_U_CLAMP | BGFX_SAMPLER_V_CLAMP);
+
+  reflectionFB = bgfx::createFrameBuffer(1, &reflectionColorTex, true);
 
   if (!bgfx::isValid(new_color_th) || !bgfx::isValid(new_depth_th)) {
     snprintf(log_buffer, sizeof(log_buffer),
@@ -327,6 +353,15 @@ void GraphicsRenderer::Shutdown() {
   if (bgfx::isValid(scene_framebuffer_)) {
     bgfx::destroy(scene_framebuffer_);
     scene_framebuffer_ = BGFX_INVALID_HANDLE;
+  }
+  // Destroy reflection framebuffer and its textures
+  if (bgfx::isValid(reflectionFB)) {
+    bgfx::destroy(reflectionFB);
+    reflectionFB = BGFX_INVALID_HANDLE;
+  }
+  if (bgfx::isValid(reflectionColorTex)) {
+    bgfx::destroy(reflectionColorTex);
+    reflectionColorTex = BGFX_INVALID_HANDLE;
   }
 
   // 3. Clear ImGui texture ID before shutdown

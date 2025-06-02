@@ -111,6 +111,8 @@ private:
 
   bgfx::TextureHandle _waterTex = BGFX_INVALID_HANDLE;
   bgfx::TextureHandle _waterNormalTex = BGFX_INVALID_HANDLE;
+  bgfx::UniformHandle _s_reflectionUniform;
+
 
   bgfx::VertexBufferHandle _waterVbh = BGFX_INVALID_HANDLE;
   bgfx::IndexBufferHandle _waterIbh = BGFX_INVALID_HANDLE;

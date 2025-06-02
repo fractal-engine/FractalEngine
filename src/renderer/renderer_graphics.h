@@ -53,9 +53,20 @@ public:
   SDL_Window* GetWindow() const;
   SDL_Texture* GetGameTexture();
   std::string GetCurrentGameContent();
+  // Scene framebuffer and texture handles
   bgfx::TextureHandle GetSceneColorTexture() const {
     return scene_color_texture_;
   }
+  // Reflection framebuffer and texture handles
+  bgfx::FrameBufferHandle GetReflectionFramebuffer() const {
+    return reflectionFB;
+  }
+  bgfx::TextureHandle GetReflectionColorTex() const {
+    return reflectionColorTex;
+  }
+  uint16_t GetFramebufferWidth() const { return last_framebuffer_width_; }
+  uint16_t GetFramebufferHeight() const { return last_framebuffer_height_; }
+
   ImTextureID GetSceneTexId() const { return scene_tex_id_; }
 
 private:
@@ -75,6 +86,10 @@ private:
   bgfx::FrameBufferHandle scene_framebuffer_ = BGFX_INVALID_HANDLE;
   bgfx::TextureHandle scene_color_texture_ = BGFX_INVALID_HANDLE;
   bgfx::TextureHandle scene_depth_texture_ = BGFX_INVALID_HANDLE;
+
+  // Reflection FBO
+  bgfx::FrameBufferHandle reflectionFB = BGFX_INVALID_HANDLE;
+  bgfx::TextureHandle reflectionColorTex = BGFX_INVALID_HANDLE;
 
   ImTextureID scene_tex_id_{0};
 
