@@ -295,24 +295,80 @@ void GameTest::Init() {
                               "(_waterProgram). Handle is invalid.");
   }
   // Generate initial heightmap data
-  const uint16_t hm_sz = TerrainSize;
-  std::vector<uint32_t> heightmapData(hm_sz * hm_sz);
-  for (uint16_t y = 0; y < hm_sz; ++y) {
-    for (uint16_t x = 0; x < hm_sz; ++x) {
-      float nx = (x - hm_sz * 0.5f) / (hm_sz * 0.5f);
-      float ny = (y - hm_sz * 0.5f) / (hm_sz * 0.5f);
-      float falloff = expf(-0.5f * (nx * nx + ny * ny));
-      float dune = sinf(nx * 6.0f) * cosf(ny * 4.0f) * 15.0f * falloff;
-      float noise = ((rand() % 1000) / 1000.0f - 0.5f) * 0.01f;
-      float height = dune + noise;
-      float exaggeration = 20.0f;
-      height *= exaggeration;
-      height = bx::clamp(height, -1.0f, 1.0f);
-      uint8_t encodedHeight = static_cast<uint8_t>(127 + 127 * height);
-      uint32_t rgba =
-          (encodedHeight << 24) | (0 << 16) | (0 << 8) | (encodedHeight);
-      heightmapData[y * hm_sz + x] = rgba;
+  const uint16_t hm_sz = TerrainSize;  
+  std::vector<float> rawHeights(hm_sz * hm_sz);
+  float minRawHeight = std::numeric_limits<float>::max();
+  float maxRawHeight = std::numeric_limits<float>::lowest();
+
+  // --- Parameters to Tune ---
+  float dune_freq_x = 20.0f;  // Increased: More waves, potentially sharper peaks
+  float dune_freq_y = 17.0f;  // Increased: More waves
+  float dune_base_amplitude =
+      80.0f;  // Kept high: for significant raw variation
+  float falloff_strength =
+      0.8f;  // Increased: Falloff is a bit quicker, which can help define
+             // central features more sharply and prevent distant, broad
+             // plateaus if frequencies are low. If hills are too small/central,
+             // reduce this (e.g., 0.4-0.6)
+  float noise_amplitude = 1.5f;  // Kept relatively small
+  float exaggeration = 30.0f;    // Kept high
+
+  for (uint16_t y_coord = 0; y_coord < hm_sz; ++y_coord) {
+    for (uint16_t x_coord = 0; x_coord < hm_sz; ++x_coord) {
+      float nx =
+          (static_cast<float>(x_coord) - static_cast<float>(hm_sz) * 0.5f) /
+          (static_cast<float>(hm_sz) * 0.5f);
+      float ny =
+          (static_cast<float>(y_coord) - static_cast<float>(hm_sz) * 0.5f) /
+          (static_cast<float>(hm_sz) * 0.5f);
+
+      float r_sq = nx * nx + ny * ny;  // Square of distance from center
+      float falloff = expf(-falloff_strength * r_sq);
+
+      // Base dune shape
+      float dune_shape = sinf(nx * dune_freq_x) * cosf(ny * dune_freq_y);
+      float dune = dune_shape * dune_base_amplitude * falloff;
+
+      float noise_val =
+          (static_cast<float>(rand() % 1000) / 999.0f - 0.5f) * noise_amplitude;
+
+      float currentHeight = dune + noise_val;
+      currentHeight *= exaggeration;
+
+      rawHeights[y_coord * hm_sz + x_coord] = currentHeight;
+      if (currentHeight < minRawHeight)
+        minRawHeight = currentHeight;
+      if (currentHeight > maxRawHeight)
+        maxRawHeight = currentHeight;
     }
+  }
+
+  // Normalize heights to [-1, 1] range
+  std::vector<uint32_t> heightmapData(hm_sz * hm_sz);
+  float overallRange = maxRawHeight - minRawHeight;
+
+  for (uint16_t i = 0; i < hm_sz * hm_sz; ++i) {
+    float normalizedHeight;
+    if (overallRange >
+        0.0001f) {  // Check to prevent division by zero if map is flat
+      // Normalize to [0, 1] first
+      normalizedHeight = (rawHeights[i] - minRawHeight) / overallRange;
+      // Then map to [-1, 1]
+      normalizedHeight = normalizedHeight * 2.0f - 1.0f;
+    } else {
+      // If the map is flat (minRawHeight is very close to maxRawHeight)
+      normalizedHeight = 0.0f;  // Represents the middle height
+    }
+
+    // Final clamp just in case of minute floating point errors pushing it
+    // outside [-1,1]
+    normalizedHeight = bx::clamp(normalizedHeight, -1.0f, 1.0f);
+
+    uint8_t encodedHeight =
+        static_cast<uint8_t>(127.5f + 127.5f * normalizedHeight);
+    uint32_t rgba =
+        (encodedHeight << 24) | (0 << 16) | (0 << 8) | (encodedHeight);
+    heightmapData[i] = rgba;
   }
 
   // Create RGBA8 texture for heightmap
