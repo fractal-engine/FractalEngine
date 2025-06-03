@@ -1,5 +1,5 @@
 $input a_position, a_texcoord0
-$output v_out_uv, v_out_worldPos, v_out_shadowCoord, v_out_viewVec, v_out_worldTangent, v_out_worldBitangent, v_out_worldNormalGeom
+$output v_out_uv, v_out_worldPos, v_out_shadowCoord, v_out_viewVec, v_out_worldTangent, v_out_worldBitangent, v_out_worldNormalGeom, v_reflectUV
 
 #include "../common/common.sh"
 #include <bgfx_shader.sh>
@@ -8,7 +8,7 @@ void main() {
 
     // Output UV
     v_out_uv = a_texcoord0;
-    v_out_uv = a_texcoord0 * 4.0;  // Larger UV scale
+    v_out_uv = a_texcoord0 * 10.0;  // Larger UV scale
 
     // Transform position to world space
     vec4 worldPos = mul(u_model[0], vec4(a_position, 1.0));
@@ -27,4 +27,14 @@ void main() {
     v_out_viewVec          = -mul(u_view, worldPos).xyz;
 
     gl_Position = mul(u_viewProj, worldPos);
+
+    // Convert from clip space to normalized device coordinates (NDC)
+    vec3 ndc = gl_Position.xyz / gl_Position.w;
+
+    // Map NDC [-1, 1] to texture UV space [0, 1]
+    v_reflectUV = ndc.xy * 0.5 + 0.5;
+
+    // Flip Y to match texture sampling convention (if needed)
+    v_reflectUV.y = 1.0 - v_reflectUV.y;
+
 }

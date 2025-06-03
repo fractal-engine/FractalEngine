@@ -1,4 +1,4 @@
-$input v_out_uv, v_out_worldPos, v_out_shadowCoord, v_out_viewVec, v_out_worldTangent, v_out_worldBitangent, v_out_worldNormalGeom
+$input v_out_uv, v_out_worldPos, v_out_shadowCoord, v_out_viewVec, v_out_worldTangent, v_out_worldBitangent, v_out_worldNormalGeom, v_reflectUV
 
 #include <bgfx_shader.sh>
 #include "../common/common.sh"
@@ -97,7 +97,7 @@ void main() {
 
     // --- Reflections ---
     vec2 distortion = normalTex.xy * 0.03;
-    vec2 reflectUV = clamp(v_out_uv + distortion, vec2_splat(0.01), vec2_splat(0.99));
+    vec2 reflectUV = clamp(v_reflectUV + distortion, vec2_splat(0.01), vec2_splat(0.99));
     vec3 reflectionColor = texture2D(s_reflection, reflectUV).rgb;
     reflectionColor = reflectionColor * 0.37;                          // reduce reflection intensity
     float reflectFresnel = pow(1.0 - max(dot(N, V), 0.0), 5.0);

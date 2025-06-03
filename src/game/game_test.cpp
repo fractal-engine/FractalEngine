@@ -670,7 +670,7 @@ void GameTest::Render() {
 
     uint16_t fbw = graphicsRendererPtr->GetFramebufferWidth();
     uint16_t fbh = graphicsRendererPtr->GetFramebufferHeight();
-
+ 
     bgfx::setViewRect(ViewID::REFLECTION_PASS, 0, 0, fbw, fbh);
     bgfx::setViewFrameBuffer(ViewID::REFLECTION_PASS,
                              graphicsRendererPtr->GetReflectionFramebuffer());
@@ -678,7 +678,7 @@ void GameTest::Render() {
     float viewMatrix[16], projMatrix[16];
     camera.getViewMatrix(viewMatrix);
     camera.getProjectionMatrix(projMatrix, float(fbw) / float(fbh));
-
+    
     // Defined here for reflection pass, we cannot reuse the terrain's one
     float cameraView[16];
     // Get view matrix with translation
@@ -703,6 +703,7 @@ void GameTest::Render() {
     // Skybox pass
     float skyModel[16];
     bx::mtxIdentity(skyModel);
+
 
     bgfx::setTransform(skyModel);
     bgfx::setVertexBuffer(0, _skyVbh);
