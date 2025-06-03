@@ -131,6 +131,13 @@ GameTest::GameTest()
       _waterTex(BGFX_INVALID_HANDLE),
       _waterNormalTex(BGFX_INVALID_HANDLE),
       _terrainShadowProgram(BGFX_INVALID_HANDLE),
+      grassDiffuse(BGFX_INVALID_HANDLE),
+      grassORM(BGFX_INVALID_HANDLE),
+      grassNormal(BGFX_INVALID_HANDLE),
+      _s_grassDiffuseUniform(BGFX_INVALID_HANDLE),
+      _s_grassORMUniform(BGFX_INVALID_HANDLE),
+      _s_grassNormalUniform(BGFX_INVALID_HANDLE),
+      _u_slopeBlendParamsUniform(BGFX_INVALID_HANDLE),
       _cycleTime(0.0f) {
   bx::mtxIdentity(world_matrix);  // Initialize world matrix to identity
   // Default sky ambient color (dark)
@@ -180,6 +187,19 @@ void GameTest::Init() {
       TextureUtils::LoadTexture("assets/textures/water/water_diffuse.tga");
   _waterNormalTex =
       TextureUtils::LoadTexture("assets/textures/water/water_normal.tga");
+  // Load grass textures
+  grassDiffuse =
+      TextureUtils::LoadTexture("assets/textures/grass/grass_diffuse.tga");
+  grassORM = TextureUtils::LoadTexture("assets/textures/grass/grass_ORM.tga");
+  grassNormal =
+      TextureUtils::LoadTexture("assets/textures/grass/grass_normal.tga");
+
+  if (!bgfx::isValid(grassDiffuse) || !bgfx::isValid(grassORM) ||
+      !bgfx::isValid(grassNormal)) {
+    Logger::getInstance().Log(
+        LogLevel::Warning,
+        "[GameTest::Init] One or more grass textures failed to load.");
+  }
 
   // Load shader programs
   auto& shaderMgr = *SubsystemManager::GetShaderManager();
@@ -249,6 +269,17 @@ void GameTest::Init() {
       bgfx::createUniform("s_waterNorm", bgfx::UniformType::Sampler);
   _s_reflectionUniform =
       bgfx::createUniform("s_reflection", bgfx::UniformType::Sampler);
+
+  // Grass uniforms
+
+  _s_grassDiffuseUniform =
+      bgfx::createUniform("s_grassDiffuse", bgfx::UniformType::Sampler);
+  _s_grassORMUniform =
+      bgfx::createUniform("s_grassORM", bgfx::UniformType::Sampler);
+  _s_grassNormalUniform =
+      bgfx::createUniform("s_grassNormal", bgfx::UniformType::Sampler);
+  _u_slopeBlendParamsUniform =
+      bgfx::createUniform("u_slopeBlendParams", bgfx::UniformType::Vec4);
 
   // Timer uniform
   _timeUniform = bgfx::createUniform("u_time", bgfx::UniformType::Vec4);
@@ -694,11 +725,23 @@ void GameTest::Render() {
   float hmTexelSize[4] = {1.0f / TerrainSize, 1.0f / TerrainSize, 0.0f, 0.0f};
   bgfx::setUniform(_heightmapTexelSizeUniform, hmTexelSize);
 
+  // Slope blending parameters:
+  // x = dot product value where grass starts to appear (e.g., 0.7 for ~45
+  // degrees from vertical) y = dot product value where grass is fully opaque
+  // (e.g., 0.9 for ~25 degrees from vertical) The dot product is between the
+  // surface normal and the world up vector (0,1,0).
+
+  float slopeParams[4] = {0.75f, 0.95f, 0.0f, 0.0f};  
+  bgfx::setUniform(_u_slopeBlendParamsUniform, slopeParams);
+
   bgfx::setTexture(0, _s_diffuseUniform, terrainDiffuse);
   bgfx::setTexture(1, _s_ormUniform, terrainORM);
   bgfx::setTexture(2, _s_normalUniform, terrainNormal);
   bgfx::setTexture(3, _heightUniform, _heightTexture);
   bgfx::setTexture(4, _shadowSamplerUniform, shadowMapTexture);
+  bgfx::setTexture(9, _s_grassDiffuseUniform, grassDiffuse);
+  bgfx::setTexture(10, _s_grassORMUniform, grassORM);
+  bgfx::setTexture(11, _s_grassNormalUniform, grassNormal);
 
   bgfx::setVertexBuffer(0, _terrainVbh);
   bgfx::setIndexBuffer(_terrainIbh);
@@ -763,6 +806,9 @@ void GameTest::Shutdown() {
   destroyHandle(terrainORM);
   destroyHandle(terrainNormal);
   destroyHandle(shadowMapTexture);
+  destroyHandle(grassDiffuse);
+  destroyHandle(grassORM);
+  destroyHandle(grassNormal);
 
   // Destroy framebuffers
   destroyHandle(shadowMapFB);
@@ -796,6 +842,10 @@ void GameTest::Shutdown() {
   destroyHandle(_scatterParamsUniform);
   destroyHandle(_betaRUniform);
   destroyHandle(_betaMUniform);
+  destroyHandle(_s_grassDiffuseUniform);
+  destroyHandle(_s_grassORMUniform);
+  destroyHandle(_s_grassNormalUniform);
+  destroyHandle(_u_slopeBlendParamsUniform);
 
   // Destroy water uniforms
   destroyHandle(_u_waterColor);

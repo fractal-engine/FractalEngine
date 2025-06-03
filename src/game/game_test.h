@@ -93,6 +93,18 @@ private:
   bgfx::UniformHandle _s_ormUniform = BGFX_INVALID_HANDLE;
   bgfx::UniformHandle _s_normalUniform = BGFX_INVALID_HANDLE;
 
+  // Grass Uniforms
+ 
+  bgfx::TextureHandle grassDiffuse;
+  bgfx::TextureHandle grassORM;
+  bgfx::TextureHandle grassNormal;
+
+  bgfx::UniformHandle _s_grassDiffuseUniform;
+  bgfx::UniformHandle _s_grassORMUniform;
+  bgfx::UniformHandle _s_grassNormalUniform;
+  bgfx::UniformHandle
+      _u_slopeBlendParamsUniform;  // vec4: (minSlopeDot, maxSlopeDot, 0, 0)
+
   // Sky Ambient Light
   bgfx::UniformHandle _skyAmbientUniform = BGFX_INVALID_HANDLE;
   bgfx::UniformHandle _lightMatrixUniform = BGFX_INVALID_HANDLE;
