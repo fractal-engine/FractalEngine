@@ -8,6 +8,7 @@ void main() {
 
     // Output UV
     v_out_uv = a_texcoord0;
+    v_out_uv = a_texcoord0 * 4.0;  // Larger UV scale
 
     // Transform position to world space
     vec4 worldPos = mul(u_model[0], vec4(a_position, 1.0));

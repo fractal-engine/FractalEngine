@@ -420,7 +420,7 @@ void GameTest::Update() {
   cameraSystem.UpdateFromKeyboard();
 
   // Increment time
-  _cycleTime += 0.0007f;
+  _cycleTime += 0.001f;
   if (_cycleTime > bx::kPi * 2.0f) {
     _cycleTime -= bx::kPi * 2.0f;
   }
@@ -453,6 +453,8 @@ void GameTest::Render() {
                          MieBaseDensity * MieColoration[1] * H_M * 5.0f,
                          MieBaseDensity * MieColoration[2] * H_M * 5.0f, 0.0f};
   float scatterParams[4] = {0.85f, 0.0f, 0.0f, 0.0f};
+
+  float finalLightMatrixForShader[16];  // Final light matrix for terrain shader
 
   // --- Camera and Lighting Setup ---
   float viewMatrix[16], projMatrix[16];
@@ -512,15 +514,30 @@ void GameTest::Render() {
                     KNOWN_SHADOW_MAP_SIZE);  // Set viewport for shadow map
   bgfx::setViewClear(ViewID::SHADOW_PASS, BGFX_CLEAR_DEPTH, 0x000000FF, 1.0f,
                      0);
+  // Get the local grid center point in local terrain space
+  float localGridCenterX = (TerrainSize - 1) * 0.5f;
+  float localGridCenterZ = (TerrainSize - 1) * 0.5f;
+  float localGridCenterY = 0.0f;
+
+  // Transform this local center point by the terrain's FULL world matrix
+  float localCenterHomogeneous[4] = {localGridCenterX, localGridCenterY,
+                                     localGridCenterZ, 1.0f};
+  float worldCenterHomogeneous[4];
+  bx::vec4MulMtx(worldCenterHomogeneous, localCenterHomogeneous,
+                 this->world_matrix);
+  // This is now our NEW actualLightTarget in world space
+  bx::Vec3 actualLightTarget_WorldCorrected = {
+      worldCenterHomogeneous[0],
+      worldCenterHomogeneous[1] +
+          TERRAIN_MAX_ACTUAL_HEIGHT * 0.25f,  // Add some height offset
+      worldCenterHomogeneous[2]};
 
   // Setup light view and projection matrices for shadow mapping
   float lightViewMatrix[16], lightProjMatrix[16];
   float terrainWorldSize = (TerrainSize - 1) * TerrainScale;
-  bx::Vec3 actualLightTarget = {terrainWorldSize * 0.5f,
-                                TERRAIN_MAX_ACTUAL_HEIGHT * 0.25f,
-                                terrainWorldSize * 0.5f};
-  bx::Vec3 lightPos =
-      bx::mad(sunDirectionVec, -terrainWorldSize * 1.5f, actualLightTarget);
+  bx::Vec3 actualLightTarget = actualLightTarget_WorldCorrected;
+  bx::Vec3 lightPos = bx::mad(sunDirectionVec, -terrainWorldSize * 1.5f,
+                              actualLightTarget);  // Offset from the new target
   bx::mtxLookAt(lightViewMatrix, lightPos, actualLightTarget,
                 bx::Vec3(0.0f, 1.0f, 0.0f));
 
@@ -575,28 +592,35 @@ void GameTest::Render() {
     camera.getViewMatrix(viewMatrix);
     camera.getProjectionMatrix(projMatrix, float(fbw) / float(fbh));
 
+    // Defined here for reflection pass, we cannot reuse the terrain's one
+    float cameraView[16];
+    // Get view matrix with translation
+    camera.getViewMatrix(viewMatrix);
+
+    // Construct reflection matrix
     float reflectMat[16];
     bx::mtxIdentity(reflectMat);
     reflectMat[5] = -1.0f;
-    reflectMat[13] = 2.0f * waterModelMatrix[13];  // Y of water plane
+    reflectMat[13] = 1.0f * waterModelMatrix[13];  // reflection plane Y
 
+    // Create reflected view matrix (WITH camera translation — for terrain)
     float reflectedView[16];
     bx::mtxMul(reflectedView, viewMatrix, reflectMat);
 
-    bgfx::setViewTransform(ViewID::REFLECTION_PASS, reflectedView, projMatrix);
-
-    // Defined here for reflection pass, we cannot reuse the terrain's one
-    float camPos[4];
-    camera.getPosition(camPos);
-    camPos[3] = 1.0f;
+    // Create *rotation-only* version for skybox
+    float viewRotOnly[16];
+    memcpy(viewRotOnly, reflectedView, sizeof(viewRotOnly));
+    viewRotOnly[12] = viewRotOnly[13] = viewRotOnly[14] =
+        0.0f;  // remove translation
 
     // Skybox pass
     float skyModel[16];
     bx::mtxIdentity(skyModel);
+
     bgfx::setTransform(skyModel);
     bgfx::setVertexBuffer(0, _skyVbh);
     bgfx::setIndexBuffer(_skyIbh);
-    bgfx::setUniform(_viewInvUniform, reflectedView);
+    bgfx::setUniform(_viewInvUniform, viewRotOnly);
     bgfx::setUniform(_projInvUniform, projMatrix);
     bgfx::setUniform(_sunDirUniform, sunDirShader);
     bgfx::setUniform(_sunLumUniform, _sunColorArray);
@@ -662,7 +686,7 @@ void GameTest::Render() {
   };
   float lightVPMatrix[16];
   bx::mtxMul(lightVPMatrix, lightProjMatrix, lightViewMatrix);
-  float finalLightMatrixForShader[16];
+
   bx::mtxMul(finalLightMatrixForShader, biasMatrix, lightVPMatrix);
   bgfx::setUniform(_lightMatrixUniform, finalLightMatrixForShader);
 
