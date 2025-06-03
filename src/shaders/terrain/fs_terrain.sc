@@ -97,14 +97,16 @@ void main() {
     float metalness_terrain_only  = orm_terrain_only.b;
 
     // --- Sample Grass Textures ---
-    vec3 albedo_grass_only       = texture2D(s_grassDiffuse, uv).rgb;
+    vec3 albedo_grass_only       = texture2D(s_grassDiffuse, uv).rgb * 7;
     vec3 orm_grass_only          = texture2D(s_grassORM, uv).rgb;
     vec3 normalMap_grass_only    = texture2D(s_grassNormal, uv).rgb * 2.0 - 1.0;
 
+    
     // --- Unpack Grass ORM ---
     float ao_grass_only           = orm_grass_only.r;
     float roughness_grass_only    = clamp(orm_grass_only.g, 0.04, 1.0);
     float metalness_grass_only    = orm_grass_only.b;
+
 
     // --- Blend Material Properties (Using grassBlendFactor) ---
 

@@ -731,7 +731,9 @@ void GameTest::Render() {
   // (e.g., 0.9 for ~25 degrees from vertical) The dot product is between the
   // surface normal and the world up vector (0,1,0).
 
-  float slopeParams[4] = {0.75f, 0.95f, 0.0f, 0.0f};  
+  float slopeParams[4] = {
+      -0.5f, 0.5f, 0.0f,
+      0.0f};  // Grass on anything from slightly overhanging up to 60 deg
   bgfx::setUniform(_u_slopeBlendParamsUniform, slopeParams);
 
   bgfx::setTexture(0, _s_diffuseUniform, terrainDiffuse);
