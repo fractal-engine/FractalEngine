@@ -132,10 +132,10 @@ void main() {
     vec3 N_final_blended = normalize(mix(N_world_TERRAIN, N_world_GRASS, grassBlendFactor));
 
 
-    // --- View & Light Vectors ---
+    // --- Calculate Half Vector H from View & Light Vectors ---
     vec3 V = normalize(u_cameraPos.xyz - v_out_worldPos);
     vec3 L_dir = normalize(u_sunDirection.xyz); 
-    vec3 H = normalize(V + L_dir);
+    vec3 H = normalize(V + L_dir);                          // when N aligns with H, we get strongest specular reflection
 
     // --- PBR Lighting (Using BLENDED properties and N_final_blended) ---
 
