@@ -31,6 +31,11 @@ public:
   void Render() override;
   void Shutdown() override;
 
+  static constexpr float TerrainScale = 1024.0f;
+  static constexpr uint16_t TerrainSize = 128;
+  static constexpr float TerrainExtent =
+      ((TerrainSize - 1) * TerrainScale) * 0.5f;
+
   // simple camera function call
   OrbitCamera camera;
   CameraSystem cameraSystem;
@@ -94,6 +99,8 @@ private:
   // colour / param arrays passed to both sky & sun shaders
   float _sunColorArray[4] = {5.0f, 5.0f, 5.0f, 0.0f};
   float _parametersArray[4] = {1.0f, 1.0f, 1.0f, 0.0f};
+  float _cycleTime = 0.0f;  // day-night timerm keep it at 0
+  float _skyAmbientArray[4];
 
   // small helpers that build vertex / index buffers
   void createSkyboxBuffers();
