@@ -38,7 +38,7 @@ bgfx::VertexLayout PosTexCoord0Vertex::layout;
 // Maximum height of the terrain in world units
 constexpr float TERRAIN_MAX_ACTUAL_HEIGHT = 150.0f;
 // View ID for the shadow map rendering pass
-constexpr uint8_t SHADOW_MAP_VIEW_ID = ViewID::SHADOW_PASS;
+constexpr uint8_t SHADOW_MAP_VIEW_ID = ViewID::Shadow(0);
 // Fixed size for the shadow map texture
 constexpr uint16_t KNOWN_SHADOW_MAP_SIZE = 2048;
 
@@ -509,8 +509,8 @@ void GameTest::Render() {
 
   // Render Terrain
   uint8_t terrainViewID =
-      ViewID::SCENE_N(1);  // Use a subsequent view ID for terrain (can share
-                           // SCENE if no specific sorting needed)
+      ViewID::SceneExtra(0);  // Use a subsequent view ID for terrain (can share
+                              // SCENE if no specific sorting needed)
   bgfx::setViewRect(terrainViewID, 0, 0, canvasViewportW,
                     canvasViewportH);  // Set viewport (same as main scene)
   bgfx::setViewTransform(terrainViewID, viewMatrix,
