@@ -157,20 +157,21 @@ void GameTest::Init() {
   camera.setYaw(bx::toRad(45.0f));          // Set initial yaw
 
   // Load shader programs
-  auto& shaderMgr = *SubsystemManager::GetShaderManager();
-  _terrainProgramHeight =
-      shaderMgr.LoadProgram("terrain_pbr", "vs_terrain.bin", "fs_terrain.bin");
+  auto& ShaderManager = *Application::GetShaderManager();
+
+  _terrainProgramHeight = ShaderManager.LoadProgram(
+      "terrain_pbr", "vs_terrain.bin", "fs_terrain.bin");
   Logger::getInstance().Log(
       LogLevel::Debug,
       std::string("[DEBUG] _terrainPBR valid = ") +
           (bgfx::isValid(_terrainProgramHeight) ? "true" : "false"));
-  _skyProgram =
-      shaderMgr.LoadProgram("skybox_proc", "vs_skybox.bin", "fs_skybox.bin");
+  _skyProgram = ShaderManager.LoadProgram("skybox_proc", "vs_skybox.bin",
+                                          "fs_skybox.bin");
   Logger::getInstance().Log(
       LogLevel::Debug, std::string("[DEBUG] _Skybox valid = ") +
                            (bgfx::isValid(_skyProgram) ? "true" : "false"));
-  _terrainShadowProgram =
-      shaderMgr.LoadProgram("terrain_shadow", "vs_shadow.bin", "fs_shadow.bin");
+  _terrainShadowProgram = ShaderManager.LoadProgram(
+      "terrain_shadow", "vs_shadow.bin", "fs_shadow.bin");
   Logger::getInstance().Log(
       LogLevel::Debug,
       std::string("[DEBUG] _terrainShadowProgram valid = ") +
