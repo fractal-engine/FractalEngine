@@ -81,25 +81,58 @@ rule("bgfx_shaderc")
     set_extensions(".sc")
 
     on_build_file(function (target, sourcefile)
-        -- separator
-        local sep = is_host("windows") and "\\" or "/"
+        ----------------------------------------------------------
+        --  Path helpers / filenames
+        ----------------------------------------------------------
+        local sep      = is_host("windows") and "\\" or "/"
+        local root     = os.projectdir()
+        local filename = path.filename(sourcefile)
+        local normSrc  = path.normalize(sourcefile)
+
+        print("----------------------------------------------------")
+        print("Shaderc Rule Check For: " .. sourcefile)
+        print("  Normalized: " .. normSrc)
+        print("  Filename:   " .. filename)
 
         --------------------------------------------------------------------
         --  Early-out filters
         --------------------------------------------------------------------
-        local name   = path.filename(sourcefile)
-        local normal = path.normalize(sourcefile)
+      if filename:startswith("varying") then
+            print("  Skipping: Filename starts with 'varying'.")
+            print("----------------------------------------------------")
+            return
+        end
 
-        if name:startswith("varying") then return end
-        if normal:find(sep .. "includes" .. sep, 1, true) then return end
+        -- Exclude files in "includes" directories
+        local includes_pattern_middle = sep .. "includes" .. sep
+        local dir_of_sourcefile = path.directory(normSrc)
 
-        local is_vs = name:match("^vs_.*%.sc$")
-        local is_fs = name:match("^fs_.*%.sc$")
-        local is_cs = name:match("^cs_.*%.sc$")
-        if not (is_vs or is_fs or is_cs) then return end
+        if normSrc:find(includes_pattern_middle, 1, true) then
+            print("  Skipping: Path contains '" .. includes_pattern_middle .. "': " .. normSrc)
+            print("----------------------------------------------------")
+            return
+        end
+
+        -- Ensure it's a primary shader type (vs_*, fs_*, cs_*)
+        local is_vs = filename:match("^vs_.*%.sc$") 
+        local is_fs = filename:match("^fs_.*%.sc$")
+        local is_cs = filename:match("^cs_.*%.sc$")
+
+        print("  Is VS? " .. (is_vs and "YES ("..is_vs..")" or "NO"))
+        print("  Is FS? " .. (is_fs and "YES ("..is_fs..")" or "NO"))
+        print("  Is CS? " .. (is_cs and "YES ("..is_cs..")" or "NO"))
+
+        if not (is_vs or is_fs or is_cs) then
+            print("  Skipping: Not a primary shader type (vs_*, fs_*, cs_*).")
+            print("----------------------------------------------------")
+            return
+        end
+
+        print("  PROCESSING PRIMARY SHADER " .. sourcefile)
+        print("----------------------------------------------------")
 
         --------------------------------------------------------------------
-        --  shaderc executable
+        --  Locate shaderc executable
         --------------------------------------------------------------------
         local root = os.projectdir()
         local shaderc = ""
@@ -135,17 +168,25 @@ rule("bgfx_shaderc")
             if b.platform == current then table.insert(backends, b) end
         end
         if #backends == 0 then
+            print("Warning: No backend for platform '" .. current .. "', default GL.")
             table.insert(backends, { platform = "linux", profile = "440", folder = "glsl" })
         end
 
         --------------------------------------------------------------------
-        --  Varying files
+        --  Pick varying files
         --------------------------------------------------------------------
         local vbase = path.join(root, "src/assets/shaders")
         local vfile = path.join(vbase, "varying.def.sc")
-        if name:find("imgui", 1, true)  then vfile = path.join(vbase, "varying_imgui.def.sc") end
-        if name:find("skybox",1, true)  then vfile = path.join(vbase, "varying_skybox.def.sc") end
-        -- add more specialisations here only if they already existed in *main*
+
+        if filename:find("imgui",   1, true) then
+            vfile = path.join(vbase, "varying_imgui.def.sc")
+        elseif filename:find("skybox", 1, true) then
+            vfile = path.join(vbase, "varying_skybox.def.sc")
+        elseif filename:find("terrain", 1, true) then
+            vfile = path.join(vbase, "varying_terrain_pbr.def.sc")
+        elseif filename:find("shadow", 1, true) then
+            vfile = path.join(vbase, "varying_shadow.def.sc")
+        end
 
         --------------------------------------------------------------------
         --  Backend compilation
@@ -166,7 +207,7 @@ rule("bgfx_shaderc")
                 "-i", path.join(root, "src/assets/shaders/includes"),
                 "--entry", "main",
                 "-f", sourcefile,
-                "-o", path.join(outdir, name .. ".bin")
+                "-o", path.join(outdir, filename .. ".bin")
             }
 
             local ok, out, err = os.iorunv(shaderc, args)
