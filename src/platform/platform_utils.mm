@@ -6,7 +6,7 @@
 #include "backends/imgui_impl_sdl2.h"
 
 #include "platform_utils.h"
-#include "core/logger.h"
+#include "engine/core/logger.h"
 
 #if defined(__APPLE__)
 
@@ -92,7 +92,10 @@ void RefreshFramebufferSize(SDL_Window* win)
     ImGuiIO& io = ImGui::GetIO();
     float dpi   = GetDPIScale(win);
     io.DisplaySize             = ImVec2(dw / dpi, dh / dpi);
-    io.DisplayFramebufferScale = ImVec2(dpi, dpi);                             
+    io.DisplayFramebufferScale = ImVec2(dpi, dpi);
+    
+    if (dw == 0 || dh == 0)           // window is minimised or off-screen
+    return;          // skip reset
 }
 
 bool InFullscreenSpace(SDL_Window* w)

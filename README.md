@@ -100,8 +100,8 @@ This engine uses a [CMake-based fork of bgfx](https://github.com/bkaradzic/bgfx.
 
 ```bash
 # Clone the bgfx.cmake fork
-git clone https://github.com/bkaradzic/bgfx.cmake.git src/thirdparty/bgfx.cmake
-cd src/thirdparty/bgfx.cmake
+git clone https://github.com/bkaradzic/bgfx.cmake.git thirdparty/bgfx.cmake
+cd thirdparty/bgfx.cmake
 
 # Pull in all bgfx dependencies
 git submodule update --init --recursive
@@ -122,7 +122,7 @@ To compile shaders used by the engine, you need to build `shaderc.exe`, BGFX's c
 #### Build Shaderc on Windows (VS2022 example)
 
 ```bash
-cd src/thirdparty/bgfx.cmake
+cd thirdparty/bgfx.cmake
 
 # Make sure all submodules are pulled in (important!)
 git submodule update --init --recursive
@@ -136,8 +136,8 @@ cmake --build .build/win64_vs2022 --config Release --target shaderc
 
 After this, `shaderc.exe` will be available at:
 
-```
-src/thirdparty/bgfx.cmake/.build/win64_vs2022/bin/shaderc.exe
+```bash
+thirdparty/bgfx.cmake/.build/win64_vs2022/bin/shaderc.exe
 ```
 
 Your build system (e.g., XMake) should point to this executable when compiling shaders.

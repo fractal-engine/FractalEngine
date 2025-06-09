@@ -1,0 +1,1 @@
+#define BOOST_TEST_MODULE Fractal3DTests

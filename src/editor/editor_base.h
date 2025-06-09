@@ -3,7 +3,7 @@
 
 #include <boost/signals2/signal.hpp>
 
-#include "subsystem/input/input_event.h"
+#include "platform/input/input_event.h"
 
 class EditorBase {
 

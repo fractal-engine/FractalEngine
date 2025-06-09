@@ -2,15 +2,16 @@
 #define EDITOR_LAYER_H
 
 #include <memory>
-#include "editor/editor_base.h"
+#include "editor_base.h"
+#include "engine/renderer/renderer_graphics.h"
+#include "game/game_test.h"
 #include "imgui.h"
 #include "imgui_internal.h"
-#include "renderer/renderer_graphics.h"
-#include "subsystem/input/key_map_sdl.h"
+#include "platform/input/key_map_sdl.h"
 
 class EditorLayer : public EditorBase {
 public:
-  explicit EditorLayer(std::unique_ptr<RendererBase>& renderer);
+  explicit EditorLayer(RendererBase* renderer);
   ~EditorLayer();
 
   static EditorLayer* Get();  // Singleton access
@@ -32,7 +33,7 @@ private:
   void DockSpace();
   void LoadIcons();
 
-  std::unique_ptr<RendererBase>& renderer_;
+  RendererBase* renderer_ = nullptr;    
   bool quit_ = false;
   bool is_game_started_ = false;
   bool game_canvas_hovered_ = false;

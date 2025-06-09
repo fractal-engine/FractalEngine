@@ -1,0 +1,6 @@
+target("tests")
+    set_kind("static")
+    add_deps("engine")
+    add_packages("boost")
+    add_files("*.cpp")
+target_end()

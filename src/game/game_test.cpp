@@ -4,39 +4,41 @@
 #include <bx/math.h>
 #include <vector>
 
-#include "core/logger.h"
-#include "core/view_ids.h"
-#include "renderer/shaders/shader_utils.h"
-#include "subsystem/subsystem_manager.h"
-#include "tools/texture_utils.h"
+#include "game_test.h"
 
-// --- Local Math Workarounds  ---
-inline float local_min(float _a, float _b) {
-  return _a < _b ? _a : _b;
+#include <SDL.h>
+#include "editor/runtime/application.h"
+#include "engine/core/logger.h"
+#include "engine/core/view_ids.h"
+#include "engine/renderer/lighting/sky_lighting.h"
+#include "engine/renderer/renderer_graphics.h"
+#include "engine/resources/shader_utils.h"
+#include "engine/resources/textures/texture_utils.h"
+
+// math Workarounds
+inline float local_min(float a, float b) {
+  return a < b ? a : b;
 }
-
-inline float local_max(float _a, float _b) {
-  return _a > _b ? _a : _b;
+inline float local_max(float a, float b) {
+  return a > b ? a : b;
 }
-
-inline float local_clamp(float _val, float _min_val, float _max_val) {
-  return local_max(_min_val, local_min(_val, _max_val));
+inline float local_clamp(float v, float m, float M) {
+  return local_max(m, local_min(v, M));
 }
-
-inline float local_smoothStep(float edge0, float edge1, float x) {
-  float t = local_clamp((x - edge0) / (edge1 - edge0), 0.0f, 1.0f);
+inline float local_smoothStep(float e0, float e1, float x) {
+  float t = local_clamp((x - e0) / (e1 - e0), 0.0f, 1.0f);
   return t * t * (3.0f - 2.0f * t);
 }
-// --- End Local Math Workarounds ---
 
-// --- Vertex Structures and Layouts ---
-// Vertex structure for position and one set of texture coordinates
+// ──────────────────────────────────────────────────────
+//  Vertex layouts
+// ──────────────────────────────────────────────────────
 bgfx::VertexLayout PosTexCoord0Vertex::layout;
 
 // Maximum height of the terrain in world units
 constexpr float TERRAIN_MAX_ACTUAL_HEIGHT = 150.0f;
 // View ID for the shadow map rendering pass
-constexpr uint8_t SHADOW_MAP_VIEW_ID = ViewID::SHADOW_PASS;
+constexpr uint8_t SHADOW_MAP_VIEW_ID = ViewID::Shadow(0);
 // Fixed size for the shadow map texture
 constexpr uint16_t KNOWN_SHADOW_MAP_SIZE = 2048;
 
@@ -82,10 +84,10 @@ GameTest::GameTest()
       _terrainProgramHeight(BGFX_INVALID_HANDLE),
       _heightUniform(BGFX_INVALID_HANDLE),
       _heightTexture(BGFX_INVALID_HANDLE),
-      terrainDiffuse(BGFX_INVALID_HANDLE),
       terrainORM(BGFX_INVALID_HANDLE),
       terrainNormal(BGFX_INVALID_HANDLE),
       _cameraPosUniform(BGFX_INVALID_HANDLE),
+      terrainDiffuse(BGFX_INVALID_HANDLE),
       _terrainVbh(BGFX_INVALID_HANDLE),
       _terrainIbh(BGFX_INVALID_HANDLE),
       _terrainParamsUniform(BGFX_INVALID_HANDLE),
@@ -110,6 +112,7 @@ GameTest::GameTest()
       _terrainShadowProgram(BGFX_INVALID_HANDLE),
       _cycleTime(0.0f) {
   bx::mtxIdentity(world_matrix);  // Initialize world matrix to identity
+
   // Default sky ambient color (dark)
   _skyAmbientArray[0] = 0.1f;
   _skyAmbientArray[1] = 0.1f;
@@ -117,10 +120,11 @@ GameTest::GameTest()
   _skyAmbientArray[3] = 0.0f;  // w component unused for color
 }
 
-// Destructor: Cleanup is handled in Shutdown()
-GameTest::~GameTest() {}
+GameTest::~GameTest() = default;
 
-// Initializes game resources
+// ──────────────────────────────────────────────────────
+//  Init()
+// ──────────────────────────────────────────────────────
 void GameTest::Init() {
   Logger::getInstance().Log(LogLevel::Debug, "[GameTest] Init() called.");
 
@@ -145,20 +149,21 @@ void GameTest::Init() {
   camera.setYaw(bx::toRad(45.0f));          // Set initial yaw
 
   // Load shader programs
-  auto& shaderMgr = *SubsystemManager::GetShaderManager();
-  _terrainProgramHeight =
-      shaderMgr.LoadProgram("terrain_pbr", "vs_terrain.bin", "fs_terrain.bin");
+  auto& ShaderManager = *Application::GetShaderManager();
+
+  _terrainProgramHeight = ShaderManager.LoadProgram(
+      "terrain_pbr", "vs_terrain.bin", "fs_terrain.bin");
   Logger::getInstance().Log(
       LogLevel::Debug,
       std::string("[DEBUG] _terrainPBR valid = ") +
           (bgfx::isValid(_terrainProgramHeight) ? "true" : "false"));
-  _skyProgram =
-      shaderMgr.LoadProgram("skybox_proc", "vs_skybox.bin", "fs_skybox.bin");
+  _skyProgram = ShaderManager.LoadProgram("skybox_proc", "vs_skybox.bin",
+                                          "fs_skybox.bin");
   Logger::getInstance().Log(
       LogLevel::Debug, std::string("[DEBUG] _Skybox valid = ") +
                            (bgfx::isValid(_skyProgram) ? "true" : "false"));
-  _terrainShadowProgram =
-      shaderMgr.LoadProgram("terrain_shadow", "vs_shadow.bin", "fs_shadow.bin");
+  _terrainShadowProgram = ShaderManager.LoadProgram(
+      "terrain_shadow", "vs_shadow.bin", "fs_shadow.bin");
   Logger::getInstance().Log(
       LogLevel::Debug,
       std::string("[DEBUG] _terrainShadowProgram valid = ") +
@@ -504,8 +509,8 @@ void GameTest::Render() {
 
   // Render Terrain
   uint8_t terrainViewID =
-      ViewID::SCENE_N(1);  // Use a subsequent view ID for terrain (can share
-                           // SCENE if no specific sorting needed)
+      ViewID::SceneExtra(0);  // Use a subsequent view ID for terrain (can share
+                              // SCENE if no specific sorting needed)
   bgfx::setViewRect(terrainViewID, 0, 0, canvasViewportW,
                     canvasViewportH);  // Set viewport (same as main scene)
   bgfx::setViewTransform(terrainViewID, viewMatrix,

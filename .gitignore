@@ -11,6 +11,7 @@ vsxmake2022/
 build/
 
 # generated asset files
+/assets/
 assets/shaders/**/*.bin
 assets/shaders/**/*.o
 assets/shaders/**/*.d
