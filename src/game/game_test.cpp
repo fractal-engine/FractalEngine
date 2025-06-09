@@ -387,31 +387,34 @@ void GameTest::Render() {
   bgfx::setViewTransform(skyView, view, proj);
   bgfx::setViewTransform(terrainView, view, proj);
 
-  // Animate the sun in a vertical arc (semi-circle)
-  const float phi = _cycleTime;
+  // --- Sun direction, colour and ambient ---
+  float sunAngle = _cycleTime;
+  bx::Vec3 sunDir =
+      bx::normalize(bx::Vec3(bx::cos(sunAngle), bx::sin(sunAngle), 0.1f));
+  if (sunDir.y < -0.2f)
+    sunDir.y = -0.2f;
 
-  // Create a full sun arc from horizon to horizon
-  const float x = sinf(phi);                   // left-right sweep
-  const float y = sinf(phi + bx::kPi * 0.5f);  // vertical rise/fall
-  const float z = cosf(phi);                   // depth sweep
-  const bx::Vec3 sunDir = bx::normalize(bx::Vec3(x, y, z));
+  float sunDirShader[4] = {sunDir.x, sunDir.y, sunDir.z, 0.0f};
 
-  float dir[4] = {sunDir.x, sunDir.y, sunDir.z, 0.0f};
-  float time[4] = {_cycleTime, 0, 0, 0};
+  float sunElevation = local_smoothStep(-0.15f, 0.2f, sunDir.y);
+  float sunIntensity = bx::lerp(0.3f, 3.0f, sunElevation);
 
-  // Clamp between 0 and 1 — 0 when sun is below, 1 when fully overhead
-  float t = bx::clamp(sunDir.y * 0.5f + 0.5f, 0.0f, 1.0f);
-
-  // Soften sun color range
-  _sunColorArray[0] = bx::lerp(1.0f, 1.0f, t);  // R stays 1.0
-  _sunColorArray[1] = bx::lerp(0.5f, 1.0f, t);  // G warms up
-  _sunColorArray[2] = bx::lerp(0.1f, 1.0f, t);  // B goes from warm to cool
+  _sunColorArray[0] = bx::lerp(0.8f, 1.0f, sunElevation) * sunIntensity;
+  _sunColorArray[1] = bx::lerp(0.6f, 1.0f, sunElevation) * sunIntensity;
+  _sunColorArray[2] = bx::lerp(0.4f, 1.0f, sunElevation) * sunIntensity;
   _sunColorArray[3] = 0.0f;
 
-  _parametersArray[0] = 0.01f;       // Sun size
-  _parametersArray[1] = 3.0f;        // Bloom factor
-  _parametersArray[2] = 1.0f;        // Exposure
-  _parametersArray[3] = _cycleTime;  // Time
+  _skyAmbientArray[0] = bx::lerp(0.02f, 0.3f, sunElevation);
+  _skyAmbientArray[1] = bx::lerp(0.03f, 0.4f, sunElevation);
+  _skyAmbientArray[2] = bx::lerp(0.05f, 0.55f, sunElevation);
+  _skyAmbientArray[3] = 0.0f;
+  for (int i = 0; i < 3; ++i)
+    _skyAmbientArray[i] *= 0.05f;  // ambient boost
+
+  _parametersArray[0] = 0.005f;  // Rayleigh
+  _parametersArray[1] = 0.1f;    // Mie
+  _parametersArray[2] = 1.0f;    // intensity factor
+  _parametersArray[3] = _cycleTime;
 
   // --- SHADOW PASS: render depth from light’s point of view ---
   bx::Vec3 lightPos = bx::mul(sunDir, -100.0f);  // pull back from origin
@@ -469,7 +472,7 @@ void GameTest::Render() {
     bgfx::setUniform(_viewInvUniform, invView);
     bgfx::setUniform(_projInvUniform, invProj);
     bgfx::setUniform(_timeUniform, time);
-    bgfx::setUniform(_sunDirUniform, dir);
+    bgfx::setUniform(_sunDirUniform, sunDirShader);
     bgfx::setUniform(_sunLumUniform, _sunColorArray);
     bgfx::setUniform(_paramsUniform, _parametersArray);
 
