@@ -1,5 +1,6 @@
 #include <bgfx/bgfx.h>
 #include <bx/math.h>
+#include <vector>
 
 #include "game_test.h"
 
@@ -12,7 +13,20 @@
 #include "engine/resources/shader_utils.h"
 #include "engine/resources/textures/texture_utils.h"
 
-// constexpr uint8_t shadowView = ViewID::SHADOW_PASS;
+// math Workarounds
+inline float local_min(float a, float b) {
+  return a < b ? a : b;
+}
+inline float local_max(float a, float b) {
+  return a > b ? a : b;
+}
+inline float local_clamp(float v, float m, float M) {
+  return local_max(m, local_min(v, M));
+}
+inline float local_smoothStep(float e0, float e1, float x) {
+  float t = local_clamp((x - e0) / (e1 - e0), 0.0f, 1.0f);
+  return t * t * (3.0f - 2.0f * t);
+}
 
 // ──────────────────────────────────────────────────────
 //  Vertex layouts
@@ -62,6 +76,14 @@ static void initLayouts() {
 }
 
 // ──────────────────────────────────────────────────────
+//  Terrain Constants
+// ──────────────────────────────────────────────────────
+constexpr float TerrainScale = 1024.0f;
+constexpr uint16_t TerrainSize = 128;
+constexpr float TerrainExtent = ((TerrainSize - 1) * TerrainScale) * 0.5f;
+constexpr float TERRAIN_MAX_ACTUAL_HEIGHT = 150.0f;
+
+// ──────────────────────────────────────────────────────
 //  GameTest ctor / dtor
 // ──────────────────────────────────────────────────────
 GameTest::GameTest()
@@ -70,12 +92,14 @@ GameTest::GameTest()
       _terrainProgramHeight(BGFX_INVALID_HANDLE),
       _heightUniform(BGFX_INVALID_HANDLE),
       _heightTexture(BGFX_INVALID_HANDLE),
-      _lightDirUniform(BGFX_INVALID_HANDLE),
+      terrainDiffuse(BGFX_INVALID_HANDLE),
+      terrainORM(BGFX_INVALID_HANDLE),
+      terrainNormal(BGFX_INVALID_HANDLE),
+      _cameraPosUniform(BGFX_INVALID_HANDLE),
       _terrainVbh(BGFX_INVALID_HANDLE),
       _terrainIbh(BGFX_INVALID_HANDLE),
-      _lightMatrixUniform(BGFX_INVALID_HANDLE),
-      _skyAmbientUniform(BGFX_INVALID_HANDLE),
-      _shadowSamplerUniform(BGFX_INVALID_HANDLE),
+      _terrainParamsUniform(BGFX_INVALID_HANDLE),
+      _heightmapTexelSizeUniform(BGFX_INVALID_HANDLE),
       _skyProgram(BGFX_INVALID_HANDLE),
       _skyVbh(BGFX_INVALID_HANDLE),
       _skyIbh(BGFX_INVALID_HANDLE),
@@ -83,12 +107,25 @@ GameTest::GameTest()
       _sunDirUniform(BGFX_INVALID_HANDLE),
       _sunLumUniform(BGFX_INVALID_HANDLE),
       _paramsUniform(BGFX_INVALID_HANDLE),
-      _terrainShadowProgram(BGFX_INVALID_HANDLE),
+      _viewInvUniform(BGFX_INVALID_HANDLE),
+      _projInvUniform(BGFX_INVALID_HANDLE),
       _s_diffuseUniform(BGFX_INVALID_HANDLE),
       _s_ormUniform(BGFX_INVALID_HANDLE),
       _s_normalUniform(BGFX_INVALID_HANDLE),
-      _cycleTime(0.f) {
-  bx::mtxIdentity(world_matrix);
+      _skyAmbientUniform(BGFX_INVALID_HANDLE),
+      _lightMatrixUniform(BGFX_INVALID_HANDLE),
+      _shadowSamplerUniform(BGFX_INVALID_HANDLE),
+      shadowMapTexture(BGFX_INVALID_HANDLE),
+      shadowMapFB(BGFX_INVALID_HANDLE),
+      _terrainShadowProgram(BGFX_INVALID_HANDLE),
+      _cycleTime(0.0f) {
+  bx::mtxIdentity(world_matrix);  // Initialize world matrix to identity
+
+  // Default sky ambient color (dark)
+  _skyAmbientArray[0] = 0.1f;
+  _skyAmbientArray[1] = 0.1f;
+  _skyAmbientArray[2] = 0.1f;
+  _skyAmbientArray[3] = 0.0f;  // w component unused for color
 }
 
 GameTest::~GameTest() = default;
@@ -102,56 +139,58 @@ void GameTest::Init() {
   skyLighting.Init();  // Start the sky lighting system
   Logger::getInstance().Log(LogLevel::Debug, "[GameTest] Init() called.");
 
-  float terrainCenter[3] = {77.5f, 0.0f, 77.5f};
-  camera.setTarget(terrainCenter);
-  camera.setPitch(0.4f);
-  camera.setYaw(0.75f);
+  float terrainCenterPos[3] = {TerrainExtent, 0.0f, TerrainExtent};
+  float targetPos[3] = {TerrainExtent, 0.0f, TerrainExtent};
+  camera.setTarget(targetPos);
+  camera.setDistance(TerrainScale * 2.0f);
+  camera.setPitch(bx::toRad(30.0f));
+  camera.setYaw(bx::toRad(45.0f));
 
   auto& ShaderManager = *Application::GetShaderManager();
 
   // ― Terrain shader
   _terrainProgramHeight = Application::GetShaderManager()->LoadProgram(
-      "terrain_height", "vs_terrain.bin", "fs_terrain.bin");
+      "terrain_pbr", "vs_terrain.bin", "fs_terrain.bin");
 
   // ― Sky / Sun
-  _skyProgram =
-      ShaderManager.LoadProgram("skybox", "vs_skybox.bin", "fs_skybox.bin");
+  _skyProgram = ShaderManager.LoadProgram("skybox_proc", "vs_skybox.bin",
+                                          "fs_skybox.bin");
 
   // ― Shadow-only terrain shader
   _terrainShadowProgram = Application::GetShaderManager()->LoadProgram(
       "terrain_shadow", "vs_shadow.bin", "fs_shadow.bin");
 
-  // ― Uniforms
+  // Create uniform handles
   _heightUniform =
       bgfx::createUniform("s_heightTexture", bgfx::UniformType::Sampler);
-  _lightDirUniform = bgfx::createUniform("u_lightDir", bgfx::UniformType::Vec4);
-
-  _timeUniform = bgfx::createUniform("u_time", bgfx::UniformType::Vec4);
-  _cameraPosUniform =
-      bgfx::createUniform("u_cameraPos", bgfx::UniformType::Vec4);
-  _sunDirUniform =
-      bgfx::createUniform("u_sunDirection", bgfx::UniformType::Vec4);
-  _sunLumUniform =
-      bgfx::createUniform("u_sunLuminance", bgfx::UniformType::Vec4);
-  _paramsUniform = bgfx::createUniform("u_parameters", bgfx::UniformType::Vec4);
-  _viewInvUniform = bgfx::createUniform("u_viewInv", bgfx::UniformType::Mat4);
-  _projInvUniform = bgfx::createUniform("u_projInv", bgfx::UniformType::Mat4);
-
   _s_diffuseUniform =
       bgfx::createUniform("s_diffuse", bgfx::UniformType::Sampler);
   _s_ormUniform = bgfx::createUniform("s_orm", bgfx::UniformType::Sampler);
   _s_normalUniform =
       bgfx::createUniform("s_normal", bgfx::UniformType::Sampler);
-
-  // Sky ambient light Uniform
-  _skyAmbientUniform =
-      bgfx::createUniform("u_skyAmbient", bgfx::UniformType::Vec4);
-  // Light Matrix Uniform
-  _lightMatrixUniform =
-      bgfx::createUniform("u_lightMatrix", bgfx::UniformType::Mat4);
-
   _shadowSamplerUniform =
       bgfx::createUniform("s_shadowMap", bgfx::UniformType::Sampler);
+  _terrainParamsUniform =
+      bgfx::createUniform("u_terrainParams", bgfx::UniformType::Vec4);
+  _heightmapTexelSizeUniform =
+      bgfx::createUniform("u_heightmapTexelSize", bgfx::UniformType::Vec4);
+  _cameraPosUniform =
+      bgfx::createUniform("u_cameraPos", bgfx::UniformType::Vec4);
+  _lightMatrixUniform =
+      bgfx::createUniform("u_lightMatrix", bgfx::UniformType::Mat4);
+  _sunDirUniform =
+      bgfx::createUniform("u_sunDirection", bgfx::UniformType::Vec4);
+  _sunLumUniform =
+      bgfx::createUniform("u_sunLuminance", bgfx::UniformType::Vec4);
+  _skyAmbientUniform =
+      bgfx::createUniform("u_skyAmbient", bgfx::UniformType::Vec4);
+  _paramsUniform = bgfx::createUniform(
+      "u_parameters", bgfx::UniformType::Vec4);  // Skybox parameters
+  _viewInvUniform = bgfx::createUniform(
+      "u_viewInv", bgfx::UniformType::Mat4);  // Inverse view matrix for skybox
+  _projInvUniform = bgfx::createUniform(
+      "u_projInv",
+      bgfx::UniformType::Mat4);  // Inverse projection matrix for skybox
 
   // Load terrain textures
   terrainDiffuse =

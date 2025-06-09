@@ -59,6 +59,9 @@ private:
   bgfx::VertexBufferHandle _terrainVbh = BGFX_INVALID_HANDLE;
   bgfx::IndexBufferHandle _terrainIbh = BGFX_INVALID_HANDLE;
 
+  bgfx::UniformHandle _terrainParamsUniform = BGFX_INVALID_HANDLE;
+  bgfx::UniformHandle _heightmapTexelSizeUniform = BGFX_INVALID_HANDLE;
+
   std::vector<PosTexCoord0Vertex> terrainVertices;
   std::vector<uint16_t> terrainIndices;
 
@@ -78,7 +81,6 @@ private:
   bgfx::UniformHandle _projInvUniform = BGFX_INVALID_HANDLE;
 
   // Texture Uniforms
-
   bgfx::UniformHandle _s_diffuseUniform = BGFX_INVALID_HANDLE;
   bgfx::UniformHandle _s_ormUniform = BGFX_INVALID_HANDLE;
   bgfx::UniformHandle _s_normalUniform = BGFX_INVALID_HANDLE;
