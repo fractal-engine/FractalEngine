@@ -234,12 +234,34 @@ void GraphicsRenderer::ClearDisplay() {
 void GraphicsRenderer::Shutdown() {
   Logger::getInstance().Log(LogLevel::Info, "Shutting down GraphicsRenderer");
 
-  if (bgfx::isValid(scene_framebuffer_))
+  // 1. Destroy framebuffer attachments first
+  if (bgfx::isValid(scene_color_texture_)) {
+    bgfx::destroy(scene_color_texture_);
+    scene_color_texture_ = BGFX_INVALID_HANDLE;
+  }
+
+  if (bgfx::isValid(scene_depth_texture_)) {
+    bgfx::destroy(scene_depth_texture_);
+    scene_depth_texture_ = BGFX_INVALID_HANDLE;
+  }
+
+  // 2. Then destroy the framebuffer
+  if (bgfx::isValid(scene_framebuffer_)) {
     bgfx::destroy(scene_framebuffer_);
+    scene_framebuffer_ = BGFX_INVALID_HANDLE;
+  }
+
+  // 3. Clear ImGui texture ID before shutdown
   scene_tex_id_ = 0;
 
+  // 4. Final frame flush (optional but safe)
   bgfx::frame();
-  bgfx::shutdown();
+
+  // 5. Shutdown BGFX
+  // bgfx::shutdown();
+
+  Logger::getInstance().Log(LogLevel::Info,
+                            "GraphicsRenderer shutddown complete");
 }
 
 void GraphicsRenderer::BeginImGuiFrame() {}

@@ -49,3 +49,31 @@ bgfx::ShaderHandle loadShader(const char* filePath) {
     return BGFX_INVALID_HANDLE;
   }
 }
+
+// New helper to load a program with optional fragment shader file
+bgfx::ProgramHandle LoadProgram(const char* vsFile,
+                                const char* fsFile = nullptr) {
+  bgfx::ShaderHandle vs = loadShader(vsFile);
+  if (!bgfx::isValid(vs)) {
+    Logger::getInstance().Log(
+        LogLevel::Error,
+        "Failed to load vertex shader: " + std::string(vsFile));
+    return BGFX_INVALID_HANDLE;
+  }
+
+  bgfx::ShaderHandle fs = BGFX_INVALID_HANDLE;
+
+  if (fsFile && fsFile[0] != '\0') {
+    fs = loadShader(fsFile);
+    if (!bgfx::isValid(fs)) {
+      Logger::getInstance().Log(
+          LogLevel::Error,
+          "Failed to load fragment shader: " + std::string(fsFile));
+      bgfx::destroy(vs);
+      return BGFX_INVALID_HANDLE;
+    }
+  }
+
+  // true means shaders will be destroyed when program is destroyed
+  return bgfx::createProgram(vs, fs, true);
+}
