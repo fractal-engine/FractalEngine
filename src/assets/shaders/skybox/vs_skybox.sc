@@ -1,35 +1,30 @@
-$input a_position
-$output v_viewDir
+$input a_position        // Screen space position, XY in [-1,1]
+$output v_viewDir        // World space view direction
 
-#include "../common/common.sh"
+#include "../common/common.sh" 
 
-// Required uniforms
-uniform mat4 u_projInv;
-uniform mat4 u_viewInv;
+// --- Uniforms ---
+uniform mat4 u_projInv;  // Inverse projection matrix
+uniform mat4 u_viewInv;  // Inverse view matrix (camera to world transform)
 
-void main()
-{
+// --- Main Shader Function ---
+void main() {
+    float2 ndc = a_position.xy; // Normalized Device Coordinates
 
-float2 ndc = a_position.xy;
-// a_position.xy is expected to be in NDC space [-1, 1].
-// This is the position of the vertex on the screen quad.
+    // --- Compute Clip Space Position on Far Plane ---
+    float4 clipPos = float4(ndc, 1.0, 1.0);
 
-float4 clipPos = float4(ndc, 1.0, 1.0);
-// Construct clip-space position (z = 1.0 for far plane, w = 1.0 for homogeneous divide).
+    // --- Unproject to View Space ---
+    float4 viewPosH = mul(u_projInv, clipPos);       // Homogeneous view space position
+    float3 viewPos = viewPosH.xyz / viewPosH.w;      // Perspective divide to get 3D point
 
-float4 viewPos = mul(u_projInv, clipPos);
-// Transform from clip space to view space using inverse projection matrix.
+    // --- Calculate View Direction in View Space ---
+    float3 viewDir_viewSpace = normalize(viewPos);
 
-viewPos /= viewPos.w;
-// Perspective divide to get actual view-space position (from homogeneous coordinates).
+    // --- Transform View Direction to World Space ---
+    v_viewDir = normalize(mul(u_viewInv, vec4(viewDir_viewSpace, 0.0)).xyz);
 
-float4 worldPos = mul(u_viewInv, viewPos);
-// Transform from view space to world space using inverse view matrix.
-
-v_viewDir = normalize(worldPos.xyz);
-// Output the normalized world-space direction for use in the fragment shader.
-
-gl_Position = float4(ndc, 0.0, 1.0);
-// Output position of the fullscreen quad in clip space.
-
+    // --- Output final clip-space position ---
+    // Z=1.0 to render at far plane, W=1.0 for rasterizer
+    gl_Position = float4(ndc, 1.0, 1.0);
 }
