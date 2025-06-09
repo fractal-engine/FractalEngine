@@ -98,9 +98,6 @@ private:
   bgfx::ProgramHandle _terrainShadowProgram = BGFX_INVALID_HANDLE;
   bgfx::VertexBufferHandle _shadowVbh = BGFX_INVALID_HANDLE;
 
-  float _cycleTime = 0.0f;    // day-night timerm keep it at 0
-  float _skyAmbientArray[4];  // Holds current ambient sky light
-
   // colour / param arrays passed to both sky & sun shaders
   float _sunColorArray[4] = {5.0f, 5.0f, 5.0f, 0.0f};
   float _parametersArray[4] = {1.0f, 1.0f, 1.0f, 0.0f};
