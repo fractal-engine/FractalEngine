@@ -74,99 +74,106 @@ package("bgfx")
     end)
 package_end()
 
----------------------------------------------------------------
+----------------------------------------------------------------
 --  bgfx_shaderc rule
----------------------------------------------------------------
+----------------------------------------------------------------
 rule("bgfx_shaderc")
     set_extensions(".sc")
 
     on_build_file(function (target, sourcefile)
-        -- Get the correct path to shaderc based on platform
+        -- separator
+        local sep = is_host("windows") and "\\" or "/"
+
+        --------------------------------------------------------------------
+        --  Early-out filters
+        --------------------------------------------------------------------
+        local name   = path.filename(sourcefile)
+        local normal = path.normalize(sourcefile)
+
+        if name:startswith("varying") then return end
+        if normal:find(sep .. "includes" .. sep, 1, true) then return end
+
+        local is_vs = name:match("^vs_.*%.sc$")
+        local is_fs = name:match("^fs_.*%.sc$")
+        local is_cs = name:match("^cs_.*%.sc$")
+        if not (is_vs or is_fs or is_cs) then return end
+
+        --------------------------------------------------------------------
+        --  shaderc executable
+        --------------------------------------------------------------------
+        local root = os.projectdir()
         local shaderc = ""
         if is_plat("windows") then
-            shaderc = path.join(os.projectdir(), "thirdparty/bgfx.cmake/.build/win64_vs2022/cmake/bgfx/Release/shaderc.exe")
+            shaderc = path.join(root, "thirdparty/bgfx.cmake/.build/win64_vs2022/cmake/bgfx/Release/shaderc.exe")
         elseif is_plat("macosx") then
-            shaderc = path.join(os.projectdir(), "thirdparty/bgfx.cmake/.build/osx/cmake/bgfx/shaderc")
+            shaderc = path.join(root, "thirdparty/bgfx.cmake/.build/osx/cmake/bgfx/shaderc")
         elseif is_plat("linux") then
-            shaderc = path.join(os.projectdir(), "thirdparty/bgfx.cmake/.build/linux/bin/shaderc")
+            shaderc = path.join(root, "thirdparty/bgfx.cmake/.build/linux/bin/shaderc")
         end
-        
         if not os.isfile(shaderc) then
             print("Error: shaderc not found at: " .. shaderc)
             return
         end
-        
-        -- Define all possible backends
-        local all_backends = {
+
+        --------------------------------------------------------------------
+        --  Backend matrix
+        --------------------------------------------------------------------
+        local matrix = {
             { platform = "windows", profile = "s_5_0", folder = "dx11" },
             { platform = "windows", profile = "s_5_0", folder = "dx12" },
             { platform = "linux",   profile = "440",   folder = "glsl" },
             { platform = "osx",     profile = "metal", folder = "metal" },
             { platform = "android", profile = "spirv", folder = "spirv" }
         }
-        
-        -- Get current platform identifier
-        local current_platform = ""
-        if is_plat("windows") then
-            current_platform = "windows"
-        elseif is_plat("macosx") then
-            current_platform = "osx"
-        elseif is_plat("linux") then
-            current_platform = "linux"
-        elseif is_plat("android") then
-            current_platform = "android"
+        local current = is_plat("windows") and "windows"
+                     or is_plat("macosx")  and "osx"
+                     or is_plat("linux")   and "linux"
+                     or is_plat("android") and "android"
+                     or ""
+        local backends = {}
+        for _, b in ipairs(matrix) do
+            if b.platform == current then table.insert(backends, b) end
         end
-        
-        -- Filter backends for current platform only
-        local backends_to_compile = {}
-        for _, backend in ipairs(all_backends) do
-            if backend.platform == current_platform then
-                table.insert(backends_to_compile, backend)
-            end
-        end
-        
-        -- If no backends found for this platform, warn and use defaults
-        if #backends_to_compile == 0 then
-            print("Warning: No shader backends defined for platform: " .. current_platform)
-            print("Using default backend (GLSL)")
-            table.insert(backends_to_compile, {platform = "linux", profile = "440", folder = "glsl"})
-        end
-        
-        local shader_type = sourcefile:match("vs_") and "vertex" or sourcefile:match("fs_") and "fragment" or "compute"
-
-        -- Shader definition files
-        local varying_base = path.join(os.projectdir(), "src/assets/shaders")
-        local varying_file = path.join(varying_base, "varying.def.sc")
-        if sourcefile:find("imgui")  then
-            varying_file = path.join(varying_base, "varying_imgui.def.sc")
-        elseif sourcefile:find("skybox") then
-            varying_file = path.join(varying_base, "varying_skybox.def.sc")
+        if #backends == 0 then
+            table.insert(backends, { platform = "linux", profile = "440", folder = "glsl" })
         end
 
-        -- Only compile for backends of the current platform
-        for _, backend in ipairs(backends_to_compile) do
-            local output_dir = path.join(os.projectdir(), "assets/shaders", backend.folder)
-            os.mkdir(output_dir)
+        --------------------------------------------------------------------
+        --  Varying files
+        --------------------------------------------------------------------
+        local vbase = path.join(root, "src/assets/shaders")
+        local vfile = path.join(vbase, "varying.def.sc")
+        if name:find("imgui", 1, true)  then vfile = path.join(vbase, "varying_imgui.def.sc") end
+        if name:find("skybox",1, true)  then vfile = path.join(vbase, "varying_skybox.def.sc") end
+        -- add more specialisations here only if they already existed in *main*
+
+        --------------------------------------------------------------------
+        --  Backend compilation
+        --------------------------------------------------------------------
+        local stype = is_vs and "v" or is_fs and "f" or "c"
+
+        for _, b in ipairs(backends) do
+            local outdir = path.join(root, "assets/shaders", b.folder)
+            os.mkdir(outdir)
 
             local args = {
-                "--type", shader_type:sub(1, 1),
-                "--platform", backend.platform,
-                "--profile", backend.profile,
-                "--varyingdef", varying_file,
-                "-i", path.join(os.projectdir(), "thirdparty/bgfx.cmake/bgfx/src"),
-                "-i", path.join(os.projectdir(), "thirdparty/bgfx.cmake/bgfx/examples/common"),
-                "-i", path.join(os.projectdir(), "src/assets/shaders/includes"),
+                "--type", stype,
+                "--platform", b.platform,
+                "--profile",  b.profile,
+                "--varyingdef", vfile,
+                "-i", path.join(root, "thirdparty/bgfx.cmake/bgfx/src"),
+                "-i", path.join(root, "thirdparty/bgfx.cmake/bgfx/examples/common"),
+                "-i", path.join(root, "src/assets/shaders/includes"),
                 "--entry", "main",
                 "-f", sourcefile,
-                "-o", path.join(output_dir, path.basename(sourcefile) .. ".bin")
+                "-o", path.join(outdir, name .. ".bin")
             }
 
-            print("Shaderc Command: " .. table.concat(args, " "))
             local ok, out, err = os.iorunv(shaderc, args)
             if not ok then
-                print("Shaderc failed for " .. sourcefile .. ": " .. (err or out))
+                print("shaderc failed for " .. sourcefile .. ": " .. (err or out))
             end
         end
     end)
 rule_end()
------------------------------------------------------------------------------------------------------------------
+
