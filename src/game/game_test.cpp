@@ -55,7 +55,7 @@ bgfx::VertexLayout PosTexCoord0Vertex::layout;
 // Maximum height of the terrain in world units
 constexpr float TERRAIN_MAX_ACTUAL_HEIGHT = 150.0f;
 // View ID for the shadow map rendering pass
-constexpr uint8_t SHADOW_MAP_VIEW_ID = ViewID::Shadow(0);
+// constexpr uint8_t SHADOW_MAP_VIEW_ID = ViewID::Shadow(0);
 // Fixed size for the shadow map texture
 constexpr uint16_t KNOWN_SHADOW_MAP_SIZE = 2048;
 
@@ -233,7 +233,7 @@ void GameTest::Init() {
       LogLevel::Info,
       "[GameTest::Init] Loading water shaders: vs_water.bin, fs_water.bin");
   _waterProgram =
-      shaderMgr.LoadProgram("water", "vs_water.bin", "fs_water.bin");
+      ShaderManager.LoadProgram("water", "vs_water.bin", "fs_water.bin");
 
   // Create uniform handles
   _heightUniform =
@@ -304,13 +304,14 @@ void GameTest::Init() {
                               "(_waterProgram). Handle is invalid.");
   }
   // Generate initial heightmap data
-  const uint16_t hm_sz = TerrainSize;  
+  const uint16_t hm_sz = TerrainSize;
   std::vector<float> rawHeights(hm_sz * hm_sz);
   float minRawHeight = std::numeric_limits<float>::max();
   float maxRawHeight = std::numeric_limits<float>::lowest();
 
   // --- Parameters to Tune ---
-  float dune_freq_x = 20.0f;  // Increased: More waves, potentially sharper peaks
+  float dune_freq_x =
+      20.0f;  // Increased: More waves, potentially sharper peaks
   float dune_freq_y = 17.0f;  // Increased: More waves
   float dune_base_amplitude =
       80.0f;  // Kept high: for significant raw variation
@@ -661,11 +662,10 @@ void GameTest::Render() {
   // Allow access to the renderer subsystem
   // Get the GraphicsRenderer instance
   GraphicsRenderer* graphicsRendererPtr = nullptr;  // Initialize to nullptr
-  auto& baseRendererPtr = SubsystemManager::GetRenderer();
+  auto* baseRendererPtr = Application::GetRenderer();
 
   if (baseRendererPtr) {
-    graphicsRendererPtr =
-        dynamic_cast<GraphicsRenderer*>(baseRendererPtr.get());
+    graphicsRendererPtr = dynamic_cast<GraphicsRenderer*>(baseRendererPtr);
   }
 
   if (!graphicsRendererPtr) {
@@ -679,7 +679,7 @@ void GameTest::Render() {
 
     uint16_t fbw = graphicsRendererPtr->GetFramebufferWidth();
     uint16_t fbh = graphicsRendererPtr->GetFramebufferHeight();
- 
+
     bgfx::setViewRect(ViewID::REFLECTION_PASS, 0, 0, fbw, fbh);
     bgfx::setViewFrameBuffer(ViewID::REFLECTION_PASS,
                              graphicsRendererPtr->GetReflectionFramebuffer());
@@ -687,7 +687,7 @@ void GameTest::Render() {
     float viewMatrix[16], projMatrix[16];
     camera.getViewMatrix(viewMatrix);
     camera.getProjectionMatrix(projMatrix, float(fbw) / float(fbh));
-    
+
     // Defined here for reflection pass, we cannot reuse the terrain's one
     float cameraView[16];
     // Get view matrix with translation
@@ -712,7 +712,6 @@ void GameTest::Render() {
     // Skybox pass
     float skyModel[16];
     bx::mtxIdentity(skyModel);
-
 
     bgfx::setTransform(skyModel);
     bgfx::setVertexBuffer(0, _skyVbh);
