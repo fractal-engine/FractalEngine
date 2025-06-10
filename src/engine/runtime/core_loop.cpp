@@ -57,8 +57,6 @@ void Shutdown() {
   input_device_instance_.reset();
   shader_manager_instance_.reset();
   graphics_renderer_instance_.reset();
-
-  WindowManager::Shutdown();
 }
 
 // ------------------------------------------------------------------

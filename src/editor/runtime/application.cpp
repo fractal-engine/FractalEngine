@@ -27,7 +27,7 @@ void Application::Shutdown() {
     self.editor_->Shutdown();
     self.editor_.reset();
   }
-
+  
   /* 3 – shutdown engine runtime */
   runtime::Shutdown();
 }
@@ -57,7 +57,7 @@ ShaderManager* Application::GetShaderManager() {
 // ───────────────────────────────────────────
 //  boot sequence (should run once)
 //  TODO: change friend constructors to static
-//  Create/factory functions 
+//  Create/factory functions
 // ───────────────────────────────────────────
 void Application::InitializeInternal() {
   Logger::getInstance().Log(LogLevel::Info, "Application::Initialize");

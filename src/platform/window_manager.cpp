@@ -52,14 +52,13 @@ bool WindowManager::Initialize(const char* title, int width, int height) {
 }
 
 void WindowManager::Shutdown() {
-  getInstance().~WindowManager();
-}
+  WindowManager& inst = getInstance();
 
-WindowManager::~WindowManager() {
-  if (window_) {
-    SDL_DestroyWindow(window_);
-    window_ = nullptr;
+  if (inst.window_) {  // destroy window exactly once
+    SDL_DestroyWindow(inst.window_);
+    inst.window_ = nullptr;
   }
+
   SDL_QuitSubSystem(SDL_INIT_VIDEO);
   SDL_Quit();
 }
@@ -135,16 +134,27 @@ void WindowManager::ToggleFullscreen() {
   WindowManager& inst = getInstance();
   fullscreen_ = !fullscreen_;
 
-  if (fullscreen_) {  // FULLSCREEN
+  if (fullscreen_) {  // ---> FULLSCREEN
     SDL_GetWindowPosition(inst.window_, &windowedBounds.x, &windowedBounds.y);
     SDL_GetWindowSize(inst.window_, &windowedBounds.w, &windowedBounds.h);
     SDL_SetWindowFullscreen(inst.window_, SDL_WINDOW_FULLSCREEN_DESKTOP);
-  } else {  // WINDOWED
+  } else {  // ---> WINDOWED
     SDL_SetWindowFullscreen(inst.window_, 0);
     SDL_SetWindowBordered(inst.window_, SDL_TRUE);
     SDL_SetWindowPosition(inst.window_, windowedBounds.x, windowedBounds.y);
     SDL_SetWindowSize(inst.window_, windowedBounds.w, windowedBounds.h);
   }
+
+  // ---- NEW: refresh cached size, propagate, reset swap-chain -----------
+  int logicalW, logicalH;
+  SDL_GetWindowSize(inst.window_, &logicalW, &logicalH);
+  inst.width_ = logicalW;
+  inst.height_ = logicalH;
+
+  // Graph­icsRenderer’s resize callback calls SetSize() → framebuffer rebuild
+  for (auto& cb : inst.resizeCallbacks_)
+    cb(logicalW, logicalH);
+
   platform::RefreshFramebufferSize(inst.window_);
 }
 
