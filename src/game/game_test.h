@@ -82,7 +82,6 @@ private:
   bgfx::UniformHandle _betaRUniform;  // vec4: RGB of Rayleigh coefficients
   bgfx::UniformHandle _betaMUniform;  // vec4: RGB of Mie coefficients
 
-
   // New skybox uniforms
   bgfx::UniformHandle _viewInvUniform = BGFX_INVALID_HANDLE;
   bgfx::UniformHandle _projInvUniform = BGFX_INVALID_HANDLE;
@@ -93,7 +92,7 @@ private:
   bgfx::UniformHandle _s_normalUniform = BGFX_INVALID_HANDLE;
 
   // Grass Uniforms
- 
+
   bgfx::TextureHandle grassDiffuse;
   bgfx::TextureHandle grassORM;
   bgfx::TextureHandle grassNormal;
@@ -124,22 +123,17 @@ private:
   bgfx::TextureHandle _waterNormalTex = BGFX_INVALID_HANDLE;
   bgfx::UniformHandle _s_reflectionUniform;
 
-
   bgfx::VertexBufferHandle _waterVbh = BGFX_INVALID_HANDLE;
   bgfx::IndexBufferHandle _waterIbh = BGFX_INVALID_HANDLE;
   bgfx::ProgramHandle _waterProgram = BGFX_INVALID_HANDLE;
   float waterModelMatrix[16];  // for position/scale of water mesh
 
-  float _cycleTime = 0.0f;    // day-night timerm keep it at 0
-  float _skyAmbientArray[4];  // Holds current ambient sky light
-  float _waterTime = 0.0f;    // water time, used to animate water
-
-
   // colour / param arrays passed to both sky & sun shaders
   float _sunColorArray[4] = {5.0f, 5.0f, 5.0f, 0.0f};
   float _parametersArray[4] = {1.0f, 1.0f, 1.0f, 0.0f};
-  float _cycleTime = 0.0f;  // day-night timerm keep it at 0
-  float _skyAmbientArray[4];
+  float _cycleTime = 0.0f;    // day-night timerm keep it at 0
+  float _skyAmbientArray[4];  // Holds current ambient sky light
+  float _waterTime = 0.0f;    // water time, used to animate water
 
   // small helpers that build vertex / index buffers
   void createSkyboxBuffers();

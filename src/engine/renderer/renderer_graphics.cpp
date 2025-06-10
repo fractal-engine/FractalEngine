@@ -173,6 +173,7 @@ void GraphicsRenderer::PrepareFrame() {
   if (!bgfx::isValid(scene_framebuffer_)) {
     Logger::getInstance().Log(LogLevel::Error,
                               "Scene framebuffer invalid in PrepareFrame!");
+  }
 }
 
 // Framebuffer initialization and handling
