@@ -11,7 +11,6 @@ namespace runtime {
 // ------------------------------------------------------------------
 //  Process-wide singletons
 // ------------------------------------------------------------------
-static std::unique_ptr<::WindowManager> window_manager_instance_;
 static std::unique_ptr<::GraphicsRenderer> graphics_renderer_instance_;
 static std::unique_ptr<::ShaderManager> shader_manager_instance_;
 static std::unique_ptr<::Input> input_device_instance_;
@@ -24,10 +23,8 @@ static SubsystemList dynamic_registry;
 // ------------------------------------------------------------------
 //  Init / Tick / Shutdown
 // ------------------------------------------------------------------
-bool Init(const Config& config) {
-  window_manager_instance_ = std::make_unique<::WindowManager>();
-  if (!window_manager_instance_->Initialize(config.window_title, config.width,
-                                            config.height))
+bool Init() {
+  if (!WindowManager::Initialize())
     return false;
 
   graphics_renderer_instance_ = std::make_unique<::GraphicsRenderer>();
@@ -60,15 +57,17 @@ void Shutdown() {
   input_device_instance_.reset();
   shader_manager_instance_.reset();
   graphics_renderer_instance_.reset();
-  window_manager_instance_.reset();
+
+  WindowManager::Shutdown();
 }
 
 // ------------------------------------------------------------------
 //  Accessors
 // ------------------------------------------------------------------
 ::WindowManager& Window() {
-  return *window_manager_instance_;
+  return WindowManager::getInstance();
 }
+
 ::RendererBase& Renderer() {
   return *graphics_renderer_instance_;
 }

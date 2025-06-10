@@ -63,8 +63,7 @@ void Application::InitializeInternal() {
   Logger::getInstance().Log(LogLevel::Info, "Application::Initialize");
 
   /* 1 – initialize engine runtime subsystems */
-  runtime::Config config;
-  if (!runtime::Init(config)) {
+  if (!runtime::Init()) {
     Logger::getInstance().Log(LogLevel::Error, "runtime::Init() failed");
     std::exit(1);
   }
