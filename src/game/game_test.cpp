@@ -2,6 +2,7 @@
 
 #include <bgfx/bgfx.h>
 #include <bx/math.h>
+#include <string.h>
 #include <vector>
 
 #include "game_test.h"
@@ -15,9 +16,25 @@
 #include "engine/resources/shader_utils.h"
 #include "engine/resources/textures/texture_utils.h"
 
-// math Workarounds
-inline float local_min(float a, float b) {
-  return a < b ? a : b;
+// Helper to make logging BGFX handles easier
+std::string handle_to_string(bgfx::ProgramHandle h) {
+  return h.idx == bgfx::kInvalidHandle ? "INVALID" : std::to_string(h.idx);
+}
+std::string handle_to_string(bgfx::VertexBufferHandle h) {
+  return h.idx == bgfx::kInvalidHandle ? "INVALID" : std::to_string(h.idx);
+}
+std::string handle_to_string(bgfx::IndexBufferHandle h) {
+  return h.idx == bgfx::kInvalidHandle ? "INVALID" : std::to_string(h.idx);
+}
+std::string handle_to_string(bgfx::TextureHandle h) {
+  return h.idx == bgfx::kInvalidHandle ? "INVALID" : std::to_string(h.idx);
+}
+std::string handle_to_string(bgfx::UniformHandle h) {
+  return h.idx == bgfx::kInvalidHandle ? "INVALID" : std::to_string(h.idx);
+}
+// --- Local Math Workarounds  ---
+inline float local_min(float _a, float _b) {
+  return _a < _b ? _a : _b;
 }
 inline float local_max(float a, float b) {
   return a > b ? a : b;
@@ -38,7 +55,7 @@ bgfx::VertexLayout PosTexCoord0Vertex::layout;
 // Maximum height of the terrain in world units
 constexpr float TERRAIN_MAX_ACTUAL_HEIGHT = 150.0f;
 // View ID for the shadow map rendering pass
-constexpr uint8_t SHADOW_MAP_VIEW_ID = ViewID::Shadow(0);
+// constexpr uint8_t SHADOW_MAP_VIEW_ID = ViewID::Shadow(0);
 // Fixed size for the shadow map texture
 constexpr uint16_t KNOWN_SHADOW_MAP_SIZE = 2048;
 
@@ -95,6 +112,7 @@ GameTest::GameTest()
       _skyProgram(BGFX_INVALID_HANDLE),
       _skyVbh(BGFX_INVALID_HANDLE),
       _skyIbh(BGFX_INVALID_HANDLE),
+      _shadowVbh(BGFX_INVALID_HANDLE),
       _timeUniform(BGFX_INVALID_HANDLE),
       _sunDirUniform(BGFX_INVALID_HANDLE),
       _sunLumUniform(BGFX_INVALID_HANDLE),
@@ -109,7 +127,22 @@ GameTest::GameTest()
       _shadowSamplerUniform(BGFX_INVALID_HANDLE),
       shadowMapTexture(BGFX_INVALID_HANDLE),
       shadowMapFB(BGFX_INVALID_HANDLE),
+      _scatterParamsUniform(BGFX_INVALID_HANDLE),
+      _betaRUniform(BGFX_INVALID_HANDLE),
+      _betaMUniform(BGFX_INVALID_HANDLE),
+      _u_waterColor(BGFX_INVALID_HANDLE),
+      _s_waterTexUniform(BGFX_INVALID_HANDLE),
+      _s_waterNormUniform(BGFX_INVALID_HANDLE),
+      _waterTex(BGFX_INVALID_HANDLE),
+      _waterNormalTex(BGFX_INVALID_HANDLE),
       _terrainShadowProgram(BGFX_INVALID_HANDLE),
+      grassDiffuse(BGFX_INVALID_HANDLE),
+      grassORM(BGFX_INVALID_HANDLE),
+      grassNormal(BGFX_INVALID_HANDLE),
+      _s_grassDiffuseUniform(BGFX_INVALID_HANDLE),
+      _s_grassORMUniform(BGFX_INVALID_HANDLE),
+      _s_grassNormalUniform(BGFX_INVALID_HANDLE),
+      _u_slopeBlendParamsUniform(BGFX_INVALID_HANDLE),
       _cycleTime(0.0f) {
   bx::mtxIdentity(world_matrix);  // Initialize world matrix to identity
 
@@ -120,7 +153,21 @@ GameTest::GameTest()
   _skyAmbientArray[3] = 0.0f;  // w component unused for color
 }
 
-GameTest::~GameTest() = default;
+// Destructor: Cleanup is handled in Shutdown()
+GameTest::~GameTest() {}
+
+// Creates buffers for the skybox geometry (a full-screen quad)
+void GameTest::createSkyboxBuffers() {
+  static const ScreenPosVertex quadVertices[] = {
+      {-1.0f, 1.0f}, {1.0f, 1.0f}, {-1.0f, -1.0f}, {1.0f, -1.0f}};
+  static const uint16_t quadIndices[] = {0, 2, 1, 1, 2, 3};
+
+  _skyVbh = bgfx::createVertexBuffer(
+      bgfx::makeRef(quadVertices, sizeof(quadVertices)),
+      ScreenPosVertex::layout);
+  _skyIbh =
+      bgfx::createIndexBuffer(bgfx::makeRef(quadIndices, sizeof(quadIndices)));
+}
 
 // ──────────────────────────────────────────────────────
 //  Init()
@@ -137,16 +184,30 @@ void GameTest::Init() {
         .end();
   }
 
-  // Setup camera
+  // Load terrain textures
+  terrainDiffuse =
+      TextureUtils::LoadTexture("assets/textures/terrain/basecolor.tga");
+  terrainORM = TextureUtils::LoadTexture("assets/textures/terrain/ORM.tga");
+  terrainNormal =
+      TextureUtils::LoadTexture("assets/textures/terrain/Normal.tga");
+  // Load water textures
+  _waterTex =
+      TextureUtils::LoadTexture("assets/textures/water/water_diffuse.tga");
+  _waterNormalTex =
+      TextureUtils::LoadTexture("assets/textures/water/water_normal.tga");
+  // Load grass textures
+  grassDiffuse =
+      TextureUtils::LoadTexture("assets/textures/grass/grass_diffuse.tga");
+  grassORM = TextureUtils::LoadTexture("assets/textures/grass/grass_ORM.tga");
+  grassNormal =
+      TextureUtils::LoadTexture("assets/textures/grass/grass_normal.tga");
 
-  float terrainCenterPos[3] = {TerrainExtent, 0.0f, TerrainExtent};
-  float targetPos[3] = {
-      TerrainExtent, 0.0f,
-      TerrainExtent};           // Define the camera's initial target position
-  camera.setTarget(targetPos);  // Set the camera to look at the target position
-  camera.setDistance(TerrainScale * 2.0f);  // Set initial camera distance
-  camera.setPitch(bx::toRad(30.0f));        // Look downward
-  camera.setYaw(bx::toRad(45.0f));          // Set initial yaw
+  if (!bgfx::isValid(grassDiffuse) || !bgfx::isValid(grassORM) ||
+      !bgfx::isValid(grassNormal)) {
+    Logger::getInstance().Log(
+        LogLevel::Warning,
+        "[GameTest::Init] One or more grass textures failed to load.");
+  }
 
   // Load shader programs
   auto& ShaderManager = *Application::GetShaderManager();
@@ -168,6 +229,11 @@ void GameTest::Init() {
       LogLevel::Debug,
       std::string("[DEBUG] _terrainShadowProgram valid = ") +
           (bgfx::isValid(_terrainShadowProgram) ? "true" : "false"));
+  Logger::getInstance().Log(
+      LogLevel::Info,
+      "[GameTest::Init] Loading water shaders: vs_water.bin, fs_water.bin");
+  _waterProgram =
+      ShaderManager.LoadProgram("water", "vs_water.bin", "fs_water.bin");
 
   // Create uniform handles
   _heightUniform =
@@ -195,80 +261,177 @@ void GameTest::Init() {
       bgfx::createUniform("u_skyAmbient", bgfx::UniformType::Vec4);
   _paramsUniform = bgfx::createUniform(
       "u_parameters", bgfx::UniformType::Vec4);  // Skybox parameters
+  _scatterParamsUniform =
+      bgfx::createUniform("u_scatterParams", bgfx::UniformType::Vec4);
+  _betaRUniform = bgfx::createUniform("u_betaR", bgfx::UniformType::Vec4);
+  _betaMUniform = bgfx::createUniform("u_betaM", bgfx::UniformType::Vec4);
   _viewInvUniform = bgfx::createUniform(
       "u_viewInv", bgfx::UniformType::Mat4);  // Inverse view matrix for skybox
   _projInvUniform = bgfx::createUniform(
       "u_projInv",
       bgfx::UniformType::Mat4);  // Inverse projection matrix for skybox
+  // Water uniforms
+  _u_waterColor = bgfx::createUniform("u_waterColor", bgfx::UniformType::Vec4);
+  _s_waterTexUniform =
+      bgfx::createUniform("s_waterTex", bgfx::UniformType::Sampler);
+  _s_waterNormUniform =
+      bgfx::createUniform("s_waterNorm", bgfx::UniformType::Sampler);
+  _s_reflectionUniform =
+      bgfx::createUniform("s_reflection", bgfx::UniformType::Sampler);
 
-  // Load terrain textures
-  terrainDiffuse =
-      TextureUtils::LoadTexture("assets/textures/terrain/basecolor.tga");
-  terrainORM = TextureUtils::LoadTexture("assets/textures/terrain/ORM.tga");
-  terrainNormal =
-      TextureUtils::LoadTexture("assets/textures/terrain/Normal.tga");
+  // Grass uniforms
 
+  _s_grassDiffuseUniform =
+      bgfx::createUniform("s_grassDiffuse", bgfx::UniformType::Sampler);
+  _s_grassORMUniform =
+      bgfx::createUniform("s_grassORM", bgfx::UniformType::Sampler);
+  _s_grassNormalUniform =
+      bgfx::createUniform("s_grassNormal", bgfx::UniformType::Sampler);
+  _u_slopeBlendParamsUniform =
+      bgfx::createUniform("u_slopeBlendParams", bgfx::UniformType::Vec4);
+
+  // Timer uniform
+  _timeUniform = bgfx::createUniform("u_time", bgfx::UniformType::Vec4);
+
+  if (bgfx::isValid(_waterProgram)) {
+    Logger::getInstance().Log(LogLevel::Info,
+                              "[GameTest::Init] Water program (_waterProgram) "
+                              "loaded successfully. Handle: " +
+                                  std::to_string(_waterProgram.idx));
+  } else {
+    Logger::getInstance().Log(LogLevel::Error,
+                              "[GameTest::Init] FAILED to load water program "
+                              "(_waterProgram). Handle is invalid.");
+  }
   // Generate initial heightmap data
   const uint16_t hm_sz = TerrainSize;
-  std::vector<uint8_t> heightmapData(hm_sz * hm_sz);
+  std::vector<float> rawHeights(hm_sz * hm_sz);
+  float minRawHeight = std::numeric_limits<float>::max();
+  float maxRawHeight = std::numeric_limits<float>::lowest();
 
-  for (uint16_t y = 0; y < hm_sz; ++y) {
-    for (uint16_t x = 0; x < hm_sz; ++x) {
-      float nx = (x - hm_sz * 0.5f) / (hm_sz * 0.5f);  // [-1, 1]
-      float ny = (y - hm_sz * 0.5f) / (hm_sz * 0.5f);  // [-1, 1]
+  // --- Parameters to Tune ---
+  float dune_freq_x =
+      20.0f;  // Increased: More waves, potentially sharper peaks
+  float dune_freq_y = 17.0f;  // Increased: More waves
+  float dune_base_amplitude =
+      80.0f;  // Kept high: for significant raw variation
+  float falloff_strength =
+      0.8f;  // Increased: Falloff is a bit quicker, which can help define
+             // central features more sharply and prevent distant, broad
+             // plateaus if frequencies are low. If hills are too small/central,
+             // reduce this (e.g., 0.4-0.6)
+  float noise_amplitude = 1.5f;  // Kept relatively small
+  float exaggeration = 30.0f;    // Kept high
 
-      // Smooth sine-based dunes
-      float dune = sinf(nx * 3.5f) * cosf(ny * 2.7f) * 0.3f;
+  for (uint16_t y_coord = 0; y_coord < hm_sz; ++y_coord) {
+    for (uint16_t x_coord = 0; x_coord < hm_sz; ++x_coord) {
+      float nx =
+          (static_cast<float>(x_coord) - static_cast<float>(hm_sz) * 0.5f) /
+          (static_cast<float>(hm_sz) * 0.5f);
+      float ny =
+          (static_cast<float>(y_coord) - static_cast<float>(hm_sz) * 0.5f) /
+          (static_cast<float>(hm_sz) * 0.5f);
 
-      // Add large smooth oasis depressions at random points
-      float oasis = 0.0f;
-      for (int i = 0; i < 4; ++i) {  // 4 random oasis spots
-        float ox = ((rand() % 1000) / 1000.0f) * 2.0f - 1.0f;
-        float oy = ((rand() % 1000) / 1000.0f) * 2.0f - 1.0f;
-        float dx = nx - ox;
-        float dy = ny - oy;
-        float dist = sqrtf(dx * dx + dy * dy);
-        oasis -= expf(-dist * 12.0f) * 0.2f;  // Wide shallow dip
-      }
+      float r_sq = nx * nx + ny * ny;  // Square of distance from center
+      float falloff = expf(-falloff_strength * r_sq);
 
-      // Slight noise for natural feel
-      float noise = ((rand() % 1000) / 1000.0f - 0.5f) * 0.01f;
+      // Base dune shape
+      float dune_shape = sinf(nx * dune_freq_x) * cosf(ny * dune_freq_y);
+      float dune = dune_shape * dune_base_amplitude * falloff;
 
-      float height = dune + oasis + noise;
-      height = bx::clamp(height, -1.0f, 1.0f);
+      float noise_val =
+          (static_cast<float>(rand() % 1000) / 999.0f - 0.5f) * noise_amplitude;
 
-      // Map to [0, 255] RGBA8 texture
-      heightmapData[y * hm_sz + x] = static_cast<uint8_t>(127 + 127 * height);
+      float currentHeight = dune + noise_val;
+      currentHeight *= exaggeration;
+
+      rawHeights[y_coord * hm_sz + x_coord] = currentHeight;
+      if (currentHeight < minRawHeight)
+        minRawHeight = currentHeight;
+      if (currentHeight > maxRawHeight)
+        maxRawHeight = currentHeight;
     }
   }
 
-  // Create heightmap texture
+  // Normalize heights to [-1, 1] range
+  std::vector<uint32_t> heightmapData(hm_sz * hm_sz);
+  float overallRange = maxRawHeight - minRawHeight;
+
+  for (uint16_t i = 0; i < hm_sz * hm_sz; ++i) {
+    float normalizedHeight;
+    if (overallRange >
+        0.0001f) {  // Check to prevent division by zero if map is flat
+      // Normalize to [0, 1] first
+      normalizedHeight = (rawHeights[i] - minRawHeight) / overallRange;
+      // Then map to [-1, 1]
+      normalizedHeight = normalizedHeight * 2.0f - 1.0f;
+    } else {
+      // If the map is flat (minRawHeight is very close to maxRawHeight)
+      normalizedHeight = 0.0f;  // Represents the middle height
+    }
+
+    // Final clamp just in case of minute floating point errors pushing it
+    // outside [-1,1]
+    normalizedHeight = bx::clamp(normalizedHeight, -1.0f, 1.0f);
+
+    uint8_t encodedHeight =
+        static_cast<uint8_t>(127.5f + 127.5f * normalizedHeight);
+    uint32_t rgba =
+        (encodedHeight << 24) | (0 << 16) | (0 << 8) | (encodedHeight);
+    heightmapData[i] = rgba;
+  }
+
+  // Create RGBA8 texture for heightmap
   _heightTexture = bgfx::createTexture2D(
       hm_sz, hm_sz, false, 1, bgfx::TextureFormat::RGBA8,
-      BGFX_TEXTURE_NONE | BGFX_SAMPLER_U_CLAMP |
-          BGFX_SAMPLER_V_CLAMP,  // Clamp sampling for heightmap
-      bgfx::copy(heightmapData.data(), heightmapData.size()));
+      BGFX_TEXTURE_NONE | BGFX_SAMPLER_U_CLAMP | BGFX_SAMPLER_V_CLAMP,
+      bgfx::copy(heightmapData.data(),
+                 heightmapData.size() * sizeof(uint32_t)));
+
+  // Create water mesh data
+  std::vector<PosTexCoord0Vertex> waterVertices;
+  std::vector<uint16_t> waterIndices;
+
+  for (uint16_t y = 0; y < TerrainSize; ++y) {
+    for (uint16_t x = 0; x < TerrainSize; ++x) {
+      float u = float(x) / (TerrainSize - 1);
+      float v = float(y) / (TerrainSize - 1);
+      waterVertices.push_back({(float)x, 0.0f, (float)y, u, v});
+    }
+  }
+
+  // Create waterIndices using same grid method as terrain
+  const uint16_t gridSize = TerrainSize;
+  for (uint16_t y = 0; y < gridSize - 1; ++y) {
+    for (uint16_t x = 0; x < gridSize - 1; ++x) {
+      uint16_t i = y * gridSize + x;
+
+      waterIndices.push_back(i);
+      waterIndices.push_back(i + 1);
+      waterIndices.push_back(i + gridSize);
+
+      waterIndices.push_back(i + 1);
+      waterIndices.push_back(i + gridSize + 1);
+      waterIndices.push_back(i + gridSize);
+    }
+  }
 
   // Generate terrain mesh (grid)
   terrainVertices.clear();
   terrainIndices.clear();
   for (uint16_t y = 0; y < TerrainSize; ++y) {
     for (uint16_t x = 0; x < TerrainSize; ++x) {
-      terrainVertices.push_back(
-          {(float)x, 0.0f, (float)y,  // Position (x, 0, z), y is set by shader
-           (float)x / (TerrainSize - 1),
-           (float)y / (TerrainSize - 1)});  // UV coordinates
+      terrainVertices.push_back({(float)x, 0.0f, (float)y,
+                                 (float)x / (TerrainSize - 1),
+                                 (float)y / (TerrainSize - 1)});
     }
   }
   for (uint16_t y = 0; y < TerrainSize - 1; ++y) {
     for (uint16_t x = 0; x < TerrainSize - 1; ++x) {
-      uint16_t i = y * TerrainSize + x;  // Current vertex index
-      // First triangle of the quad
-      terrainIndices.push_back(i);  // build order CCW
+      uint16_t i = y * TerrainSize + x;
+      terrainIndices.push_back(i);
       terrainIndices.push_back(i + 1);
       terrainIndices.push_back(i + TerrainSize);
-
-      // Second triangle of the quad
       terrainIndices.push_back(i + 1);
       terrainIndices.push_back(i + TerrainSize + 1);
       terrainIndices.push_back(i + TerrainSize);
@@ -283,17 +446,24 @@ void GameTest::Init() {
   _terrainIbh = bgfx::createIndexBuffer(bgfx::copy(
       terrainIndices.data(), terrainIndices.size() * sizeof(uint16_t)));
 
-  // Create shadow vertex buffer (uses same geometry as terrain but different
-  // layout for shadow shader)
+  // Create shadow vertex buffer
   std::vector<ShadowVertex> shadowVertices;
   for (const auto& v : terrainVertices) {
-    shadowVertices.push_back(
-        {v.x, v.y, v.z, v.u, v.v});  // Copy data to ShadowVertex format
+    shadowVertices.push_back({v.x, v.y, v.z, v.u, v.v});
   }
   _shadowVbh = bgfx::createVertexBuffer(
       bgfx::copy(shadowVertices.data(),
                  shadowVertices.size() * sizeof(ShadowVertex)),
       ShadowVertex::layout);
+
+  // Create water vertex buffer
+
+  _waterVbh = bgfx::createVertexBuffer(
+      bgfx::copy(waterVertices.data(),
+                 waterVertices.size() * sizeof(PosTexCoord0Vertex)),
+      PosTexCoord0Vertex::layout);
+  _waterIbh = bgfx::createIndexBuffer(
+      bgfx::copy(waterIndices.data(), waterIndices.size() * sizeof(uint16_t)));
 
   // Create skybox geometry buffers
   createSkyboxBuffers();
@@ -301,49 +471,44 @@ void GameTest::Init() {
   // Create shadow map texture and framebuffer
   shadowMapTexture = bgfx::createTexture2D(
       KNOWN_SHADOW_MAP_SIZE, KNOWN_SHADOW_MAP_SIZE, false, 1,
-      bgfx::TextureFormat::D16,  // 16-bit depth texture
-      BGFX_TEXTURE_RT |
-          BGFX_SAMPLER_COMPARE_LESS);  // Render target, enable depth comparison
-  shadowMapFB = bgfx::createFrameBuffer(1, &shadowMapTexture,
-                                        true);  // Depth-only framebuffer
+      bgfx::TextureFormat::D32, BGFX_TEXTURE_RT | BGFX_SAMPLER_COMPARE_LESS);
+  shadowMapFB = bgfx::createFrameBuffer(1, &shadowMapTexture, true);
+
+  // Setup camera
+  float terrainCenterPos[3] = {TerrainExtent, 0.0f, TerrainExtent};
+  float targetPos[3] = {
+      TerrainExtent, 0.0f,
+      TerrainExtent};           // Define the camera's initial target position
+  camera.setTarget(targetPos);  // Set the camera to look at the target position
+  camera.setDistance(TerrainScale * 2.0f);  // Set initial camera distance
+  camera.setPitch(bx::toRad(30.0f));        // Look downward
+  camera.setYaw(bx::toRad(45.0f));          // Set initial yaw
 
   // Initialize terrain world matrix (scale)
   bx::mtxIdentity(this->world_matrix);
-  // Scale terrain grid vertices to world space; height (Y) is determined by
-  // shader from heightmap
-  // 1. Compute center offset in mesh local space
-  float terrainCenterOffset = (TerrainSize - 1) * 0.5f;  // Local-space center
-
-  // 2. Create scale and translation matrices
+  float terrainCenterOffset = (TerrainSize - 1) * 0.5f;
   float scaleMtx[16];
   float translateMtx[16];
-  bx::mtxScale(scaleMtx, TerrainScale, 1.0f, TerrainScale);
-
-  // 3. Compute the world offset that brings terrain center to desired position
-  float desiredTerrainCenter[3] = {-31.683f, 0.0f, -27.185f};
+  bx::mtxScale(scaleMtx, TerrainScale, 10.0f, TerrainScale);
+  float desiredTerrainCenter[3] = {32.0f, -147.826f, 200.0f};
   bx::mtxTranslate(
       translateMtx,
       desiredTerrainCenter[0] - terrainCenterOffset * TerrainScale,
       desiredTerrainCenter[1],
       desiredTerrainCenter[2] - terrainCenterOffset * TerrainScale);
-
-  // 4. Combine translation and scale into world matrix
   bx::mtxMul(this->world_matrix, scaleMtx, translateMtx);
-}
 
-// Creates vertex and index buffers for the skybox (a full-screen quad)
-void GameTest::createSkyboxBuffers() {
-  // Quad vertices for full-screen rendering (clip space)
-  static const ScreenPosVertex quadVertices[] = {
-      {-1.0f, 1.0f}, {1.0f, 1.0f}, {-1.0f, -1.0f}, {1.0f, -1.0f}};
-  // Quad indices
-  static const uint16_t quadIndices[] = {0, 2, 1, 1, 2, 3};
+  // Initialize water model matrix (flat plane)
+  // Bring in the water matrix member
 
-  _skyVbh = bgfx::createVertexBuffer(
-      bgfx::makeRef(quadVertices, sizeof(quadVertices)),
-      ScreenPosVertex::layout);
-  _skyIbh =
-      bgfx::createIndexBuffer(bgfx::makeRef(quadIndices, sizeof(quadIndices)));
+  bx::mtxIdentity(this->waterModelMatrix);
+  bx::mtxScale(scaleMtx, TerrainScale, 1.0f, TerrainScale);
+  bx::mtxTranslate(
+      translateMtx,
+      desiredTerrainCenter[0] - terrainCenterOffset * TerrainScale,
+      desiredTerrainCenter[1] + 0.1f,  // Slight Y offset to sit above terrain
+      desiredTerrainCenter[2] - terrainCenterOffset * TerrainScale);
+  bx::mtxMul(this->waterModelMatrix, scaleMtx, translateMtx);
 }
 
 // Updates game state per frame
@@ -351,20 +516,42 @@ void GameTest::Update() {
   // Update camera from keyboard input
   cameraSystem.UpdateFromKeyboard();
 
-  // Update sun angle for rendering
-  _cycleTime += 0.0007f;
+  // Increment time
+  _cycleTime += 0.001f;
   if (_cycleTime > bx::kPi * 2.0f) {
     _cycleTime -= bx::kPi * 2.0f;
   }
+
+  float dt = bx::kPi * 0.002f;  // water time step
+  _waterTime += dt;
 }
 
 // Renders the game scene
 void GameTest::Render() {
   // Ensure essential shader programs are valid before attempting to render
-  if (!bgfx::isValid(_terrainProgramHeight) || !bgfx::isValid(_skyProgram) ||
-      !bgfx::isValid(_terrainShadowProgram)) {
+  if (!bgfx::isValid(_skyProgram) || !bgfx::isValid(_terrainProgramHeight) ||
+      !bgfx::isValid(_waterProgram) || !bgfx::isValid(_terrainShadowProgram)) {
+    Logger::getInstance().Log(LogLevel::Error,
+                              "[GameTest::Render] One or more game programs "
+                              "invalid. Aborting Render.");
     return;
   }
+
+  // --- Skybox Definition of Important Parameters ---
+
+  const float H_R = 8000.0f;
+  const float H_M = 1200.0f;
+  float k_betaR_per_meter[3] = {5.8e-6f, 13.5e-6f, 33.1e-6f};
+  float MieColoration[3] = {1.0f, 0.95f, 0.85f};
+  float MieBaseDensity = 20.0e-6f;
+  float totalBetaR[4] = {k_betaR_per_meter[0] * H_R, k_betaR_per_meter[1] * H_R,
+                         k_betaR_per_meter[2] * H_R, 0.0f};
+  float totalBetaM[4] = {MieBaseDensity * MieColoration[0] * H_M * 5.0f,
+                         MieBaseDensity * MieColoration[1] * H_M * 5.0f,
+                         MieBaseDensity * MieColoration[2] * H_M * 5.0f, 0.0f};
+  float scatterParams[4] = {0.85f, 0.0f, 0.0f, 0.0f};
+
+  float finalLightMatrixForShader[16];  // Final light matrix for terrain shader
 
   // --- Camera and Lighting Setup ---
   float viewMatrix[16], projMatrix[16];
@@ -387,14 +574,24 @@ void GameTest::Render() {
   float sunElevationFactor = local_smoothStep(
       -0.15f, 0.2f,
       sunDirectionVec.y);  // Smooth transition for sun color/intensity
-  float sunIntensity = bx::lerp(
-      0.3f, 3.0f, sunElevationFactor);  // Sun intensity based on elevation
 
-  // Sun color (luminance) based on elevation and intensity
-  _sunColorArray[0] = bx::lerp(0.8f, 1.0f, sunElevationFactor) * sunIntensity;
-  _sunColorArray[1] = bx::lerp(0.6f, 1.0f, sunElevationFactor) * sunIntensity;
-  _sunColorArray[2] = bx::lerp(0.4f, 1.0f, sunElevationFactor) * sunIntensity;
-  _sunColorArray[3] = 0.0f;
+  float baseSunLuminance = 10.0f;
+  float sunIntensity = 5.0f;
+
+  _sunColorArray[0] =
+      bx::lerp(0.8f, 1.0f, sunElevationFactor) * baseSunLuminance;
+  _sunColorArray[1] =
+      bx::lerp(0.6f, 0.95f, sunElevationFactor) * baseSunLuminance;
+  _sunColorArray[2] =
+      bx::lerp(0.4f, 0.9f, sunElevationFactor) * baseSunLuminance;
+  _sunColorArray[3] = sunIntensity;
+
+  bgfx::setUniform(_sunLumUniform, _sunColorArray);
+
+  _parametersArray[0] = 0.00465f;  // Sun Angular Radius
+  _parametersArray[1] = 1.0f;   // Procedural Bloom (tune after sky is visible)
+  _parametersArray[2] = 0.25f;  // Exposure
+  _parametersArray[3] = _cycleTime;  // Time
 
   // Sky ambient color based on sun elevation
   _skyAmbientArray[0] = bx::lerp(0.02f, 0.3f, sunElevationFactor);
@@ -403,79 +600,140 @@ void GameTest::Render() {
   _skyAmbientArray[3] = 0.0f;
 
   // Apply a global boost to ambient light for better visibility
-  const float ambientBoost = 0.05f;
+  const float ambientBoost = 0.005f;
   for (int i = 0; i < 3; ++i)
     _skyAmbientArray[i] *= ambientBoost;
 
-  // Skybox parameters (e.g., scattering coefficients, mie phase, time)
-  _parametersArray[0] = 0.005f;      // Rayleigh scattering coefficient
-  _parametersArray[1] = 0.1f;        // Mie scattering coefficient
-  _parametersArray[2] = 1.0f;        // Sun intensity factor for sky
-  _parametersArray[3] = _cycleTime;  // Current time for procedural sky effects
-
   // --- Shadow Map Pass ---
-  bgfx::setViewFrameBuffer(SHADOW_MAP_VIEW_ID,
+  bgfx::setViewFrameBuffer(ViewID::SHADOW_PASS,
                            shadowMapFB);  // Set render target to shadow map
-  bgfx::setViewRect(SHADOW_MAP_VIEW_ID, 0, 0, KNOWN_SHADOW_MAP_SIZE,
+  bgfx::setViewRect(ViewID::SHADOW_PASS, 0, 0, KNOWN_SHADOW_MAP_SIZE,
                     KNOWN_SHADOW_MAP_SIZE);  // Set viewport for shadow map
-  bgfx::setViewClear(SHADOW_MAP_VIEW_ID, BGFX_CLEAR_DEPTH, 0x000000ff, 1.0f,
-                     0);  // Clear depth buffer
+  bgfx::setViewClear(ViewID::SHADOW_PASS, BGFX_CLEAR_DEPTH, 0x000000FF, 1.0f,
+                     0);
+  // Get the local grid center point in local terrain space
+  float localGridCenterX = (TerrainSize - 1) * 0.5f;
+  float localGridCenterZ = (TerrainSize - 1) * 0.5f;
+  float localGridCenterY = 0.0f;
+
+  // Transform this local center point by the terrain's FULL world matrix
+  float localCenterHomogeneous[4] = {localGridCenterX, localGridCenterY,
+                                     localGridCenterZ, 1.0f};
+  float worldCenterHomogeneous[4];
+  bx::vec4MulMtx(worldCenterHomogeneous, localCenterHomogeneous,
+                 this->world_matrix);
+  // This is now our NEW actualLightTarget in world space
+  bx::Vec3 actualLightTarget_WorldCorrected = {
+      worldCenterHomogeneous[0],
+      worldCenterHomogeneous[1] +
+          TERRAIN_MAX_ACTUAL_HEIGHT * 0.25f,  // Add some height offset
+      worldCenterHomogeneous[2]};
 
   // Setup light view and projection matrices for shadow mapping
   float lightViewMatrix[16], lightProjMatrix[16];
-  float terrainWorldSize =
-      (TerrainSize - 1) *
-      TerrainScale;  // Calculate actual world size of terrain
-  bx::Vec3 actualLightTarget = {
-      terrainWorldSize * 0.5f, TERRAIN_MAX_ACTUAL_HEIGHT * 0.25f,
-      terrainWorldSize * 0.5f};  // Light targets center of terrain
-  bx::Vec3 lightPos =
-      bx::mad(sunDirectionVec, -terrainWorldSize * 1.5f,
-              actualLightTarget);  // Position light based on sun direction and
-                                   // terrain size
+  float terrainWorldSize = (TerrainSize - 1) * TerrainScale;
+  bx::Vec3 actualLightTarget = actualLightTarget_WorldCorrected;
+  bx::Vec3 lightPos = bx::mad(sunDirectionVec, -terrainWorldSize * 1.5f,
+                              actualLightTarget);  // Offset from the new target
   bx::mtxLookAt(lightViewMatrix, lightPos, actualLightTarget,
-                bx::Vec3(0.0f, 1.0f, 0.0f));  // Light's view matrix
+                bx::Vec3(0.0f, 1.0f, 0.0f));
 
-  float orthoHalfSize =
-      terrainWorldSize *
-      0.6f;  // Orthographic projection size covering the terrain
-  bx::mtxOrtho(
-      lightProjMatrix, -orthoHalfSize, orthoHalfSize, -orthoHalfSize,
-      orthoHalfSize, 0.1f,
-      terrainWorldSize * 3.0f,  // Near and far planes for ortho projection
-      0.0f,
-      bgfx::getCaps()
-          ->homogeneousDepth);  // Use BGFX caps for homogeneous depth
-  bgfx::setViewTransform(SHADOW_MAP_VIEW_ID, lightViewMatrix,
-                         lightProjMatrix);  // Set transform for shadow pass
+  float orthoHalfSize = terrainWorldSize * 0.6f;
+  bx::mtxOrtho(lightProjMatrix, -orthoHalfSize, orthoHalfSize, -orthoHalfSize,
+               orthoHalfSize, 0.1f, terrainWorldSize * 3.0f, 0.0f,
+               bgfx::getCaps()->homogeneousDepth);
+  bgfx::setViewTransform(ViewID::SHADOW_PASS, lightViewMatrix, lightProjMatrix);
+  bgfx::setTransform(this->world_matrix);
 
-  // Set uniforms and state for shadow pass
-  float terrainParamsArr[4] = {
-      TERRAIN_MAX_ACTUAL_HEIGHT,  // x: height scale
-      0.0f,                       // y: unused
-      TerrainScale,               // z: world step X
-      TerrainScale                // w: world step Z
-  };
-
+  float terrainParamsArr[4] = {TERRAIN_MAX_ACTUAL_HEIGHT, 0.0f, TerrainScale,
+                               TerrainScale};
   bgfx::setUniform(_terrainParamsUniform, terrainParamsArr);
-  bgfx::setTexture(3, _heightUniform,
-                   _heightTexture);  // Bind heightmap texture for displacement
-  bgfx::setTransform(this->world_matrix);  // Set terrain world matrix
-  bgfx::setVertexBuffer(
-      0, _shadowVbh);  // Use shadow-specific VBO (ShadowVertex layout)
-  bgfx::setIndexBuffer(_terrainIbh);  // Use common terrain IBO
+
+  bgfx::setTexture(3, _heightUniform, _heightTexture);
+  bgfx::setTransform(this->world_matrix);
+  bgfx::setVertexBuffer(0, _shadowVbh);
+  bgfx::setIndexBuffer(_terrainIbh);
   bgfx::setState(BGFX_STATE_WRITE_Z | BGFX_STATE_DEPTH_TEST_LESS |
-                 BGFX_STATE_CULL_CW |
-                 BGFX_STATE_MSAA);  // Standard shadow pass state
-  bgfx::submit(
-      SHADOW_MAP_VIEW_ID,
-      _terrainShadowProgram);  // Submit terrain draw call for shadow map
+                 BGFX_STATE_CULL_CW);
+  bgfx::submit(ViewID::SHADOW_PASS, _terrainShadowProgram);
+
+  // --- Reflection Pass ---
+
+  // Allow access to the renderer subsystem
+  // Get the GraphicsRenderer instance
+  GraphicsRenderer* graphicsRendererPtr = nullptr;  // Initialize to nullptr
+  auto* baseRendererPtr = Application::GetRenderer();
+
+  if (baseRendererPtr) {
+    graphicsRendererPtr = dynamic_cast<GraphicsRenderer*>(baseRendererPtr);
+  }
+
+  if (!graphicsRendererPtr) {
+    Logger::getInstance().Log(LogLevel::Error,
+                              "[GameTest::Render] Failed to get "
+                              "GraphicsRenderer instance. Aborting Render.");
+    return;
+  }
+  if (bgfx::isValid(graphicsRendererPtr->GetReflectionFramebuffer()) &&
+      bgfx::isValid(graphicsRendererPtr->GetReflectionColorTex())) {
+
+    uint16_t fbw = graphicsRendererPtr->GetFramebufferWidth();
+    uint16_t fbh = graphicsRendererPtr->GetFramebufferHeight();
+
+    bgfx::setViewRect(ViewID::REFLECTION_PASS, 0, 0, fbw, fbh);
+    bgfx::setViewFrameBuffer(ViewID::REFLECTION_PASS,
+                             graphicsRendererPtr->GetReflectionFramebuffer());
+
+    float viewMatrix[16], projMatrix[16];
+    camera.getViewMatrix(viewMatrix);
+    camera.getProjectionMatrix(projMatrix, float(fbw) / float(fbh));
+
+    // Defined here for reflection pass, we cannot reuse the terrain's one
+    float cameraView[16];
+    // Get view matrix with translation
+    camera.getViewMatrix(viewMatrix);
+
+    // Construct reflection matrix
+    float reflectMat[16];
+    bx::mtxIdentity(reflectMat);
+    reflectMat[5] = -1.0f;
+    reflectMat[13] = 1.0f * waterModelMatrix[13];  // reflection plane Y
+
+    // Create reflected view matrix (WITH camera translation � for terrain)
+    float reflectedView[16];
+    bx::mtxMul(reflectedView, viewMatrix, reflectMat);
+
+    // Create *rotation-only* version for skybox
+    float viewRotOnly[16];
+    memcpy(viewRotOnly, reflectedView, sizeof(viewRotOnly));
+    viewRotOnly[12] = viewRotOnly[13] = viewRotOnly[14] =
+        0.0f;  // remove translation
+
+    // Skybox pass
+    float skyModel[16];
+    bx::mtxIdentity(skyModel);
+
+    bgfx::setTransform(skyModel);
+    bgfx::setVertexBuffer(0, _skyVbh);
+    bgfx::setIndexBuffer(_skyIbh);
+    bgfx::setUniform(_viewInvUniform, viewRotOnly);
+    bgfx::setUniform(_projInvUniform, projMatrix);
+    bgfx::setUniform(_sunDirUniform, sunDirShader);
+    bgfx::setUniform(_sunLumUniform, _sunColorArray);
+    bgfx::setUniform(_paramsUniform, _parametersArray);
+    bgfx::setUniform(_betaRUniform, totalBetaR);
+    bgfx::setUniform(_betaMUniform, totalBetaM);
+    bgfx::setUniform(_scatterParamsUniform, scatterParams);
+    bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A |
+                   BGFX_STATE_DEPTH_TEST_LEQUAL | BGFX_STATE_CULL_CW);
+    bgfx::submit(ViewID::REFLECTION_PASS, _skyProgram);
+  }
 
   // --- Main Scene Pass ---
-  bgfx::setViewRect(ViewID::SCENE, 0, 0, canvasViewportW,
-                    canvasViewportH);  // Set viewport for main scene
-  bgfx::setViewClear(ViewID::SCENE, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH,
-                     0x303030ff, 1.0f, 0);  // Clear color and depth
+  bgfx::setViewRect(ViewID::SCENE_SKYBOX, 0, 0, canvasViewportW,
+                    canvasViewportH);
+  bgfx::setViewClear(ViewID::SCENE_SKYBOX, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH,
+                     0x303030ff, 1.0f, 0);
 
   // Calculate inverse view and projection matrices for skybox
   float invViewMatrix[16], invProjMatrix[16];
@@ -483,94 +741,112 @@ void GameTest::Render() {
   bx::mtxInverse(invProjMatrix, projMatrix);
 
   // Render Skybox
-  bgfx::setViewTransform(
-      ViewID::SCENE, viewMatrix,
-      projMatrix);  // Set main camera view/proj for this view ID
+  bgfx::setViewTransform(ViewID::SCENE_SKYBOX, viewMatrix, projMatrix);
   float skyboxModelMatrix[16];
-  bx::mtxIdentity(
-      skyboxModelMatrix);  // Skybox is at origin, transformed in shader
+  bx::mtxIdentity(skyboxModelMatrix);
   bgfx::setTransform(skyboxModelMatrix);
-  bgfx::setVertexBuffer(0, _skyVbh);  // Skybox quad vertices
-  bgfx::setIndexBuffer(_skyIbh);      // Skybox quad indices
-  bgfx::setUniform(_viewInvUniform,
-                   invViewMatrix);  // Inverse view for ray direction
-  bgfx::setUniform(_projInvUniform,
-                   invProjMatrix);  // Inverse projection for ray direction
-  bgfx::setUniform(_sunDirUniform,
-                   sunDirShader);  // Sun direction for sky color
-  bgfx::setUniform(_sunLumUniform,
-                   _sunColorArray);  // Sun luminance for sky color
-  bgfx::setUniform(_paramsUniform,
-                   _parametersArray);  // Sky scattering parameters
+  bgfx::setVertexBuffer(0, _skyVbh);
+  bgfx::setIndexBuffer(_skyIbh);
+  bgfx::setUniform(_viewInvUniform, invViewMatrix);
+  bgfx::setUniform(_projInvUniform, invProjMatrix);
+  bgfx::setUniform(_sunDirUniform, sunDirShader);
+  bgfx::setUniform(_sunLumUniform, _sunColorArray);
+  bgfx::setUniform(_paramsUniform, _parametersArray);
+
+  bgfx::setUniform(_betaRUniform, totalBetaR);
+  bgfx::setUniform(_betaMUniform, totalBetaM);
+
+  bgfx::setUniform(_scatterParamsUniform, scatterParams);
+
   bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A |
-                 BGFX_STATE_DEPTH_TEST_LEQUAL);  // Skybox render state (LEQUAL
-                                                 // for sky at infinity)
-  bgfx::submit(ViewID::SCENE, _skyProgram);      // Submit skybox draw call
+                 BGFX_STATE_DEPTH_TEST_LEQUAL);
+  bgfx::submit(ViewID::SCENE_SKYBOX, _skyProgram);
 
-  // Render Terrain
-  uint8_t terrainViewID =
-      ViewID::SceneExtra(0);  // Use a subsequent view ID for terrain (can share
-                              // SCENE if no specific sorting needed)
-  bgfx::setViewRect(terrainViewID, 0, 0, canvasViewportW,
-                    canvasViewportH);  // Set viewport (same as main scene)
-  bgfx::setViewTransform(terrainViewID, viewMatrix,
-                         projMatrix);  // Set main camera view/proj for terrain
+  // --- Terrain Pass ---
+  constexpr uint8_t terrainViewID = ViewID::SCENE_TERRAIN;
+  bgfx::setViewRect(terrainViewID, 0, 0, canvasViewportW, canvasViewportH);
+  bgfx::setViewTransform(terrainViewID, viewMatrix, projMatrix);
+  bgfx::setTransform(this->world_matrix);
 
-  bgfx::setTransform(this->world_matrix);  // Set terrain world matrix
-
-  // Set terrain-specific uniforms
   float camPos[4];
-  camera.getPosition(camPos);  // Get camera world position
-  camPos[3] = 1.0f;            // Shader expects vec4
+  camera.getPosition(camPos);
+  camPos[3] = 1.0f;
   bgfx::setUniform(_cameraPosUniform, camPos);
   bgfx::setUniform(_sunDirUniform, sunDirShader);
   bgfx::setUniform(_sunLumUniform, _sunColorArray);
-  bgfx::setUniform(_skyAmbientUniform,
-                   _skyAmbientArray);  // Ambient light for terrain
+  bgfx::setUniform(_skyAmbientUniform, _skyAmbientArray);
 
-  // Setup light matrix for shadow sampling (transforms world to shadow map UV
-  // space)
   float biasMatrix[16] = {
-      // Matrix to transform clip space [-1,1] to texture space [0,1]
       0.5f, 0.0f, 0.0f, 0.0f, 0.0f, 0.5f, 0.0f, 0.0f,
       0.0f, 0.0f, 0.5f, 0.0f, 0.5f, 0.5f, 0.5f, 1.0f,
   };
   float lightVPMatrix[16];
-  bx::mtxMul(lightVPMatrix, lightProjMatrix,
-             lightViewMatrix);  // Light's View-Projection matrix
-  float finalLightMatrixForShader[16];
-  bx::mtxMul(finalLightMatrixForShader, biasMatrix,
-             lightVPMatrix);  // Transform to shadow map sample space
+  bx::mtxMul(lightVPMatrix, lightProjMatrix, lightViewMatrix);
+
+  bx::mtxMul(finalLightMatrixForShader, biasMatrix, lightVPMatrix);
   bgfx::setUniform(_lightMatrixUniform, finalLightMatrixForShader);
 
-  bgfx::setUniform(_terrainParamsUniform,
-                   terrainParamsArr);  // Terrain height scale
-  float hmTexelSize[4] = {1.0f / TerrainSize, 1.0f / TerrainSize, 0.0f,
-                          0.0f};  // Texel size for heightmap sampling
+  bgfx::setUniform(_terrainParamsUniform, terrainParamsArr);
+  float hmTexelSize[4] = {1.0f / TerrainSize, 1.0f / TerrainSize, 0.0f, 0.0f};
   bgfx::setUniform(_heightmapTexelSizeUniform, hmTexelSize);
 
-  // Bind terrain textures
+  // Slope blending parameters:
+  // x = dot product value where grass starts to appear (e.g., 0.7 for ~45
+  // degrees from vertical) y = dot product value where grass is fully opaque
+  // (e.g., 0.9 for ~25 degrees from vertical) The dot product is between the
+  // surface normal and the world up vector (0,1,0).
+
+  float slopeParams[4] = {
+      -0.5f, 0.5f, 0.0f,
+      0.0f};  // Grass on anything from slightly overhanging up to 60 deg
+  bgfx::setUniform(_u_slopeBlendParamsUniform, slopeParams);
+
   bgfx::setTexture(0, _s_diffuseUniform, terrainDiffuse);
   bgfx::setTexture(1, _s_ormUniform, terrainORM);
   bgfx::setTexture(2, _s_normalUniform, terrainNormal);
-  bgfx::setTexture(3, _heightUniform,
-                   _heightTexture);  // Heightmap for displacement
-  bgfx::setTexture(4, _shadowSamplerUniform,
-                   shadowMapTexture);  // Shadow map for shadowing
+  bgfx::setTexture(3, _heightUniform, _heightTexture);
+  bgfx::setTexture(4, _shadowSamplerUniform, shadowMapTexture);
+  bgfx::setTexture(9, _s_grassDiffuseUniform, grassDiffuse);
+  bgfx::setTexture(10, _s_grassORMUniform, grassORM);
+  bgfx::setTexture(11, _s_grassNormalUniform, grassNormal);
 
-  // Set terrain geometry and render state
-  bgfx::setVertexBuffer(0, _terrainVbh);  // Terrain vertices
-  bgfx::setIndexBuffer(_terrainIbh);      // Terrain indices
-  bgfx::setState(
-      BGFX_STATE_DEFAULT | BGFX_STATE_CULL_CW |
-      BGFX_STATE_MSAA);  // Default render state with backface culling and MSAA
-  /*
-  bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_WRITE_Z
-    | BGFX_STATE_DEPTH_TEST_LESS | BGFX_STATE_MSAA);
-    // Use this state if culling is not needed, but depth testing is
-  */
-  bgfx::submit(terrainViewID,
-               _terrainProgramHeight);  // Submit terrain draw call
+  bgfx::setVertexBuffer(0, _terrainVbh);
+  bgfx::setIndexBuffer(_terrainIbh);
+  bgfx::setState(BGFX_STATE_DEFAULT | BGFX_STATE_CULL_CW | BGFX_STATE_MSAA);
+  bgfx::submit(terrainViewID, _terrainProgramHeight);
+
+  // --- Water Pass ---
+
+  bgfx::setViewClear(ViewID::WATER_PASS, BGFX_CLEAR_NONE, 0, 1.0f, 0);
+  bgfx::setViewRect(ViewID::WATER_PASS, 0, 0, canvasViewportW, canvasViewportH);
+  bgfx::setViewTransform(ViewID::WATER_PASS, viewMatrix, projMatrix);
+
+  bgfx::setTransform(waterModelMatrix);  // Flat plane or positioned
+  float timeVec[4] = {_waterTime, 0.0f, 0.0f, 0.0f};
+  float waterColorVec[4] = {0.2f, 0.4f, 0.5f, 1.0f};
+
+  // Set uniforms for water shader
+  bgfx::setUniform(_cameraPosUniform, camPos);
+  bgfx::setUniform(_sunDirUniform, sunDirShader);
+  bgfx::setUniform(_sunLumUniform, _sunColorArray);
+  bgfx::setUniform(_skyAmbientUniform, _skyAmbientArray);
+  bgfx::setUniform(_timeUniform, timeVec);
+  bgfx::setUniform(_u_waterColor, waterColorVec);
+
+  bgfx::setTexture(5, _s_waterTexUniform, _waterTex);
+  bgfx::setTexture(6, _s_waterNormUniform, _waterNormalTex);
+  bgfx::setTexture(8, _s_reflectionUniform,
+                   graphicsRendererPtr->GetReflectionColorTex());
+
+  bgfx::setVertexBuffer(0, _waterVbh);
+  bgfx::setIndexBuffer(_waterIbh);
+  const uint64_t WATER_STATE = BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A |
+                               BGFX_STATE_MSAA | BGFX_STATE_BLEND_ALPHA |
+                               BGFX_STATE_DEPTH_TEST_LEQUAL;  // no DEPTH_WRITE
+
+  bgfx::setState(WATER_STATE);
+
+  bgfx::submit(ViewID::WATER_PASS, _waterProgram);
 }
 
 // Releases all BGFX resources
@@ -589,6 +865,7 @@ void GameTest::Shutdown() {
   destroyHandle(_terrainProgramHeight);
   destroyHandle(_skyProgram);
   destroyHandle(_terrainShadowProgram);
+  destroyHandle(_waterProgram);
 
   // Destroy textures
   destroyHandle(_heightTexture);
@@ -596,6 +873,9 @@ void GameTest::Shutdown() {
   destroyHandle(terrainORM);
   destroyHandle(terrainNormal);
   destroyHandle(shadowMapTexture);
+  destroyHandle(grassDiffuse);
+  destroyHandle(grassORM);
+  destroyHandle(grassNormal);
 
   // Destroy framebuffers
   destroyHandle(shadowMapFB);
@@ -606,6 +886,8 @@ void GameTest::Shutdown() {
   destroyHandle(_skyVbh);
   destroyHandle(_skyIbh);
   destroyHandle(_shadowVbh);
+  destroyHandle(_waterVbh);
+  destroyHandle(_waterIbh);
 
   // Destroy uniform handles
   destroyHandle(_heightUniform);
@@ -623,6 +905,22 @@ void GameTest::Shutdown() {
   destroyHandle(_paramsUniform);
   destroyHandle(_viewInvUniform);
   destroyHandle(_projInvUniform);
+  destroyHandle(_timeUniform);
+  destroyHandle(_scatterParamsUniform);
+  destroyHandle(_betaRUniform);
+  destroyHandle(_betaMUniform);
+  destroyHandle(_s_grassDiffuseUniform);
+  destroyHandle(_s_grassORMUniform);
+  destroyHandle(_s_grassNormalUniform);
+  destroyHandle(_u_slopeBlendParamsUniform);
+
+  // Destroy water uniforms
+  destroyHandle(_u_waterColor);
+  destroyHandle(_s_waterTexUniform);
+  destroyHandle(_s_waterNormUniform);
+  destroyHandle(_s_reflectionUniform);
+  destroyHandle(_waterTex);
+  destroyHandle(_waterNormalTex);
 
   Logger::getInstance().Log(LogLevel::Debug, "[GameTest] Shutdown() completed");
 }

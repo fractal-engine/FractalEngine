@@ -186,6 +186,8 @@ rule("bgfx_shaderc")
             vfile = path.join(vbase, "varying_terrain_pbr.def.sc")
         elseif filename:find("shadow", 1, true) then
             vfile = path.join(vbase, "varying_shadow.def.sc")
+        elseif filename:find("water", 1, true) then
+            vfile = path.join(vbase, "varying_water.def.sc")
         end
 
         --------------------------------------------------------------------

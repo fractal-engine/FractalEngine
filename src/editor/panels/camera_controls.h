@@ -30,9 +30,9 @@ inline void CameraControls() {
       cam.setYaw(yaw);
     if (ImGui::SliderFloat("Roll", &roll, -bx::kPi, bx::kPi))
       cam.setRoll(roll);
-    if (ImGui::SliderFloat("Distance", &dist, 1.0f, 500.0f))
+    if (ImGui::SliderFloat("Distance", &dist, 1.0f, 1500.0f))
       cam.setDistance(dist);
-    if (ImGui::SliderFloat3("Target", target, -200.0f, 200.0f))
+    if (ImGui::SliderFloat3("Target", target, -2000.0f, 2000.0f))
       cam.setTarget(target);
 
     if (ImGui::Button("Reset Camera")) {

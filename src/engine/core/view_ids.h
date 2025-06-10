@@ -1,39 +1,27 @@
 #pragma once
 #include <array>
-#include <cstddef>
 #include <cstdint>
 
 namespace ViewID {
-// ---------- back-buffer ----------
-constexpr uint8_t UI_BACKGROUND = 0;  // clear colour etc.
+// view IDs must be unique per frame
+constexpr uint8_t REFLECTION_PASS = 0;  // Render to reflection texture
+constexpr uint8_t UI_BACKGROUND = 1;    // Back-buffer UI
 
-// ---------- scene FBO (main colour+depth) ----------
-constexpr uint8_t SCENE = 1;  // skybox / clear
-constexpr uint8_t SCENE_EXTRA_BASE = SCENE + 1;
+// scene FBO (colour+depth) – MUST be consecutive
+constexpr uint8_t SCENE_SKYBOX = 2;
+constexpr uint8_t SCENE_TERRAIN = 3;
+constexpr uint8_t WATER_PASS = 4;
+constexpr uint8_t DEBUG_PASS = 5;
 
-// helper: contiguous extra passes that still render into the scene FBO
-inline constexpr uint8_t SceneExtra(std::size_t n) {
-  return static_cast<uint8_t>(SCENE_EXTRA_BASE + n);
-}
+// shadow map (separate FBO)
+constexpr uint8_t SHADOW_PASS = 6;
 
-// shadow subsystem keeps its own block; large gap so we can grow later
-constexpr uint8_t SHADOW_BASE = 32;
-inline constexpr uint8_t Shadow(std::size_t n) {
-  return static_cast<uint8_t>(SHADOW_BASE + n);
-}
-
-// ---------- UI ----------
+// miscellaneous
 constexpr uint8_t UI = 254;
 constexpr uint8_t COUNT = 255;
 
-// ---------- pass sets (update here, nowhere else) ----------
-constexpr std::array<uint8_t, 3> kSceneViews = {
-    SCENE,          // 0 – clear & sky
-    SceneExtra(0),  // 1 – terrain & opaque
-    SceneExtra(1)   // 2 – post-FX / debug / gizmos
-};
+/// every pass that is rendered **into scene_framebuffer_**
+inline constexpr std::array<uint8_t, 4> kSceneViews = {
+    SCENE_SKYBOX, SCENE_TERRAIN, WATER_PASS, DEBUG_PASS};
 
-constexpr std::array<uint8_t, 1> kShadowViews = {
-    Shadow(0)  // first shadow-map
-};
 }  // namespace ViewID
