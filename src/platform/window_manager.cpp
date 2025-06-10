@@ -63,6 +63,10 @@ void WindowManager::Shutdown() {
   SDL_Quit();
 }
 
+WindowManager::~WindowManager() {
+  Shutdown();
+}
+
 int WindowManager::GetWidth() {
   return getInstance().width_;
 }
