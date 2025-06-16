@@ -79,8 +79,18 @@ package_end()
 ----------------------------------------------------------------
 rule("bgfx_shaderc")
     set_extensions(".sc")
+    local built_files = {}
 
     on_build_file(function (target, sourcefile)
+
+        ----------------------------------------------------------
+        --  Prevent duplicate shader compilation
+        ----------------------------------------------------------
+        if built_files[sourcefile] then
+        return -- Skip duplicate
+        end
+        built_files[sourcefile] = true
+
         ----------------------------------------------------------
         --  Path helpers / filenames
         ----------------------------------------------------------
@@ -199,6 +209,9 @@ rule("bgfx_shaderc")
             local outdir = path.join(root, "assets/shaders", b.folder)
             os.mkdir(outdir)
 
+            local name_without_sc = path.basename(filename, ".sc")
+            local output_path = path.join(outdir, name_without_sc .. ".bin")
+
             local args = {
                 "--type", stype,
                 "--platform", b.platform,
@@ -209,7 +222,7 @@ rule("bgfx_shaderc")
                 "-i", path.join(root, "src/assets/shaders/includes"),
                 "--entry", "main",
                 "-f", sourcefile,
-                "-o", path.join(outdir, filename .. ".bin")
+                "-o", output_path,
             }
 
             local ok, out, err = os.iorunv(shaderc, args)
