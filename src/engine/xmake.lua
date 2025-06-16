@@ -18,9 +18,7 @@ target("engine")
     add_files("runtime/*.cpp")
 
     -- compile .sc shaders from assets with our rule
-    add_files("../assets/shaders/**/vs_*.sc")
-    add_files("../assets/shaders/**/fs_*.sc")
-    add_rules("bgfx_shaderc")
+    add_files("../assets/shaders/**/**.sc", {rule = "bgfx_shaderc"})
 
     add_packages("boost", "libsdl2", "bgfx", "glm", "imgui", "libsdl2_ttf", "portaudio")
 
