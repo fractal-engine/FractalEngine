@@ -18,7 +18,7 @@ target("engine")
     add_files("runtime/*.cpp")
 
     -- compile .sc shaders from assets with our rule
-    add_files("../assets/shaders/**/**.sc", {rule = "bgfx_shaderc"})
+    add_files("../assets/shaders/*.sc", "../assets/shaders/*/*.sc", {rule = "bgfx_shaderc"})
 
     add_packages("boost", "libsdl2", "bgfx", "glm", "imgui", "libsdl2_ttf", "portaudio")
 
@@ -204,7 +204,7 @@ rule("bgfx_shaderc")
         local stype = is_vs and "v" or is_fs and "f" or "c"
 
         for _, b in ipairs(backends) do
-            local outdir = path.join(root, "assets/shaders", b.folder)
+            local outdir = path.join(target:targetdir(), "assets/shaders", b.folder)
             os.mkdir(outdir)
 
             local name_without_sc = path.basename(filename, ".sc")

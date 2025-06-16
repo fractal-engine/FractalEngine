@@ -17,28 +17,9 @@ target("fractal")
     -- copy all assets 
     after_build(function (target)
         local bindir = target:targetdir()
-
-        -- Shaders
-        local shaders_target = path.join(bindir, "assets/shaders")
-        os.rm(shaders_target)
-        os.cp("assets/shaders", shaders_target)
-
-        -- Textures
-        local textures_target = path.join(bindir, "assets/textures")
-        os.rm(textures_target)
-        os.cp("src/assets/textures", textures_target)
-
-        -- Audio
-        local audio_target = path.join(bindir, "assets/audio")
-        os.rm(audio_target)
-        os.cp("src/assets/audio", audio_target)
-
-        -- Editor Resources
-        local res_target = path.join(bindir, "resources")
-        os.rm(res_target)
-        os.cp("src/editor/resources", res_target)
-
-
+        os.cp("src/assets/textures", path.join(bindir, "assets/textures"))
+        os.cp("src/assets/audio",    path.join(bindir, "assets/audio"))
+        os.cp("src/editor/resources", path.join(bindir, "resources"))
     end)
     add_defines("SDL_MAIN_HANDLED", "DISPLAY_GRAPHICAL")
 target_end()
