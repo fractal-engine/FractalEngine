@@ -33,7 +33,7 @@ target_end()
 ---------------------------------------------------------------
 package("bgfx")
     add_deps("cmake") -- Use CMake to build bgfx
-    set_sourcedir("../../thirdparty/bgfx.cmake") -- Path to the bgfx source directory
+    set_sourcedir(path.join(os.projectdir(), "thirdparty/bgfx.cmake")) -- Path to the bgfx source directory
     on_install(function (package)
         local configs = {
             "-DBGFX_BUILD_EXAMPLES=OFF",
