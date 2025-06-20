@@ -41,7 +41,7 @@ rule("shaderc.build")
     set_extensions(".sc", ".vert", ".frag", ".comp")
 
     before_buildcmd_file(function (target, batchcmds, shaderfile, opt)
-        ---------------------------------------------------------- shaderc exe
+        -- shaderc exe ------------------------------------------------------------
         local exe = target:data("shaderc_exe")
         if not exe then
             import("lib.detect.find_program")
@@ -61,7 +61,7 @@ rule("shaderc.build")
             target:data_set("shaderc_exe", exe)
         end
 
-        --------------------------------------------------- skip non-shader files
+        -- skip non-shader files ---------------------------------------------------
         local fname = path.filename(shaderfile)           
         if fname:startswith("varying") then return end
 
@@ -71,13 +71,13 @@ rule("shaderc.build")
            or fname:match("^cs_") and "compute"
         if not stype then return end                      
 
-        ---------------------------------------------------------------- varying files
+        -- varying files -----------------------------------------------------------
         local shader_root = path.join(os.projectdir(), "src/assets/shaders")
 
-        -- default
+        -- default varying file (not used)
         local varying = path.join(shader_root, "varying.def.sc")
 
-        -- dispatch table – extend for new varying files
+        -- dispatch table – new varying files here go here
         local map = {
             imgui   = "varying_imgui.def.sc",
             skybox  = "varying_skybox.def.sc",
@@ -86,7 +86,7 @@ rule("shaderc.build")
             water   = "varying_water.def.sc",
         }
 
-        -- pick first key matching anywhere in the relative path
+        -- pick first key matching anywhere in relative path
         local rel = path.relative(shaderfile, shader_root)
         for key, file in pairs(map) do
             if rel:find(key, 1, true) then
@@ -95,42 +95,58 @@ rule("shaderc.build")
             end
         end
 
-        assert(os.isfile(varying), "No varying file for shader '" .. fname ..
-            "'\n  selected: " .. varying)
+        assert(os.isfile(varying), "No varying file for shader '" .. fname .. "'\n  selected: " .. varying)
 
 
-        ------------------------------------------------------------- output bin
-        local binname = fname:gsub("%.sc$", ".bin") 
+        -- output bin -------------------------------------------------------------
+                local binname = fname:gsub("%.sc$", ".bin") 
 
-        local plat    = is_plat("macosx") and "osx"
-                    or is_plat("windows") and "windows"
-                    or                       "linux"
-
-        local backend = ({osx = "metal", windows = "dx11", linux = "glsl"})[plat]
-
-        -- write inside build directory (…/.build/<plat>/<arch>/<mode>)
-        local outdir  = path.join(target:targetdir(), "assets/shaders", backend)
-        batchcmds:mkdir(outdir)
-
-        local outfile = path.join(outdir, binname)       -- final full path
-
-        ------------------------------------------------------------- build args
-        local profile = (plat=="osx") and "metal"
-                     or (plat=="windows") and "s_5_0"
-                     or (stype=="compute") and "430" or "120"
-
-        local args = {
-            "--platform", plat, "--type", stype, "--profile", profile,
-            "--varyingdef", varying,
-            "-i", path.join(os.projectdir(), "thirdparty/bgfx_helpers/common"),
-            "-i", path.join(os.projectdir(), "thirdparty/bgfx_helpers/src"),
-            "-f", shaderfile, "-o", outfile,
+        -- backend matrix ---------------------------------------------------------
+        local matrix = {
+            { platform = "windows", profile = "s_5_0", folder = "dx11" },
+            { platform = "windows", profile = "s_5_0", folder = "dx12" },
+            { platform = "linux",   profile = "440",   folder = "glsl" },
+            { platform = "linux",   profile = "spirv", folder = "spirv" },
+            { platform = "osx",     profile = "metal", folder = "metal" },
+            { platform = "android", profile = "spirv", folder = "spirv" }
         }
+        local current = is_plat("windows") and "windows"
+                     or is_plat("macosx")  and "osx"
+                     or is_plat("linux")   and "linux"
+                     or is_plat("android") and "android"
+                     or ""
+        local backends = {}
+        for _, b in ipairs(matrix) do
+            if b.platform == current then table.insert(backends, b) end
+        end
+        if #backends == 0 then
+            print("Warning: No backend for platform '" .. current .. "', default GL.")
+            table.insert(backends, { platform = "linux", profile = "440", folder = "glsl" })
+        end
 
-        batchcmds:show_progress(opt.progress,
-            "${color.build.object}shaderc %s", fname)
-        batchcmds:vrunv(exe, args)
-        batchcmds:set_depmtime(os.mtime(outfile))
+        -- fenerate for each backend ----------------------------------------------
+        for _, backend in ipairs(backends) do
+            local outdir  = path.join(target:targetdir(), "assets/shaders", backend.folder)
+            batchcmds:mkdir(outdir)
+            local outfile = path.join(outdir, binname)
+
+        -- build args -------------------------------------------------------------
+            local args = {
+                "--platform", backend.platform,
+                "--type", stype,
+                "--profile", backend.profile,
+                "--varyingdef", varying,
+                "-i", path.join(os.projectdir(), "thirdparty/bgfx_helpers/common"),
+                "-i", path.join(os.projectdir(), "thirdparty/bgfx_helpers/src"),
+                "-f", shaderfile,
+                "-o", outfile,
+            }
+            -- Print shader file progress
+            batchcmds:show_progress(opt.progress, "${color.build.object}shaderc %s [%s]", fname, backend.folder)
+            batchcmds:vrunv(exe, args)
+            batchcmds:set_depmtime(os.mtime(outfile))
+        end
+
         batchcmds:add_depfiles(shaderfile, varying)
     end)
 
