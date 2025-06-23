@@ -3,9 +3,11 @@
 ----------------------------------------------------------------
 set_languages("c++20")
 
--- default compiler flags - MSVC only
+-- default compiler flags (MSVC only)
 if is_plat("windows") then
     add_cxxflags("/Zc:__cplusplus", "/Zc:preprocessor")
+    -- use static CRT
+    set_runtimes("MT")
 end
 
 -- set_xmakever("2.8.7")
