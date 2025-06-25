@@ -1,0 +1,3 @@
+[submodule "vendor/ImFileDialog"]
+	path = vendor/ImFileDialog
+	url = https://github.com/dfranx/ImFileDialog

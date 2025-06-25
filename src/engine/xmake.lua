@@ -136,8 +136,8 @@ rule("shaderc.build")
                 "--type", stype,
                 "--profile", backend.profile,
                 "--varyingdef", varying,
-                "-i", path.join(os.projectdir(), "thirdparty/bgfx_helpers/common"),
-                "-i", path.join(os.projectdir(), "thirdparty/bgfx_helpers/src"),
+                "-i", path.join(os.projectdir(), "thirdparty/bgfx_utils/common"),
+                "-i", path.join(os.projectdir(), "thirdparty/bgfx_utils/src"),
                 "-f", shaderfile,
                 "-o", outfile,
             }

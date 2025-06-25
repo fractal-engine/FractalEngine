@@ -7,8 +7,10 @@
 #include "imgui.h"
 #include "imgui_internal.h"
 #include "imgui_utils.h"
+#include "panels/asset_browser.h"
 #include "panels/camera_controls.h"
 #include "panels/console_panel.h"
+#include "panels/file_explorer.h"
 #include "panels/game_canvas.h"
 #include "panels/hierarchy_panel.h"
 #include "panels/inspector_panel.h"
@@ -279,6 +281,8 @@ void EditorLayer::RenderUI() {
     ImGui::DockBuilderDockWindow("Inspector", right);
     ImGui::DockBuilderDockWindow("Scene", dock_id_);
     ImGui::DockBuilderDockWindow("Console", bottom);
+    // ImGui::DockBuilderDockWindow(Panels::kDlgWinName, bottom);
+    ImGui::DockBuilderDockWindow("Asset Browser", bottom);
     ImGui::DockBuilderDockWindow("Camera", right);
 
     ImGui::DockBuilderFinish(dock_id_);
@@ -332,6 +336,12 @@ void EditorLayer::RenderUI() {
   Panels::ConsolePanel();
   ImGui::End();
 
+  // Panels::FileExplorer();
+
+  ImGui::Begin("Asset Browser", nullptr);
+  Panels::AssetBrowser();
+  ImGui::End();
+
   // Camera Controls
   ImGui::Begin("Camera", nullptr);
   Panels::CameraControls();
@@ -366,6 +376,7 @@ void EditorLayer::LoadIcons() {
   tab_icons_.insert({"Console", ICON_FA_TERMINAL});
   tab_icons_.insert({"Camera", ICON_FA_VIDEO});
   tab_icons_.insert({"Assets", ICON_FA_FOLDER_OPEN});
+  // tab_icons_.insert({"File Explorer", ICON_FA_FOLDER});
 }
 
 void EditorLayer::BeginImGuiFrame(SDL_Window* window) {

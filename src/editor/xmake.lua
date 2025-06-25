@@ -7,9 +7,9 @@ target("fractal")
 
     add_deps("engine", "platform", "sample_game")
 
-    add_includedirs("..")
+    add_includedirs("..", "vendor")
 
-    add_files("main.cpp", "*.cpp", "runtime/*.cpp", "vendor/imgui/imgui_impl_bgfx.cpp")
+    add_files("main.cpp", "*.cpp", "runtime/*.cpp", "vendor/imgui/imgui_impl_bgfx.cpp", "vendor/ImGuiFileDialog/ImGuiFileDialog.cpp")
     add_headerfiles("runtime/*.h", "panels/*.h", "systems/*.h")
 
     add_packages("imgui", "boost", "libsdl2", "bgfx", "glm", "libsdl2_ttf", "portaudio")
