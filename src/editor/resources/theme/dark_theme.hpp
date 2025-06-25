@@ -17,8 +17,8 @@ inline void LoadFonts(ImGuiIO& io) {
   main_font_config.OversampleH = 3;
   main_font_config.OversampleV = 2;
 
-  io.Fonts->AddFontFromFileTTF("resources/fonts/NotoSansMono_Regular.ttf", 16.0f,
-                               &main_font_config);
+  io.Fonts->AddFontFromFileTTF("resources/fonts/NotoSansMono_Regular.ttf",
+                               16.0f, &main_font_config);
 
   // icons font config
   ImFontConfig icons_config;
@@ -26,8 +26,8 @@ inline void LoadFonts(ImGuiIO& io) {
   icons_config.PixelSnapH = true;
   icons_config.GlyphMinAdvanceX = 16.0f;
 
-  io.Fonts->AddFontFromFileTTF("resources/fonts/fa-solid-900.ttf", 16.0f, &icons_config,
-                               icon_ranges);
+  io.Fonts->AddFontFromFileTTF("resources/fonts/fa-solid-900.ttf", 16.0f,
+                               &icons_config, icon_ranges);
 
   // console font config
   ImFontConfig console_config;
@@ -38,8 +38,8 @@ inline void LoadFonts(ImGuiIO& io) {
   console_config.RasterizerMultiply = 1.0f;
 
   // load font for console
-  console_font = io.Fonts->AddFontFromFileTTF("resources/fonts/TerminusTTF-4.49.3.ttf", 12.0f,
-                                              &console_config);
+  console_font = io.Fonts->AddFontFromFileTTF(
+      "resources/fonts/TerminusTTF-4.49.3.ttf", 12.0f, &console_config);
 }
 
 void ApplyStyle() {
@@ -167,6 +167,9 @@ inline void Initialize() {
   ImGuiIO& io = ImGui::GetIO();
   LoadFonts(io);
   ApplyStyle();
+
+  // Set global font scale
+  io.FontGlobalScale = 0.9f;
 
 #ifdef IMGUI_HAS_DOCK
   ImGui::GetStyle().WindowMenuButtonPosition = ImGuiDir_None;
