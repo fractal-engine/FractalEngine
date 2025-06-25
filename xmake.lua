@@ -15,7 +15,7 @@ add_rules("mode.debug", "mode.release")
 set_policy("check.auto_ignore_flags", false)
 
 -- external dependencies
-add_requires("boost", "libsdl2", "libsdl2_ttf", "portaudio", "glm")
+add_requires("boost", "libsdl2", "libsdl2_ttf", "portaudio", "glm", "tinygltf")
 add_requires("imgui 1.91.8-docking", {configs={sdl2=true, sdl2_renderer=true, docking=true}})
 add_requires("bgfx", {configs = {tools = true}})
 

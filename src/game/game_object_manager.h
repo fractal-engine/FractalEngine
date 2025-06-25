@@ -5,7 +5,7 @@
 #include <unordered_map>  //hash table to store all game objects
 
 #include "game_object.h"
-#include "singleton.hpp"  // Include singleton base class
+#include "engine/core/singleton.hpp" // Include singleton base class
 
 class GameObjectManager : public Singleton<GameObjectManager> {
 public:
@@ -17,19 +17,17 @@ public:
     gameObjects_.erase(id);
   }  // remove game object
 
-  std::unique_ptr<GameObject> GetGameObject(int id) {
+  std::shared_ptr<GameObject> GetGameObject(int id) {
     auto it = gameObjects_.find(id);
-    return it != gameObjects_.end()
-               ? it->second
-               : nullptr;  // if game object doesn't exist, return null (is
-                           // there an alternate to null pointer?)
+    return it != gameObjects_.end() ? it->second : nullptr;
   }
+
 
 private:
   GameObjectManager() = default;
   friend class Singleton<GameObjectManager>;
 
-  std::unordered_map<int, std::unique_ptr<GameObject>> gameObjects_;
+  std::unordered_map<int, std::shared_ptr<GameObject>> gameObjects_;
 };
 
 #endif  // GAMEOBJECTMANAGER_H

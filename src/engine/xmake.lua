@@ -13,12 +13,13 @@ target("engine")
               "renderer/shaders/*.cpp")
     add_files("resources/*.cpp", "resources/textures/*.cpp", "scene/*.cpp")
     add_files("runtime/*.cpp")
+    add_files("importer/*.cpp")
 
     add_rules("shaderc.build")
     add_files("$(projectdir)/src/assets/shaders/**.sc")
     remove_files("$(projectdir)/src/assets/shaders/varying*.sc")
 
-    add_packages("boost", "libsdl2", "bgfx", "glm", "imgui", "libsdl2_ttf", "portaudio")
+    add_packages("boost", "libsdl2", "bgfx", "glm", "imgui", "libsdl2_ttf", "portaudio", "tinygltf")
 
     if is_mode("debug") then
     add_links("bimg_decodeDebug", "bimg_encodeDebug")
@@ -84,6 +85,7 @@ rule("shaderc.build")
             terrain = "varying_terrain_pbr.def.sc",
             shadow  = "varying_shadow.def.sc",
             water   = "varying_water.def.sc",
+            gltf    = "varying_gltf.def.sc",
         }
 
         -- pick first key matching anywhere in relative path
@@ -145,6 +147,7 @@ rule("shaderc.build")
             batchcmds:show_progress(opt.progress, "${color.build.object}shaderc %s [%s]", fname, backend.folder)
             batchcmds:vrunv(exe, args)
             batchcmds:set_depmtime(os.mtime(outfile))
+            print(string.format("[shaderc] compiled %-15s → %-20s using varying: %s", fname, backend.folder, path.basename(varying)))
         end
 
         batchcmds:add_depfiles(shaderfile, varying)

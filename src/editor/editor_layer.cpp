@@ -286,25 +286,39 @@ void EditorLayer::RenderUI() {
   }
 
   //--------------------------- TOP TOOLBAR ----------------------------------
-  Panels::ToolbarCallbacks cb{.onStart =
-                                  [&] {
-                                    if (!is_game_started_) {
-                                      is_game_started_ = true;
-                                      game_start_pressed();
-                                    }
-                                  },
-                              .onStop =
-                                  [&] {
-                                    if (is_game_started_) {
-                                      is_game_started_ = false;
-                                      game_end_pressed();
-                                    }
-                                  },
-                              .onQuit =
-                                  [&] {
-                                    quit_ = true;
-                                    editor_exit_pressed();
-                                  }};
+  Panels::ToolbarCallbacks cb{
+      .onStart =
+          [&] {
+            if (!is_game_started_) {
+              is_game_started_ = true;
+              game_start_pressed();
+            }
+          },
+      .onStop =
+          [&] {
+            if (is_game_started_) {
+              is_game_started_ = false;
+              game_end_pressed();
+            }
+          },
+      .onAddObject =
+          [&] {
+            // Temporary: Load a 3D model from a hardcoded path
+            const std::string gltf_path =
+                "C:/Users/moses/Downloads/eiffel_tower/scene.gltf";
+            LoadModelAndSpawn(gltf_path);  // function we’ll define next
+          },
+      .onRemoveObject =
+          [&] {
+            // Temporary stub for now
+            Logger::getInstance().Log(LogLevel::Info,
+                                      "Remove GameObject not yet implemented");
+          },
+      .onQuit =
+          [&] {
+            quit_ = true;
+            editor_exit_pressed();
+          }};
   ImGui::Begin("Toolbar", nullptr);
   Panels::Toolbar(cb);
   ImGui::End();

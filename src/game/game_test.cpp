@@ -3,18 +3,22 @@
 #include <bgfx/bgfx.h>
 #include <bx/math.h>
 #include <string.h>
+#include <glm/glm.hpp>
+#include <glm/gtc/type_ptr.hpp>
 #include <vector>
-
-#include "game_test.h"
 
 #include <SDL.h>
 #include "editor/runtime/application.h"
 #include "engine/core/logger.h"
 #include "engine/core/view_ids.h"
+#include "engine/importer/gltf_program.h"
+#include "engine/importer/model_import.h"
 #include "engine/renderer/lighting/sky_lighting.h"
 #include "engine/renderer/renderer_graphics.h"
 #include "engine/resources/shader_utils.h"
 #include "engine/resources/textures/texture_utils.h"
+#include "game/game_object.h"
+#include "game/game_object_manager.h"
 
 // Helper to make logging BGFX handles easier
 std::string handle_to_string(bgfx::ProgramHandle h) {
@@ -184,6 +188,10 @@ void GameTest::Init() {
         .end();
   }
 
+  // Set GLTF Layouts and Program
+  GltfImport::SetupGltfLayouts();
+  GltfImport::SetupGltfProgram();
+
   // Load terrain textures
   terrainDiffuse =
       TextureUtils::LoadTexture("assets/textures/terrain/basecolor.tga");
@@ -303,6 +311,7 @@ void GameTest::Init() {
                               "[GameTest::Init] FAILED to load water program "
                               "(_waterProgram). Handle is invalid.");
   }
+
   // Generate initial heightmap data
   const uint16_t hm_sz = TerrainSize;
   std::vector<float> rawHeights(hm_sz * hm_sz);
@@ -814,6 +823,26 @@ void GameTest::Render() {
   bgfx::setIndexBuffer(_terrainIbh);
   bgfx::setState(BGFX_STATE_DEFAULT | BGFX_STATE_CULL_CW | BGFX_STATE_MSAA);
   bgfx::submit(terrainViewID, _terrainProgramHeight);
+
+  // --- GameObject Pass (Imported 3D Models) ---
+
+  const auto& gameObjects =
+      GameObjectManager::getInstance().GetAllGameObjects();
+
+  for (const auto& [id, obj] : gameObjects) {
+    const glm::mat4& transform = obj->GetTransform();
+
+    float bgfxTransform[16];
+    memcpy(bgfxTransform, glm::value_ptr(transform), sizeof(bgfxTransform));
+    bgfx::setTransform(bgfxTransform);
+
+    bgfx::setViewTransform(ViewID::SCENE_MESH, viewMatrix, projMatrix);
+    bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_Z |
+                   BGFX_STATE_DEPTH_TEST_LESS | BGFX_STATE_CULL_CW);
+
+    obj->Render();
+  }
+
 
   // --- Water Pass ---
 

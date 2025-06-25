@@ -66,6 +66,7 @@ private:
 
   std::vector<PosTexCoord0Vertex> terrainVertices;
   std::vector<uint16_t> terrainIndices;
+  
 
   // ───── Sky-box & Sun
   bgfx::ProgramHandle _skyProgram = BGFX_INVALID_HANDLE;
