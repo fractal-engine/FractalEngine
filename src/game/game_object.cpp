@@ -19,6 +19,11 @@
  *     GameObject.h.
  **********************************************************************************/
 
+// Define the static uniform handle
+bgfx::UniformHandle GameObject::GetDiffuseSampler() {
+  return s_diffuseSampler_;
+}
+
 // Constructor definition
 GameObject::GameObject(int id, const std::string& name)
     : id_(id), name_(name) {}
@@ -35,19 +40,19 @@ std::string GameObject::GetName() const {
 }
 
 // ---------------------------------------------------------------------------------
-// @brief Assign transform matrix
+// Assign transform matrix
 void GameObject::SetTransform(const glm::mat4& transform) {
   transform_ = transform;
 }
 
 // ---------------------------------------------------------------------------------
-// @brief Retrieve transform matrix
+// Retrieve transform matrix
 const glm::mat4& GameObject::GetTransform() const {
   return transform_;
 }
 
 // ---------------------------------------------------------------------------------
-// @brief Assign vertex and index buffer handles
+// Assign vertex and index buffer handles
 void GameObject::SetBuffers(bgfx::VertexBufferHandle vbo,
                             bgfx::IndexBufferHandle ibo) {
   vbo_ = vbo;
@@ -55,21 +60,37 @@ void GameObject::SetBuffers(bgfx::VertexBufferHandle vbo,
 }
 
 // ---------------------------------------------------------------------------------
-  void GameObject::Render() {
-    if (!bgfx::isValid(vbo_) || !bgfx::isValid(ibo_))
-      return;
+// Assign texture handle
+void GameObject::SetTexture(bgfx::TextureHandle texture) {
+  texture_ = texture;
+}
 
-    // Apply transform
-    float mtx[16];
-    memcpy(mtx, glm::value_ptr(transform_), sizeof(mtx));
-    bgfx::setTransform(mtx);
+// Define and initialize the static uniform handle
+bgfx::UniformHandle GameObject::s_diffuseSampler_ = BGFX_INVALID_HANDLE;
 
-    // Set buffers
-    bgfx::setVertexBuffer(0, vbo_);
-    bgfx::setIndexBuffer(ibo_);
+void GameObject::SetDiffuseSampler(bgfx::UniformHandle handle) {
+  s_diffuseSampler_ = handle;
+}
 
-    // Submit draw call using the global glTF shader program
-    if (bgfx::isValid(g_gltfProgram)) {
-      bgfx::submit(ViewID::SCENE_MESH, g_gltfProgram);
-    }
+
+// ---------------------------------------------------------------------------------
+void GameObject::Render() {
+  if (!bgfx::isValid(vbo_) || !bgfx::isValid(ibo_))
+    return;
+  // Apply the transformation matrix
+  float mtx[16];
+  memcpy(mtx, glm::value_ptr(transform_), sizeof(mtx));
+  bgfx::setTransform(mtx);
+
+  bgfx::setVertexBuffer(0, vbo_);
+  bgfx::setIndexBuffer(ibo_);
+
+  // Bind texture if available
+  if (bgfx::isValid(texture_)) {
+    bgfx::setTexture(0, s_diffuseSampler_, texture_);
   }
+  // Submit the draw call
+  if (bgfx::isValid(g_gltfProgram)) {
+    bgfx::submit(ViewID::SCENE_MESH, g_gltfProgram);
+  }
+}

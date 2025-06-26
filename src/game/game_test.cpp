@@ -192,6 +192,12 @@ void GameTest::Init() {
   GltfImport::SetupGltfLayouts();
   GltfImport::SetupGltfProgram();
 
+  // Create GLTF model texture uniforms
+  if (!bgfx::isValid(GameObject::GetDiffuseSampler())) {
+    GameObject::SetDiffuseSampler(
+        bgfx::createUniform("s_diffuse", bgfx::UniformType::Sampler));
+  }
+
   // Load terrain textures
   terrainDiffuse =
       TextureUtils::LoadTexture("assets/textures/terrain/basecolor.tga");
@@ -843,7 +849,6 @@ void GameTest::Render() {
     obj->Render();
   }
 
-
   // --- Water Pass ---
 
   bgfx::setViewClear(ViewID::WATER_PASS, BGFX_CLEAR_NONE, 0, 1.0f, 0);
@@ -950,6 +955,13 @@ void GameTest::Shutdown() {
   destroyHandle(_s_reflectionUniform);
   destroyHandle(_waterTex);
   destroyHandle(_waterNormalTex);
+
+  // Destroy GameObject static uniform
+  if (bgfx::isValid(GameObject::GetDiffuseSampler())) {
+    bgfx::destroy(GameObject::GetDiffuseSampler());
+    GameObject::SetDiffuseSampler(BGFX_INVALID_HANDLE);
+  }
+
 
   Logger::getInstance().Log(LogLevel::Debug, "[GameTest] Shutdown() completed");
 }

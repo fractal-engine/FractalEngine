@@ -60,6 +60,26 @@ public:
    **********************************************************************************/
   void Render();
 
+  /*********************************************************************************
+   * @brief Assigns a texture handle to the GameObject
+   * @param texture A valid bgfx::TextureHandle
+   **********************************************************************************/
+  void SetTexture(bgfx::TextureHandle texture);
+
+  /*********************************************************************************
+   * @brief Setter for the static texture uniform handle
+   * @param handle A bgfx::UniformHandle representing the diffuse sampler
+   **********************************************************************************/
+  static void SetDiffuseSampler(bgfx::UniformHandle handle);
+
+  /*********************************************************************************
+   * @brief Accessor for the static texture uniform handle
+   * @return bgfx::UniformHandle for diffuse sampler
+   **********************************************************************************/
+  static bgfx::UniformHandle GetDiffuseSampler();
+
+  // Actually Idk why we're using this DOxygen briefs, but it seems to be in the whole case and Intellisense just copies it
+
 private:
   int id_;
   std::string name_;
@@ -68,6 +88,9 @@ private:
   glm::mat4 transform_{1.0f};  // Identity matrix
   bgfx::VertexBufferHandle vbo_ = BGFX_INVALID_HANDLE;
   bgfx::IndexBufferHandle ibo_ = BGFX_INVALID_HANDLE;
+  bgfx::TextureHandle texture_ = BGFX_INVALID_HANDLE;
+
+  static bgfx::UniformHandle s_diffuseSampler_;  // Texture sampler uniform (Base Color)
 };
 
 #endif  // GAMEOBJECT_H
