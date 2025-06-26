@@ -1,6 +1,7 @@
 #include <bgfx/bgfx.h>
 #include <tiny_gltf.h>
 #include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 #include <string>
 #include <vector>
 #include "editor/runtime/application.h"
@@ -55,7 +56,13 @@ void LoadModelAndSpawn(const std::string& filepath) {
   tinygltf::TinyGLTF loader;
   std::string err, warn;
 
-  bool ret = loader.LoadASCIIFromFile(&model, &err, &warn, filepath);
+  bool ret = false;
+  if (filepath.size() >= 4 && filepath.substr(filepath.size() - 4) == ".glb") {
+    ret = loader.LoadBinaryFromFile(&model, &err, &warn, filepath);
+  } else {
+    ret = loader.LoadASCIIFromFile(&model, &err, &warn, filepath);
+  }
+
   if (!warn.empty())
     Logger::getInstance().Log(LogLevel::Warning, warn);
   if (!err.empty())
@@ -74,7 +81,7 @@ void LoadModelAndSpawn(const std::string& filepath) {
   const tinygltf::Mesh& mesh = model.meshes[0];
   const tinygltf::Primitive& primitive = mesh.primitives[0];
 
-  // ─── Parse vertex positions ─────────────────
+  // ─── Parse vertex positions ──────────────────────────────
   const auto& pos_accessor =
       model.accessors[primitive.attributes.at("POSITION")];
   const auto& pos_view = model.bufferViews[pos_accessor.bufferView];
@@ -86,67 +93,60 @@ void LoadModelAndSpawn(const std::string& filepath) {
   size_t vertex_count = pos_accessor.count;
   std::vector<float> vertices(pos_data, pos_data + vertex_count * 3);
 
-  // ─── Parse indices (support multiple formats) ─────────────────────
+  // ─── Parse indices ────────────────────────────────────────
   const auto& idx_accessor = model.accessors[primitive.indices];
   const auto& idx_view = model.bufferViews[idx_accessor.bufferView];
   const auto& idx_buffer = model.buffers[idx_view.buffer];
 
   const void* idx_data =
       &idx_buffer.data[idx_view.byteOffset + idx_accessor.byteOffset];
+  size_t index_count = idx_accessor.count;
 
-  std::vector<uint16_t> indices;
+  bgfx::IndexBufferHandle ibo = BGFX_INVALID_HANDLE;
 
-  switch (idx_accessor.componentType) {
-    case TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT: {
-      const auto* data = reinterpret_cast<const uint16_t*>(idx_data);
-      indices.assign(data, data + idx_accessor.count);
-      break;
-    }
-    case TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE: {
-      const auto* data = reinterpret_cast<const uint8_t*>(idx_data);
-      indices.reserve(idx_accessor.count);
-      for (size_t i = 0; i < idx_accessor.count; ++i) {
-        indices.push_back(static_cast<uint16_t>(data[i]));
-      }
-      break;
-    }
-    case TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT: {
-      const auto* data = reinterpret_cast<const uint32_t*>(idx_data);
-      indices.reserve(idx_accessor.count);
-      for (size_t i = 0; i < idx_accessor.count; ++i) {
-        if (data[i] > std::numeric_limits<uint16_t>::max()) {
-          Logger::getInstance().Log(
-              LogLevel::Error,
-              "Index value too large to fit in uint16_t. Aborting load.");
-          return;
-        }
-        indices.push_back(static_cast<uint16_t>(data[i]));
-      }
-      break;
-    }
-    default: {
-      Logger::getInstance().Log(LogLevel::Error,
-                                "Unsupported index format: componentType=" +
-                                    std::to_string(idx_accessor.componentType));
-      return;
-    }
+  // Index handling based on component type
+  if (idx_accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT) {
+    using IndexType = uint16_t;
+    const IndexType* src = reinterpret_cast<const IndexType*>(idx_data);
+    const bgfx::Memory* indexMem =
+        bgfx::copy(src, sizeof(IndexType) * index_count);
+    ibo = bgfx::createIndexBuffer(indexMem, BGFX_BUFFER_NONE);
+  } else if (idx_accessor.componentType ==
+             TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT) {
+    using IndexType = uint32_t;
+    const IndexType* src = reinterpret_cast<const IndexType*>(idx_data);
+    const bgfx::Memory* indexMem =
+        bgfx::copy(src, sizeof(IndexType) * index_count);
+    ibo = bgfx::createIndexBuffer(indexMem, BGFX_BUFFER_INDEX32);
+  } else {
+    Logger::getInstance().Log(LogLevel::Error,
+                              "Unsupported index component type.");
+    return;
   }
 
-  // ─── Create BGFX buffers ────────────────────
-  bgfx::VertexBufferHandle vbo = bgfx::createVertexBuffer(
-      bgfx::makeRef(vertices.data(), sizeof(float) * vertices.size()),
-      GltfVertex::layout);
+  // ─── Create vertex buffer using bgfx::copy ────────────────
+  const bgfx::Memory* vertexMem =
+      bgfx::copy(vertices.data(), sizeof(float) * vertices.size());
+  bgfx::VertexBufferHandle vbo =
+      bgfx::createVertexBuffer(vertexMem, GltfVertex::layout);
 
-  bgfx::IndexBufferHandle ibo = bgfx::createIndexBuffer(
-      bgfx::makeRef(indices.data(), sizeof(uint16_t) * indices.size()));
-
-  // ─── Create and register GameObject ─────────
+  // ─── Create and register GameObject ───────────────────────
   auto obj = std::make_shared<GameObject>(next_id++, "EiffelTower");
   obj->SetBuffers(vbo, ibo);
-  obj->SetTransform(glm::mat4(1.0f));
+
+  glm::mat4 transform = glm::mat4(1.0f);
+  transform =
+      glm::translate(transform, glm::vec3(0.0f, 10.0f, 0.0f));  // Lift up
+  transform = glm::scale(transform, glm::vec3(250.0f));           // Scale up
+  obj->SetTransform(transform);
+
   GameObjectManager::getInstance().AddGameObject(obj);
 
   Logger::getInstance().Log(LogLevel::Info, "Spawned glTF model into scene.");
+  Logger::getInstance().Log(LogLevel::Debug,
+                            "Model has " + std::to_string(vertex_count) +
+                                " vertices and " + std::to_string(index_count) +
+                                " indices.");
 }
 
 }  // namespace GltfImport

@@ -306,7 +306,7 @@ void EditorLayer::RenderUI() {
           [&] {
             // Temporary: Load a 3D model from a hardcoded path
             const std::string gltf_path =
-                "C:/Users/moses/Downloads/eiffel_tower/scene.gltf";
+                "C:/Users/moses/Downloads/eiffel_tower/tower.glb";
             GltfImport::LoadModelAndSpawn(gltf_path);
           },
       .onRemoveObject =
