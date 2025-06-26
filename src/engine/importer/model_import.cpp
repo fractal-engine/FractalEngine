@@ -3,11 +3,12 @@
 #include <glm/glm.hpp>
 #include <string>
 #include <vector>
-#include "engine/core/view_ids.h"
+#include "editor/runtime/application.h"
 #include "engine/core/logger.h"
+#include "engine/core/view_ids.h"
+#include "engine/importer/gltf_program.h"
+#include "engine/resources/shader_utils.h"
 #include "game/game_object_manager.h"
-#include "engine/resources/shader_utils.h"  
-#include "engine/importer/gltf_program.h"   
 
 namespace GltfImport {
 

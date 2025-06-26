@@ -12,7 +12,7 @@ target("fractal")
     add_files("main.cpp", "*.cpp", "runtime/*.cpp", "vendor/imgui/imgui_impl_bgfx.cpp")
     add_headerfiles("runtime/*.h", "panels/*.h", "systems/*.h")
 
-    add_packages("imgui", "boost", "libsdl2", "bgfx", "glm", "libsdl2_ttf", "portaudio", "tinygltf")
+    add_packages("imgui", "boost", "libsdl2", "bgfx", "glm", "libsdl2_ttf", "portaudio")
 
     -- copy all assets 
     after_build(function (target)

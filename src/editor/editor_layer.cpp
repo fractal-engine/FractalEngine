@@ -21,6 +21,7 @@
 
 #include <backends/imgui_impl_sdl2.h>
 #include "editor/vendor/imgui/imgui_impl_bgfx.h"
+#include "engine/importer/model_import.h"
 
 #include <SDL.h>
 #include <chrono>
@@ -306,7 +307,7 @@ void EditorLayer::RenderUI() {
             // Temporary: Load a 3D model from a hardcoded path
             const std::string gltf_path =
                 "C:/Users/moses/Downloads/eiffel_tower/scene.gltf";
-            LoadModelAndSpawn(gltf_path);  // function we’ll define next
+            GltfImport::LoadModelAndSpawn(gltf_path);
           },
       .onRemoveObject =
           [&] {
