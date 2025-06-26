@@ -86,21 +86,50 @@ void LoadModelAndSpawn(const std::string& filepath) {
   size_t vertex_count = pos_accessor.count;
   std::vector<float> vertices(pos_data, pos_data + vertex_count * 3);
 
-  // ─── Parse indices ──────────────────────────
+  // ─── Parse indices (support multiple formats) ─────────────────────
   const auto& idx_accessor = model.accessors[primitive.indices];
   const auto& idx_view = model.bufferViews[idx_accessor.bufferView];
   const auto& idx_buffer = model.buffers[idx_view.buffer];
 
-  std::vector<uint16_t> indices;
   const void* idx_data =
       &idx_buffer.data[idx_view.byteOffset + idx_accessor.byteOffset];
-  if (idx_accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT) {
-    indices.assign(
-        reinterpret_cast<const uint16_t*>(idx_data),
-        reinterpret_cast<const uint16_t*>(idx_data) + idx_accessor.count);
-  } else {
-    Logger::getInstance().Log(LogLevel::Error, "Unsupported index format.");
-    return;
+
+  std::vector<uint16_t> indices;
+
+  switch (idx_accessor.componentType) {
+    case TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT: {
+      const auto* data = reinterpret_cast<const uint16_t*>(idx_data);
+      indices.assign(data, data + idx_accessor.count);
+      break;
+    }
+    case TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE: {
+      const auto* data = reinterpret_cast<const uint8_t*>(idx_data);
+      indices.reserve(idx_accessor.count);
+      for (size_t i = 0; i < idx_accessor.count; ++i) {
+        indices.push_back(static_cast<uint16_t>(data[i]));
+      }
+      break;
+    }
+    case TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT: {
+      const auto* data = reinterpret_cast<const uint32_t*>(idx_data);
+      indices.reserve(idx_accessor.count);
+      for (size_t i = 0; i < idx_accessor.count; ++i) {
+        if (data[i] > std::numeric_limits<uint16_t>::max()) {
+          Logger::getInstance().Log(
+              LogLevel::Error,
+              "Index value too large to fit in uint16_t. Aborting load.");
+          return;
+        }
+        indices.push_back(static_cast<uint16_t>(data[i]));
+      }
+      break;
+    }
+    default: {
+      Logger::getInstance().Log(LogLevel::Error,
+                                "Unsupported index format: componentType=" +
+                                    std::to_string(idx_accessor.componentType));
+      return;
+    }
   }
 
   // ─── Create BGFX buffers ────────────────────
