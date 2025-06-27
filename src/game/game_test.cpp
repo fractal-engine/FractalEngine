@@ -198,6 +198,16 @@ void GameTest::Init() {
         bgfx::createUniform("s_diffuse", bgfx::UniformType::Sampler));
   }
 
+  if (!bgfx::isValid(GameObject::GetORMSampler())) {
+    GameObject::SetORMSampler(
+        bgfx::createUniform("s_orm", bgfx::UniformType::Sampler));
+  }
+
+  if (!bgfx::isValid(GameObject::GetNormalSampler())) {
+    GameObject::SetNormalSampler(
+        bgfx::createUniform("s_normal", bgfx::UniformType::Sampler));
+  }
+
   // Load terrain textures
   terrainDiffuse =
       TextureUtils::LoadTexture("assets/textures/terrain/basecolor.tga");
@@ -956,12 +966,21 @@ void GameTest::Shutdown() {
   destroyHandle(_waterTex);
   destroyHandle(_waterNormalTex);
 
-  // Destroy GameObject static uniform
+  // Destroy GLTF game objects
   if (bgfx::isValid(GameObject::GetDiffuseSampler())) {
     bgfx::destroy(GameObject::GetDiffuseSampler());
     GameObject::SetDiffuseSampler(BGFX_INVALID_HANDLE);
   }
 
+  if (bgfx::isValid(GameObject::GetORMSampler())) {
+    bgfx::destroy(GameObject::GetORMSampler());
+    GameObject::SetORMSampler(BGFX_INVALID_HANDLE);
+  }
+
+  if (bgfx::isValid(GameObject::GetNormalSampler())) {
+    bgfx::destroy(GameObject::GetNormalSampler());
+    GameObject::SetNormalSampler(BGFX_INVALID_HANDLE);
+  }
 
   Logger::getInstance().Log(LogLevel::Debug, "[GameTest] Shutdown() completed");
 }

@@ -1,6 +1,6 @@
 #include "game/game_object.h"
 #include <bgfx/bgfx.h>
-#include <glm/gtc/type_ptr.hpp>  // For glm::value_ptr
+#include <glm/gtc/type_ptr.hpp>
 #include "engine/core/view_ids.h"
 #include "engine/importer/gltf_program.h"
 
@@ -9,28 +9,28 @@
  * @see GameObject.h
  *
  * Provides:
- *   - Constructor for assigning ID and Name
- *   - virtual destructor that currently does nothing
- *   - Basic getters for ID and Name
- *
- * Development:
- *   - Tied to GameObject.h, which contains the class definition.
- *   - New methods or attributes should be implemented here, follow
- *     GameObject.h.
+ *   - Handles for vertex/index/texture rendering
+ *   - Static sampler management for all GameObjects
  **********************************************************************************/
 
-// Define the static uniform handle
-bgfx::UniformHandle GameObject::GetDiffuseSampler() {
-  return s_diffuseSampler_;
-}
+// ---------------------------------
+// Static Uniform Handle Definitions
+// ---------------------------------
+bgfx::UniformHandle GameObject::s_diffuseSampler_ = BGFX_INVALID_HANDLE;
+bgfx::UniformHandle GameObject::s_ormSampler_ = BGFX_INVALID_HANDLE;
+bgfx::UniformHandle GameObject::s_normalSampler_ = BGFX_INVALID_HANDLE;
 
-// Constructor definition
+// ---------------------------------
+// Constructor / Destructor
+// ---------------------------------
 GameObject::GameObject(int id, const std::string& name)
     : id_(id), name_(name) {}
 
-// Destructor definition
 GameObject::~GameObject() {}
 
+// ---------------------------------
+// Basic Getters
+// ---------------------------------
 int GameObject::GetId() const {
   return id_;
 }
@@ -39,57 +39,96 @@ std::string GameObject::GetName() const {
   return name_;
 }
 
-// ---------------------------------------------------------------------------------
-// Assign transform matrix
-void GameObject::SetTransform(const glm::mat4& transform) {
-  transform_ = transform;
-}
-
-// ---------------------------------------------------------------------------------
-// Retrieve transform matrix
 const glm::mat4& GameObject::GetTransform() const {
   return transform_;
 }
 
-// ---------------------------------------------------------------------------------
-// Assign vertex and index buffer handles
+// ---------------------------------
+// Buffer + Transform Setters
+// ---------------------------------
+void GameObject::SetTransform(const glm::mat4& transform) {
+  transform_ = transform;
+}
+
 void GameObject::SetBuffers(bgfx::VertexBufferHandle vbo,
                             bgfx::IndexBufferHandle ibo) {
   vbo_ = vbo;
   ibo_ = ibo;
 }
 
-// ---------------------------------------------------------------------------------
-// Assign texture handle
+// ---------------------------------
+// Texture Setters (Per-Instance)
+// ---------------------------------
 void GameObject::SetTexture(bgfx::TextureHandle texture) {
   texture_ = texture;
 }
 
-// Define and initialize the static uniform handle
-bgfx::UniformHandle GameObject::s_diffuseSampler_ = BGFX_INVALID_HANDLE;
+void GameObject::SetORMTexture(bgfx::TextureHandle texture) {
+  ormTexture_ = texture;
+}
 
+void GameObject::SetNormalTexture(bgfx::TextureHandle texture) {
+  normalTexture_ = texture;
+}
+
+// ---------------------------------
+// Sampler Getters (Static)
+// ---------------------------------
+bgfx::UniformHandle GameObject::GetDiffuseSampler() {
+  return s_diffuseSampler_;
+}
+
+bgfx::UniformHandle GameObject::GetORMSampler() {
+  return s_ormSampler_;
+}
+
+bgfx::UniformHandle GameObject::GetNormalSampler() {
+  return s_normalSampler_;
+}
+
+// ---------------------------------
+// Sampler Setters (Static)
+// ---------------------------------
 void GameObject::SetDiffuseSampler(bgfx::UniformHandle handle) {
   s_diffuseSampler_ = handle;
 }
 
+void GameObject::SetORMSampler(bgfx::UniformHandle handle) {
+  s_ormSampler_ = handle;
+}
 
-// ---------------------------------------------------------------------------------
+void GameObject::SetNormalSampler(bgfx::UniformHandle handle) {
+  s_normalSampler_ = handle;
+}
+
+// ---------------------------------
+// Render Logic
+// ---------------------------------
 void GameObject::Render() {
   if (!bgfx::isValid(vbo_) || !bgfx::isValid(ibo_))
     return;
-  // Apply the transformation matrix
+
+  // Apply transform matrix
   float mtx[16];
   memcpy(mtx, glm::value_ptr(transform_), sizeof(mtx));
   bgfx::setTransform(mtx);
 
+  // Set geometry buffers
   bgfx::setVertexBuffer(0, vbo_);
   bgfx::setIndexBuffer(ibo_);
 
-  // Bind texture if available
+  // Bind textures if valid
   if (bgfx::isValid(texture_)) {
     bgfx::setTexture(0, s_diffuseSampler_, texture_);
   }
-  // Submit the draw call
+  if (bgfx::isValid(ormTexture_)) {
+    bgfx::setTexture(1, s_ormSampler_, ormTexture_);
+  }
+  if (bgfx::isValid(normalTexture_)) {
+    bgfx::setTexture(2, s_normalSampler_, normalTexture_);
+  }
+
+  // Submit draw call using GLTF program
   if (bgfx::isValid(g_gltfProgram)) {
     bgfx::submit(ViewID::SCENE_MESH, g_gltfProgram);
   }

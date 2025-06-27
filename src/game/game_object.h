@@ -65,18 +65,24 @@ public:
    * @param texture A valid bgfx::TextureHandle
    **********************************************************************************/
   void SetTexture(bgfx::TextureHandle texture);
+  void SetORMTexture(bgfx::TextureHandle texture);
+  void SetNormalTexture(bgfx::TextureHandle texture);
 
   /*********************************************************************************
    * @brief Setter for the static texture uniform handle
    * @param handle A bgfx::UniformHandle representing the diffuse sampler
    **********************************************************************************/
   static void SetDiffuseSampler(bgfx::UniformHandle handle);
+  static void SetORMSampler(bgfx::UniformHandle handle);
+  static void SetNormalSampler(bgfx::UniformHandle handle);
 
   /*********************************************************************************
    * @brief Accessor for the static texture uniform handle
    * @return bgfx::UniformHandle for diffuse sampler
    **********************************************************************************/
   static bgfx::UniformHandle GetDiffuseSampler();
+  static bgfx::UniformHandle GetORMSampler();
+  static bgfx::UniformHandle GetNormalSampler();
 
   // Actually Idk why we're using this DOxygen briefs, but it seems to be in the whole case and Intellisense just copies it
 
@@ -88,9 +94,15 @@ private:
   glm::mat4 transform_{1.0f};  // Identity matrix
   bgfx::VertexBufferHandle vbo_ = BGFX_INVALID_HANDLE;
   bgfx::IndexBufferHandle ibo_ = BGFX_INVALID_HANDLE;
-  bgfx::TextureHandle texture_ = BGFX_INVALID_HANDLE;
 
-  static bgfx::UniformHandle s_diffuseSampler_;  // Texture sampler uniform (Base Color)
+  bgfx::TextureHandle texture_ = BGFX_INVALID_HANDLE;     // Diffuse/BaseColor
+  bgfx::TextureHandle ormTexture_ = BGFX_INVALID_HANDLE;  // ORM texture
+  bgfx::TextureHandle normalTexture_ = BGFX_INVALID_HANDLE;  // Normal map
+
+  static bgfx::UniformHandle s_diffuseSampler_;
+  static bgfx::UniformHandle s_ormSampler_;
+  static bgfx::UniformHandle s_normalSampler_;
+
 };
 
 #endif  // GAMEOBJECT_H
