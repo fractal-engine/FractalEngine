@@ -50,7 +50,7 @@ struct AssetBrowserPanel {
     }
 
     // ----- SEARCH FILTER -----
-    ImGui::InputTextWithHint("##search", "Search content (stub)", filter,
+    ImGui::InputTextWithHint("##search", "Search content", filter,
                              sizeof(filter));
     ImGui::Separator();
 
@@ -80,7 +80,7 @@ struct AssetBrowserPanel {
     // ----- GRID LAYOUT DISPLAY -----
     constexpr int kCols = 7;            // columns in grid
     constexpr int kRows = 2;            // rows in grid
-    constexpr ImVec2 iconSize{96, 96};  // item cell size
+    constexpr ImVec2 cellSize{74, 74};  // item cell size
     const int maxItems = kCols * kRows;
 
     ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, {8, 8});
@@ -98,7 +98,7 @@ struct AssetBrowserPanel {
         // ----- INTERACTIVE AREA -----
         // draw invisible button for interaction area
         ImVec2 p0 = ImGui::GetCursorScreenPos();     // Item top-left position
-        ImGui::InvisibleButton("##icon", iconSize);  // Clickable area
+        ImGui::InvisibleButton("##icon", cellSize);  // Clickable area
         bool hovered = ImGui::IsItemHovered();
         bool active = ImGui::IsItemActive();
 
@@ -108,7 +108,7 @@ struct AssetBrowserPanel {
         if (hovered || active) {
           ImU32 col = ImGui::GetColorU32(active ? ImGuiCol_ButtonActive
                                                 : ImGuiCol_ButtonHovered);
-          dl->AddRectFilled(p0, ImVec2(p0.x + iconSize.x, p0.y + iconSize.y),
+          dl->AddRectFilled(p0, ImVec2(p0.x + cellSize.x, p0.y + cellSize.y),
                             col, 4.0f);  // Rounded corners
         }
 
@@ -116,11 +116,11 @@ struct AssetBrowserPanel {
         // Center icons in the cell
         ImVec2 textSize =
             ImGui::CalcTextSize(isDir ? ICON_FA_FOLDER : ICON_FA_FILE);
-        ImVec2 centre = ImVec2(p0.x + (iconSize.x - textSize.x) * 0.5f,
-                               p0.y + (iconSize.y - textSize.y) * 0.5f);
+        ImVec2 centre = ImVec2(p0.x + (cellSize.x - textSize.x) * 0.5f,
+                               p0.y + (cellSize.y - textSize.y) * 0.5f);
 
         ImGui::SetCursorScreenPos(centre);
-        ImGui::SetWindowFontScale(1.6f);  // enlarge icon
+        ImGui::SetWindowFontScale(2.6f);  // icon size
         ImGui::TextUnformatted(isDir ? ICON_FA_FOLDER : ICON_FA_FILE);
         ImGui::SetWindowFontScale(1.0f);  // reset scale
 
@@ -135,7 +135,7 @@ struct AssetBrowserPanel {
         // ----- FILENAME LABEL -----
         // Position text below icon
         ImGui::SetCursorScreenPos(ImVec2(
-            p0.x, p0.y + iconSize.y + ImGui::GetStyle().ItemInnerSpacing.y));
+            p0.x, p0.y + cellSize.y + ImGui::GetStyle().ItemInnerSpacing.y));
         ImGui::TextWrapped("%s", filename(e).c_str());  // Wrap text if long
 
         ImGui::PopID();
