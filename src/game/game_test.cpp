@@ -854,9 +854,14 @@ void GameTest::Render() {
 
     bgfx::setViewTransform(ViewID::SCENE_MESH, viewMatrix, projMatrix);
     bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_Z |
-                   BGFX_STATE_DEPTH_TEST_LESS | BGFX_STATE_CULL_CW);
+                   BGFX_STATE_DEPTH_TEST_LESS);
 
-    obj->Render();
+    if (bgfx::isValid(g_gltfProgram)) {
+      obj->Render();
+    } else {
+      Logger::getInstance().Log(LogLevel::Error,
+                                "[Render] g_gltfProgram is INVALID.");
+    }
   }
 
   // --- Water Pass ---
