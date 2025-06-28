@@ -842,22 +842,33 @@ void GameTest::Render() {
 
   // --- GameObject Pass (Imported 3D Models) ---
 
+  RenderContext gltfRenderContext;
+  gltfRenderContext.u_cameraPos = _cameraPosUniform;
+  gltfRenderContext.u_sunDirection = _sunDirUniform;
+  gltfRenderContext.u_sunLuminance = _sunLumUniform;
+  gltfRenderContext.u_skyAmbient = _skyAmbientUniform;
+  gltfRenderContext.u_lightMatrix = _lightMatrixUniform;
+  gltfRenderContext.u_shadowSampler = _shadowSamplerUniform;
+
+  gltfRenderContext.cameraPosValue = camPos;
+  gltfRenderContext.sunDirValue = sunDirShader;
+  gltfRenderContext.sunLuminanceValue = _sunColorArray;
+  gltfRenderContext.skyAmbientValue = _skyAmbientArray;
+  gltfRenderContext.lightMatrixValue = finalLightMatrixForShader;
+
+  gltfRenderContext.shadowMapTexture = shadowMapTexture;
+
   const auto& gameObjects =
       GameObjectManager::getInstance().GetAllGameObjects();
 
   for (const auto& [id, obj] : gameObjects) {
-    const glm::mat4& transform = obj->GetTransform();
-
-    float bgfxTransform[16];
-    memcpy(bgfxTransform, glm::value_ptr(transform), sizeof(bgfxTransform));
-    bgfx::setTransform(bgfxTransform);
-
+    // view-specific, not object-specific
     bgfx::setViewTransform(ViewID::SCENE_MESH, viewMatrix, projMatrix);
-    bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_Z |
-                   BGFX_STATE_DEPTH_TEST_LESS);
+    bgfx::setState(BGFX_STATE_DEFAULT | BGFX_STATE_CULL_CW | BGFX_STATE_MSAA);
 
     if (bgfx::isValid(g_gltfProgram)) {
-      obj->Render();
+      // Pass the context to the render call
+      obj->Render(gltfRenderContext);
     } else {
       Logger::getInstance().Log(LogLevel::Error,
                                 "[Render] g_gltfProgram is INVALID.");

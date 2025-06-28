@@ -104,7 +104,7 @@ void GameObject::SetNormalSampler(bgfx::UniformHandle handle) {
 // ---------------------------------
 // Render Logic
 // ---------------------------------
-void GameObject::Render() {
+void GameObject::Render(const RenderContext& context) {
   if (!bgfx::isValid(vbo_) || !bgfx::isValid(ibo_))
     return;
 
@@ -117,7 +117,7 @@ void GameObject::Render() {
   bgfx::setVertexBuffer(0, vbo_);
   bgfx::setIndexBuffer(ibo_);
 
-  // Bind textures if valid
+  // Bind object-specific textures if valid
   if (bgfx::isValid(texture_)) {
     bgfx::setTexture(0, s_diffuseSampler_, texture_);
   }
@@ -128,8 +128,21 @@ void GameObject::Render() {
     bgfx::setTexture(2, s_normalSampler_, normalTexture_);
   }
 
+  // --- NEW: Bind the shared lighting uniforms and textures from the context
+  // ---
+  bgfx::setUniform(context.u_cameraPos, context.cameraPosValue);
+  bgfx::setUniform(context.u_sunDirection, context.sunDirValue);
+  bgfx::setUniform(context.u_sunLuminance, context.sunLuminanceValue);
+  bgfx::setUniform(context.u_skyAmbient, context.skyAmbientValue);
+  bgfx::setUniform(context.u_lightMatrix, context.lightMatrixValue);
+
+  // Bind the shadow map to the slot defined in the shader (fs_gltf.sc)
+  bgfx::setTexture(4, context.u_shadowSampler, context.shadowMapTexture);
+  // -----------------------------------------------------------------------------
+
   // Submit draw call using GLTF program
   if (bgfx::isValid(g_gltfProgram)) {
     bgfx::submit(ViewID::SCENE_MESH, g_gltfProgram);
   }
 }
+
