@@ -1,6 +1,8 @@
 #ifndef ASSET_BROWSER_H
 #define ASSET_BROWSER_H
 
+#include "engine/renderer/icons/icon_loader.h"
+
 #include <imgui.h>
 #include <algorithm>
 #include <filesystem>
@@ -113,16 +115,18 @@ struct AssetBrowserPanel {
         }
 
         // ----- ICON RENDERING -----
-        // Center icons in the cell
-        ImVec2 textSize =
-            ImGui::CalcTextSize(isDir ? ICON_FA_FOLDER : ICON_FA_FILE);
-        ImVec2 centre = ImVec2(p0.x + (cellSize.x - textSize.x) * 0.5f,
-                               p0.y + (cellSize.y - textSize.y) * 0.5f);
+        const char* texName = isDir ? "folder" : "file";          // icon id
+        ImTextureID texId = IconLoader::toImGuiTexture(texName);  // GPU texture
+        ImVec2 iconSize = {56.0f, 56.0f};                         // draw size
 
-        ImGui::SetCursorScreenPos(centre);
-        ImGui::SetWindowFontScale(2.6f);  // icon size
-        ImGui::TextUnformatted(isDir ? ICON_FA_FOLDER : ICON_FA_FILE);
-        ImGui::SetWindowFontScale(1.0f);  // reset scale
+        // centre the texture inside cell
+        ImVec2 iconPos = {p0.x + (cellSize.x - iconSize.x) * 0.5f,
+                          p0.y + (cellSize.y - iconSize.y) * 0.5f};
+
+        dl->AddImageRounded(texId, iconPos,
+                            {iconPos.x + iconSize.x, iconPos.y + iconSize.y},
+                            {0, 0}, {1, 1}, IM_COL32_WHITE,
+                            6.0f);  // rounded corners
 
         // ----- HANDLE INTERACTION -----
         // Double-click to navigate or open
