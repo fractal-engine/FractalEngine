@@ -20,7 +20,7 @@ struct FormatInfo {
         /* 4 ch */ { bgfx::TextureFormat::RGBA8,false }
     }};
 
-    //
+    // Format mapping for different texture types with appropriate color spaces
     static const std::unordered_map<TextureType, FormatInfo> kTypeTable = {
         { TextureType::ALBEDO,     { bgfx::TextureFormat::RGBA8, true  } }, // sRGB
         { TextureType::EMISSIVE,   { bgfx::TextureFormat::RGBA8, true  } }, // sRGB
@@ -35,10 +35,10 @@ struct FormatInfo {
 // clang-format on
 
 // ----------------------------------------------------------------------
-//
+// Selects appropriate texture format based on texture type and channel count
 // ----------------------------------------------------------------------
 [[nodiscard]]
-FormatInfo chooseFormat(TextureType type, int channels) {
+FormatInfo ChooseFormat(TextureType type, int channels) {
   auto it = kTypeTable.find(type);
   FormatInfo info = (it != kTypeTable.end())
                         ? it->second
@@ -59,102 +59,114 @@ FormatInfo chooseFormat(TextureType type, int channels) {
 }  // namespace Gfx::TextureInternal
 
 // Private constructors used to create textures with existing GPU handles
-Texture::Texture(bgfx::TextureHandle h, uint16_t w, uint16_t hgt, TextureType k)
-    : m_handle(h), m_width(w), m_height(hgt), m_type(k) {}
+Texture::Texture(bgfx::TextureHandle handle_param, uint16_t width_param,
+                 uint16_t height_param, TextureType type_param)
+    : handle_(handle_param),
+      width_(width_param),
+      height_(height_param),
+      type_(type_param) {}
 
 // Destructor
 Texture::~Texture() {
-  if (bgfx::isValid(m_handle))
-    bgfx::destroy(m_handle);
+  if (bgfx::isValid(handle_))
+    bgfx::destroy(handle_);
 }
 
 // Move constructor transfers ownership of GPU resources
-Texture::Texture(Texture&& o) noexcept {
-  *this = std::move(o);
+Texture::Texture(Texture&& other) noexcept {
+  *this = std::move(other);
 }
 
 // Move assignment transfers ownership, release existing resources
-Texture& Texture::operator=(Texture&& o) noexcept {
-  if (this != &o) {
-    if (bgfx::isValid(m_handle))
-      bgfx::destroy(m_handle);
-    m_handle = o.m_handle;
-    m_width = o.m_width;
-    m_height = o.m_height;
-    m_type = o.m_type;
-    o.m_handle = {bgfx::kInvalidHandle};
+Texture& Texture::operator=(Texture&& other) noexcept {
+  if (this != &other) {
+    if (bgfx::isValid(handle_))
+      bgfx::destroy(handle_);
+    handle_ = other.handle_;
+    width_ = other.width_;
+    height_ = other.height_;
+    type_ = other.type_;
+    other.handle_ = {bgfx::kInvalidHandle};
   }
   return *this;
 }
 
 // Method to load 2D texture from disk, uploads it to GPU
-std::shared_ptr<Texture> Texture::load2D(
+std::shared_ptr<Texture> Texture::Load2D(
     const std::filesystem::path& file, TextureType type,
-    uint64_t samplerFlags /* = BGFX_SAMPLER_NONE */) {
+    uint64_t sampler_flags /* = BGFX_SAMPLER_NONE */) {
 
   // Load image data using from disk using stb_image
-  int w{}, h{}, ch{};
-  stbi_uc* px = stbi_load(file.string().c_str(), &w, &h, &ch, 0);
-  if (!px) {
+  int width{}, height{}, channels{};
+  stbi_uc* pixels =
+      stbi_load(file.string().c_str(), &width, &height, &channels, 0);
+  if (!pixels) {
     Logger::getInstance().Log(
         LogLevel::Error, "Texture2D: failed to load '" + file.string() + '\'');
     return {};
   }
 
   // Copy pixel data to bgfx memory for GPU upload
-  const bgfx::Memory* mem = bgfx::copy(px, w * h * 4);
-  stbi_image_free(px);
+  const bgfx::Memory* memory = bgfx::copy(pixels, width * height * 4);
+  stbi_image_free(pixels);
 
   // Select appropriate format and flags based on texture type
-  const auto fmtInfo = TextureInternal::chooseFormat(type, ch);
+  const auto fmt_info = TextureInternal::ChooseFormat(type, channels);
   const uint64_t flags =
-      samplerFlags | (fmtInfo.srgb ? BGFX_TEXTURE_SRGB : 0ULL);
+      sampler_flags | (fmt_info.srgb ? BGFX_TEXTURE_SRGB : 0ULL);
 
   // Create GPU texture with selected format and flags
-  bgfx::TextureHandle hndl = bgfx::createTexture2D(
-      uint16_t(w), uint16_t(h), false, 1, fmtInfo.fmt, flags, mem);
+  bgfx::TextureHandle handle = bgfx::createTexture2D(
+      uint16_t(width), uint16_t(height), false, 1, fmt_info.fmt, flags, memory);
 
-  if (!bgfx::isValid(hndl)) {
+  if (!bgfx::isValid(handle)) {
     Logger::getInstance().Log(
         LogLevel::Error,
         "bgfx::createTexture2D failed for '" + file.string() + '\'');
     return {};
   }
 
-  Logger::getInstance().Log(LogLevel::Debug,
-                            "Texture2D: uploaded '" + file.filename().string() +
-                                "' (fmt= " + std::to_string(fmtInfo.fmt) + ')');
+  // Manage the GPU handle with a created texture object
+  auto texture = std::shared_ptr<Texture>(
+      new Texture(handle, static_cast<uint16_t>(width),
+                  static_cast<uint16_t>(height), type));
+
+  Logger::getInstance().Log(
+      LogLevel::Debug, "Texture2D: uploaded '" + file.filename().string() +
+                           "' (fmt= " + std::to_string(fmt_info.fmt) + ')');
+
+  return texture;
 }
 
 // Return singleton instance of TextureCache
-TextureCache& TextureCache::instance() {
+TextureCache& TextureCache::Instance() {
   static TextureCache cache;
   return cache;
 }
 
 // Get texture from cache or load it if not found
-std::shared_ptr<Texture> TextureCache::get(const std::filesystem::path& file,
+std::shared_ptr<Texture> TextureCache::Get(const std::filesystem::path& file,
                                            TextureType type) {
   const std::string key = file.string();
 
   {
-    std::scoped_lock lk(m_mtx);
-    if (auto it = m_map.find(key); it != m_map.end())
+    std::scoped_lock lock(mtx_);
+    if (auto it = map_.find(key); it != map_.end())
       return it->second;
   }
 
   // If not found in cache, load texture from disk
-  auto tex = Texture::load2D(file, type);
-  if (tex) {
-    std::scoped_lock lk(m_mtx);
-    m_map.emplace(key, tex);
+  auto texture = Texture::Load2D(file, type);
+  if (texture) {
+    std::scoped_lock lock(mtx_);
+    map_.emplace(key, texture);
   }
-  return tex;
+  return texture;
 }
 
 // Clear the texture cache
-void TextureCache::clear() {
-  std::scoped_lock lk(m_mtx);
-  m_map.clear();  // shared pointer, handle destruction of GPU resources
-                  // TODO: attach to resource manager
+void TextureCache::Clear() {
+  std::scoped_lock lock(mtx_);
+  map_.clear();  // shared pointer, handle destruction of GPU resources
+                 // TODO: attach to resource manager
 }

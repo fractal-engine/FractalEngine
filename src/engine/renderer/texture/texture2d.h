@@ -38,40 +38,41 @@ public:
   Texture& operator=(Texture&&) noexcept;
 
   // Accessors for texture state
-  [[nodiscard]] bool valid() const { return bgfx::isValid(m_handle); }
-  [[nodiscard]] uint32_t id() const { return m_handle.idx; }
-  [[nodiscard]] bgfx::TextureHandle handle() const { return m_handle; }
+  [[nodiscard]] bool Valid() const { return bgfx::isValid(handle_); }
+  [[nodiscard]] uint32_t Id() const { return handle_.idx; }
+  [[nodiscard]] bgfx::TextureHandle Handle() const { return handle_; }
 
   // load texture from file
-  static std::shared_ptr<Texture> load2D(
+  static std::shared_ptr<Texture> Load2D(
       const std::filesystem::path& file, TextureType type = TextureType::IMAGE,
-      uint64_t sampler = BGFX_SAMPLER_U_CLAMP | BGFX_SAMPLER_V_CLAMP);
+      uint64_t sampler_flags = BGFX_SAMPLER_U_CLAMP | BGFX_SAMPLER_V_CLAMP);
 
 private:
-  // constructor used by load2D; Creates textures with existing GPU handles
-  Texture(bgfx::TextureHandle h, uint16_t w, uint16_t hgt, TextureType k);
+  // constructor used by Load2D; Creates textures with existing GPU handles
+  Texture(bgfx::TextureHandle handle_param, uint16_t width_param,
+          uint16_t height_param, TextureType type_param);
 
   // Define texture properties and GPU resource handle
-  bgfx::TextureHandle m_handle{bgfx::kInvalidHandle};
-  uint16_t m_width = 0;
-  uint16_t m_height = 0;
-  TextureType m_type = TextureType::EMPTY;
+  bgfx::TextureHandle handle_{bgfx::kInvalidHandle};
+  uint16_t width_ = 0;
+  uint16_t height_ = 0;
+  TextureType type_ = TextureType::EMPTY;
 };
 
 // Singleton, prevent duplicate texture loads
 class TextureCache {
 public:
-  static TextureCache& instance();
+  static TextureCache& Instance();
 
   // Retrieve cached texture; loads texture if not found
-  std::shared_ptr<Texture> get(const std::filesystem::path& file,
-                                 TextureType type = TextureType::IMAGE);
+  std::shared_ptr<Texture> Get(const std::filesystem::path& file,
+                               TextureType type = TextureType::IMAGE);
 
-  void clear();  // TODO: integrate with a resource manager
+  void Clear();  // TODO: integrate with a resource manager
 
 private:
-  std::mutex m_mtx;
-  std::unordered_map<std::string, std::shared_ptr<Texture>> m_map;
+  std::mutex mtx_;
+  std::unordered_map<std::string, std::shared_ptr<Texture>> map_;
 };
 
 }  // namespace Gfx

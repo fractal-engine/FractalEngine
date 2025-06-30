@@ -9,8 +9,8 @@ target("engine")
 
     add_files("core/*.cpp")
     add_files("audio/*.cpp")
-    add_files("renderer/*.cpp", "renderer/lighting/*.cpp",
-              "renderer/shaders/*.cpp", "renderer/icons/*.cpp")
+    add_files("renderer/*.cpp", "renderer/lighting/*.cpp", "renderer/shaders/*.cpp",
+            "renderer/icons/*.cpp", "renderer/texture/*.cpp")
     add_files("resources/*.cpp", "resources/textures/*.cpp", "scene/*.cpp")
     add_files("runtime/*.cpp")
 
