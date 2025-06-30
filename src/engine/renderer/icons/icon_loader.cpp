@@ -22,66 +22,66 @@ static constexpr std::array<std::string_view, 3> kValidExt{".png", ".jpg",
                                                            ".jpeg"};
 
 // Map of icon identifiers to their texture handles
-std::unordered_map<std::string, TexturePtr> gIcons;
+std::unordered_map<std::string, TexturePtr> g_icons;
 
 // default texture, used when an icon is not found
-TexturePtr gFallback;
+TexturePtr g_fallback;
 
 // Protect concurrent access to shared icon registry
-std::mutex gMutex;
+std::mutex g_mutex;
 
 // ─────────────── helpers ────────────────
-[[nodiscard]] bool isSupported(const Path& p) noexcept {
-  const std::string ext = p.extension().string();
+[[nodiscard]] bool IsSupported(const Path& path) noexcept {
+  const std::string ext = path.extension().string();
   return std::ranges::any_of(kValidExt,
                              [&](std::string_view v) { return ext == v; });
 }
 
 // Scan directory for supported image files, returns their paths
-static std::vector<Path> collectFiles(const Path& dir) {
+static std::vector<Path> CollectFiles(const Path& dir) {
   std::vector<Path> out;
-  for (auto& e : std::filesystem::directory_iterator(dir))
-    if (!e.is_directory() && isSupported(e.path()))
-      out.emplace_back(e.path());
+  for (auto& entry : std::filesystem::directory_iterator(dir))
+    if (!entry.is_directory() && IsSupported(entry.path()))
+      out.emplace_back(entry.path());
   return out;
 }
 
 // Insert new icon into the global registry
-inline void insertIcon(const std::string& id, TexturePtr tex) {
-  std::scoped_lock lk(gMutex);
-  gIcons.emplace(id, std::move(tex));
+inline void InsertIcon(const std::string& id, TexturePtr texture) {
+  std::scoped_lock lock(g_mutex);
+  g_icons.emplace(id, std::move(texture));
 }
 
 // ─────────────── main loader ────────────────
 // Load icons from directory
-void loadDirectory(const Path& dir, bool async) {
+void LoadDirectory(const Path& dir, bool async) {
   Logger::getInstance().Log(LogLevel::Info,
                             "IconLoader: scanning '" + dir.string() + '\'');
 
-  auto files = collectFiles(dir);
+  auto files = CollectFiles(dir);
 
   // load each file
   auto worker = [files = std::move(files)]() {
-    for (const auto& f : files) {
-      const std::string id = f.stem().string();
+    for (const auto& file_path : files) {
+      const std::string id = file_path.stem().string();
 
       {
-        std::scoped_lock lk(gMutex);
-        if (gIcons.contains(id))
+        std::scoped_lock lock(g_mutex);
+        if (g_icons.contains(id))
           continue;  // Skip loaded icons
       }
 
       // Load texture through TextureCache, avoids duplicates
-      auto tex = Gfx::TextureCache::instance().get(f, Gfx::TextureType::IMAGE);
+      auto texture = Gfx::TextureCache::Instance().Get(file_path, Gfx::TextureType::IMAGE);
 
-      if (tex) {
-        insertIcon(id, tex);
+      if (texture) {
+        InsertIcon(id, texture);
         Logger::getInstance().Log(LogLevel::Debug,
                                   "IconLoader: loaded '" + id + '\'');
       } else {
         Logger::getInstance().Log(
             LogLevel::Warning,
-            "IconLoader: failed to load icon '" + f.string() + '\'');
+            "IconLoader: failed to load icon '" + file_path.string() + '\'');
       }
     }
   };
@@ -97,38 +97,38 @@ void loadDirectory(const Path& dir, bool async) {
 namespace IconLoader {
 
 // Load all icons from directory immediately
-void loadIcons(const std::filesystem::path& dir) {
-  Internal::loadDirectory(dir, /*async =*/false);
+void LoadIcons(const std::filesystem::path& dir) {
+  Internal::LoadDirectory(dir, /*async =*/false);
 }
 
 // Load all icons from directory in background thread
-void loadIconsAsync(const std::filesystem::path& dir) {
-  Internal::loadDirectory(dir, /*async =*/true);
+void LoadIconsAsync(const std::filesystem::path& dir) {
+  Internal::LoadDirectory(dir, /*async =*/true);
 }
 
 // Return GPU handle for a named icon, fallback if not found
-uint32_t getIconHandle(const std::string& id) {
-  std::scoped_lock lk(Internal::gMutex);
+uint32_t GetIconHandle(const std::string& id) {
+  std::scoped_lock lock(Internal::g_mutex);
 
-  const auto it = Internal::gIcons.find(id);
-  const auto& tex =
-      (it != Internal::gIcons.end()) ? it->second : Internal::gFallback;
+  const auto it = Internal::g_icons.find(id);
+  const auto& texture =
+      (it != Internal::g_icons.end()) ? it->second : Internal::g_fallback;
 
-  return tex && tex->valid() ? tex->handle().idx : bgfx::kInvalidHandle;
+  return texture && texture->Valid() ? texture->Handle().idx : bgfx::kInvalidHandle;
 }
 
 // Support function for inline helper in header
-uint32_t get(const std::string& id) {
-  return getIconHandle(id);
+uint32_t Get(const std::string& id) {
+  return GetIconHandle(id);
 }
 
 // Set fallback texture used when icon is not found
-void createPlaceholderIcon(const std::filesystem::path& file) {
-  auto tex = Gfx::TextureCache::instance().get(file, Gfx::TextureType::IMAGE);
+void CreatePlaceholderIcon(const std::filesystem::path& file) {
+  auto texture = Gfx::TextureCache::Instance().Get(file, Gfx::TextureType::IMAGE);
 
-  if (tex && tex->valid()) {
-    std::scoped_lock lk(Internal::gMutex);
-    Internal::gFallback = std::move(tex);
+  if (texture && texture->Valid()) {
+    std::scoped_lock lock(Internal::g_mutex);
+    Internal::g_fallback = std::move(texture);
 
     Logger::getInstance().Log(
         LogLevel::Info,
