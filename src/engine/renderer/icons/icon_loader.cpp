@@ -12,9 +12,7 @@
 
 #include "engine/core/logger.h"
 
-namespace IconLoader {
-
-namespace Internal {
+namespace IconLoader::Internal {
 
 using Path = std::filesystem::path;
 using TextureHandle = bgfx::TextureHandle;
@@ -97,12 +95,12 @@ void loadDirectoryImpl(const Path& dir, bool async) {
   else
     worker();
 }
-}  // namespace Internal
+}  // namespace IconLoader::Internal
 
 // ---------------------------------------------------------------------------
 //                              PUBLIC  API
 // ---------------------------------------------------------------------------
-
+namespace IconLoader {
 // Load all icons from directory immediately
 void loadIcons(const std::filesystem::path& dir) {
   Internal::loadDirectoryImpl(dir, /*async =*/false);
