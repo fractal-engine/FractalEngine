@@ -1,124 +1,120 @@
 #include "icon_loader.h"
+#include "engine/core/logger.h"
+#include "engine/renderer/texture/texture2d.h"
 
-#include <bgfx/bgfx.h>
 #include <stb/stb_image.h>
 
 #include <array>
+#include <filesystem>
 #include <mutex>
+#include <ranges>
 #include <thread>
 #include <unordered_map>
-#include <unordered_set>
 #include <vector>
-
-#include "engine/core/logger.h"
 
 namespace IconLoader::Internal {
 
 using Path = std::filesystem::path;
-using TextureHandle = bgfx::TextureHandle;
+using TexturePtr = std::shared_ptr<Gfx::Texture>;
 
 // file extensions
-constexpr std::array<std::string_view, 3> kValidExt{".png", ".jpg", ".jpeg"};
+static constexpr std::array<std::string_view, 3> kValidExt{".png", ".jpg",
+                                                           ".jpeg"};
 
 // Map of icon identifiers to their texture handles
-std::unordered_map<std::string, TextureHandle> gIcons;
+std::unordered_map<std::string, TexturePtr> gIcons;
 
 // default texture, used when an icon is not found
-TextureHandle gFallback{bgfx::kInvalidHandle};
+TexturePtr gFallback;
 
 // Protect concurrent access to shared icon registry
 std::mutex gMutex;
 
-// Helpers
+// ─────────────── helpers ────────────────
 [[nodiscard]] bool isSupported(const Path& p) noexcept {
-  const auto ext = p.extension().string();
+  const std::string ext = p.extension().string();
   return std::ranges::any_of(kValidExt,
                              [&](std::string_view v) { return ext == v; });
 }
 
-// Load image and upload to GPU as texture
-[[nodiscard]] TextureHandle uploadTexture(const Path& file) {
-  int w, h, comp;
-  stbi_uc* pixels = stbi_load(file.string().c_str(), &w, &h, &comp, 4);
-  if (!pixels) {
-    Logger::getInstance().Log(
-        LogLevel::Error, "IconLoader failed to load image: " + file.string());
-    return {bgfx::kInvalidHandle};
-  }
-
-  // Copy pixel data to bgfx memory block
-  const bgfx::Memory* mem = bgfx::copy(pixels, w * h * 4);
-  stbi_image_free(pixels);
-
-  // TODO: integrate with resource-manager instead of direct bgfx calls
-  return bgfx::createTexture2D(
-      static_cast<uint16_t>(w), static_cast<uint16_t>(h), false, 1,
-      bgfx::TextureFormat::RGBA8, BGFX_SAMPLER_U_CLAMP | BGFX_SAMPLER_V_CLAMP,
-      mem);
-}
-
-// Iterate through directory, call onFile for each valid icon file
-void scanDirectory(const Path& dir,
-                   const std::function<void(const Path&)>& onFile) {
-  for (const auto& e : std::filesystem::directory_iterator(dir))
+// Scan directory for supported image files, returns their paths
+static std::vector<Path> collectFiles(const Path& dir) {
+  std::vector<Path> out;
+  for (auto& e : std::filesystem::directory_iterator(dir))
     if (!e.is_directory() && isSupported(e.path()))
-      onFile(e.path());
+      out.emplace_back(e.path());
+  return out;
 }
 
-// Logic to load icons from a directory
-void loadDirectoryImpl(const Path& dir, bool async) {
-  Logger::getInstance().Log(
-      LogLevel::Info,
-      std::string("IconLoader: scanning '") + dir.string() + '\'');
+// Insert new icon into the global registry
+inline void insertIcon(const std::string& id, TexturePtr tex) {
+  std::scoped_lock lk(gMutex);
+  gIcons.emplace(id, std::move(tex));
+}
 
-  std::vector<Path> files;
-  scanDirectory(dir, [&](const Path& p) { files.emplace_back(p); });
+// ─────────────── main loader ────────────────
+// Load icons from directory
+void loadDirectory(const Path& dir, bool async) {
+  Logger::getInstance().Log(LogLevel::Info,
+                            "IconLoader: scanning '" + dir.string() + '\'');
 
+  auto files = collectFiles(dir);
+
+  // load each file
   auto worker = [files = std::move(files)]() {
-    for (const auto& file : files) {
-      const std::string id = file.stem().string();
+    for (const auto& f : files) {
+      const std::string id = f.stem().string();
 
-      std::scoped_lock lock(gMutex);
-      if (gIcons.contains(id))
-        continue;  // already loaded
+      {
+        std::scoped_lock lk(gMutex);
+        if (gIcons.contains(id))
+          continue;  // Skip loaded icons
+      }
 
-      if (TextureHandle th = uploadTexture(file); bgfx::isValid(th)) {
-        gIcons.emplace(id, th);
+      // Load texture through TextureCache, avoids duplicates
+      auto tex = Gfx::TextureCache::instance().get(f, Gfx::TextureType::IMAGE);
+
+      if (tex) {
+        insertIcon(id, tex);
         Logger::getInstance().Log(LogLevel::Debug,
                                   "IconLoader: loaded '" + id + '\'');
+      } else {
+        Logger::getInstance().Log(
+            LogLevel::Warning,
+            "IconLoader: failed to load icon '" + f.string() + '\'');
       }
     }
   };
 
-  if (async)
-    std::thread(worker).detach();
-  else
-    worker();
+  async ? std::thread(worker).detach() : worker();
 }
+
 }  // namespace IconLoader::Internal
 
 // ---------------------------------------------------------------------------
 //                              PUBLIC  API
 // ---------------------------------------------------------------------------
 namespace IconLoader {
+
 // Load all icons from directory immediately
 void loadIcons(const std::filesystem::path& dir) {
-  Internal::loadDirectoryImpl(dir, /*async =*/false);
+  Internal::loadDirectory(dir, /*async =*/false);
 }
 
 // Load all icons from directory in background thread
 void loadIconsAsync(const std::filesystem::path& dir) {
-  Internal::loadDirectoryImpl(dir, /*async =*/true);
+  Internal::loadDirectory(dir, /*async =*/true);
 }
 
 // Return GPU handle for a named icon, fallback if not found
 uint32_t getIconHandle(const std::string& id) {
-  std::scoped_lock lock(Internal::gMutex);
+  std::scoped_lock lk(Internal::gMutex);
 
-  if (auto it = Internal::gIcons.find(id); it != Internal::gIcons.end())
-    return it->second.idx;
+  const auto it = Internal::gIcons.find(id);
+  const auto& tex =
+      (it != Internal::gIcons.end()) ? it->second : Internal::gFallback;
 
-  return Internal::gFallback.idx;  // may be invalid if no placeholder yet
+  return tex && tex->valid() ? tex->handle().idx : bgfx::kInvalidHandle;
 }
 
 // Support function for inline helper in header
@@ -128,9 +124,12 @@ uint32_t get(const std::string& id) {
 
 // Set fallback texture used when icon is not found
 void createPlaceholderIcon(const std::filesystem::path& file) {
-  if (auto th = Internal::uploadTexture(file); bgfx::isValid(th)) {
-    std::scoped_lock lock(Internal::gMutex);
-    Internal::gFallback = th;
+  auto tex = Gfx::TextureCache::instance().get(file, Gfx::TextureType::IMAGE);
+
+  if (tex && tex->valid()) {
+    std::scoped_lock lk(Internal::gMutex);
+    Internal::gFallback = std::move(tex);
+
     Logger::getInstance().Log(
         LogLevel::Info,
         "IconLoader: fallback icon set to '" + file.string() + '\'');

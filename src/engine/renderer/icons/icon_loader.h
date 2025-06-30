@@ -24,6 +24,7 @@ inline ImTextureID toImGuiTexture(const std::string& id) {
   return static_cast<ImTextureID>(
       static_cast<uintptr_t>(getIconHandle(id)));
 }
+
 }  // namespace IconLoader
 
 #endif  // ICON_LOADER_H
