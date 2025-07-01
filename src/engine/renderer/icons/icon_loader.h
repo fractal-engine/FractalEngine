@@ -13,7 +13,7 @@ void LoadIcons(const std::filesystem::path& dir);
 // Load all icons in background thread
 void LoadIconsAsync(const std::filesystem::path& dir);
 
-// Retrieve texture handle for specified icon by name
+// Retrieve GPU handle for specified icon by name
 uint32_t GetIconHandle(const std::string& identifier);
 
 // Create icon placeholder for specified file type

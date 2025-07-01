@@ -40,6 +40,14 @@ std::mutex g_mutex;
 // Scan directory for supported image files, returns their paths
 static std::vector<Path> CollectFiles(const Path& dir) {
   std::vector<Path> out;
+
+  if (!std::filesystem::exists(dir)) {
+    Logger::getInstance().Log(
+        LogLevel::Warning,
+        "IconLoader: directory does not exist: '" + dir.string() + "'");
+    return out;  // Return empty vector
+  }
+
   for (auto& entry : std::filesystem::directory_iterator(dir))
     if (!entry.is_directory() && IsSupported(entry.path()))
       out.emplace_back(entry.path());
@@ -72,7 +80,8 @@ void LoadDirectory(const Path& dir, bool async) {
       }
 
       // Load texture through TextureCache, avoids duplicates
-      auto texture = Gfx::TextureCache::Instance().Get(file_path, Gfx::TextureType::IMAGE);
+      auto texture =
+          Gfx::TextureCache::Instance().Get(file_path, Gfx::TextureType::IMAGE);
 
       if (texture) {
         InsertIcon(id, texture);
@@ -114,7 +123,8 @@ uint32_t GetIconHandle(const std::string& id) {
   const auto& texture =
       (it != Internal::g_icons.end()) ? it->second : Internal::g_fallback;
 
-  return texture && texture->Valid() ? texture->Handle().idx : bgfx::kInvalidHandle;
+  return texture && texture->Valid() ? texture->Handle().idx
+                                     : bgfx::kInvalidHandle;
 }
 
 // Support function for inline helper in header
@@ -124,7 +134,8 @@ uint32_t Get(const std::string& id) {
 
 // Set fallback texture used when icon is not found
 void CreatePlaceholderIcon(const std::filesystem::path& file) {
-  auto texture = Gfx::TextureCache::Instance().Get(file, Gfx::TextureType::IMAGE);
+  auto texture =
+      Gfx::TextureCache::Instance().Get(file, Gfx::TextureType::IMAGE);
 
   if (texture && texture->Valid()) {
     std::scoped_lock lock(Internal::g_mutex);

@@ -115,17 +115,17 @@ struct AssetBrowserPanel {
         }
 
         // ----- ICON RENDERING -----
-        const char* tex_name = is_dir ? "folder" : "file";  // icon id
-        ImTextureID tex_id =
-            IconLoader::ToImGuiTexture(tex_name);  // GPU texture
-        ImVec2 icon_size = {56.0f, 56.0f};         // draw size
+        // Return the fallback icon if key is missing
+        ImTextureID texture_id =
+            IconLoader::ToImGuiTexture(is_dir ? "folder" : "file");
+        ImVec2 icon_size = {56.0f, 56.0f};  // draw size
 
         // centre the texture inside cell
         ImVec2 icon_pos = {p0.x + (cell_size.x - icon_size.x) * 0.5f,
                            p0.y + (cell_size.y - icon_size.y) * 0.5f};
 
         dl->AddImageRounded(
-            tex_id, icon_pos,
+            texture_id, icon_pos,
             {icon_pos.x + icon_size.x, icon_pos.y + icon_size.y}, {0, 0},
             {1, 1}, IM_COL32_WHITE,
             6.0f);  // rounded corners

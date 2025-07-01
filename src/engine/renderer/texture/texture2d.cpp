@@ -1,6 +1,7 @@
 #include "texture2d.h"
-#include <stb/stb_image.h>
 #include "engine/core/logger.h"
+
+#include <stb/stb_image.h>
 
 using namespace Gfx;
 
@@ -13,26 +14,24 @@ struct FormatInfo {
   bool srgb;  // Whether texture needs sRGB color space conversion
 };
 
-// clang-format off
-    static constexpr std::array<FormatInfo, 3> kLinearByChannels = {{
-        /* 1 ch */ { bgfx::TextureFormat::R8,   false },
-        /* 3 ch */ { bgfx::TextureFormat::RGB8, false },
-        /* 4 ch */ { bgfx::TextureFormat::RGBA8,false }
-    }};
+static constexpr std::array<FormatInfo, 3> kLinearByChannels = {
+    {/* 1 ch */ {bgfx::TextureFormat::R8, false},
+     /* 3 ch */ {bgfx::TextureFormat::RGB8, false},
+     /* 4 ch */ {bgfx::TextureFormat::RGBA8, false}}};
 
-    // Format mapping for different texture types with appropriate color spaces
-    static const std::unordered_map<TextureType, FormatInfo> kTypeTable = {
-        { TextureType::ALBEDO,     { bgfx::TextureFormat::RGBA8, true  } }, // sRGB
-        { TextureType::EMISSIVE,   { bgfx::TextureFormat::RGBA8, true  } }, // sRGB
-        { TextureType::NORMAL,     { bgfx::TextureFormat::RGBA8, false } },
-        { TextureType::ROUGHNESS,  { bgfx::TextureFormat::R8,    false } },
-        { TextureType::METALLIC,   { bgfx::TextureFormat::R8,    false } },
-        { TextureType::OCCLUSION,  { bgfx::TextureFormat::R8,    false } },
-        { TextureType::HEIGHT,     { bgfx::TextureFormat::R8,    false } },
-        { TextureType::IMAGE,      { bgfx::TextureFormat::RGBA8, false } }, // Regular image display
-        { TextureType::EMPTY,      { bgfx::TextureFormat::RGBA8, false } }  // default
-    };
-// clang-format on
+// Format mapping for different texture types with appropriate color spaces
+static const std::unordered_map<TextureType, FormatInfo> kTypeTable = {
+    {TextureType::ALBEDO, {bgfx::TextureFormat::RGBA8, true}},    // sRGB
+    {TextureType::EMISSIVE, {bgfx::TextureFormat::RGBA8, true}},  // sRGB
+    {TextureType::NORMAL, {bgfx::TextureFormat::RGBA8, false}},
+    {TextureType::ROUGHNESS, {bgfx::TextureFormat::R8, false}},
+    {TextureType::METALLIC, {bgfx::TextureFormat::R8, false}},
+    {TextureType::OCCLUSION, {bgfx::TextureFormat::R8, false}},
+    {TextureType::HEIGHT, {bgfx::TextureFormat::R8, false}},
+    {TextureType::IMAGE,
+     {bgfx::TextureFormat::RGBA8, false}},  // Regular image display
+    {TextureType::EMPTY, {bgfx::TextureFormat::RGBA8, false}}  // default
+};
 
 // ----------------------------------------------------------------------
 // Selects appropriate texture format based on texture type and channel count
