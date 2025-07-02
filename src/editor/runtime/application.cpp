@@ -79,7 +79,7 @@ void Application::InitializeInternal() {
 
   // load icons
   IconLoader::CreatePlaceholderIcon(
-      "./resources/icons/fallback/fallback_icon.png");
+      "./resources/icons/fallback/fallback.png");
   IconLoader::LoadIcons("./resources/icons/shared");
   IconLoader::LoadIconsAsync("./resources/icons/assets");
   IconLoader::LoadIconsAsync("./resources/icons/components");

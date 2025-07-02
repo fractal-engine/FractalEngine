@@ -48,6 +48,7 @@ static std::vector<Path> CollectFiles(const Path& dir) {
     return out;  // Return empty vector
   }
 
+  // 
   for (auto& entry : std::filesystem::directory_iterator(dir))
     if (!entry.is_directory() && IsSupported(entry.path()))
       out.emplace_back(entry.path());
