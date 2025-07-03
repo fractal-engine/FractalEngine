@@ -14,6 +14,33 @@ std::string AssetBrowserPanel::Filename(
   return e.path().filename().string();
 }
 
+AssetBrowserPanel::NodeUIData AssetBrowserPanel::MakeNodeUI(
+    const std::string& name) const {
+
+  // ----- CROP LONG NAMES -----
+  std::string label = name;
+  constexpr uint32_t max_chars = 12;
+  if (label.length() > max_chars + 3)
+    label = label.substr(0, max_chars) + "...";
+
+  // ----- CALCULATE LAYOUT METRICS -----
+  ImFont* font = ImGui::GetFont();
+
+  ImVec2 padding{10.0f * icon_scale_, 7.0f * icon_scale_};
+  ImVec2 icon_size{50.0f * icon_scale_, 50.0f * icon_scale_};
+
+  // Measure text dimensions at current font size
+  ImVec2 text_size =
+      font->CalcTextSizeA(font->FontSize, FLT_MAX, 0.0f, label.c_str());
+
+  // Calculate total cell dimensions with padding
+  const float total_w = icon_size.x + padding.x * 2.0f + 13.0f;
+  const float total_h =
+      icon_size.y + padding.y * 2.0f + text_size.y + padding.y;
+
+  return {label, font, padding, icon_size, text_size, ImVec2(total_w, total_h)};
+}
+
 // Draw panel
 void AssetBrowserPanel::Draw() {
   HandleInputs();  // called once per frame
@@ -76,14 +103,14 @@ void AssetBrowserPanel::Draw() {
 
   // ----- GRID LAYOUT DISPLAY -----
   constexpr int columns = 7;  // columns
-  constexpr int rows = 2;     // rows
+  constexpr int rows = 4;     // rows
 
   // base sizes scaled by user input
   const ImVec2 cell_size{74.0f * icon_scale_, 74.0f * icon_scale_};
   const ImVec2 icon_base{56.0f, 56.0f};
   const int max_items = columns * rows;
 
-  ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, {8, 8});
+  ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, {7, 7});
   if (ImGui::BeginTable("grid", columns, ImGuiTableFlags_SizingFixedFit)) {
 
     int shown = 0;
@@ -94,6 +121,8 @@ void AssetBrowserPanel::Draw() {
       ImGui::PushID(e.path().c_str());  // unique ID for ImGui state
 
       bool is_dir = e.is_directory();
+
+      NodeUIData ui = MakeNodeUI(Filename(e));  //
 
       // ----- INTERACTIVE AREA -----
       ImVec2 p0 = ImGui::GetCursorScreenPos();      // Item top-left position
@@ -133,9 +162,13 @@ void AssetBrowserPanel::Draw() {
       }
 
       // ----- FILENAME LABEL -----
-      ImGui::SetCursorScreenPos(ImVec2(
-          p0.x, p0.y + cell_size.y + ImGui::GetStyle().ItemInnerSpacing.y));
-      ImGui::TextWrapped("%s", Filename(e).c_str());  // Wrap text if long
+      const ImVec2 text_pos(p0.x + (ui.total_size.x - ui.text_size.x) * 0.5f,
+                            icon_pos.y + ui.icon_size.y + ui.padding.y + 4.0f);
+
+      ImGui::PushFont(ui.font);
+      dl->AddText(ui.font, ui.font->FontSize, text_pos,
+                  ImGui::GetColorU32(ImGuiCol_Text), ui.text.c_str());
+      ImGui::PopFont();
 
       ImGui::PopID();
     }
