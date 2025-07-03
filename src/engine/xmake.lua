@@ -7,12 +7,10 @@ target("engine")
     add_deps("platform")
     add_includedirs("..", {public = true})
 
-    add_files("core/*.cpp")
-    add_files("audio/*.cpp")
-    add_files("renderer/*.cpp", "renderer/lighting/*.cpp",
-              "renderer/shaders/*.cpp")
-    add_files("resources/*.cpp", "resources/textures/*.cpp", "scene/*.cpp")
-    add_files("runtime/*.cpp")
+    add_files("core/*.cpp", "audio/*.cpp", "misc/*.cpp", "scene/*.cpp", "runtime/*.cpp")
+    add_files("renderer/*.cpp", "renderer/lighting/*.cpp", "renderer/shaders/*.cpp",
+            "renderer/icons/*.cpp", "renderer/texture/*.cpp")
+    add_files("resources/*.cpp", "resources/textures/*.cpp")
     add_files("importer/*.cpp")
 
     add_rules("shaderc.build")
@@ -138,8 +136,8 @@ rule("shaderc.build")
                 "--type", stype,
                 "--profile", backend.profile,
                 "--varyingdef", varying,
-                "-i", path.join(os.projectdir(), "thirdparty/bgfx_helpers/common"),
-                "-i", path.join(os.projectdir(), "thirdparty/bgfx_helpers/src"),
+                "-i", path.join(os.projectdir(), "thirdparty/bgfx_utils/common"),
+                "-i", path.join(os.projectdir(), "thirdparty/bgfx_utils/src"),
                 "-f", shaderfile,
                 "-o", outfile,
             }

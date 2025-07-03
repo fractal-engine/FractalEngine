@@ -1,5 +1,6 @@
 #include "application.h"
 #include "engine/core/logger.h"
+#include "engine/renderer/icons/icon_loader.h"
 #include "engine/runtime/core_loop.h"
 #include "game/game_test.h"
 
@@ -27,7 +28,7 @@ void Application::Shutdown() {
     self.editor_->Shutdown();
     self.editor_.reset();
   }
-  
+
   /* 3 – shutdown engine runtime */
   runtime::Shutdown();
 }
@@ -73,6 +74,22 @@ void Application::InitializeInternal() {
   renderer_ = &runtime::Renderer();
   shader_manager_ = &runtime::Shader();
   input_ = &runtime::Input();
+
+  /* load dependencies */
+
+  // load icons
+  IconLoader::CreatePlaceholderIcon(
+      "./resources/icons/fallback/fallback.png");
+  IconLoader::LoadIcons("./resources/icons/shared");
+  IconLoader::LoadIconsAsync("./resources/icons/assets");
+  IconLoader::LoadIconsAsync("./resources/icons/components");
+  IconLoader::LoadIconsAsync("./resources/icons/scene");
+
+  // Create default skybox
+
+  // Create default cubemap
+
+  // Create default texture
 
   /* 3 – initialize editor layer */
   editor_ = std::make_unique<EditorLayer>(renderer_);

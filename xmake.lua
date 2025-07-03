@@ -10,6 +10,9 @@ if is_plat("windows") then
     set_runtimes("MT")
 end
 
+-- set path globally
+add_includedirs("thirdparty")
+
 -- set_xmakever("2.8.7")
 add_rules("mode.debug", "mode.release")
 set_policy("check.auto_ignore_flags", false)
