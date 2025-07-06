@@ -4,7 +4,6 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <string>
 #include <vector>
-#include "editor/runtime/application.h"
 #include "engine/core/logger.h"
 #include "engine/core/view_ids.h"
 #include "engine/importer/gltf_program.h"
@@ -34,18 +33,7 @@ void SetupGltfLayouts() {
   Logger::getInstance().Log(LogLevel::Debug,
                             "[GltfImport] Vertex layout initialized.");
 }
-void SetupGltfProgram() {
-  ShaderManager& shaderMgr = *Application::GetShaderManager();
-  g_gltfProgram =
-      shaderMgr.LoadProgram("gltf_default", "vs_gltf.bin", "fs_gltf.bin");
 
-  if (bgfx::isValid(g_gltfProgram)) {
-    Logger::getInstance().Log(LogLevel::Debug, "Loaded glTF shader program.");
-  } else {
-    Logger::getInstance().Log(LogLevel::Error,
-                              "Failed to load glTF shader program.");
-  }
-}
 // ─────────────────────────────────────────────
 // Import glTF file and spawn a GameObject
 // ─────────────────────────────────────────────

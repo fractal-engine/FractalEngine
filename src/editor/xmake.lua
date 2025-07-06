@@ -9,8 +9,9 @@ target("fractal")
 
     add_includedirs("..", "vendor", "systems")
 
-    add_files("main.cpp", "*.cpp", "runtime/*.cpp", "panels/*.cpp", "systems/*.cpp", "vendor/imgui/imgui_impl_bgfx.cpp", "vendor/ImGuiFileDialog/ImGuiFileDialog.cpp")
-    add_headerfiles("runtime/*.h", "panels/*.h", "systems/*.h")
+    add_files("main.cpp", "*.cpp", "runtime/*.cpp", "panels/*.cpp", "systems/*.cpp", "project/*.cpp")
+    add_files("vendor/imgui/imgui_impl_bgfx.cpp", "vendor/ImGuiFileDialog/ImGuiFileDialog.cpp")
+    add_headerfiles("runtime/*.h", "panels/*.h", "systems/*.h", "project/*.h")
 
     add_packages("imgui", "boost", "libsdl2", "bgfx", "glm", "libsdl2_ttf", "portaudio")
 

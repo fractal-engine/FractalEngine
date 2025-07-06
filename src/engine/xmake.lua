@@ -7,11 +7,10 @@ target("engine")
     add_deps("platform")
     add_includedirs("..", {public = true})
 
-    add_files("core/*.cpp", "audio/*.cpp", "misc/*.cpp", "scene/*.cpp", "runtime/*.cpp")
+    add_files("core/*.cpp", "audio/*.cpp", "misc/*.cpp", "scene/*.cpp", "runtime/*.cpp", "importer/*.cpp")
     add_files("renderer/*.cpp", "renderer/lighting/*.cpp", "renderer/shaders/*.cpp",
             "renderer/icons/*.cpp", "renderer/texture/*.cpp")
     add_files("resources/*.cpp", "resources/textures/*.cpp")
-    add_files("importer/*.cpp")
 
     add_rules("shaderc.build")
     add_files("$(projectdir)/src/assets/shaders/**.sc")
@@ -142,10 +141,9 @@ rule("shaderc.build")
                 "-o", outfile,
             }
             -- Print shader file progress
-            batchcmds:show_progress(opt.progress, "${color.build.object}shaderc %s [%s]", fname, backend.folder)
+            batchcmds:show_progress(opt.progress, "[shaderc] %-15s → %-20s | varying: %s", fname, backend.folder, path.basename(varying))
             batchcmds:vrunv(exe, args)
             batchcmds:set_depmtime(os.mtime(outfile))
-            print(string.format("[shaderc] compiled %-15s → %-20s using varying: %s", fname, backend.folder, path.basename(varying)))
         end
 
         batchcmds:add_depfiles(shaderfile, varying)
