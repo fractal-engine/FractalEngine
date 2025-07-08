@@ -3,7 +3,7 @@
 
 #include <bgfx/bgfx.h>
 #include <vector>
-#include "editor/panels/orbit_camera.h"
+#include "editor/gui/orbit_camera.h"
 #include "editor/systems/camera_system.h"
 #include "game_base.h"
 
