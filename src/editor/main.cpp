@@ -18,7 +18,7 @@ int main() {
   Application::Initialize();
 
   // Start the game manager in a separate thread
-  std::thread game_thread([&] { Application::GetGameManager()->Run(); });
+  std::thread game_thread([&] { Application::Game()->Run(); });
 
   // Log the start of the editor display
   Logger::getInstance().Log(LogLevel::Debug, "Initializing editor display");
@@ -40,7 +40,7 @@ int main() {
 
   // Run the editor
   Logger::getInstance().Log(LogLevel::Info, "Calling EditorGUI::Run()");
-  Application::GetEditor()->Run();
+  Application::Editor()->Run();
   Logger::getInstance().Log(LogLevel::Info,
                             "Returned from EditorGUI::Run()");  // debug
 

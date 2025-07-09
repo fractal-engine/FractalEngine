@@ -12,8 +12,8 @@
 extern "C" void ImGui_Implbgfx_SetCustomShader(bgfx::ProgramHandle handle);
 
 void ApplyImGuiShaders() {
-  auto handle = Application::GetShaderManager()->LoadProgram(
-      "imgui", "vs_imgui.bin", "fs_imgui.bin");
+  auto handle = Application::Shader()->LoadProgram("imgui", "vs_imgui.bin",
+                                                   "fs_imgui.bin");
 
   if (!bgfx::isValid(handle)) {
     Logger::getInstance().Log(

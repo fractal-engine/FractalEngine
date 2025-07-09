@@ -9,8 +9,7 @@ bool Input::IsPressed(const Key& key) const {
 bool Input::IsJustPressed(const Key& key) const {
   for (const InputEvent& event : buffered_events_) {
     if (event.key_ == key &&
-        event.pressed_frame_ + 1 ==
-            Application::GetGameManager()->GetFrameCount()) {
+        event.pressed_frame_ + 1 == Application::Game()->GetFrameCount()) {
       return true;
     }
   }

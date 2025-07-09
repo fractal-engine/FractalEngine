@@ -4,55 +4,55 @@
 #include "engine/runtime/core_loop.h"
 #include "game/game_test.h"
 
-// ───────────────────────────────────────────
-//  system initialization and lifecycle
-// ───────────────────────────────────────────
-void Application::Initialize() {
-  getInstance().InitializeInternal();
+// ------------------ single-instance state (internal linkage) -----------------
+namespace {
+std::unique_ptr<EditorBase> g_editor;
+std::unique_ptr<GameManager> g_game_manager;
+
+RendererBase* g_renderer = nullptr;
+ShaderManager* g_shader_manager = nullptr;
+Input* g_input = nullptr;
+WindowManager* g_window_manager = nullptr;
+
+ProjectManager g_project_manager;
+}  // namespace
+
+// -----------------------------------------------------------------------------
+//  System initialization and lifecycle
+// -----------------------------------------------------------------------------
+namespace Application {
+
+static void InitialiseInternal();
+static void ShutdownInternal();
+
+void Initialize() {
+  InitialiseInternal();
+}
+void Shutdown() {
+  ShutdownInternal();
 }
 
-void Application::Shutdown() {
-  Logger::getInstance().Log(LogLevel::Info, "Application::Shutdown");
-
-  auto& self = getInstance();  // shorthand
-
-  /* 1 – stop game logic */
-  if (self.game_manager_) {
-    self.game_manager_->Shutdown();
-    self.game_manager_->Terminate();
-    self.game_manager_.reset();
-  }
-
-  /* 2 – destroy editor subsystems */
-  if (self.editor_) {
-    self.editor_->Shutdown();
-    self.editor_.reset();
-  }
-
-  /* 3 – shutdown engine runtime */
-  runtime::Shutdown();
+/* ---- accessors --------------------------- */
+EditorBase* Editor() {
+  return g_editor.get();
 }
-
-// ───────────────────────────────────────────
-//  getters
-// ───────────────────────────────────────────
-EditorBase* Application::GetEditor() {
-  return getInstance().editor_.get();
+RendererBase* Renderer() {
+  return g_renderer;
 }
-RendererBase* Application::GetRenderer() {
-  return getInstance().renderer_;
+GameManager* Game() {
+  return g_game_manager.get();
 }
-GameManager* Application::GetGameManager() {
-  return getInstance().game_manager_.get();
+Input* InputSystem() {
+  return g_input;
 }
-Input* Application::GetInput() {
-  return getInstance().input_;
+WindowManager* Window() {
+  return g_window_manager;
 }
-WindowManager* Application::GetWindowManager() {
-  return getInstance().window_manager_;
+ShaderManager* Shader() {
+  return g_shader_manager;
 }
-ShaderManager* Application::GetShaderManager() {
-  return getInstance().shader_manager_;
+ProjectManager& Project() {
+  return g_project_manager;
 }
 
 // ───────────────────────────────────────────
@@ -60,26 +60,25 @@ ShaderManager* Application::GetShaderManager() {
 //  TODO: change friend constructors to static
 //  Create/factory functions
 // ───────────────────────────────────────────
-void Application::InitializeInternal() {
+static void InitializeInternal() {
   Logger::getInstance().Log(LogLevel::Info, "Application::Initialize");
 
-  /* 1 – initialize engine runtime subsystems */
+  // initialize engine runtime subsystems
   if (!runtime::Init()) {
     Logger::getInstance().Log(LogLevel::Error, "runtime::Init() failed");
     std::exit(1);
   }
 
-  /* 2 – cache subsystem references */
-  window_manager_ = &runtime::Window();
-  renderer_ = &runtime::Renderer();
-  shader_manager_ = &runtime::Shader();
-  input_ = &runtime::Input();
+  // cache subsystem references
+  g_window_manager = &runtime::Window();
+  g_renderer = &runtime::Renderer();
+  g_shader_manager = &runtime::Shader();
+  g_input = &runtime::Input();
 
-  /* load dependencies */
+  // load dependencies
 
   // load icons
-  IconLoader::CreatePlaceholderIcon(
-      "./resources/icons/fallback/fallback.png");
+  IconLoader::CreatePlaceholderIcon("./resources/icons/fallback/fallback.png");
   IconLoader::LoadIcons("./resources/icons/shared");
   IconLoader::LoadIconsAsync("./resources/icons/assets");
   IconLoader::LoadIconsAsync("./resources/icons/components");
@@ -91,23 +90,42 @@ void Application::InitializeInternal() {
 
   // Create default texture
 
-  /* 3 – initialize editor layer */
-  editor_ = std::make_unique<EditorLayer>(renderer_);
+  // initialize editor layer
+  g_editor = std::make_unique<EditorLayer>(g_renderer);
   Logger::getInstance().Log(LogLevel::Info, "Editor initialized");
 
-  /* 4 – initialize game manager */
-  game_manager_ = std::unique_ptr<GameManager>(
-      new GameManager(std::make_unique<GameTest>()));
+  // initialize game manager
+  g_game_manager = std::make_unique<GameManager>(std::make_unique<GameTest>());
   Logger::getInstance().Log(LogLevel::Info, "GameManager initialized");
 
-  /* 5 – connect editor event handles */
-  editor_->game_start_pressed.connect([&] { game_manager_->StartGame(); });
-  editor_->game_end_pressed.connect([&] { game_manager_->EndGame(); });
-  editor_->editor_exit_pressed.connect([&] { game_manager_->Terminate(); });
+  // connect editor event handles
+  g_editor->game_start_pressed.connect([&] { g_game_manager->StartGame(); });
+  g_editor->game_end_pressed.connect([&] { g_game_manager->EndGame(); });
+  g_editor->editor_exit_pressed.connect([&] { g_game_manager->Terminate(); });
 
-  editor_->game_inputed.connect([&](InputEvent event) {
-    input_->FowardInputEvent(event, game_manager_->GetFrameCount());
+  g_editor->game_inputed.connect([&](InputEvent event) {
+    g_input->FowardInputEvent(event, g_game_manager->GetFrameCount());
   });
 
-  renderer_->redrawn.connect([&] { editor_->RequestUpdate(); });
+  g_renderer->redrawn.connect([&] { g_editor->RequestUpdate(); });
 }
+
+static void ShutdownInternal() {
+  Logger::getInstance().Log(LogLevel::Info, "Application::Shutdown");
+
+  // stop game logic
+  if (g_game_manager) {
+    g_game_manager->Shutdown();
+    g_game_manager->Terminate();
+    g_game_manager.reset();
+  }
+
+  // destroy editor subsystems
+  if (g_editor) {
+    g_editor->Shutdown();
+    g_editor.reset();
+  }
+
+  runtime::Shutdown();
+}
+}  // namespace Application

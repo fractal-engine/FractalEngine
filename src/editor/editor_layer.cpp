@@ -4,9 +4,6 @@
 #include "engine/core/engine_globals.h"
 #include "engine/core/logger.h"
 #include "engine/core/view_ids.h"
-#include "imgui.h"
-#include "imgui_internal.h"
-#include "imgui_utils.h"
 #include "gui/asset_browser.h"
 #include "gui/camera_controls.h"
 #include "gui/console_panel.h"
@@ -17,6 +14,9 @@
 #include "gui/menu_bar.h"
 #include "gui/status_bar.h"
 #include "gui/toolbar.h"
+#include "imgui.h"
+#include "imgui_internal.h"
+#include "imgui_utils.h"
 #include "platform/platform_utils.h"
 #include "platform/window_manager.h"
 #include "resources/decorators/drop_shadows.h"
@@ -150,7 +150,7 @@ void EditorLayer::Run() {
 
     /* 5 - Render game content to framebuffer */
     if (is_game_started_) {
-      Application::GetGameManager()->Render();  // Render 3D scene
+      Application::Game()->Render();  // Render 3D scene
     }
 
     /* 6 - Render ImGui elements */
@@ -205,11 +205,11 @@ void EditorLayer::HandleInput(Key key) {
     return;
 
   InputEvent input_event(key);
-  if (auto* gm = Application::GetGameManager()) {
+  if (auto* gm = Application::Game()) {
     input_event.pressed_frame_ = gm->GetFrameCount();
   }
-  Application::GetInput()->FowardInputEvent(input_event,
-                                            input_event.pressed_frame_);
+  Application::InputSystem()->FowardInputEvent(input_event,
+                                               input_event.pressed_frame_);
 }
 
 void EditorLayer::DockSpace() {

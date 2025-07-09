@@ -12,8 +12,7 @@ inline void CameraControls() {
   ImGui::Text("Camera Controls");
   ImGui::Separator();  // TODO: create custom UI separator
 
-  auto* game =
-      dynamic_cast<GameTest*>(Application::GetGameManager()->GetGame());
+  auto* game = dynamic_cast<GameTest*>(Application::Game()->GetGame());
   if (game) {
     OrbitCamera& cam = game->camera;
 

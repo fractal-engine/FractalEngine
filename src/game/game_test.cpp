@@ -218,7 +218,7 @@ void GameTest::Init() {
   }
 
   // Load shader programs
-  auto& ShaderManager = *Application::GetShaderManager();
+  auto& ShaderManager = *Application::Shader();
 
   _terrainProgramHeight = ShaderManager.LoadProgram(
       "terrain_pbr", "vs_terrain.bin", "fs_terrain.bin");
@@ -671,7 +671,7 @@ void GameTest::Render() {
   // Allow access to the renderer subsystem
   // Get the GraphicsRenderer instance
   GraphicsRenderer* graphicsRendererPtr = nullptr;  // Initialize to nullptr
-  auto* baseRendererPtr = Application::GetRenderer();
+  auto* baseRendererPtr = Application::Renderer();
 
   if (baseRendererPtr) {
     graphicsRendererPtr = dynamic_cast<GraphicsRenderer*>(baseRendererPtr);
@@ -842,7 +842,6 @@ void GameTest::Render() {
 
     obj->Render();
   }
-
 
   // --- Water Pass ---
 
