@@ -51,7 +51,9 @@
 #include "texture_asset.h"
 #include "engine/core/logger.h"
 
-namespace Assets {
+TextureAsset::TextureAsset() : meta_() {}
+
+TextureAsset::~TextureAsset() {}
 
 // ──────────────────────────────────────────────────────────────────────────────
 //  Ctors / loading
@@ -98,5 +100,3 @@ void TextureAsset::Reload() {
   // TODO: use Resource-Manager's hot reload instead
   LoadSync();
 }
-
-}  // namespace Assets

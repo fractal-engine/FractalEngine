@@ -8,24 +8,19 @@
 #include <unordered_map>
 #include <vector>
 
+#include "editor/systems/editor_asset.h"
+#include "engine/resources/file_system_utils.h"
+
 class EditorAsset;
 class TextureAsset;
-using AssetSid = uint64_t;  // incremental, per-session ID
-
-// Asset categories
-enum class AssetType {
-  kFallback = 0,
-  kTexture,
-  // kFont,
-  // kMesh ,
-  // TODO: add more asset types as needed
-};
 
 // Stored information block for each file-extension
 struct AssetInfo {
+  using AssetID = uint64_t;  // incremental, per-session ID
+
   AssetType type_{};
   std::function<std::shared_ptr<EditorAsset>()> create_instance_;
-  std::function<void(AssetSid /*sid*/)> inspect_;
+  std::function<void(AssetID /*asset_id*/)> inspect_;
 };
 
 namespace AssetRegistry {
@@ -45,9 +40,9 @@ std::shared_ptr<AssetInfo> CreateAssetInfo(AssetType type) {
   info->create_instance_ = [] {
     return std::make_shared<TAsset>();
   };
-  info->inspect_ = [](AssetSid sid) {
-    // Hand the SID over to your inspector system
-    EditorLayer::Get()->OpenAssetInspector(sid);
+  info->inspect_ = [](AssetInfo::AssetID asset_id) {
+    // Hand the asset_id over to your inspector system
+    EditorLayer::Get()->OpenAssetInspector(asset_id);
   };
 
   return info;
@@ -63,7 +58,7 @@ void RegisterAsset(AssetType type, const std::vector<std::string>& extensions) {
   }
 }
 
-void Create();                                 // Populate table
+void Create();  // Populate table
 
 const std::shared_ptr<AssetInfo>& Fallback();  // Always valid
 

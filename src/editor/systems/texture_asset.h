@@ -5,12 +5,11 @@
 #include <filesystem>
 #include <memory>
 
+#include "editor/systems/editor_asset.h"
 #include "engine/renderer/icons/icon_loader.h"
 #include "engine/renderer/texture/texture2d.h"
 
-namespace Assets {
-
-class TextureAsset {
+class TextureAsset : public EditorAsset {
 public:
   // placeholder, should match Gfx::TextureType later
   enum class ImportType {
@@ -29,18 +28,20 @@ public:
     // TODO: width/height hints, sRGB flag, mip options, etc
   };
 
-  explicit TextureAsset(std::filesystem::path file);
-  ~TextureAsset() = default;
+  TextureAsset();
+  ~TextureAsset() override;
+
+  explicit TextureAsset(std::filesystem::path file); // constructor
+
+  void OnDefaultLoad(const std::filesystem::path& meta_path) override {}
+  void OnUnload() override {}
+  void OnReload() override {}
+  void DrawInspectorUI() override;
+  uint32_t GetIcon() const override { return GpuHandle(); }
 
   // helpers
   uint32_t GpuHandle() const;  // bgfx handle idx OR fallback
-  uint32_t Icon() const { return GpuHandle(); }
-
-  const std::filesystem::path& Path() const { return file_path_; }
-  void DrawInspectorUI();  // dummy function
-
-  // placeholder hot-reload
-  void Reload();
+  void Reload();               // placeholder hot-reload
 
 private:
   void LoadSync();  // immediate load via TextureCache
@@ -50,5 +51,4 @@ private:
   std::shared_ptr<Gfx::Texture> texture_;  // nullptr until loaded
 };
 
-}  // namespace Assets
 #endif  // TEXTURE_ASSET_H

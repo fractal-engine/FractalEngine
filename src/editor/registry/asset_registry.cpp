@@ -1,5 +1,5 @@
 #include "asset_registry.h"
-#include "editor/panels/inspector_panel.h"
+#include "editor/gui/inspector_panel.h"
 #include "editor/systems/texture_asset.h"
 #include "engine/core/logger.h"
 
@@ -40,13 +40,13 @@ std::shared_ptr<AssetInfo> FetchByPath(const std::filesystem::path& path) {
 // Init asset registry with all supported asset types
 void Create() {
   // 1. Create fallback asset (used when no matching extension is found)
-  fallback_asset_ = CreateAssetInfo<EditorAsset>(AssetType::kFallback);
+  fallback_asset_ = CreateAssetInfo<EditorAsset>(AssetType::FALLBACK);
 
   // 2. Register every asset type you actually have
   RegisterAsset<TextureAsset>(
-      AssetType::kTexture, {"png", "jpg", "jpeg", "bmp", "tga", "gif", "hdr"});
+      AssetType::TEXTURE, {"png", "jpg", "jpeg", "bmp", "tga", "gif", "hdr"});
 
-  // TODO: add more asset types here
+  // TODO: add more asset types here when needed
 }
 
 }  // namespace AssetRegistry

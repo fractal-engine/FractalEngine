@@ -60,7 +60,7 @@ ProjectManager& Project() {
 //  TODO: change friend constructors to static
 //  Create/factory functions
 // ───────────────────────────────────────────
-static void InitializeInternal() {
+static void InitialiseInternal() {
   Logger::getInstance().Log(LogLevel::Info, "Application::Initialize");
 
   // initialize engine runtime subsystems

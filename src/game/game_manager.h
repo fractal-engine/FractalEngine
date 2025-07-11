@@ -18,7 +18,6 @@
 #include "engine/scene/scene_manager.h"
 
 class GameManager {
-  friend class Application;
   enum GameState { ENDED, STARTING, RUNNING, ENDING, PAUSING, PAUSED };
 
 private:
@@ -34,7 +33,6 @@ private:
   std::condition_variable condition_;
 
   GameManager() = delete;
-  GameManager(std::unique_ptr<GameBase>&& core);
   void LoadScene(std::unique_ptr<Scene> scene);
 
   bool is_running_ = false;
@@ -48,6 +46,7 @@ public:
   void Shutdown();
   uint64_t GetFrameCount();
   GameBase* GetGame() const { return core_.get(); }
+  GameManager(std::unique_ptr<GameBase>&& core);
 };
 
 #endif  // GAME_MANAGER_H

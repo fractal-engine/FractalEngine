@@ -24,8 +24,8 @@ class ProjectManager;
 
 namespace Application {
 /* ── Lifecycle ───────────────────── */
-static void Initialize();
-static void Shutdown();
+void Initialize();
+void Shutdown();
 
 /* ---- Accessors ------------ */
 EditorBase* Editor();
