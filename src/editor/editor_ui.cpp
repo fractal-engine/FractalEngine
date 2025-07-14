@@ -1,4 +1,4 @@
-#include "editor/editor_layer.h"
+#include "editor/editor_ui.h"
 #include "editor/resources/theme/dark_theme.hpp"
 #include "editor/runtime/application.h"
 #include "engine/core/engine_globals.h"
@@ -29,21 +29,21 @@
 #include <chrono>
 #include <thread>
 
-EditorLayer* EditorLayer::s_instance_ = nullptr;
+EditorUI* EditorUI::s_instance_ = nullptr;
 
-EditorLayer::EditorLayer(RendererBase* renderer) : renderer_(renderer) {
+EditorUI::EditorUI(RendererBase* renderer) : renderer_(renderer) {
   s_instance_ = this;
 }
 
-EditorLayer::~EditorLayer() {
+EditorUI::~EditorUI() {
   s_instance_ = nullptr;  // clear on destroy
 }
 
-EditorLayer* EditorLayer::Get() {
+EditorUI* EditorUI::Get() {
   return s_instance_;
 }
 
-void EditorLayer::Initialize() {
+void EditorUI::Initialize() {
   IMGUI_CHECKVERSION();
   ImGui::CreateContext();
   Theme::Initialize();
@@ -70,8 +70,10 @@ void EditorLayer::Initialize() {
       ImVec2(WindowManager::GetDPIScale(), WindowManager::GetDPIScale());
 }
 
-void EditorLayer::Run() {
-  Logger::getInstance().Log(LogLevel::Info, "EditorLayer main loop start");
+// TODO: refactor loop, should be placed inside application.cpp
+// Renamed to NextFrame()
+void EditorUI::Run() {
+  Logger::getInstance().Log(LogLevel::Info, "EditorUI main loop start");
 
   Initialize();
 
@@ -132,6 +134,9 @@ void EditorLayer::Run() {
       continue;
     }
 
+    // Process system events
+    Application::Project().PollEvents();
+
     /* 1 - Clear background and initialize frame */
     bgfx::setViewClear(ViewID::UI_BACKGROUND, BGFX_CLEAR_COLOR, 0x1e1e1eff,
                        1.0f, 0);
@@ -164,19 +169,19 @@ void EditorLayer::Run() {
     renderer_->Render();  // finalize rendering
     bgfx::frame();        // submit to GPU and swap buffers
   }
-  Logger::getInstance().Log(LogLevel::Info, "EditorLayer loop exited");
+  Logger::getInstance().Log(LogLevel::Info, "EditorUI loop exited");
 }
 
-void EditorLayer::RequestUpdate() {}
+void EditorUI::RequestUpdate() {}
 
-void EditorLayer::Shutdown() {
-  Logger::getInstance().Log(LogLevel::Info, "Shutting down EditorLayer");
+void EditorUI::Shutdown() {
+  Logger::getInstance().Log(LogLevel::Info, "Shutting down EditorUI");
   ImGui_Implbgfx_Shutdown();
   ImGui_ImplSDL2_Shutdown();
   ImGui::DestroyContext();
 }
 
-void EditorLayer::HandleInput(Key key) {
+void EditorUI::HandleInput(Key key) {
   if (ImGui::GetIO().WantCaptureKeyboard && !game_canvas_hovered_)
     return;
 
@@ -212,7 +217,7 @@ void EditorLayer::HandleInput(Key key) {
                                                input_event.pressed_frame_);
 }
 
-void EditorLayer::DockSpace() {
+void EditorUI::DockSpace() {
   static constexpr const char* root_dock =
       "##MainDockHost";  // Set root dock ID
 
@@ -253,7 +258,7 @@ void EditorLayer::DockSpace() {
   ImGui::PopStyleVar(3);
 }
 
-void EditorLayer::RenderUI() {
+void EditorUI::RenderUI() {
   ImGuiIO& io = ImGui::GetIO();
   io.IniFilename = nullptr;
 
@@ -383,7 +388,7 @@ void EditorLayer::RenderUI() {
   }
 }
 
-void EditorLayer::LoadIcons() {
+void EditorUI::LoadIcons() {
   tab_icons_.insert({"Hierarchy", ICON_FA_SITEMAP});
   tab_icons_.insert({"Toolbar", ICON_FA_TOOLBOX});
   tab_icons_.insert({"Scene", ICON_FA_GAMEPAD});
@@ -394,7 +399,7 @@ void EditorLayer::LoadIcons() {
   // tab_icons_.insert({"File Explorer", ICON_FA_FOLDER});
 }
 
-void EditorLayer::BeginImGuiFrame(SDL_Window* window) {
+void EditorUI::BeginImGuiFrame(SDL_Window* window) {
   ImGui_ImplSDL2_NewFrame();  // platform backend
   ImGui_Implbgfx_NewFrame();  // renderer backend
   ImGui::NewFrame();          // ImGui begins
@@ -406,15 +411,15 @@ void EditorLayer::BeginImGuiFrame(SDL_Window* window) {
 }
 
 // ── Selection API ─────────────────────────────────────────────────────────
-void EditorLayer::SetSelectedEntity(int id) {
+void EditorUI::SetSelectedEntity(int id) {
   selected_entity_ = id;
   last_selected_entity_ = selected_entity_;
 }
 
-int EditorLayer::GetSelectedEntity() const {
+int EditorUI::GetSelectedEntity() const {
   return selected_entity_;
 }
 
-int EditorLayer::GetLastSelectedEntity() const {
+int EditorUI::GetLastSelectedEntity() const {
   return last_selected_entity_;
 }

@@ -1,5 +1,5 @@
-#ifndef EDITOR_LAYER_H
-#define EDITOR_LAYER_H
+#ifndef EDITOR_UI_H
+#define EDITOR_UI_H
 
 #include <memory>
 #include "editor_base.h"
@@ -9,12 +9,12 @@
 #include "imgui_internal.h"
 #include "platform/input/key_map_sdl.h"
 
-class EditorLayer : public EditorBase {
+class EditorUI : public EditorBase {
 public:
-  explicit EditorLayer(RendererBase* renderer);
-  ~EditorLayer();
+  explicit EditorUI(RendererBase* renderer);
+  ~EditorUI();
 
-  static EditorLayer* Get();  // Singleton access
+  static EditorUI* Get();  // Singleton access
 
   void Initialize();
   void Run() override;
@@ -33,7 +33,7 @@ private:
   void DockSpace();
   void LoadIcons();
 
-  RendererBase* renderer_ = nullptr;    
+  RendererBase* renderer_ = nullptr;
   bool quit_ = false;
   bool is_game_started_ = false;
   bool game_canvas_hovered_ = false;
@@ -48,7 +48,7 @@ private:
   ImGuiID dock_id_;
 
   // singleton pointer
-  static EditorLayer* s_instance_;
+  static EditorUI* s_instance_;
 
   // ImGui debug controls
   bool debug_highlight_ids_ = false;
@@ -61,4 +61,4 @@ private:
   std::unordered_map<std::string, std::string> tab_icons_;
 };
 
-#endif  // EDITOR_LAYER_H
+#endif  // EDITOR_UI_H
