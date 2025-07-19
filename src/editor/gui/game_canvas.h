@@ -2,9 +2,12 @@
 #define GAME_CANVAS_H
 
 #include <imgui.h>
+
 #include "editor/runtime/application.h"
 #include "engine/core/engine_globals.h"
+#include "engine/core/logger.h"
 #include "engine/core/view_ids.h"
+#include "engine/formats/model_import.h"
 #include "engine/renderer/renderer_graphics.h"
 
 namespace Panels {
@@ -33,7 +36,7 @@ inline void GameCanvas(bool isGameRunning, bool& hovered) {
   ImVec2 scaledSize =
       ImVec2(proposedSize.x * scale.x, proposedSize.y * scale.y);
 
-  // update if dimensions have stabilized
+  // Update if dimensions have stabilized
   static ImVec2 lastSize = ImVec2(0, 0);
   static int stableFrames = 0;
 
@@ -52,8 +55,7 @@ inline void GameCanvas(bool isGameRunning, bool& hovered) {
 
   hovered = ImGui::IsWindowHovered();  // hover detection for the canvas
 
-  auto* renderer =
-      static_cast<GraphicsRenderer*>(Application::Renderer());
+  auto* renderer = static_cast<GraphicsRenderer*>(Application::Renderer());
 
   if (isGameRunning && canvasViewportW > 0 && canvasViewportH > 0) {
     // render when we have valid dimensions
@@ -63,6 +65,28 @@ inline void GameCanvas(bool isGameRunning, bool& hovered) {
                    ImVec2(0, 1),  // uv0 (flips vertically for GL/Metal)
                    ImVec2(1, 0)   // uv1
       );
+
+      // Handle drop operations for glTF files after drawing image
+      if (ImGui::BeginDragDropTarget()) {
+        const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("GLTF_FILE");
+        if (payload) {
+          // Get file path from payload
+          std::string path_str(static_cast<const char*>(payload->Data));
+          std::filesystem::path rel_path(path_str);
+
+          // Convert to absolute path
+          std::filesystem::path abs_path =
+              Application::Project().AbsolutePath(rel_path);
+
+          Logger::getInstance().Log(
+              LogLevel::Info, "Importing glTF model: " + abs_path.string());
+
+          // Load and spawn model
+          GltfImport::LoadModelAndSpawn(abs_path.string());
+        }
+        ImGui::EndDragDropTarget();
+      }
+
     } else {
       ImGui::TextColored(ImVec4(1, 0, 0, 1), "Texture ID invalid!");
     }

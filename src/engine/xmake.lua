@@ -7,10 +7,15 @@ target("engine")
     add_deps("platform")
     add_includedirs("..", {public = true})
 
-    add_files("core/*.cpp", "audio/*.cpp", "misc/*.cpp", "scene/*.cpp", "runtime/*.cpp", "importer/*.cpp")
+    add_files("core/*.cpp", "audio/*.cpp", "misc/*.cpp", "scene/*.cpp", "runtime/*.cpp", "formats/*.cpp")
     add_files("renderer/*.cpp", "renderer/lighting/*.cpp", "renderer/shaders/*.cpp",
-            "renderer/icons/*.cpp", "renderer/texture/*.cpp")
-    add_files("resources/*.cpp", "resources/textures/*.cpp")
+            "renderer/icons/*.cpp", "renderer/texture/*.cpp", "renderer/transformation/*.cpp")
+    add_files("resources/*.cpp", "resources/textures/*.cpp", "resources/3d/*.cpp")
+
+    add_headerfiles("core/*.h", "audio/*.h", "scene/*.h", "runtime/*.h", "formats/*.h")
+    add_headerfiles("renderer/*.h", "renderer/lighting/*.h", "renderer/shaders/*.h",
+            "renderer/icons/*.h", "renderer/texture/*.h", "renderer/transformation/*.h")
+    add_headerfiles("resources/*.h", "resources/textures/*.h", "resources/3d/*.h")
 
     add_rules("shaderc.build")
     add_files("$(projectdir)/src/assets/shaders/**.sc")

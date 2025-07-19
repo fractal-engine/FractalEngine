@@ -23,7 +23,7 @@
 
 #include <backends/imgui_impl_sdl2.h>
 #include "editor/vendor/imgui/imgui_impl_bgfx.h"
-#include "engine/importer/model_import.h"
+#include "engine/formats/model_import.h"
 
 #include <SDL.h>
 #include <chrono>

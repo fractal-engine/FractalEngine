@@ -5,7 +5,7 @@
 #include <filesystem>
 #include <string>
 #include <vector>
-#include "editor/editor_layer.h"
+#include "editor/editor_ui.h"
 
 // -----------------------------------------------------------------------------
 //  Panels::SceneHierarchy  – entity list   +    file explorer
@@ -25,13 +25,13 @@ inline void HierarchyPanel(const std::vector<std::string>& entityNames,
                                ImGuiTreeNodeFlags_NoTreePushOnOpen |
                                ImGuiTreeNodeFlags_SpanAvailWidth;
 
-    if (EditorLayer::Get()->GetSelectedEntity() == i)
+    if (EditorUI::Get()->GetSelectedEntity() == i)
       flags |= ImGuiTreeNodeFlags_Selected;
 
     ImGui::TreeNodeEx((void*)(intptr_t)i, flags, "%s", entityNames[i].c_str());
 
     if (ImGui::IsItemClicked()) {
-      EditorLayer::Get()->SetSelectedEntity(i);
+      EditorUI::Get()->SetSelectedEntity(i);
     }
   }
 

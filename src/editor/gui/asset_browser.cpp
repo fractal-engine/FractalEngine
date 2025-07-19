@@ -36,7 +36,7 @@ AssetBrowserPanel::NodeUIData AssetBrowserPanel::NodeUIData::CreateFor(
   ImFont* font = ImGui::GetFont();
 
   ImVec2 padding{14.0f * scale, 10.0f * scale};
-  ImVec2 icon_size{64.0f * scale, 64.0f * scale};
+  ImVec2 icon_size{30.0f * scale, 30.0f * scale};
 
   // Measure text dimensions at current font size
   ImVec2 text_size =
@@ -71,11 +71,14 @@ void AssetBrowserPanel::Draw() {
   ImVec2 size = ImGui::GetContentRegionAvail();
 
   // Render components
-  ImVec2 folder_size = RenderSideFolders(draw_list, position);
-  position.x += folder_size.x;
-
   ImVec2 nav_size = RenderBreadcrumbBar(draw_list, position);
   position.y += nav_size.y;
+
+  // ImGui::SetCursorScreenPos(ImVec2(position.x, position.y));
+  // ImGui::Separator();
+
+  ImVec2 folder_size = RenderSideFolders(draw_list, position);
+  position.x += folder_size.x;
 
   ImVec2 content_size = ImVec2(size.x - folder_size.x, size.y - nav_size.y);
 
@@ -179,7 +182,7 @@ void AssetBrowserPanel::OpenNodeInExplorer(NodeRef node) {
   }
 }
 
-// ------------------------- TOP LEFT -------------------------
+// ------------------------- TOP CONTAINER -------------------------
 ImVec2 AssetBrowserPanel::RenderBreadcrumbBar(ImDrawList& draw_list,
                                               ImVec2 position) {
   const float height = 40.0f;
@@ -255,7 +258,7 @@ ImVec2 AssetBrowserPanel::RenderBreadcrumbBar(ImDrawList& draw_list,
 // --------------------- LEFT CONTAINER ---------------------
 ImVec2 AssetBrowserPanel::RenderSideFolders(ImDrawList& draw_list,
                                             ImVec2 position) {
-  const float width = 150.0f;
+  const float width = 200.0f;
 
   ImVec2 size = ImVec2(width, ImGui::GetContentRegionAvail().y);
   ImVec2 p0 = position;
@@ -335,11 +338,12 @@ void AssetBrowserPanel::RenderSideFolder(ImDrawList& draw_list,
       ImVec2(icon_pos.x + icon_size + 8.0f,
              cursor_pos.y + (item_height - ImGui::GetTextLineHeight()) * 0.5f);
 
-  // Add caret for folders with children
-  std::string folder_text = folder->name_;
-  if (has_children) {
-    folder_text = (folder->expanded_ ? "▼ " : "► ") + folder_text;
-  }
+  // Evaluate and set icon
+  const char* icon = has_children
+                         ? (folder->expanded_ ? ICON_FA_CARET_DOWN " "
+                                              : ICON_FA_CARET_RIGHT " ")
+                         : "";
+  std::string folder_text = std::string(icon) + folder->name_;
 
   draw_list.AddText(text_pos, IM_COL32(220, 220, 220, 255),
                     folder_text.c_str());
@@ -352,6 +356,13 @@ void AssetBrowserPanel::RenderSideFolder(ImDrawList& draw_list,
   if (ImGui::IsItemClicked()) {
     // Select this folder
     SelectFolder(folder->id_);
+
+    // Toggle expansion if clicking on a folder with children
+    if (has_children) {
+      const_cast<ProjectObserver::Folder*>(folder.get())->expanded_ =
+          !folder->expanded_;
+    }
+
   } else if (ImGui::IsItemClicked(1) && has_children) {
     // Right-click to toggle expansion
     const_cast<ProjectObserver::Folder*>(folder.get())->expanded_ =
@@ -383,8 +394,8 @@ void AssetBrowserPanel::RenderNodes(ImDrawList& draw_list, ImVec2 position,
   ImGui::BeginChild("ContentArea", size, false);
 
   // Setup grid layout
-  const ImVec2 padding(22.0f, 22.0f);
-  const ImVec2 spacing(16.0f, 16.0f);
+  const ImVec2 padding(12.0f, 12.0f);
+  const ImVec2 spacing(8.0f, 8.0f);
 
   // Start position with padding
   ImVec2 cursor_pos = ImGui::GetCursorPos();
@@ -443,11 +454,11 @@ bool AssetBrowserPanel::RenderNode(ImDrawList& draw_list, NodeRef node,
     return false;
 
   // Skip file nodes without assets
-  if (!node->IsFolder()) {
+  /* if (!node->IsFolder()) {
     auto file = std::static_pointer_cast<const ProjectObserver::File>(node);
     if (!file->asset_id_)
       return false;
-  }
+  }*/
 
   // Interactive area
   ImVec2 p0 = position;
@@ -545,6 +556,26 @@ bool AssetBrowserPanel::RenderNode(ImDrawList& draw_list, NodeRef node,
   // Handle middle click to open in explorer
   if (ImGui::IsItemClicked(2)) {
     OpenNodeInExplorer(node);
+  }
+
+  if (!node->IsFolder()) {
+    auto file = std::static_pointer_cast<const ProjectObserver::File>(node);
+    const std::string extension = node->path_.extension().string();
+    const bool is_gltf = (extension == ".gltf" || extension == ".glb");
+
+    // Drag operation for glTF files
+    // TODO: refactor to handle other file types dynamically
+    if (is_gltf &&
+        ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID)) {
+      // Set payload as file path
+      std::string path_str = node->path_.string();
+      ImGui::SetDragDropPayload("GLTF_FILE", path_str.c_str(),
+                                path_str.size() + 1);
+
+      // Preview content while dragging
+      ImGui::Text("Import %s", node->path_.filename().string().c_str());
+      ImGui::EndDragDropSource();
+    }
   }
 
   return true;

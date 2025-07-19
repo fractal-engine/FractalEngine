@@ -4,13 +4,18 @@
 #include <imgui.h>
 #include <string>
 #include <vector>
-#include "engine/core/logger.h"
 #include "editor/resources/theme/dark_theme.hpp"
+#include "engine/core/logger.h"
 
 namespace Panels {
 
 inline void ConsolePanel() {
+
+  // Set background color and corner radius
+  ImGui::PushStyleColor(ImGuiCol_ChildBg, IM_COL32(25, 26, 28, 255));
+  ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 4.0f);
   ImGui::PushStyleVar(ImGuiStyleVar_ChildBorderSize, 0.0f);
+
   ImGui::BeginChild("LogRegion", ImVec2(0, 0), true);
   ImGui::BeginChild("LogScrollingRegion", ImVec2(0, 0), false,
                     ImGuiWindowFlags_HorizontalScrollbar);
@@ -23,11 +28,13 @@ inline void ConsolePanel() {
     ImGui::TextUnformatted(line.c_str());
   }
 
-  ImGui::PopFont();  // Reset to default font
+  // Pop after rendering
+  ImGui::PopFont();
+  ImGui::EndChild();
+  ImGui::EndChild();
 
-  ImGui::EndChild();
-  ImGui::EndChild();
-  ImGui::PopStyleVar();
+  ImGui::PopStyleColor();
+  ImGui::PopStyleVar(2);
 }
 
 }  // namespace Panels

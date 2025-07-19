@@ -3,7 +3,7 @@
 
 #include <imgui.h>
 #include <glm/glm.hpp>
-#include "editor/editor_layer.h"
+#include "editor/editor_ui.h"
 
 namespace Panels {
 
@@ -16,7 +16,7 @@ struct Transform {
 inline void Inspector(const std::vector<Transform>& transforms) {
   ImGui::Begin("Inspector", nullptr);
 
-  int sel = EditorLayer::Get()->GetSelectedEntity();
+  int sel = EditorUI::Get()->GetSelectedEntity();
   if (sel < 0 || sel >= (int)transforms.size()) {
     ImGui::TextDisabled("Select an entity");
     ImGui::End();

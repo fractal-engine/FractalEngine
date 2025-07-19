@@ -1,5 +1,5 @@
 #pragma once
-#include "../../vendor/IconFontCppHeaders/IconsFontAwesome6.h"  // FA mapping
+#include "../../vendor/IconFontCppHeaders/IconsFontAwesome6.h"
 
 #include "imgui.h"
 
