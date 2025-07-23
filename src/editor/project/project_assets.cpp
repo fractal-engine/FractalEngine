@@ -1,7 +1,7 @@
 #include "project_assets.h"
 
 #include "editor/registry/asset_registry.h"
-#include "editor/runtime/application.h"
+#include "editor/runtime/runtime.h"
 #include "editor/systems/asset_meta.h"
 #include "engine/core/logger.h"
 
@@ -9,7 +9,7 @@ ProjectAssets::ProjectAssets() : sid_counter_(0), assets_(), asset_sids_() {}
 
 AssetSID ProjectAssets::Load(const FileSystem::Path& path) {
   // Get absolute path from project root
-  FileSystem::Path absolute_path = Application::Project().AbsolutePath(path);
+  FileSystem::Path absolute_path = Runtime::Project().AbsolutePath(path);
 
   // PREPARE ASSET
   // Try to fetch asset type info
@@ -83,7 +83,7 @@ void ProjectAssets::Remove(AssetSID id) {
 
   // Cache assets path
   FileSystem::Path absolute_path =
-      Application::Project().AbsolutePath(asset->asset_path_);
+      Runtime::Project().AbsolutePath(asset->asset_path_);
 
   // Unload asset and remove it
   asset->OnUnload();
@@ -147,8 +147,8 @@ void ProjectAssets::UpdateLocation(AssetSID id, const FileSystem::Path& path) {
 
   // Cache old and current absolute path
   FileSystem::Path old_absolute_path =
-      Application::Project().AbsolutePath(old_relative_path);
-  FileSystem::Path absolute_path = Application::Project().AbsolutePath(path);
+      Runtime::Project().AbsolutePath(old_relative_path);
+  FileSystem::Path absolute_path = Runtime::Project().AbsolutePath(path);
 
   // Move the meta file
   std::error_code ec;

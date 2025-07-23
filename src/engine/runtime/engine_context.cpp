@@ -1,4 +1,4 @@
-#include "core_loop.h"
+#include "engine_context.h"
 #include "engine/core/logger.h"
 #include "engine/renderer/renderer_graphics.h"
 #include "engine/renderer/shaders/shader_manager.h"
@@ -6,7 +6,7 @@
 #include "platform/input/input.h"
 #include "platform/window_manager.h"
 
-namespace runtime {
+namespace EngineContext {
 
 // ------------------------------------------------------------------
 //  Process-wide singletons
@@ -76,4 +76,4 @@ void Shutdown() {
   return *shader_manager_instance_;
 }
 
-}  // namespace runtime
+}  // namespace EngineContext

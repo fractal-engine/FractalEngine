@@ -1,7 +1,8 @@
-#include "application.h"
+#include "runtime.h"
+
 #include "engine/core/logger.h"
 #include "engine/renderer/icons/icon_loader.h"
-#include "engine/runtime/core_loop.h"
+#include "engine/runtime/engine_context.h"
 #include "game/game_test.h"
 
 // ------------------ single-instance state (internal linkage) -----------------
@@ -20,7 +21,7 @@ ProjectManager g_project_manager;
 // -----------------------------------------------------------------------------
 //  System initialization and lifecycle
 // -----------------------------------------------------------------------------
-namespace Application {
+namespace Runtime {
 
 static void InitialiseInternal();
 static void ShutdownInternal();
@@ -61,19 +62,19 @@ ProjectManager& Project() {
 //  Create/factory functions
 // ───────────────────────────────────────────
 static void InitialiseInternal() {
-  Logger::getInstance().Log(LogLevel::Info, "Application::Initialize");
+  Logger::getInstance().Log(LogLevel::Info, "Runtime::Initialize");
 
   // initialize engine runtime subsystems
-  if (!runtime::Init()) {
+  if (!EngineContext::Init()) {
     Logger::getInstance().Log(LogLevel::Error, "runtime::Init() failed");
     std::exit(1);
   }
 
   // cache subsystem references
-  g_window_manager = &runtime::Window();
-  g_renderer = &runtime::Renderer();
-  g_shader_manager = &runtime::Shader();
-  g_input = &runtime::Input();
+  g_window_manager = &EngineContext::Window();
+  g_renderer = &EngineContext::Renderer();
+  g_shader_manager = &EngineContext::Shader();
+  g_input = &EngineContext::Input();
 
   // load dependencies
 
@@ -117,7 +118,7 @@ static void InitialiseInternal() {
 }
 
 static void ShutdownInternal() {
-  Logger::getInstance().Log(LogLevel::Info, "Application::Shutdown");
+  Logger::getInstance().Log(LogLevel::Info, "Runtime::Shutdown");
 
   // stop game logic
   if (g_game_manager) {
@@ -132,6 +133,6 @@ static void ShutdownInternal() {
     g_editor.reset();
   }
 
-  runtime::Shutdown();
+  EngineContext::Shutdown();
 }
-}  // namespace Application
+}  // namespace Runtime

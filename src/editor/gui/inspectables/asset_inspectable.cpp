@@ -1,6 +1,6 @@
 #include "asset_inspectable.h"
 
-#include "editor/runtime/application.h"
+#include "editor/runtime/runtime.h"
 #include "editor/systems/editor_asset.h"
 #include "engine/core/logger.h"
 
@@ -16,8 +16,8 @@ AssetInspectable::AssetInspectable(AssetSID asset_id) : asset_id_(asset_id) {
 // -----------------------------------------------------------------------------
 void AssetInspectable::RenderStaticContent(ImDrawList& draw_list) {
   // Look up the asset instance that owns this SID
-  auto& pm = Application::Project();  // singleton accessor
-  auto& aset = pm.Assets();           // ProjectAssets instance
+  auto& pm = Runtime::Project();  // singleton accessor
+  auto& aset = pm.Assets();       // ProjectAssets instance
   auto ref = aset.Get(asset_id_);
 
   if (ref) {

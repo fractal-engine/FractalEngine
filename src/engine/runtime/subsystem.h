@@ -8,7 +8,7 @@
 
 #include <cstdint>
 
-namespace runtime {
+namespace EngineContext {
 class ISubsystem {
 public:
   virtual ~ISubsystem() = default;
@@ -17,6 +17,6 @@ public:
   virtual void Shutdown() = 0;
 };
 
-}  // namespace runtime
+}  // namespace EngineContext
 
 #endif  // SUBSYSTEM_H

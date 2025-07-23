@@ -6,7 +6,7 @@
 #include <glm/glm.hpp>
 #include <vector>
 
-#include "editor/runtime/application.h"
+#include "editor/runtime/runtime.h"
 #include "engine/core/view_ids.h"
 #include "engine/ecs/components/camera.h"
 #include "engine/ecs/components/mesh_renderer.h"

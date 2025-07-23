@@ -1,6 +1,6 @@
 #include "editor/editor_ui.h"
 #include "editor/resources/theme/dark_theme.hpp"
-#include "editor/runtime/application.h"
+#include "editor/runtime/runtime.h"
 #include "engine/core/engine_globals.h"
 #include "engine/core/logger.h"
 #include "engine/core/view_ids.h"
@@ -69,7 +69,7 @@ void EditorUI::Initialize() {
       ImVec2(WindowManager::GetDPIScale(), WindowManager::GetDPIScale());
 }
 
-// TODO: refactor loop, should be placed inside application.cpp
+// TODO: refactor loop, should be placed inside runtime.cpp
 // Renamed to NextFrame()
 void EditorUI::Run() {
   Logger::getInstance().Log(LogLevel::Info, "EditorUI main loop start");
@@ -134,7 +134,7 @@ void EditorUI::Run() {
     }
 
     // Process system events
-    Application::Project().PollEvents();
+    Runtime::Project().PollEvents();
 
     /* 1 - Clear background and initialize frame */
     bgfx::setViewClear(ViewID::UI_BACKGROUND, BGFX_CLEAR_COLOR, 0x1e1e1eff,
@@ -154,7 +154,7 @@ void EditorUI::Run() {
 
     /* 5 - Render game content to framebuffer */
     if (is_game_started_) {
-      Application::Game()->Render();  // Render 3D scene
+      Runtime::Game()->Render();  // Render 3D scene
     }
 
     /* 6 - Render ImGui elements */
@@ -209,11 +209,11 @@ void EditorUI::HandleInput(Key key) {
     return;
 
   InputEvent input_event(key);
-  if (auto* gm = Application::Game()) {
+  if (auto* gm = Runtime::Game()) {
     input_event.pressed_frame_ = gm->GetFrameCount();
   }
-  Application::InputSystem()->FowardInputEvent(input_event,
-                                               input_event.pressed_frame_);
+  Runtime::InputSystem()->FowardInputEvent(input_event,
+                                           input_event.pressed_frame_);
 }
 
 void EditorUI::DockSpace() {
@@ -295,26 +295,25 @@ void EditorUI::RenderUI() {
   }
 
   //--------------------------- TOP TOOLBAR ----------------------------------
-  Panels::ToolbarCallbacks cb{
-      .onStart =
-          [&] {
-            if (!is_game_started_) {
-              is_game_started_ = true;
-              game_start_pressed();
-            }
-          },
-      .onStop =
-          [&] {
-            if (is_game_started_) {
-              is_game_started_ = false;
-              game_end_pressed();
-            }
-          },
-      .onQuit =
-          [&] {
-            quit_ = true;
-            editor_exit_pressed();
-          }};
+  Panels::ToolbarCallbacks cb{.onStart =
+                                  [&] {
+                                    if (!is_game_started_) {
+                                      is_game_started_ = true;
+                                      game_start_pressed();
+                                    }
+                                  },
+                              .onStop =
+                                  [&] {
+                                    if (is_game_started_) {
+                                      is_game_started_ = false;
+                                      game_end_pressed();
+                                    }
+                                  },
+                              .onQuit =
+                                  [&] {
+                                    quit_ = true;
+                                    editor_exit_pressed();
+                                  }};
   ImGui::Begin("Toolbar", nullptr);
   Panels::Toolbar(cb);
   ImGui::End();

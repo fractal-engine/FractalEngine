@@ -1,7 +1,7 @@
 #include "project_observer.h"
 
 #include "editor/gui/asset_browser.h"
-#include "editor/runtime/application.h"
+#include "editor/runtime/runtime.h"
 #include "engine/core/logger.h"
 
 ProjectObserver::File::File(const std::string& name,
@@ -9,7 +9,7 @@ ProjectObserver::File::File(const std::string& name,
     : IONode(name, path), asset_id_(0) {}
 
 void ProjectObserver::File::MakeAsset() {
-  asset_id_ = Application::Project().Assets().Load(path_);
+  asset_id_ = Runtime::Project().Assets().Load(path_);
 }
 
 void ProjectObserver::File::LinkAsset(AssetSID id) {
@@ -19,7 +19,7 @@ void ProjectObserver::File::LinkAsset(AssetSID id) {
 void ProjectObserver::File::DestroyAsset() {
   if (!asset_id_)
     return;
-  Application::Project().Assets().Remove(asset_id_);
+  Runtime::Project().Assets().Remove(asset_id_);
   asset_id_ = 0;
 }
 
@@ -182,7 +182,7 @@ void ProjectObserver::PollEvents() {
       if (file_it != parent_folder->files_.end()) {
         auto modified_file = *file_it;
         if (modified_file->asset_id_)
-          Application::Project().Assets().Reload(modified_file->asset_id_);
+          Runtime::Project().Assets().Reload(modified_file->asset_id_);
       }
 
       break;
@@ -226,7 +226,7 @@ void ProjectObserver::PollEvents() {
         new_parent_folder->AddFolder(new_base_name);
       else {
         new_parent_folder->AddFile(new_base_name)->LinkAsset(last_sid);
-        Application::Project().Assets().UpdateLocation(last_sid, absolute_path);
+        Runtime::Project().Assets().UpdateLocation(last_sid, absolute_path);
       }
 
       break;

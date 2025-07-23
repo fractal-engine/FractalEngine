@@ -3,7 +3,7 @@
 #include <iostream>
 #include <memory>
 #include <thread>
-#include "editor/runtime/application.h"
+#include "editor/runtime/runtime.h"
 #include "engine/audio/sound_manager.h"
 #include "engine/core/logger.h"
 #include "engine/renderer/shaders/shader_manager.h"
@@ -15,10 +15,10 @@ int main() {
   Logger::getInstance().Log(LogLevel::Info, "Starting Fractal Engine");
 
   // Initialize the subsystem manager
-  Application::Initialize();
+  Runtime::Initialize();
 
   // Start the game manager in a separate thread
-  std::thread game_thread([&] { Application::Game()->Run(); });
+  std::thread game_thread([&] { Runtime::Game()->Run(); });
 
   // Log the start of the editor display
   Logger::getInstance().Log(LogLevel::Debug, "Initializing editor display");
@@ -40,7 +40,7 @@ int main() {
 
   // Run the editor
   Logger::getInstance().Log(LogLevel::Info, "Calling EditorGUI::Run()");
-  Application::Editor()->Run();
+  Runtime::Editor()->Run();
   Logger::getInstance().Log(LogLevel::Info,
                             "Returned from EditorGUI::Run()");  // debug
 
@@ -51,7 +51,7 @@ int main() {
   Logger::getInstance().Log(LogLevel::Info, "Game thread joined");
 
   // Shutdown subsystems
-  Application::Shutdown();
+  Runtime::Shutdown();
   Logger::getInstance().Log(LogLevel::Debug,
                             "Application shutdown started in main");
 

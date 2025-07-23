@@ -5,7 +5,7 @@
 #include <vector>
 
 #include "editor/gui/inspectables/asset_inspectable.h"
-#include "editor/runtime/application.h"
+#include "editor/runtime/runtime.h"
 #include "engine/core/logger.h"
 #include "engine/renderer/icons/icon_loader.h"
 
@@ -15,8 +15,8 @@ uint32_t AssetBrowserPanel::selected_folder_id_ = 0;
 uint32_t AssetBrowserPanel::selected_node_id_ = 0;
 
 AssetBrowserPanel::AssetBrowserPanel()
-    : observer_(Application::Project().GetObserver()),
-      assets_(Application::Project().Assets()) {}
+    : observer_(Runtime::Project().GetObserver()),
+      assets_(Runtime::Project().Assets()) {}
 
 // Extract filename from path for display
 std::string AssetBrowserPanel::Filename(
@@ -129,8 +129,7 @@ void AssetBrowserPanel::OpenNodeInApplication(NodeRef node) {
     return;
 
   // Get absolute path from project
-  std::filesystem::path abs_path =
-      Application::Project().AbsolutePath(node->path_);
+  std::filesystem::path abs_path = Runtime::Project().AbsolutePath(node->path_);
 
   // Create system command based on platform
   std::string command;
@@ -159,7 +158,7 @@ void AssetBrowserPanel::OpenNodeInExplorer(NodeRef node) {
 
   // Get absolute path to parent directory
   std::filesystem::path dir_path =
-      Application::Project().AbsolutePath(node->path_.parent_path());
+      Runtime::Project().AbsolutePath(node->path_.parent_path());
 
   // Create system command based on platform
   std::string command;
@@ -215,11 +214,11 @@ ImVec2 AssetBrowserPanel::RenderBreadcrumbBar(ImDrawList& draw_list,
   std::string path_text;
   if (folder) {
     // Get project name
-    std::string project_name = Application::Project().ProjectName();
+    std::string project_name = Runtime::Project().ProjectName();
 
     // Make folder path relative to project root
     const std::filesystem::path project_root =
-        Application::Project().AbsolutePath("").lexically_normal();
+        Runtime::Project().AbsolutePath("").lexically_normal();
     std::filesystem::path relative_path =
         std::filesystem::relative(folder->path_, project_root);
 

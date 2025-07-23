@@ -1,5 +1,5 @@
-#ifndef CORE_LOOP_H
-#define CORE_LOOP_H
+#ifndef ENGINE_CONTEXT_H
+#define ENGINE_CONTEXT_H
 
 #include <memory>
 #include "engine/renderer/renderer_base.h"
@@ -11,7 +11,7 @@ class RendererBase;
 class Input;
 class ShaderManager;
 
-namespace runtime {
+namespace EngineContext {
 
 // ---------------------- life-cycle ----------------
 bool Init();
@@ -24,5 +24,5 @@ void Shutdown();
 ::Input& Input();
 ::ShaderManager& Shader();
 
-}  // namespace runtime
-#endif  // CORE_LOOP_H
+}  // namespace EngineContext
+#endif  // ENGINE_CONTEXT_H

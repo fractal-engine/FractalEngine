@@ -3,7 +3,7 @@
 
 #include <imgui.h>
 
-#include "editor/runtime/application.h"
+#include "editor/runtime/runtime.h"
 #include "engine/core/engine_globals.h"
 #include "engine/core/logger.h"
 #include "engine/core/view_ids.h"
@@ -57,15 +57,14 @@ inline void GameCanvas(bool isGameRunning, bool& hovered) {
 
   hovered = ImGui::IsWindowHovered();  // hover detection for the canvas
 
-  auto* renderer = static_cast<GraphicsRenderer*>(Application::Renderer());
+  auto* renderer = static_cast<GraphicsRenderer*>(Runtime::Renderer());
 
   if (isGameRunning && canvasViewportW > 0 && canvasViewportH > 0) {
     // render when we have valid dimensions
     ImTextureID texId = renderer->GetSceneTexId();
     if (texId) {
-      ImGui::Image(texId, size,
-                   ImVec2(0, 1),  // uv0
-                   ImVec2(1, 0)   // uv1
+      ImGui::Image(texId, size, ImVec2(0, 1),  // uv0
+                   ImVec2(1, 0)                // uv1
       );
 
       // Handle drop operations for glTF files after drawing image
@@ -76,8 +75,7 @@ inline void GameCanvas(bool isGameRunning, bool& hovered) {
           std::string rel(static_cast<const char*>(payload->Data));
 
           // Convert to absolute path
-          std::filesystem::path abs_path =
-              Application::Project().AbsolutePath(rel);
+          std::filesystem::path abs_path = Runtime::Project().AbsolutePath(rel);
 
           // Check extension before importing
           if (!FileSystem::HasExtension(abs_path, ".gltf") &&

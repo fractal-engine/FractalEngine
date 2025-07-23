@@ -1,5 +1,5 @@
-#ifndef APPLICATION_H
-#define APPLICATION_H
+#ifndef RUNTIME_H
+#define RUNTIME_H
 
 #include <memory>
 #include "engine/core/singleton.hpp"
@@ -22,7 +22,7 @@ class Input;
 class WindowManager;
 class ProjectManager;
 
-namespace Application {
+namespace Runtime {
 /* ── Lifecycle ───────────────────── */
 void Initialize();
 void Shutdown();
@@ -35,6 +35,6 @@ Input* InputSystem();
 WindowManager* Window();
 ShaderManager* Shader();
 ProjectManager& Project();
-}  // namespace Application
+}  // namespace Runtime
 
-#endif  // APPLICATION_H
+#endif  // RUNTIME_H

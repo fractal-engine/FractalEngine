@@ -2,7 +2,7 @@
 #define CAMERA_CONTROLS_H
 
 #include <imgui.h>
-#include "editor/runtime/application.h"
+#include "editor/runtime/runtime.h"
 #include "game/game_test.h"
 
 namespace Panels {
@@ -12,7 +12,7 @@ inline void CameraControls() {
   ImGui::Text("Camera Controls");
   ImGui::Separator();  // TODO: create custom UI separator
 
-  auto* game = dynamic_cast<GameTest*>(Application::Game()->GetGame());
+  auto* game = dynamic_cast<GameTest*>(Runtime::Game()->GetGame());
   if (game) {
     OrbitCamera& cam = game->camera;
 

@@ -1,7 +1,3 @@
-/* engine/runtime/subsystem_list.h
-   Registry wrapper: holds concrete subsystem singletons owned by Application.
-   NOTE: we could later switch to templates or compile-time tuples if needed.
-*/
 #ifndef SUBSYSTEM_LIST_H
 #define SUBSYSTEM_LIST_H
 
@@ -9,7 +5,12 @@
 #include <vector>
 #include "subsystem.h"
 
-namespace runtime {
+/* engine/runtime/subsystem_list.h
+   Registry wrapper: holds concrete subsystem singletons owned by Application.
+   NOTE: we could later switch to templates or compile-time tuples if needed.
+*/
+
+namespace EngineContext {
 
 class SubsystemList {
 public:
@@ -45,6 +46,6 @@ public:
 private:
   std::vector<std::unique_ptr<ISubsystem>> subsystems_;
 };
-}  // namespace runtime
+}  // namespace EngineContext
 
 #endif  // SUBSYSTEM_LIST_H

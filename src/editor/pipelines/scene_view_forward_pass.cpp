@@ -5,9 +5,9 @@
 
 #include "engine/core/engine_globals.h"
 #include "engine/core/logger.h"
+#include "engine/ecs/entity_container.h"
 #include "engine/renderer/model/mesh.h"
 #include "engine/renderer/renderer_graphics.h"
-#include "engine/ecs/entity_container.h"
 
 SceneViewForwardPass::SceneViewForwardPass()
     : framebuffer_(BGFX_INVALID_HANDLE),
@@ -26,7 +26,7 @@ void SceneViewForwardPass::Create(uint32_t msaa_samples) {
   Destroy();
 
   // Get renderer from the application
-  auto* renderer = static_cast<GraphicsRenderer*>(Application::Renderer());
+  auto* renderer = static_cast<GraphicsRenderer*>(Runtime::Renderer());
 
   // Get canvas viewport dimensions from global variables
   uint16_t width = canvasViewportW;
@@ -74,11 +74,11 @@ void SceneViewForwardPass::Create(uint32_t msaa_samples) {
 
   // TODO: Load selection highlighting program (used to highlight selected
   // entities) - we need to create actual shader files
-  selection_material_ = Application::Shader()->LoadProgram(
+  selection_material_ = Runtime::Shader()->LoadProgram(
       "selection", "vs_selection.bin", "fs_selection.bin");
 
   // TODO: replace with material implementation
-  current_program_ = Application::Shader()->LoadProgram(
+  current_program_ = Runtime::Shader()->LoadProgram(
       "gltf_default", "vs_gltf.bin", "fs_gltf.bin");
 
   Logger::getInstance().Log(LogLevel::Info,
