@@ -5,8 +5,8 @@
 #include "engine/core/singleton.hpp"
 
 #include "editor/editor_base.h"
-#include "editor/editor_layer.h"
 #include "editor/project/project_manager.h"
+#include "editor/editor_ui.h"
 #include "engine/renderer/renderer_base.h"
 #include "engine/renderer/shaders/shader_manager.h"
 #include "game/game_manager.h"

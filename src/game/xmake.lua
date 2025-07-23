@@ -10,5 +10,5 @@ target("sample_game")
     add_files("*.cpp")
     add_headerfiles("*.h")
 
-    add_packages("libsdl2", "bgfx", "boost", "imgui", "glm", "nlohmann_json", "efsw", "reflect-cpp")
+    add_packages("libsdl2", "bgfx", "boost", "imgui", "glm", "nlohmann_json", "efsw", "reflect-cpp", "entt")
 target_end()

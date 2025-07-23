@@ -25,12 +25,10 @@ bool ProjectManager::Load(const std::filesystem::path& directory) {
     Logger::getInstance().Log(LogLevel::Error,
                               "Failed to ensure project configuration.");
     return false;
-
-    // if true, start observing project
-    observer_.SetTarget(project_.path_);
-
-    return true;
   }
+  // if true, start observing project
+  observer_.SetTarget(project_.path_);
+  return true;
 }
 
 const Project& ProjectManager::GetProject() const {
@@ -77,3 +75,11 @@ bool ProjectManager::EnsureConfig() {
                            config_path.string() + "'");
   return false;
 }
+
+// TODO: rework function, project name and
+// folder name should be handled separetely
+std::string ProjectManager::ProjectName() const
+{
+    return project_.path_.filename().string();
+}
+

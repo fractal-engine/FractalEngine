@@ -7,21 +7,25 @@ target("engine")
     add_deps("platform")
     add_includedirs("..", {public = true})
 
-    add_files("core/*.cpp", "audio/*.cpp", "misc/*.cpp", "scene/*.cpp", "runtime/*.cpp", "formats/*.cpp")
+    add_files("core/*.cpp", "audio/*.cpp", "misc/*.cpp", "scene/*.cpp", "runtime/*.cpp",
+        "formats/*.cpp", "ecs/*.cpp")
     add_files("renderer/*.cpp", "renderer/lighting/*.cpp", "renderer/shaders/*.cpp",
-            "renderer/icons/*.cpp", "renderer/texture/*.cpp", "renderer/transformation/*.cpp")
+            "renderer/icons/*.cpp", "renderer/texture/*.cpp", "renderer/transformation/*.cpp",
+            "renderer/model/*.cpp")
     add_files("resources/*.cpp", "resources/textures/*.cpp", "resources/3d/*.cpp")
 
-    add_headerfiles("core/*.h", "audio/*.h", "scene/*.h", "runtime/*.h", "formats/*.h")
+    add_headerfiles("core/*.h", "audio/*.h", "scene/*.h", "runtime/*.h", "formats/*.h",
+            "ecs/*.h")
     add_headerfiles("renderer/*.h", "renderer/lighting/*.h", "renderer/shaders/*.h",
-            "renderer/icons/*.h", "renderer/texture/*.h", "renderer/transformation/*.h")
+            "renderer/icons/*.h", "renderer/texture/*.h", "renderer/transformation/*.h",
+            "renderer/model/*.h")
     add_headerfiles("resources/*.h", "resources/textures/*.h", "resources/3d/*.h")
 
     add_rules("shaderc.build")
     add_files("$(projectdir)/src/assets/shaders/**.sc")
     remove_files("$(projectdir)/src/assets/shaders/varying*.sc")
 
-    add_packages("boost", "libsdl2", "bgfx", "glm", "imgui", "libsdl2_ttf", "portaudio", "tinygltf", "nlohmann_json")
+    add_packages("boost", "libsdl2", "bgfx", "glm", "imgui", "libsdl2_ttf", "portaudio", "tinygltf", "nlohmann_json", "entt")
 
     if is_mode("debug") then
     add_links("bimg_decodeDebug", "bimg_encodeDebug")

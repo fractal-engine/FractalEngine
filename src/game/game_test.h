@@ -42,8 +42,8 @@ public:
   OrbitCamera camera;
   CameraSystem cameraSystem;
 
-  int canvasViewportW = 1600;
-  int canvasViewportH = 900;
+  int canvasViewportW = 1600;  // TODO: remove this, should use engine_globals.h
+  int canvasViewportH = 900;   // TODO: remove this, should use engine_globals.h
 
 private:
   // ───── Terrain
@@ -66,7 +66,6 @@ private:
 
   std::vector<PosTexCoord0Vertex> terrainVertices;
   std::vector<uint16_t> terrainIndices;
-  
 
   // ───── Sky-box & Sun
   bgfx::ProgramHandle _skyProgram = BGFX_INVALID_HANDLE;

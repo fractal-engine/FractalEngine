@@ -1,10 +1,8 @@
 #include "project_observer.h"
 
+#include "editor/gui/asset_browser.h"
 #include "editor/runtime/application.h"
 #include "engine/core/logger.h"
-
-// Initialize static counter
-uint32_t ProjectObserver::IONode::id_counter_ = 0;
 
 ProjectObserver::File::File(const std::string& name,
                             const FileSystem::Path& path)
@@ -116,13 +114,21 @@ ProjectObserver::ProjectObserver()
       watch_id_(0) {}
 
 void ProjectObserver::PollEvents() {
-  // Only dispatch one IO listener event per poll
-
   // Fetch next IO listener event
   std::unique_ptr<IOEvent> event;
   bool success = listener_->event_queue_.try_dequeue(event);
   if (!success)
     return;
+
+  // DEBUG
+  Logger::getInstance().Log(
+      LogLevel::Debug,
+      "ProjectObserver: Processing file event: " +
+          std::string(event->action_ == efsw::Action::Add        ? "Add"
+                      : event->action_ == efsw::Action::Delete   ? "Delete"
+                      : event->action_ == efsw::Action::Modified ? "Modified"
+                                                                 : "Moved") +
+          " for file: " + event->filename_);
 
   // Get event related data
   std::string filename = event->filename_;
@@ -233,6 +239,10 @@ void ProjectObserver::SetTarget(const FileSystem::Path& path) {
 
   folder_registry_.clear();
   project_structure_ = CreateFolder(target_);
+
+  // select root folder in asset browser when project is loaded
+  if (project_structure_)
+    Panels::AssetBrowserPanel::SelectFolder(project_structure_->id_);
 
   if (watch_id_)
     watcher_->removeWatch(watch_id_);

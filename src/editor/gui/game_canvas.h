@@ -7,8 +7,10 @@
 #include "engine/core/engine_globals.h"
 #include "engine/core/logger.h"
 #include "engine/core/view_ids.h"
-#include "engine/formats/model_import.h"
+#include "engine/ecs/world.h"
+#include "engine/renderer/model/model.h"
 #include "engine/renderer/renderer_graphics.h"
+#include "engine/resources/file_system_utils.h"
 
 namespace Panels {
 
@@ -62,7 +64,7 @@ inline void GameCanvas(bool isGameRunning, bool& hovered) {
     ImTextureID texId = renderer->GetSceneTexId();
     if (texId) {
       ImGui::Image(texId, size,
-                   ImVec2(0, 1),  // uv0 (flips vertically for GL/Metal)
+                   ImVec2(0, 1),  // uv0
                    ImVec2(1, 0)   // uv1
       );
 
@@ -71,18 +73,51 @@ inline void GameCanvas(bool isGameRunning, bool& hovered) {
         const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("GLTF_FILE");
         if (payload) {
           // Get file path from payload
-          std::string path_str(static_cast<const char*>(payload->Data));
-          std::filesystem::path rel_path(path_str);
+          std::string rel(static_cast<const char*>(payload->Data));
 
           // Convert to absolute path
           std::filesystem::path abs_path =
-              Application::Project().AbsolutePath(rel_path);
+              Application::Project().AbsolutePath(rel);
 
-          Logger::getInstance().Log(
-              LogLevel::Info, "Importing glTF model: " + abs_path.string());
+          // Check extension before importing
+          if (!FileSystem::HasExtension(abs_path, ".gltf") &&
+              !FileSystem::HasExtension(abs_path, ".glb")) {
+            Logger::getInstance().Log(
+                LogLevel::Warning,
+                "Dropped file is not a glTF model: " + abs_path.string());
+          } else {
+            Logger::getInstance().Log(
+                LogLevel::Info, "Importing glTF model: " + abs_path.string());
 
-          // Load and spawn model
-          GltfImport::LoadModelAndSpawn(abs_path.string());
+            // Load meshes
+            std::shared_ptr<Model> model = Model::Load(abs_path.string());
+            if (!model) {
+              Logger::getInstance().Log(
+                  LogLevel::Error,
+                  "Import failed: no meshes in " + abs_path.string());
+            } else {
+              // Create ECS entity
+              auto& world = ECSWorld::Main();
+              auto [entity, tr] =
+                  world.CreateEntity(abs_path.filename().string());
+
+              // Attach a MeshRendererComponent for each mesh
+              for (uint32_t i = 0; i < model->NLoadedMeshes(); ++i) {
+                const Mesh* mesh = model->QueryMesh(i);
+                if (!mesh)
+                  continue;
+
+                MeshRendererComponent& mr =
+                    world.Add<MeshRendererComponent>(entity);
+                mr.mesh_ = mesh;
+                mr.enabled_ = true;
+              }
+
+              // Keep model alive for the lifetime of the scene
+              static std::vector<std::shared_ptr<Model>> asset_cache;
+              asset_cache.emplace_back(std::move(model));
+            }
+          }
         }
         ImGui::EndDragDropTarget();
       }

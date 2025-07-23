@@ -67,6 +67,7 @@ public:
           subfolders_(),
           parent_id_(parent_id),
           expanded_(false) {}
+          
     ~Folder() override {}
 
     bool IsFolder() override { return true; }

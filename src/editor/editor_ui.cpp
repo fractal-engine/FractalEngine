@@ -23,7 +23,6 @@
 
 #include <backends/imgui_impl_sdl2.h>
 #include "editor/vendor/imgui/imgui_impl_bgfx.h"
-#include "engine/formats/model_import.h"
 
 #include <SDL.h>
 #include <chrono>
@@ -310,19 +309,6 @@ void EditorUI::RenderUI() {
               is_game_started_ = false;
               game_end_pressed();
             }
-          },
-      .onAddObject =
-          [&] {
-            // Temporary: Load a 3D model from a hardcoded path
-            const std::string gltf_path =
-                "C:/Users/moses/Downloads/eiffel_tower/tower.glb";
-            GltfImport::LoadModelAndSpawn(gltf_path);
-          },
-      .onRemoveObject =
-          [&] {
-            // Temporary stub for now
-            Logger::getInstance().Log(LogLevel::Info,
-                                      "Remove GameObject not yet implemented");
           },
       .onQuit =
           [&] {

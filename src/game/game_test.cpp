@@ -11,14 +11,17 @@
 #include "editor/runtime/application.h"
 #include "engine/core/logger.h"
 #include "engine/core/view_ids.h"
-#include "engine/importer/gltf_program.h"
-#include "engine/importer/model_import.h"
+#include "engine/ecs/world.h"
 #include "engine/renderer/lighting/sky_lighting.h"
 #include "engine/renderer/renderer_graphics.h"
 #include "engine/resources/shader_utils.h"
 #include "engine/resources/textures/texture_utils.h"
-#include "game/game_object.h"
-#include "game/game_object_manager.h"
+
+/*******************************************************************************
+ * TODO:
+ * - Move bgfx uniforms to scene_view_forward_pass.cpp
+ * - Move load terrain textures to application.cpp (?)
+ ******************************************************************************/
 
 // Helper to make logging BGFX handles easier
 std::string handle_to_string(bgfx::ProgramHandle h) {
@@ -187,10 +190,6 @@ void GameTest::Init() {
         .add(bgfx::Attrib::Position, 2, bgfx::AttribType::Float)
         .end();
   }
-
-  // Set GLTF Layouts and Program
-  GltfImport::SetupGltfLayouts();
-  GltfImport::SetupGltfProgram();
 
   // Load terrain textures
   terrainDiffuse =
@@ -824,23 +823,24 @@ void GameTest::Render() {
   bgfx::setState(BGFX_STATE_DEFAULT | BGFX_STATE_CULL_CW | BGFX_STATE_MSAA);
   bgfx::submit(terrainViewID, _terrainProgramHeight);
 
-  // --- GameObject Pass (Imported 3D Models) ---
+  // TODO: this should be removed later
+  auto& world = ECSWorld::Main();
+  world.UpdateTransforms();  // update matrices
+  const auto& rq = world.GetRenderQueue();
 
-  const auto& gameObjects =
-      GameObjectManager::getInstance().GetAllGameObjects();
+  bgfx::setViewTransform(ViewID::SCENE_MESH, viewMatrix, projMatrix);
 
-  for (const auto& [id, obj] : gameObjects) {
-    const glm::mat4& transform = obj->GetTransform();
+  for (auto& [entity, tr, mr] : rq) {
+    if (!mr.enabled_ || !mr.mesh_)
+      continue;
 
-    float bgfxTransform[16];
-    memcpy(bgfxTransform, glm::value_ptr(transform), sizeof(bgfxTransform));
-    bgfx::setTransform(bgfxTransform);
+    bgfx::setTransform(&tr.model_[0][0]);
+    mr.mesh_->Bind();
 
-    bgfx::setViewTransform(ViewID::SCENE_MESH, viewMatrix, projMatrix);
     bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_Z |
                    BGFX_STATE_DEPTH_TEST_LESS | BGFX_STATE_CULL_CW);
 
-    obj->Render();
+    bgfx::submit(ViewID::SCENE_MESH, _terrainProgramHeight);
   }
 
   // --- Water Pass ---

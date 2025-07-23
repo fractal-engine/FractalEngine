@@ -90,8 +90,14 @@ static void InitialiseInternal() {
 
   // Create default texture
 
+  // Load example project
+  std::filesystem::path project_path =
+      std::filesystem::current_path() / "examples" / "example-project";
+  std::filesystem::create_directories(project_path);
+  g_project_manager.Load(project_path);
+
   // initialize editor layer
-  g_editor = std::make_unique<EditorLayer>(g_renderer);
+  g_editor = std::make_unique<EditorUI>(g_renderer);
   Logger::getInstance().Log(LogLevel::Info, "Editor initialized");
 
   // initialize game manager

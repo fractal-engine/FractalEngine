@@ -26,8 +26,10 @@ const Project& GetProject() const;
 ProjectObserver& GetObserver();
 ProjectAssets& Assets();
 
-// Path utility, resolves path relative to project root
+// Resolve path relative to project root
 std::filesystem::path AbsolutePath(const std::filesystem::path& path);
+
+std::string ProjectName() const;
 
 private:
 

@@ -12,17 +12,16 @@
 #include "engine/resources/file_system_utils.h"
 
 class EditorAsset;
-class TextureAsset;
 
 // Stored information block for each file-extension
 struct AssetInfo {
   using AssetID = uint64_t;  // incremental, per-session ID
 
-  AssetType type_{};
+  AssetType type_ = AssetType::FALLBACK;
   std::function<std::shared_ptr<EditorAsset>()> create_instance_;
-  std::function<void(AssetID /*asset_id*/)> inspect_;
+  // std::function<void(AssetID /*asset_id*/)> inspect_; // missing inspect function
 };
-
+// Asset registry for managing different asset types and their extensions
 namespace AssetRegistry {
 
 // Global registry and fallback asset
@@ -40,10 +39,12 @@ std::shared_ptr<AssetInfo> CreateAssetInfo(AssetType type) {
   info->create_instance_ = [] {
     return std::make_shared<TAsset>();
   };
-  info->inspect_ = [](AssetInfo::AssetID asset_id) {
-    // Hand the asset_id over to your inspector system
-    EditorLayer::Get()->OpenAssetInspector(asset_id);
+
+  /* TODO:
+    info->inspect_ = [](AssetInfo::AssetID asset_id) {
+    InspectorPanel::Get()->InspectAsset(asset_id);
   };
+  */
 
   return info;
 }

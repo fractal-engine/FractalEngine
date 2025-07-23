@@ -12,10 +12,8 @@
  *   - Touch() - Create empty file or update timestamp
  *
  * - Path functions:
- *   - GetAbsolutePath() - Convert to absolute path
  *   - GetCanonicalPath() - Normalize path with symbolic link resolution
  *   - NormalizeSeparators() - Standardize path separators
- *   - HasExtension() - Check if path has specific extension
  *
  * - File operations:
  *   - CopyFile() - Copy file with options
@@ -145,6 +143,43 @@ inline std::string ReadFile(const Path& path) {
   std::stringstream buffer;
   buffer << file.rdbuf();
   return buffer.str();
+}
+
+/*************************************************
+-------------- FILE OPERATIONS--------------------
+**************************************************/
+
+/*************************************************
+-------------- PATH FUNCTIONS --------------------
+**************************************************/
+
+// Return absolute path from relative path
+inline Path GetAbsolutePath(const Path& path) {
+  std::error_code ec;
+  Path abs = std::filesystem::absolute(path, ec);
+  if (ec) {
+    Logger::getInstance().Log(
+        LogLevel::Warning,
+        "FileSystem::GetAbsolutePath - Failed to get absolute path for: " +
+            path.string() + ": " + ec.message());
+    return path;
+  }
+  return abs;
+}
+
+// Check if path has given extension
+inline bool HasExtension(const Path& path, const std::string& extension) {
+  std::string ext = path.extension().string();
+  std::string target = extension;
+  // Ensure both start with dot
+  if (!ext.empty() && ext[0] != '.')
+    ext = "." + ext;
+  if (!target.empty() && target[0] != '.')
+    target = "." + target;
+  // Case-insensitive compare
+  std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
+  std::transform(target.begin(), target.end(), target.begin(), ::tolower);
+  return ext == target;
 }
 
 }  // namespace FileSystem
