@@ -2,7 +2,7 @@
 
 #include "engine/core/logger.h"
 #include "engine/renderer/icons/icon_loader.h"
-#include "engine/runtime/engine_context.h"
+#include "engine/context/engine_context.h"
 #include "game/game_test.h"
 
 // ------------------ single-instance state (internal linkage) -----------------

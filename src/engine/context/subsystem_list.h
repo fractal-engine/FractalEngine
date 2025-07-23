@@ -5,7 +5,7 @@
 #include <vector>
 #include "subsystem.h"
 
-/* engine/runtime/subsystem_list.h
+/* engine/context/subsystem_list.h
    Registry wrapper: holds concrete subsystem singletons owned by Application.
    NOTE: we could later switch to templates or compile-time tuples if needed.
 */
