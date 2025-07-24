@@ -191,8 +191,7 @@ void SceneViewForwardPass::RenderMeshes(
   uint16_t new_bound_shaders = 0;
   uint16_t new_bound_materials = 0;
 
-  for (auto& [entity, transform, renderer] :
-       ECSWorld::Main().GetRenderQueue()) {
+  for (auto& [entity, transform, renderer] : ECS::Main().GetRenderQueue()) {
     // Skip if entity is in skipped_entities
     bool skip = false;
     for (auto* skipped : skipped_entities) {

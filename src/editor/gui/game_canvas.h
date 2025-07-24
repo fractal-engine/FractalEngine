@@ -95,7 +95,7 @@ inline void GameCanvas(bool isGameRunning, bool& hovered) {
                   "Import failed: no meshes in " + abs_path.string());
             } else {
               // Create ECS entity
-              auto& world = ECSWorld::Main();
+              auto& world = ECS::Main();
               auto [entity, tr] =
                   world.CreateEntity(abs_path.filename().string());
 

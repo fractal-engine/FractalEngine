@@ -824,7 +824,7 @@ void GameTest::Render() {
   bgfx::submit(terrainViewID, _terrainProgramHeight);
 
   // TODO: this should be removed later
-  auto& world = ECSWorld::Main();
+  auto& world = ECS::Main();
   world.UpdateTransforms();  // update matrices
   const auto& rq = world.GetRenderQueue();
 
@@ -878,8 +878,8 @@ void GameTest::Render() {
 }
 
 // Releases all BGFX resources
-void GameTest::Shutdown() {
-  Logger::getInstance().Log(LogLevel::Debug, "GameTest: Shutdown() called.");
+void GameTest::Destroy() {
+  Logger::getInstance().Log(LogLevel::Debug, "GameTest: Destroy() called.");
 
   // Lambda helper to destroy a BGFX handle if valid
   auto destroyHandle = [](auto& handle) {
@@ -950,5 +950,5 @@ void GameTest::Shutdown() {
   destroyHandle(_waterTex);
   destroyHandle(_waterNormalTex);
 
-  Logger::getInstance().Log(LogLevel::Debug, "GameTest: Shutdown() completed");
+  Logger::getInstance().Log(LogLevel::Debug, "GameTest: Destroy() completed");
 }

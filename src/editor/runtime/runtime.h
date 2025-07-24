@@ -2,11 +2,13 @@
 #define RUNTIME_H
 
 #include <memory>
-#include "engine/core/singleton.hpp"
+#include <thread>
 
 #include "editor/editor_base.h"
-#include "editor/project/project_manager.h"
 #include "editor/editor_ui.h"
+#include "editor/pipelines/scene_view_pipeline.h"
+#include "editor/project/project_manager.h"
+#include "engine/core/singleton.hpp"
 #include "engine/renderer/renderer_base.h"
 #include "engine/renderer/shaders/shader_manager.h"
 #include "game/game_manager.h"
@@ -23,18 +25,25 @@ class WindowManager;
 class ProjectManager;
 
 namespace Runtime {
-/* ── Lifecycle ───────────────────── */
-void Initialize();
-void Shutdown();
 
-/* ---- Accessors ------------ */
+/* ------------ Core functions ------------ */
+int START_LOOP();
+int TERMINATE();
+
+/* ------------ Project ------------ */
+ProjectManager& Project();
+
+/* ------------ Pipeline getters ------------ */
+SceneViewPipeline& sceneViewPipeline();
+
+/* ------------ Getters ------------ */
 EditorBase* Editor();
 RendererBase* Renderer();
 GameManager* Game();
 Input* InputSystem();
 WindowManager* Window();
 ShaderManager* Shader();
-ProjectManager& Project();
+
 }  // namespace Runtime
 
 #endif  // RUNTIME_H

@@ -51,6 +51,7 @@ bool WindowManager::Initialize(const char* title, int width, int height) {
   return true;
 }
 
+// TODO: check if it ever gets called somewhere
 void WindowManager::Shutdown() {
   WindowManager& inst = getInstance();
 

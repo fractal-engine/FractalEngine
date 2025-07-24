@@ -43,7 +43,7 @@ public:
   void EndGame();
   void Run();
   void Terminate();
-  void Shutdown();
+  void Destroy();
   uint64_t GetFrameCount();
   GameBase* GetGame() const { return core_.get(); }
   GameManager(std::unique_ptr<GameBase>&& core);

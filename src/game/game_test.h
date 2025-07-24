@@ -29,7 +29,7 @@ public:
   void Init() override;
   void Update() override;
   void Render() override;
-  void Shutdown() override;
+  void Destroy() override;
 
   // ──────────────────────────────────────────────────────
   //  Terrain Size

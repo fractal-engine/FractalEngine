@@ -1,5 +1,12 @@
 #ifndef COMPONENT_REGISTRY_H
 #define COMPONENT_REGISTRY_H
 
+struct ComponentInfo {};
 
-#endif // COMPONENT_REGISTRY_H
+namespace ComponentRegistry {
+
+void Create();
+
+}  // namespace ComponentRegistry
+
+#endif  // COMPONENT_REGISTRY_H

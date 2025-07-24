@@ -17,9 +17,11 @@ using RenderQueue = std::vector<
     std::tuple<Entity, TransformComponent&, MeshRendererComponent&>>;
 using Camera = std::tuple<TransformComponent&, CameraComponent&>;
 
-class ECSWorld {
+class ECS {
 public:
-  static ECSWorld& Main(); 
+  ECS();
+
+  static ECS& Main();
 
   /* ---------- entity creation ---------- */
   std::tuple<Entity, TransformComponent&> CreateEntity(
@@ -73,8 +75,6 @@ public:
   }
 
 private:
-  ECSWorld();
-
   Registry registry_;
   uint32_t id_counter_ = 0;
   RenderQueue render_queue_;

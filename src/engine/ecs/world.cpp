@@ -8,29 +8,29 @@
 #include "engine/renderer/model/model.h"
 
 /* ───────── singleton ───────── */
-ECSWorld& ECSWorld::Main() {
-  if (!entt::locator<ECSWorld>::has_value())
-    Logger::getInstance().Log(
-        LogLevel::Error, "Fatal: No main ECSWorld service was instantiated");
+ECS& ECS::Main() {
+  if (!entt::locator<ECS>::has_value())
+    Logger::getInstance().Log(LogLevel::Error,
+                              "Fatal: No main ECS service was instantiated");
 
-  return entt::locator<ECSWorld>::value();
+  return entt::locator<ECS>::value();
 }
 
 /* ───────── constructor ───────── */
-ECSWorld::ECSWorld() : registry_(), id_counter_(0), render_queue_() {
+ECS::ECS() : registry_(), id_counter_(0), render_queue_() {
   // Register mesh renderer events
   registry_.on_construct<MeshRendererComponent>()
-      .connect<&ECSWorld::InsertMeshRenderer>(this);
+      .connect<&ECS::InsertMeshRenderer>(this);
   registry_.on_destroy<MeshRendererComponent>()
-      .connect<&ECSWorld::PurgeMeshRenderer>(this);
+      .connect<&ECS::PurgeMeshRenderer>(this);
 }
 
-uint32_t ECSWorld::GetId() {
+uint32_t ECS::GetId() {
   return ++id_counter_;
 }
 
 /* ---------- render queue ---------- */
-void ECSWorld::InsertMeshRenderer(Entity target) {
+void ECS::InsertMeshRenderer(Entity target) {
   // gather
   std::vector<Entity> targets;
   View<MeshRendererComponent>().each(
@@ -57,7 +57,7 @@ void ECSWorld::InsertMeshRenderer(Entity target) {
                                Get<MeshRendererComponent>(e));
 }
 
-void ECSWorld::PurgeMeshRenderer(Entity target) {
+void ECS::PurgeMeshRenderer(Entity target) {
   std::vector<Entity> targets;
   View<MeshRendererComponent>().each([&](auto e, const auto&) {
     if (e != target)
@@ -84,7 +84,7 @@ void ECSWorld::PurgeMeshRenderer(Entity target) {
 }
 
 /* ---------- entity creation ---------- */
-std::tuple<Entity, TransformComponent&> ECSWorld::CreateEntity(
+std::tuple<Entity, TransformComponent&> ECS::CreateEntity(
     const std::string& name) {
   Entity entity = registry_.create();
   TransformComponent& transform = Add<TransformComponent>(entity);
@@ -96,7 +96,7 @@ std::tuple<Entity, TransformComponent&> ECSWorld::CreateEntity(
   return std::tuple<Entity, TransformComponent&>(entity, transform);
 }
 
-std::tuple<Entity, TransformComponent&> ECSWorld::CreateEntity(
+std::tuple<Entity, TransformComponent&> ECS::CreateEntity(
     const std::string& name, Entity parent) {
   if (!Has<TransformComponent>(parent)) {
     Logger::getInstance().Log(
@@ -111,7 +111,7 @@ std::tuple<Entity, TransformComponent&> ECSWorld::CreateEntity(
 }
 
 /* ---------- hierarchy ---------- */
-void ECSWorld::SetParent(Entity entity, Entity parent) {
+void ECS::SetParent(Entity entity, Entity parent) {
   if (!Has<TransformComponent>(entity)) {
     Logger::getInstance().Log(
         LogLevel::Warning, "[ECS]: Tried to modify parent of invalid entity");
@@ -134,7 +134,7 @@ void ECSWorld::SetParent(Entity entity, Entity parent) {
   transform.modified_ = true;
 }
 
-void ECSWorld::RemoveParent(Entity entity) {
+void ECS::RemoveParent(Entity entity) {
   TransformComponent& transform = Get<TransformComponent>(entity);
 
   // TODO: replace with Transform implementation
@@ -152,7 +152,7 @@ void ECSWorld::RemoveParent(Entity entity) {
     children.pop_back();
   }
 
-  // Example: 
+  // Example:
   /* if (!Transform::HasParent(transform))
     return;
 
@@ -170,7 +170,7 @@ void ECSWorld::RemoveParent(Entity entity) {
 }
 
 /* ---------- camera query ---------- */
-std::optional<Camera> ECSWorld::GetActiveCamera() {
+std::optional<Camera> ECS::GetActiveCamera() {
   auto group = registry_.group<TransformComponent>(entt::get<CameraComponent>);
   for (auto entity : group) {
     auto [transform, camera] =
@@ -182,12 +182,13 @@ std::optional<Camera> ECSWorld::GetActiveCamera() {
 }
 
 /* ---------- per-frame transform evaluation ---------- */
-void ECSWorld::UpdateTransforms() {
+void ECS::UpdateTransforms() {
   registry_.view<TransformComponent>().each([](auto& t) {
     if (!t.modified_)
       return;
     t.model_ = glm::translate(glm::mat4(1.0f), t.position_) *
-              glm::mat4_cast(t.rotation_) * glm::scale(glm::mat4(1.0f), t.scale_);
+               glm::mat4_cast(t.rotation_) *
+               glm::scale(glm::mat4(1.0f), t.scale_);
     t.normal_ = glm::transpose(glm::inverse(glm::mat3(t.model_)));
     t.modified_ = false;
   });

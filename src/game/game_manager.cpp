@@ -122,11 +122,11 @@ void GameManager::Render() {
   }
 }
 
-void GameManager::Shutdown() {
-  Logger::getInstance().Log(LogLevel::Info, "Game manager shutdown initiated");
+void GameManager::Destroy() {
+  Logger::getInstance().Log(LogLevel::Info, "Game manager destroy initiated");
 
   if (core_) {
-    Logger::getInstance().Log(LogLevel::Info, "Calling core_->Shutdown()");
-    core_->Shutdown();
+    Logger::getInstance().Log(LogLevel::Info, "Calling core_->Destroy()");
+    core_->Destroy();
   }
 }

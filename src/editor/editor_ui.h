@@ -19,7 +19,7 @@ public:
   void Initialize();
   void Run() override;
   void RequestUpdate() override;
-  void Shutdown() override;
+  void Destroy() override;
   void BeginImGuiFrame(SDL_Window* window);
 
   // selection API

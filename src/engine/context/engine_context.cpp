@@ -1,8 +1,10 @@
 #include "engine_context.h"
+#include "engine/audio/sound_manager.h"
+#include "engine/context/subsystem_list.h"
 #include "engine/core/logger.h"
+#include "engine/ecs/world.h"
 #include "engine/renderer/renderer_graphics.h"
 #include "engine/renderer/shaders/shader_manager.h"
-#include "engine/context/subsystem_list.h"
 #include "platform/input/input.h"
 #include "platform/window_manager.h"
 
@@ -36,11 +38,22 @@ bool Init() {
 
   input_device_instance_ = std::make_unique<::Input>();
 
+  // Initialize ECS singleton
+  entt::locator<ECS>::emplace();
+
+  // Initialize audio
+  // TODO: rename to AudioContext
+  if (!SoundManager::Instance().init()) {
+    Logger::getInstance().Log(LogLevel::Error,
+                              "Failed to initialize SoundManager");
+    return false;
+  }
+
   // TODO: for future subsystems only (hot-reload, live editing, etc)
   return dynamic_registry.InitAll();
 }
 
-bool Tick() {
+bool Running() {
   using clock = std::chrono::steady_clock;
   static auto previous = clock::now();
   auto now = clock::now();
@@ -51,12 +64,14 @@ bool Tick() {
   return !::WindowManager::WindowShouldClose();
 }
 
-void Shutdown() {
+void Destroy() {
   dynamic_registry.ShutdownAll();
 
   input_device_instance_.reset();
   shader_manager_instance_.reset();
   graphics_renderer_instance_.reset();
+
+  SoundManager::Instance().terminate();
 }
 
 // ------------------------------------------------------------------

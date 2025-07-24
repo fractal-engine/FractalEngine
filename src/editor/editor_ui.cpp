@@ -69,8 +69,8 @@ void EditorUI::Initialize() {
       ImVec2(WindowManager::GetDPIScale(), WindowManager::GetDPIScale());
 }
 
-// TODO: refactor loop, should be placed inside runtime.cpp
-// Renamed to NextFrame()
+// TODO: refactor loop, should be split into EditorUI::NewFrame() / EditorUI::Render()
+// Renamed to NextFrame()??
 void EditorUI::Run() {
   Logger::getInstance().Log(LogLevel::Info, "EditorUI main loop start");
 
@@ -173,7 +173,7 @@ void EditorUI::Run() {
 
 void EditorUI::RequestUpdate() {}
 
-void EditorUI::Shutdown() {
+void EditorUI::Destroy() {
   Logger::getInstance().Log(LogLevel::Info, "Shutting down EditorUI");
   ImGui_Implbgfx_Shutdown();
   ImGui_ImplSDL2_Shutdown();

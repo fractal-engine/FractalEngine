@@ -21,7 +21,7 @@ public:
 
   explicit EntityContainer(Entity handle) : handle_(handle) {
     if (Verify())
-      transform_ = &ECSWorld::Main().Get<TransformComponent>(handle_);
+      transform_ = &ECS::Main().Get<TransformComponent>(handle_);
   }
 
   EntityContainer(std::tuple<Entity, TransformComponent&> tup)
@@ -33,7 +33,7 @@ public:
 
   [[nodiscard]] Entity Handle() const { return handle_; }
   [[nodiscard]] bool Verify() const {
-    return ECSWorld::Main().Has<TransformComponent>(handle_);
+    return ECS::Main().Has<TransformComponent>(handle_);
   }
 
   [[nodiscard]] TransformComponent& Transform() {
@@ -52,11 +52,11 @@ public:
 
   template <typename T>
   bool Has() const {
-    return ECSWorld::Main().Has<T>(handle_);
+    return ECS::Main().Has<T>(handle_);
   }
   template <typename T>
   bool CanAdd() const {
-    return ECSWorld::Main().CanAdd<T>(handle_);
+    return ECS::Main().CanAdd<T>(handle_);
   }
 
   template <typename T, typename... Args>
@@ -65,7 +65,7 @@ public:
       return Fail<T>("add", "does not exist");
     if (!CanAdd<T>())
       return Fail<T>("add", "already owns it");
-    return ECSWorld::Main().Add<T>(handle_, std::forward<Args>(args)...);
+    return ECS::Main().Add<T>(handle_, std::forward<Args>(args)...);
   }
 
   template <typename T>
@@ -74,13 +74,13 @@ public:
       return Fail<T>("get", "does not exist");
     if (!Has<T>())
       return Fail<T>("get", "does not own it");
-    return ECSWorld::Main().Get<T>(handle_);
+    return ECS::Main().Get<T>(handle_);
   }
 
   template <typename T>
   void Remove() {
     if (Has<T>())
-      ECSWorld::Main().Remove<T>(handle_);
+      ECS::Main().Remove<T>(handle_);
   }
 
 private:

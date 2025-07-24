@@ -4,9 +4,9 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
+#include "engine/core/engine_globals.h"
 #include "engine/ecs/world.h"  // TODO: remove later
 #include "engine/renderer/model/mesh.h"
-#include "engine/core/engine_globals.h"
 
 SceneViewPipeline::SceneViewPipeline()
     : wireframe_(false), msaa_samples_(4), frame_initialized_(false) {
@@ -65,7 +65,7 @@ void SceneViewPipeline::Render(bgfx::ViewId view, const float* view_mtx,
   // TODO: Link skybox
 
   // TODO: remove this once all todos are implemented
-  auto& world = ECSWorld::Main();
+  auto& world = ECS::Main();
   world.UpdateTransforms();
   const auto& render_queue = world.GetRenderQueue();
 
