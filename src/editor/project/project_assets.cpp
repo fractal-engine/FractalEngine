@@ -30,44 +30,30 @@ AssetSID ProjectAssets::Load(const FileSystem::Path& path) {
   // LOAD OR CREATE METADATA
   FileSystem::Path meta_path = absolute_path.string() + ".meta";
 
-  // Metadata doesn't exist yet, create metadata header
   if (!FileSystem::Exists(meta_path)) {
-    asset->asset_key_.guid_ = AssetMeta::ParseGuid(meta_path);
+    asset->asset_key_.guid_ = XG::createGUID();
 
     // Create metadata file
     std::ofstream meta_file(meta_path);
-    if (!meta_file.is_open()) {
-      Logger::getInstance().Log(
-          LogLevel::Error,
-          "Failed to create metadata file for: " + path.string());
+    if (!meta_file.is_open())
       return 0;
-    }
 
     // Write metadata header
     meta_file << AssetMeta::CreateHeader(asset->asset_key_.guid_);
     meta_file.close();
   } else {
-    // Metadata exists already, fetch guid from metadata
     asset->asset_key_.guid_ = AssetMeta::ParseGuid(meta_path);
   }
 
   // Ensure guid was parsed or generated
-  if (asset->asset_key_.guid_.empty()) {
-    Logger::getInstance().Log(
-        LogLevel::Error,
-        "Failed to generate or parse GUID for: " + path.string());
+  if (!asset->asset_key_.guid_.isValid())
     return 0;
-  }
 
   // REGISTER ASSET
-  // Register asset instance
   assets_[asset->asset_key_.sid_] = asset;
-
-  // Register asset guid and session id link
   asset_sids_[asset->asset_key_.guid_] = asset->asset_key_.sid_;
 
   // ASSET LOAD EVENT
-  // Asset default load event
   asset->OnDefaultLoad(meta_path);
 
   return asset->asset_key_.sid_;
@@ -87,10 +73,6 @@ void ProjectAssets::Remove(AssetSID id) {
 
   // Unload asset and remove it
   asset->OnUnload();
-
-  // Remove from GUID map
-  asset_sids_.erase(asset->asset_key_.guid_);
-
   // Remove from assets map
   assets_.erase(it);
 
@@ -127,7 +109,7 @@ AssetRef ProjectAssets::Get(AssetSID id) const {
   return nullptr;
 }
 
-AssetSID ProjectAssets::ResolveGuid(const AssetGuid& guid) {
+AssetSID ProjectAssets::ResolveGuid(AssetGuid& guid) {
   auto it = asset_sids_.find(guid);
   if (it != asset_sids_.end())
     return it->second;
@@ -153,7 +135,7 @@ void ProjectAssets::UpdateLocation(AssetSID id, const FileSystem::Path& path) {
   // Move the meta file
   std::error_code ec;
   std::filesystem::rename(old_absolute_path.string() + ".meta",
-                          absolute_path.string() + ".meta", ec);
+                          absolute_path.string() + ".meta");
 
   if (ec) {
     Logger::getInstance().Log(LogLevel::Warning,

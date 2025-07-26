@@ -11,6 +11,9 @@
 #include "engine/renderer/model/model.h"
 #include "engine/renderer/renderer_graphics.h"
 #include "engine/resources/file_system_utils.h"
+#include "editor/pipelines/scene_view_forward_pass.h"
+
+// TODO: rename window to scene_view_window 
 
 namespace Panels {
 
@@ -89,6 +92,13 @@ inline void GameCanvas(bool isGameRunning, bool& hovered) {
 
             // Load meshes
             std::shared_ptr<Model> model = Model::Load(abs_path.string());
+
+            // debug
+            Logger::getInstance().Log(
+                LogLevel::Debug,
+                "[GameCanvas] Model loaded, mesh count: " +
+                    std::to_string(model ? model->NLoadedMeshes() : 0));
+
             if (!model) {
               Logger::getInstance().Log(
                   LogLevel::Error,
@@ -98,6 +108,10 @@ inline void GameCanvas(bool isGameRunning, bool& hovered) {
               auto& world = ECS::Main();
               auto [entity, tr] =
                   world.CreateEntity(abs_path.filename().string());
+
+              Logger::getInstance().Log(
+                  LogLevel::Debug,
+                  "[GameCanvas] Created entity: " + std::to_string((int)entity));
 
               // Attach a MeshRendererComponent for each mesh
               for (uint32_t i = 0; i < model->NLoadedMeshes(); ++i) {

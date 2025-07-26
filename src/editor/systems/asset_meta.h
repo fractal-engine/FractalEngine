@@ -12,9 +12,10 @@
 
 #include "engine/core/logger.h"
 #include "engine/resources/file_system_utils.h"
+#include "engine/resources/guid.h"
 
 // Global persistent asset identifier
-using AssetGuid = std::string;
+using AssetGuid = XG::GUID;
 
 // Session-only runtime identifier for assets
 using AssetSID = uint32_t;
@@ -31,7 +32,7 @@ namespace AssetMeta {
 AssetGuid ParseGuid(const std::filesystem::path& path);
 
 // Create a metadata file header with GUID
-std::string CreateHeader(const AssetGuid& guid);
+std::string CreateHeader(AssetGuid guid);
 
 // Remove header portion from metadata file content
 void RemoveHeader(std::string& source);

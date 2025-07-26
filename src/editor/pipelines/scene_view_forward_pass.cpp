@@ -3,6 +3,7 @@
 #include <bx/math.h>
 #include <glm/gtc/type_ptr.hpp>
 
+#include "editor/runtime/runtime.h"  // TODO: remove this once pipeline is done
 #include "engine/core/engine_globals.h"
 #include "engine/core/logger.h"
 #include "engine/ecs/entity_container.h"
@@ -145,7 +146,7 @@ bgfx::TextureHandle SceneViewForwardPass::Render(
   // TODO: wireframe mode should be exposed in future viewport window
   bgfx::setViewMode(view_id_, bgfx::ViewMode::Default);
 
-  // Render all meshes except selected ones
+  // Render each entity
   RenderMeshes(selected_entities);
 
   // Render selected entities with highlight effect

@@ -7,6 +7,7 @@
 #include "engine/core/logger.h"
 #include "engine/renderer/icons/icon_loader.h"
 #include "game/game_test.h"
+#include "engine/ecs/ecs_collection.h"
 
 // ------------------ single-instance state (internal linkage) -----------------
 namespace Runtime {
@@ -122,6 +123,9 @@ static void _NextFrame() {
 
   // TODO: Start EngineContext::_NextFrame(); ???
 
+  // Render next frame
+  g_scene_view_pipeline.Render();
+
   // Render editor
   g_project_manager.PollEvents();
   // TODO: start profiler for ui
@@ -168,6 +172,9 @@ int START_LOOP() {
   // Run the editor
   g_editor->Run();
   Logger::getInstance().Log(LogLevel::Info, "Editor initialized and running");
+
+  // TODO: remove once _NextFrame() is used
+  g_scene_view_pipeline.Render();
 
   // Main loop
   // TODO: uncomment once EditorUI::Run() is refactored

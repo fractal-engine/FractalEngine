@@ -6,6 +6,7 @@
 
 #include "editor/systems/editor_asset.h"
 #include "engine/resources/file_system_utils.h"
+#include "engine/resources/guid.h"
 
 using AssetRef = std::shared_ptr<EditorAsset>;
 
@@ -27,7 +28,7 @@ public:
   AssetRef Get(AssetSID id) const;
 
   // Return asset session id by its guid
-  AssetSID ResolveGuid(const AssetGuid& guid);
+  AssetSID ResolveGuid(AssetGuid& guid);
 
   // Update existing assets io location
   void UpdateLocation(AssetSID id, const FileSystem::Path& path);

@@ -568,8 +568,10 @@ bool AssetBrowserPanel::RenderNode(ImDrawList& draw_list, NodeRef node,
         ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID)) {
       // Set payload as file path
       std::string path_str = node->path_.string();
+
       ImGui::SetDragDropPayload("GLTF_FILE", path_str.c_str(),
                                 path_str.size() + 1);
+      Logger::getInstance().Log(LogLevel::Debug, "Drag payload = " + path_str);
 
       // Preview content while dragging
       ImGui::Text("Import %s", node->path_.filename().string().c_str());

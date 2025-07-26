@@ -4,79 +4,39 @@
 #include <sstream>
 #include "engine/core/logger.h"
 
-// Generate a simple GUID string (UUID v4 format)
-// Used by AssetMeta::ParseGuid
-// TODO: move this to engine/utilities/guid.h instead
-std::string GenerateGuid() {
-  static std::random_device rd;
-  static std::mt19937 gen(rd());
-  static std::uniform_int_distribution<> dis(0, 15);
-  static std::uniform_int_distribution<> dis2(8, 11);
-
-  std::stringstream ss;
-  ss << std::hex;
-
-  for (int i = 0; i < 8; i++) {
-    ss << dis(gen);
-  }
-  ss << "-";
-
-  for (int i = 0; i < 4; i++) {
-    ss << dis(gen);
-  }
-  ss << "-4";  // Version 4
-
-  for (int i = 0; i < 3; i++) {
-    ss << dis(gen);
-  }
-  ss << "-";
-
-  ss << dis2(gen);
-  for (int i = 0; i < 3; i++) {
-    ss << dis(gen);
-  }
-  ss << "-";
-
-  for (int i = 0; i < 12; i++) {
-    ss << dis(gen);
-  }
-
-  return ss.str();
-}
-
 namespace AssetMeta {
 
 AssetGuid ParseGuid(const std::filesystem::path& path) {
   try {
     // Ensure metadata file exists
     if (!std::filesystem::exists(path))
-      return GenerateGuid();
+      return AssetGuid();
 
     // Open metadata file
     std::ifstream file(path);
     if (!file.is_open()) {
-      return GenerateGuid();
+      return AssetGuid();
     }
 
     // Read first line of metadata file (containing GUID)
     std::string line;
     if (!std::getline(file, line))
-      return GenerateGuid();
+      return AssetGuid();
 
     // Extract GUID string
     const std::string guid_prefix = "guid: ";
     if (line.rfind(guid_prefix, 0) != 0)
-      return GenerateGuid();
+      return AssetGuid();
 
     std::string guid_str = line.substr(guid_prefix.length());
-    return guid_str;
+    return AssetGuid(guid_str);
   } catch (...) {
-    return GenerateGuid();
+    return AssetGuid();
   }
 }
 
-std::string CreateHeader(const AssetGuid& guid) {
-  return "guid: " + guid + "\n---\n";
+std::string CreateHeader(AssetGuid guid) {
+  return "guid: " + guid.str() + "\n---\n";
 }
 
 void RemoveHeader(std::string& source) {

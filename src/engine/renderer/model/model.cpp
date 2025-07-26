@@ -6,6 +6,7 @@
 std::shared_ptr<Model> Model::Load(const std::string& file) {
   auto out = std::make_shared<Model>();
   auto md = Formats::TranslateGLTF(file);
+
   if (md.empty()) {
     Logger::getInstance().Log(LogLevel::Error,
                               "[Model::Load] failed - no meshes");
@@ -15,6 +16,12 @@ std::shared_ptr<Model> Model::Load(const std::string& file) {
   out->meshes_.reserve(md.size());
   for (auto& mesh_data : md)
     out->meshes_.emplace_back(std::make_unique<Mesh>(mesh_data));
+
+  // debug
+  Logger::getInstance().Log(LogLevel::Debug,
+                            "[Model] Model loaded, mesh count: " +
+                                std::to_string(out->NLoadedMeshes()));
+
   return out;
 }
 
