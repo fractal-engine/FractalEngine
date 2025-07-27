@@ -10,14 +10,18 @@ if is_plat("windows") then
     set_runtimes("MT")
 end
 
+-- set path globally
+add_includedirs("thirdparty")
+
 -- set_xmakever("2.8.7")
 add_rules("mode.debug", "mode.release")
 set_policy("check.auto_ignore_flags", false)
 
 -- external dependencies
-add_requires("boost", "libsdl2", "libsdl2_ttf", "portaudio", "glm")
+add_requires("boost", "libsdl2", "libsdl2_ttf", "portaudio", "glm", "tinygltf", "efsw", "nlohmann_json", "entt")
 add_requires("imgui 1.91.8-docking", {configs={sdl2=true, sdl2_renderer=true, docking=true}})
 add_requires("bgfx", {configs = {tools = true}})
+add_requires("reflect-cpp", {configs = {json = true}})
 
 if is_mode("debug") then
     add_defines("BX_CONFIG_DEBUG=1")

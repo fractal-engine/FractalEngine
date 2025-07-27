@@ -7,18 +7,25 @@ target("engine")
     add_deps("platform")
     add_includedirs("..", {public = true})
 
-    add_files("core/*.cpp")
-    add_files("audio/*.cpp")
-    add_files("renderer/*.cpp", "renderer/lighting/*.cpp",
-              "renderer/shaders/*.cpp")
-    add_files("resources/*.cpp", "resources/textures/*.cpp", "scene/*.cpp")
-    add_files("runtime/*.cpp")
+    add_files("core/*.cpp", "audio/*.cpp", "misc/*.cpp", "scene/*.cpp", "context/*.cpp",
+        "formats/*.cpp", "ecs/*.cpp")
+    add_files("renderer/*.cpp", "renderer/lighting/*.cpp", "renderer/shaders/*.cpp",
+            "renderer/icons/*.cpp", "renderer/texture/*.cpp", "renderer/transformation/*.cpp",
+            "renderer/model/*.cpp")
+    add_files("resources/*.cpp", "resources/textures/*.cpp", "resources/3d/*.cpp")
+
+    add_headerfiles("core/*.h", "audio/*.h", "scene/*.h", "context/*.h", "formats/*.h",
+            "ecs/*.h")
+    add_headerfiles("renderer/*.h", "renderer/lighting/*.h", "renderer/shaders/*.h",
+            "renderer/icons/*.h", "renderer/texture/*.h", "renderer/transformation/*.h",
+            "renderer/model/*.h")
+    add_headerfiles("resources/*.h", "resources/textures/*.h", "resources/3d/*.h")
 
     add_rules("shaderc.build")
     add_files("$(projectdir)/src/assets/shaders/**.sc")
     remove_files("$(projectdir)/src/assets/shaders/varying*.sc")
 
-    add_packages("boost", "libsdl2", "bgfx", "glm", "imgui", "libsdl2_ttf", "portaudio")
+    add_packages("boost", "libsdl2", "bgfx", "glm", "imgui", "libsdl2_ttf", "portaudio", "tinygltf", "nlohmann_json", "entt")
 
     if is_mode("debug") then
     add_links("bimg_decodeDebug", "bimg_encodeDebug")
@@ -84,6 +91,7 @@ rule("shaderc.build")
             terrain = "varying_terrain_pbr.def.sc",
             shadow  = "varying_shadow.def.sc",
             water   = "varying_water.def.sc",
+            gltf    = "varying_gltf.def.sc",
         }
 
         -- pick first key matching anywhere in relative path
@@ -136,13 +144,13 @@ rule("shaderc.build")
                 "--type", stype,
                 "--profile", backend.profile,
                 "--varyingdef", varying,
-                "-i", path.join(os.projectdir(), "thirdparty/bgfx_helpers/common"),
-                "-i", path.join(os.projectdir(), "thirdparty/bgfx_helpers/src"),
+                "-i", path.join(os.projectdir(), "thirdparty/bgfx_utils/common"),
+                "-i", path.join(os.projectdir(), "thirdparty/bgfx_utils/src"),
                 "-f", shaderfile,
                 "-o", outfile,
             }
             -- Print shader file progress
-            batchcmds:show_progress(opt.progress, "${color.build.object}shaderc %s [%s]", fname, backend.folder)
+            batchcmds:show_progress(opt.progress, "[shaderc] %-15s → %-20s | varying: %s", fname, backend.folder, path.basename(varying))
             batchcmds:vrunv(exe, args)
             batchcmds:set_depmtime(os.mtime(outfile))
         end

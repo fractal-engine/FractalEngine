@@ -3,7 +3,7 @@
 
 #include <bgfx/bgfx.h>
 #include <vector>
-#include "editor/panels/orbit_camera.h"
+#include "editor/gui/orbit_camera.h"
 #include "editor/systems/camera_system.h"
 #include "game_base.h"
 
@@ -29,7 +29,7 @@ public:
   void Init() override;
   void Update() override;
   void Render() override;
-  void Shutdown() override;
+  void Destroy() override;
 
   // ──────────────────────────────────────────────────────
   //  Terrain Size
@@ -42,8 +42,8 @@ public:
   OrbitCamera camera;
   CameraSystem cameraSystem;
 
-  int canvasViewportW = 1600;
-  int canvasViewportH = 900;
+  int canvasViewportW = 1600;  // TODO: remove this, should use engine_globals.h
+  int canvasViewportH = 900;   // TODO: remove this, should use engine_globals.h
 
 private:
   // ───── Terrain

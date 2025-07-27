@@ -3,18 +3,25 @@
 #include <bgfx/bgfx.h>
 #include <bx/math.h>
 #include <string.h>
+#include <glm/glm.hpp>
+#include <glm/gtc/type_ptr.hpp>
 #include <vector>
 
-#include "game_test.h"
-
 #include <SDL.h>
-#include "editor/runtime/application.h"
+#include "editor/runtime/runtime.h"
 #include "engine/core/logger.h"
 #include "engine/core/view_ids.h"
+#include "engine/ecs/world.h"
 #include "engine/renderer/lighting/sky_lighting.h"
 #include "engine/renderer/renderer_graphics.h"
 #include "engine/resources/shader_utils.h"
 #include "engine/resources/textures/texture_utils.h"
+
+/*******************************************************************************
+ * TODO:
+ * - Move bgfx uniforms to scene_view_forward_pass.cpp
+ * - Move load terrain textures to runtime.cpp (?)
+ ******************************************************************************/
 
 // Helper to make logging BGFX handles easier
 std::string handle_to_string(bgfx::ProgramHandle h) {
@@ -173,7 +180,7 @@ void GameTest::createSkyboxBuffers() {
 //  Init()
 // ──────────────────────────────────────────────────────
 void GameTest::Init() {
-  Logger::getInstance().Log(LogLevel::Debug, "[GameTest] Init() called.");
+  Logger::getInstance().Log(LogLevel::Debug, "GameTest: Init() called.");
 
   // Initialize vertex layouts
   PosTexCoord0Vertex::init();
@@ -206,32 +213,32 @@ void GameTest::Init() {
       !bgfx::isValid(grassNormal)) {
     Logger::getInstance().Log(
         LogLevel::Warning,
-        "[GameTest::Init] One or more grass textures failed to load.");
+        "GameTest::Init: One or more grass textures failed to load.");
   }
 
   // Load shader programs
-  auto& ShaderManager = *Application::GetShaderManager();
+  auto& ShaderManager = *Runtime::Shader();
 
   _terrainProgramHeight = ShaderManager.LoadProgram(
       "terrain_pbr", "vs_terrain.bin", "fs_terrain.bin");
   Logger::getInstance().Log(
       LogLevel::Debug,
-      std::string("[DEBUG] _terrainPBR valid = ") +
+      std::string("_terrainPBR valid = ") +
           (bgfx::isValid(_terrainProgramHeight) ? "true" : "false"));
   _skyProgram = ShaderManager.LoadProgram("skybox_proc", "vs_skybox.bin",
                                           "fs_skybox.bin");
   Logger::getInstance().Log(
-      LogLevel::Debug, std::string("[DEBUG] _Skybox valid = ") +
+      LogLevel::Debug, std::string("_Skybox valid = ") +
                            (bgfx::isValid(_skyProgram) ? "true" : "false"));
   _terrainShadowProgram = ShaderManager.LoadProgram(
       "terrain_shadow", "vs_shadow.bin", "fs_shadow.bin");
   Logger::getInstance().Log(
       LogLevel::Debug,
-      std::string("[DEBUG] _terrainShadowProgram valid = ") +
+      std::string("_terrainShadowProgram valid = ") +
           (bgfx::isValid(_terrainShadowProgram) ? "true" : "false"));
   Logger::getInstance().Log(
       LogLevel::Info,
-      "[GameTest::Init] Loading water shaders: vs_water.bin, fs_water.bin");
+      "GameTest::Init: Loading water shaders: vs_water.bin, fs_water.bin");
   _waterProgram =
       ShaderManager.LoadProgram("water", "vs_water.bin", "fs_water.bin");
 
@@ -295,14 +302,15 @@ void GameTest::Init() {
 
   if (bgfx::isValid(_waterProgram)) {
     Logger::getInstance().Log(LogLevel::Info,
-                              "[GameTest::Init] Water program (_waterProgram) "
+                              "Water program (_waterProgram) "
                               "loaded successfully. Handle: " +
                                   std::to_string(_waterProgram.idx));
   } else {
     Logger::getInstance().Log(LogLevel::Error,
-                              "[GameTest::Init] FAILED to load water program "
+                              "FAILED to load water program "
                               "(_waterProgram). Handle is invalid.");
   }
+
   // Generate initial heightmap data
   const uint16_t hm_sz = TerrainSize;
   std::vector<float> rawHeights(hm_sz * hm_sz);
@@ -532,7 +540,7 @@ void GameTest::Render() {
   if (!bgfx::isValid(_skyProgram) || !bgfx::isValid(_terrainProgramHeight) ||
       !bgfx::isValid(_waterProgram) || !bgfx::isValid(_terrainShadowProgram)) {
     Logger::getInstance().Log(LogLevel::Error,
-                              "[GameTest::Render] One or more game programs "
+                              "GameTest::Render: One or more game programs "
                               "invalid. Aborting Render.");
     return;
   }
@@ -662,7 +670,7 @@ void GameTest::Render() {
   // Allow access to the renderer subsystem
   // Get the GraphicsRenderer instance
   GraphicsRenderer* graphicsRendererPtr = nullptr;  // Initialize to nullptr
-  auto* baseRendererPtr = Application::GetRenderer();
+  auto* baseRendererPtr = Runtime::Renderer();
 
   if (baseRendererPtr) {
     graphicsRendererPtr = dynamic_cast<GraphicsRenderer*>(baseRendererPtr);
@@ -670,7 +678,7 @@ void GameTest::Render() {
 
   if (!graphicsRendererPtr) {
     Logger::getInstance().Log(LogLevel::Error,
-                              "[GameTest::Render] Failed to get "
+                              "GameTest::Render: Failed to get "
                               "GraphicsRenderer instance. Aborting Render.");
     return;
   }
@@ -815,6 +823,26 @@ void GameTest::Render() {
   bgfx::setState(BGFX_STATE_DEFAULT | BGFX_STATE_CULL_CW | BGFX_STATE_MSAA);
   bgfx::submit(terrainViewID, _terrainProgramHeight);
 
+  // TODO: this should be removed later
+  auto& world = ECS::Main();
+  world.UpdateTransforms();  // update matrices
+  const auto& rq = world.GetRenderQueue();
+
+  bgfx::setViewTransform(ViewID::SCENE_MESH, viewMatrix, projMatrix);
+
+  for (auto& [entity, tr, mr] : rq) {
+    if (!mr.enabled_ || !mr.mesh_)
+      continue;
+
+    bgfx::setTransform(&tr.model_[0][0]);
+    mr.mesh_->Bind();
+
+    bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_Z |
+                   BGFX_STATE_DEPTH_TEST_LESS | BGFX_STATE_CULL_CW);
+
+    bgfx::submit(ViewID::SCENE_MESH, _terrainProgramHeight);
+  }
+
   // --- Water Pass ---
 
   bgfx::setViewClear(ViewID::WATER_PASS, BGFX_CLEAR_NONE, 0, 1.0f, 0);
@@ -850,8 +878,8 @@ void GameTest::Render() {
 }
 
 // Releases all BGFX resources
-void GameTest::Shutdown() {
-  Logger::getInstance().Log(LogLevel::Debug, "[GameTest] Shutdown() called.");
+void GameTest::Destroy() {
+  Logger::getInstance().Log(LogLevel::Debug, "GameTest: Destroy() called.");
 
   // Lambda helper to destroy a BGFX handle if valid
   auto destroyHandle = [](auto& handle) {
@@ -922,5 +950,5 @@ void GameTest::Shutdown() {
   destroyHandle(_waterTex);
   destroyHandle(_waterNormalTex);
 
-  Logger::getInstance().Log(LogLevel::Debug, "[GameTest] Shutdown() completed");
+  Logger::getInstance().Log(LogLevel::Debug, "GameTest: Destroy() completed");
 }

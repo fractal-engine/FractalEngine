@@ -1,4 +1,8 @@
-#include "game/game_object.h"
+#include "game_object.h"
+
+#include <bgfx/bgfx.h>
+#include <glm/gtc/type_ptr.hpp> 
+#include "engine/core/view_ids.h"
 
 /*********************************************************************************
  * @brief Implementation of GameObject class
@@ -12,7 +16,7 @@
  * Development:
  *   - Tied to GameObject.h, which contains the class definition.
  *   - New methods or attributes should be implemented here, follow
- *GameObject.h.
+ *     GameObject.h.
  **********************************************************************************/
 
 // Constructor definition

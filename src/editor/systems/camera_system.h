@@ -2,7 +2,7 @@
 #define CAMERA_SYSTEM_H
 
 #include <SDL.h>
-#include "editor/panels/orbit_camera.h"
+#include "editor/gui/orbit_camera.h"
 
 class CameraSystem {
 public:

@@ -12,7 +12,7 @@ target("platform")
         add_files("*.mm")
     end
 
-    add_packages("libsdl2", "bgfx", "imgui", "boost")
+    add_packages("libsdl2", "bgfx", "imgui", "boost", "nlohmann_json", "efsw", "reflect-cpp", "entt", "glm")
 
     add_includedirs("..")  
 

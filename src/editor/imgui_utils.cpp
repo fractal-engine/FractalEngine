@@ -1,6 +1,6 @@
 #include "imgui_utils.h"
 
-#include "editor/runtime/application.h"
+#include "editor/runtime/runtime.h"
 #include "engine/core/logger.h"
 #include "engine/core/view_ids.h"
 #include "platform/window_manager.h"
@@ -12,8 +12,8 @@
 extern "C" void ImGui_Implbgfx_SetCustomShader(bgfx::ProgramHandle handle);
 
 void ApplyImGuiShaders() {
-  auto handle = Application::GetShaderManager()->LoadProgram(
-      "imgui", "vs_imgui.bin", "fs_imgui.bin");
+  auto handle =
+      Runtime::Shader()->LoadProgram("imgui", "vs_imgui.bin", "fs_imgui.bin");
 
   if (!bgfx::isValid(handle)) {
     Logger::getInstance().Log(

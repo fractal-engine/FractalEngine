@@ -19,7 +19,7 @@ public:
 
   void virtual Run() = 0;
   void virtual RequestUpdate() = 0;
-  virtual void Shutdown() = 0;
+  virtual void Destroy() = 0;
 };
 
 #endif  // EDITOR_BASE_H

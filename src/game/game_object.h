@@ -1,6 +1,8 @@
 #ifndef GAMEOBJECT_H
 #define GAMEOBJECT_H
 
+#include <bgfx/bgfx.h>  // For bgfx handles
+#include <glm/glm.hpp>  // For transform matrix
 #include <string>
 
 /*********************************************************************************
@@ -11,15 +13,6 @@
  * This class serves as a minimal base for all in-game objects. It holds:
  *   - A unique ID (integer)
  *   - A name (string)
- *
- * Future Ideas:
- *   - Position/Rotation: Provide methods to track object transform.
- *   - Collision support: Enable collision detection and response.
- *   - Inheritance/Components: Extend via derived classes.
- *
- * Development:
- *   - Tied to GameObject.cpp, which contains the class implementation.
- *   - New methods or attributes should be declared here.
  **********************************************************************************/
 
 class GameObject {
@@ -33,8 +26,6 @@ public:
   // Accessors
   int GetId() const;
   std::string GetName() const;
-
-  // More attributes and methods here as needed
 
 private:
   int id_;
