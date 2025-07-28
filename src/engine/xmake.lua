@@ -8,14 +8,18 @@ target("engine")
     add_includedirs("..", {public = true})
 
     add_files("core/*.cpp", "audio/*.cpp", "misc/*.cpp", "scene/*.cpp", "context/*.cpp",
-        "formats/*.cpp", "ecs/*.cpp")
+        "formats/*.cpp", "ecs/*.cpp", "memory/*.cpp")
+
+    -- renderer files
     add_files("renderer/*.cpp", "renderer/lighting/*.cpp", "renderer/shaders/*.cpp",
             "renderer/icons/*.cpp", "renderer/texture/*.cpp", "renderer/transformation/*.cpp",
             "renderer/model/*.cpp")
+
+    -- resources files
     add_files("resources/*.cpp", "resources/textures/*.cpp", "resources/3d/*.cpp")
 
     add_headerfiles("core/*.h", "audio/*.h", "scene/*.h", "context/*.h", "formats/*.h",
-            "ecs/*.h")
+            "ecs/*.h", "memory/*.h")
     add_headerfiles("renderer/*.h", "renderer/lighting/*.h", "renderer/shaders/*.h",
             "renderer/icons/*.h", "renderer/texture/*.h", "renderer/transformation/*.h",
             "renderer/model/*.h")
@@ -167,4 +171,3 @@ rule("shaderc.build")
 
         batchcmds:add_depfiles(shaderfile, varying)
     end)
-

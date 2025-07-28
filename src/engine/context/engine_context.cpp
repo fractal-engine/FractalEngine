@@ -16,6 +16,7 @@ namespace EngineContext {
 static std::unique_ptr<::GraphicsRenderer> graphics_renderer_instance_;
 static std::unique_ptr<::ShaderManager> shader_manager_instance_;
 static std::unique_ptr<::Input> input_device_instance_;
+static std::unique_ptr<ResourceManager> resource_manager_;
 
 // ------------------------------------------------------------------
 //  Hot-reload registry (not used yet)
@@ -37,6 +38,8 @@ bool Init() {
   shader_manager_instance_->Init();
 
   input_device_instance_ = std::make_unique<::Input>();
+
+  resource_manager_ = std::make_unique<ResourceManager>();
 
   // Initialize ECS singleton
   entt::locator<ECS>::emplace();
@@ -60,6 +63,10 @@ bool Running() {
   double dt = std::chrono::duration<double>(now - previous).count();
   previous = now;
 
+  if (resource_manager_) {
+    resource_manager_->UpdateContext();
+  }
+
   dynamic_registry.TickAll(dt);
   return !::WindowManager::WindowShouldClose();
 }
@@ -67,6 +74,7 @@ bool Running() {
 void Destroy() {
   dynamic_registry.ShutdownAll();
 
+  resource_manager_.reset();
   input_device_instance_.reset();
   shader_manager_instance_.reset();
   graphics_renderer_instance_.reset();
@@ -89,6 +97,11 @@ void Destroy() {
 }
 ::ShaderManager& Shader() {
   return *shader_manager_instance_;
+}
+
+ResourceManager& resourceManager() {
+  assert(resource_manager_);
+  return *resource_manager_;
 }
 
 }  // namespace EngineContext

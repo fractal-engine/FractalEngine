@@ -6,6 +6,7 @@
 #include "engine/renderer/shaders/shader_manager.h"
 #include "platform/input/input.h"
 #include "platform/window_manager.h"
+#include "engine/memory/resource_manager.h"
 
 class RendererBase;
 class Input;
@@ -23,6 +24,7 @@ void Destroy();
 ::RendererBase& Renderer();
 ::Input& Input();
 ::ShaderManager& Shader();
+ResourceManager& resourceManager();
 
 }  // namespace EngineContext
 #endif  // ENGINE_CONTEXT_H
