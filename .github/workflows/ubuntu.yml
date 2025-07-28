@@ -21,11 +21,22 @@ jobs:
 
       - name: Configure & Build
         run: |
-          xmake f -p linux --toolchain=clang -y -v
-          xmake
+          xmake f -p linux --toolchain=clang -y -v --diagnosis
+          xmake build engine
+          xmake build sample_game
+          xmake build platform
+          xmake build tests
+          xmake build fractal
 
-      - name: Package executable
+      - name: Check shader binaries
         run: |
-          target=$(grep 'target' xmake.lua | cut -d'"' -f2)
-          mkdir -p artifacts
-          cp "build/linux/x86_64/release/${target}" artifacts/
+          builddir="build/linux/x86_64/release"
+          for folder in glsl spirv; do
+            shaderdir="$builddir/assets/shaders/$folder"
+            echo "Checking shader binaries in $shaderdir"
+            count=$(find "$shaderdir" -name '*.bin' | wc -l)
+            if [ "$count" -eq 0 ]; then
+              echo "::error ::No shader binaries found in $shaderdir"
+              exit 1
+            fi
+          done

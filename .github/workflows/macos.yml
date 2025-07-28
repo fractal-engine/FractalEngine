@@ -19,16 +19,23 @@ jobs:
           fetch-depth: 0
           submodules: true
 
-      - name: Setup Xmake
-        uses: xmake-io/github-action-setup-xmake@v1
-
       - name: Configure & Build
         run: |
-          xmake f -p macosx --toolchain=clang -a ${{ matrix.arch }} -y -v
-          xmake
+          xmake f -p macosx --toolchain=clang -a ${{ matrix.arch }} -y -v --diagnosis
+          xmake build engine
+          xmake build fractal
+          xmake build sample_game
+          xmake build tests
+          xmake build platform
 
-      - name: Package executable
+      - name: Check shader binaries
+        shell: bash
         run: |
-          target=$(grep 'target' xmake.lua | cut -d'"' -f2)
-          mkdir -p artifacts
-          cp "build/macosx/${{ matrix.arch }}/release/${target}" artifacts/
+          builddir="build/macosx/${{ matrix.arch }}/release"
+          shaderdir="$builddir/assets/shaders/metal"
+          echo "Checking shader binaries in $shaderdir"
+          count=$(find "$shaderdir" -name '*.bin' | wc -l)
+          if [ "$count" -eq 0 ]; then
+            echo "::error ::No shader binaries found in $shaderdir"
+            exit 1
+          fi

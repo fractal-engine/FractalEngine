@@ -12,6 +12,7 @@ jobs:
     strategy:
       matrix:
         arch: [x64, x86]
+        toolchain: [clang, msvc]
 
     steps:
       - uses: actions/checkout@v4
@@ -25,12 +26,23 @@ jobs:
       - name: Configure & Build
         shell: bash
         run: |
-          xmake f -p windows --toolchain=clang -a ${{ matrix.arch }} -y -v
-          xmake
+          xmake f -p windows --toolchain=${{ matrix.toolchain }} -a ${{ matrix.arch }} -y -v --diagnosis
+          xmake build engine
+          xmake build sample_game
+          xmake build tests
+          xmake build platform
+          xmake build fractal
 
-      - name: Package executable
+      - name: Check shader binaries
         shell: bash
         run: |
-          target=$(grep 'target' xmake.lua | cut -d'"' -f2)
-          mkdir -p artifacts
-          cp "build/windows/${{ matrix.arch }}/release/${target}.exe" artifacts/
+          builddir="build/windows/${{ matrix.arch }}/release"
+          for folder in dx11 dx12; do
+            shaderdir="$builddir/assets/shaders/$folder"
+            echo "Checking shader binaries in $shaderdir"
+            count=$(find "$shaderdir" -name '*.bin' | wc -l)
+            if [ "$count" -eq 0 ]; then
+              echo "::error ::No shader binaries found in $shaderdir"
+              exit 1
+            fi
+          done
