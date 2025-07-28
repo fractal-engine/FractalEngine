@@ -2,6 +2,11 @@
 #include "engine/core/logger.h"
 
 #include <stb/stb_image.h>
+#include <unordered_map>
+#include <array>
+#include <algorithm>
+
+// TODO: texture2d should be using EngineContext
 
 using namespace Gfx;
 

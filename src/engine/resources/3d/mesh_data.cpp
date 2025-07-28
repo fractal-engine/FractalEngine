@@ -1,5 +1,9 @@
 #include "engine/resources/3d/mesh_data.h"
 
+#include <unordered_map>
+#include <vector>
+#include <string>
+
 #include "engine/core/logger.h"
 #include "engine/formats/gltf_translator.h"
 
