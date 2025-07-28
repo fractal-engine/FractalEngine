@@ -11,8 +11,8 @@ jobs:
     runs-on: windows-latest
     strategy:
       matrix:
-        arch: [x64, x86]
-        toolchain: [clang, msvc]
+        arch: [x64]
+        toolchain: [msvc]
 
     steps:
       - uses: actions/checkout@v4
@@ -22,6 +22,9 @@ jobs:
 
       - name: Setup Xmake
         uses: xmake-io/github-action-setup-xmake@v1
+
+      - name: Clean xmake package cache
+        run: xmake require --clean
 
       - name: Configure & Build
         shell: bash

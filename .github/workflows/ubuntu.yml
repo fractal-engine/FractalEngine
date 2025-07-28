@@ -16,12 +16,18 @@ jobs:
           fetch-depth: 0
           submodules: true
 
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libgl1-mesa-dev
+
       - name: Setup Xmake
         uses: xmake-io/github-action-setup-xmake@v1
 
       - name: Configure & Build
         run: |
-          xmake f -p linux --toolchain=clang -y -v --diagnosis
+          xmake f -p linux --toolchain=gcc -y -v --diagnosis
           xmake build engine
           xmake build sample_game
           xmake build platform

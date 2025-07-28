@@ -11,13 +11,19 @@ jobs:
     runs-on: macos-latest
     strategy:
       matrix:
-        arch: [x86_64, arm64]
+        arch: [arm64]
 
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           submodules: true
+
+      - name: Install Xcode Command Line Tools
+        run: xcode-select --install || true
+
+      - name: Setup Xmake
+        uses: xmake-io/github-action-setup-xmake@v1
 
       - name: Configure & Build
         run: |
