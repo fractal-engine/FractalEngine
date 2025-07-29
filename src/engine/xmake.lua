@@ -48,25 +48,35 @@ rule("shaderc.build")
     set_extensions(".sc", ".vert", ".frag", ".comp")
 
     before_buildcmd_file(function (target, batchcmds, shaderfile, opt)
-        -- shaderc exe ------------------------------------------------------------
-        local exe = target:data("shaderc_exe")
+    -- shaderc exe ------------------------------------------------------------
+    local exe = target:data("shaderc_exe")
+    if not exe then
+        import("lib.detect.find_program")
+
+        print("Searching for shaderc in system PATH...")
+        exe =  find_program("shaderc")
+            or find_program("shadercRelease")
+            or find_program("shadercDebug")
+
         if not exe then
-            import("lib.detect.find_program")
-            exe =  find_program("shaderc")
-                or find_program("shadercRelease")
-                or find_program("shadercDebug")
-            if not exe then                 -- search inside bgfx package
-                local bgfx = target:pkg("bgfx")
-                if bgfx then
-                    local bin = bgfx:installdir("bin")
-                    exe =  find_program("shaderc",        {paths = bin})
-                        or find_program("shadercRelease", {paths = bin})
-                        or find_program("shadercDebug",   {paths = bin})
-                end
+            print("Shaderc not found in PATH. Now searching inside the bgfx package...")
+            local bgfx = target:pkg("bgfx")
+            if bgfx then
+                local bin = bgfx:installdir("bin")
+                print("Checking in BGFX bin directory:", bin)
+
+                exe =  find_program("shaderc",        {paths = bin})
+                    or find_program("shadercRelease", {paths = bin})
+                    or find_program("shadercDebug",   {paths = bin})
+            else
+                print("BGFX package not available on target.")
             end
-            assert(exe, "shaderc executable not found; rebuild bgfx with tools=true")
-            target:data_set("shaderc_exe", exe)
         end
+
+        assert(exe, "shaderc executable not found; rebuild bgfx with tools=true")
+        target:data_set("shaderc_exe", exe)
+    end
+
 
         -- skip non-shader files ---------------------------------------------------
         local fname = path.filename(shaderfile)           
