@@ -9,6 +9,7 @@
 #include "engine/ecs/entity_container.h"
 #include "engine/renderer/graphics_renderer.h"
 #include "engine/renderer/model/mesh.h"
+#include "engine/gizmos/component_gizmos.h"
 
 SceneViewForwardPass::SceneViewForwardPass()
     : framebuffer_(BGFX_INVALID_HANDLE),
@@ -113,7 +114,8 @@ void SceneViewForwardPass::Destroy() {
 bgfx::TextureHandle SceneViewForwardPass::Render(
     const glm::mat4& view, const glm::mat4& projection,
     const glm::mat4& view_projection, const Camera& camera,
-    const std::vector<EntityContainer*>& selected_entities) {
+    const std::vector<EntityContainer*>& selected_entities,
+    Entity selectedEntity) {
 
   if (!bgfx::isValid(framebuffer_)) {
     Logger::getInstance().Log(
@@ -155,6 +157,11 @@ bgfx::TextureHandle SceneViewForwardPass::Render(
       RenderSelectedEntity(entity, view_projection, camera);
     }
   }
+
+  // --- New for Gizmo ---
+  // After all meshes are drawn, draw the gizmo on top
+  ComponentGizmos::DrawTransformGizmo(selectedEntity, glm::value_ptr(view),
+                                      glm::value_ptr(projection));
 
   // Return the color texture for display
   return color_texture_;

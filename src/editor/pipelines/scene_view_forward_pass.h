@@ -23,7 +23,9 @@ public:
   bgfx::TextureHandle Render(
       const glm::mat4& view, const glm::mat4& projection,
       const glm::mat4& view_projection, const Camera& camera,
-      const std::vector<EntityContainer*>& selected_entities);
+      const std::vector<EntityContainer*>& selected_entities,
+      Entity selectedEntity);
+
 
   // Settings TODO: values should be defined in implementation file
   bool wireframe_;
