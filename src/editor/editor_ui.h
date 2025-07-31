@@ -8,6 +8,9 @@
 #include "imgui.h"
 #include "imgui_internal.h"
 #include "platform/input/key_map_sdl.h"
+#include "engine/gizmos/component_gizmos.h" 
+#include <entt/entt.hpp> // Provides entt::entity
+#include "editor/gui/orbit_camera.h" 
 
 class EditorUI : public EditorBase {
 public:
@@ -23,9 +26,11 @@ public:
   void BeginImGuiFrame(SDL_Window* window);
 
   // selection API
-  void SetSelectedEntity(int id);
-  int GetSelectedEntity() const;
-  int GetLastSelectedEntity() const;
+  void SetSelectedEntity(Entity entity);
+  Entity GetSelectedEntity() const;
+  Entity GetLastSelectedEntity() const;
+
+  OrbitCamera& GetCamera() { return camera_; }
 
 private:
   void HandleInput(Key key);
@@ -40,9 +45,11 @@ private:
   bool built_layout_ = false;  // guard for BuildDefaultLayout()
 
   // back-store for selection
-  int selected_entity_ = -1;
-  int last_selected_entity_ = -1;
+  // entt::null is the type-safe way to say "nothing is selected"
+  Entity selected_entity_ = entt::null;
+  Entity last_selected_entity_ = entt::null;
 
+  // ImGui docking and window flags
   ImGuiDockNodeFlags dock_flags_;
   ImGuiWindowFlags host_flags_;
   ImGuiID dock_id_;
@@ -59,6 +66,9 @@ private:
 
   // Map component names to icons
   std::unordered_map<std::string, std::string> tab_icons_;
+
+  // Orbit camera for scene view
+  OrbitCamera camera_;
 };
 
 #endif  // EDITOR_UI_H

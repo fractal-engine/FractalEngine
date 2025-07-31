@@ -3,7 +3,9 @@
 #include <bgfx/bgfx.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
-
+#include "engine/gizmos/component_gizmos.h" 
+#include "editor/editor_ui.h"
+#include "engine/ecs/world.h"
 #include "editor/runtime/runtime.h"  // TODO: Remove this once pipeline is done
 #include "engine/core/engine_globals.h"
 #include "engine/core/logger.h"
@@ -120,43 +122,47 @@ void SceneViewPipeline::RealRender() {
 void SceneViewPipeline::Render() {
   Logger::getInstance().Log(LogLevel::Debug,
                             "[Render] SceneViewPipeline::Render called");
+  auto& world = ECS::Main();
 
-  // Basic setup
-  glm::mat4 view =
-      glm::lookAt(glm::vec3(0, 2, 5), glm::vec3(0, 0, 0), glm::vec3(0, 1, 0));
-  glm::mat4 proj = glm::perspective(
-      glm::radians(60.0f), float(canvasViewportW) / float(canvasViewportH),
-      0.1f, 100.0f);
+  // 1. Get the LIVE editor OrbitCamera from the EditorUI singleton.
+  // This is the camera controlled by the user in the editor.
+  OrbitCamera& camera = EditorUI::Get()->GetCamera();
 
-  bgfx::setViewTransform(ViewID::SCENE_MESH, glm::value_ptr(view),
-                         glm::value_ptr(proj));
+  // 2. Calculate the LIVE view and projection matrices FROM THE ORBIT CAMERA.
+  // Note: OrbitCamera uses float arrays, not glm::mat4, so we adapt.
+  float viewMatrix[16];
+  float projMatrix[16];
+  camera.getViewMatrix(viewMatrix);
+  camera.getProjectionMatrix(projMatrix,
+                             float(canvasViewportW) / float(canvasViewportH));
+
+  // 3. Set up the BGFX view using the matrices from the OrbitCamera.
+  bgfx::setViewTransform(ViewID::SCENE_MESH, viewMatrix, projMatrix);
   bgfx::setViewRect(ViewID::SCENE_MESH, 0, 0, canvasViewportW, canvasViewportH);
   bgfx::setViewClear(ViewID::SCENE_MESH, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH,
                      0x303030ff, 1.0f, 0);
 
-  // Iterate ECS render queue and submit meshes
-  auto& world = ECS::Main();
+  // 4. Update transforms and get the render queue.
   world.UpdateTransforms();
   const auto& render_queue = world.GetRenderQueue();
-  Logger::getInstance().Log(
-      LogLevel::Debug,
-      "[Render] Render queue size: " + std::to_string(render_queue.size()));
 
+  // 5. Render all the meshes in the scene.
   for (const auto& [entity, transform, renderer] : render_queue) {
-    Logger::getInstance().Log(
-        LogLevel::Debug,
-        "[Render] Entity: " + std::to_string((int)entity) +
-            " enabled: " + std::to_string(renderer.enabled_) + " mesh: " +
-            std::to_string(reinterpret_cast<uintptr_t>(renderer.mesh_)));
     if (!renderer.enabled_ || !renderer.mesh_)
       continue;
 
     bgfx::setTransform(glm::value_ptr(transform.model_));
     renderer.mesh_->Bind();
     bgfx::setState(BGFX_STATE_DEFAULT | BGFX_STATE_CULL_CW);
-    // Use your default shader (replace with your actual handle)
     bgfx::submit(ViewID::SCENE_MESH,
                  Runtime::Shader()->LoadProgram("gltf_default", "vs_gltf.bin",
                                                 "fs_gltf.bin"));
   }
+
+  // 6. Get the selected entity from the UI singleton.
+  Entity selectedEntity = EditorUI::Get()->GetSelectedEntity();
+
+  // 7. Draw the gizmo ONCE, after all meshes have been rendered.
+  // We pass the matrices we got from the OrbitCamera.
+  ComponentGizmos::DrawTransformGizmo(selectedEntity, viewMatrix, projMatrix);
 }
