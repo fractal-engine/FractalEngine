@@ -4,6 +4,8 @@
 #include "engine/core/engine_globals.h"
 #include "engine/core/logger.h"
 #include "engine/core/view_ids.h"
+#include "engine/ecs/world.h"
+#include "gui/inspector_panel.h"
 #include "gui/asset_browser.h"
 #include "gui/camera_controls.h"
 #include "gui/console_panel.h"
@@ -321,22 +323,35 @@ void EditorUI::RenderUI() {
   Panels::Toolbar(cb);
   ImGui::End();
 
-  // -------- LEFT : hierarchy + assets -------------------------------------
-  static std::vector<std::string> demo_names = {"Camera", "Terrain", "Sun",
-                                                "Player"};
+  // Get the ECS instance once for this frame
+  auto& ecs = ECS::Main();
+
+  // -------- LEFT : HIERARCHY (Now reads live data from ECS) --------
   ImGui::Begin("Hierarchy", nullptr);
-  Panels::HierarchyPanel(demo_names, "assets");
+  Panels::HierarchyPanel();  // We will also update this panel to be data-driven
   ImGui::End();
 
-  // -------- MIDDLE : game view --------------------------------------------
+  // -------- MIDDLE : SCENE --------
+  // The rendering pipeline now handles the gizmo, so this panel is just a
+  // simple canvas.
   ImGui::Begin("Scene", nullptr);
   Panels::GameCanvas(is_game_started_, game_canvas_hovered_);
   ImGui::End();
 
-  // -------- RIGHT : inspector ---------------------------------------------
-  static std::vector<Panels::Transform> demo_transform(demo_names.size());
+ // -------- RIGHT : INSPECTOR (now calls the new panel) -----------------
   ImGui::Begin("Inspector", nullptr);
-  Panels::Inspector(demo_transform);
+
+  Entity selectedEntity = GetSelectedEntity();
+  if (selectedEntity != entt::null && ecs.Reg().valid(selectedEntity)) {
+    // 1. Get the TransformComponent from the selected entity.
+    auto& transform = ecs.Get<TransformComponent>(selectedEntity);
+
+    // 2. Call the newly designed Inspector panel with the live component.
+    Panels::Inspector(transform);
+  } else {
+    ImGui::TextDisabled("Select an entity to inspect its components.");
+  }
+
   ImGui::End();
 
   //--------------------------- Panels ------------------------------
@@ -399,15 +414,15 @@ void EditorUI::BeginImGuiFrame(SDL_Window* window) {
 }
 
 // ── Selection API ─────────────────────────────────────────────────────────
-void EditorUI::SetSelectedEntity(int id) {
-  selected_entity_ = id;
-  last_selected_entity_ = selected_entity_;
+void EditorUI::SetSelectedEntity(Entity entity) {
+  selected_entity_ = entity;
+  last_selected_entity_ = entity;
 }
 
-int EditorUI::GetSelectedEntity() const {
+Entity EditorUI::GetSelectedEntity() const {
   return selected_entity_;
 }
 
-int EditorUI::GetLastSelectedEntity() const {
+Entity EditorUI::GetLastSelectedEntity() const {
   return last_selected_entity_;
 }

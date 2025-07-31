@@ -3,43 +3,49 @@
 
 #include <imgui.h>
 #include <filesystem>
-#include <string>
-#include <vector>
 #include "editor/editor_ui.h"
+#include "engine/ecs/world.h"  // We need this to access the ECS
 
-// -----------------------------------------------------------------------------
-//  Panels::SceneHierarchy  – entity list   +    file explorer
-// -----------------------------------------------------------------------------
 namespace Panels {
 
-inline void HierarchyPanel(const std::vector<std::string>& entityNames,
-                           const std::filesystem::path& assetsRoot) {
+inline void HierarchyPanel() {
+  // We need to wrap the entire panel's content in Begin/End calls.
   ImGui::Begin("Hierarchy", nullptr);
 
   //------------------------- ENTITIES ---------------------------------------
   ImGui::TextUnformatted("Scene");
   ImGui::Separator();
 
-  for (int i = 0; i < static_cast<int>(entityNames.size()); ++i) {
+  auto& ecs = ECS::Main();
+  auto* editor = EditorUI::Get();
+
+  ecs.View<TransformComponent>().each([&](auto entity, auto& transform) {
     ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_Leaf |
                                ImGuiTreeNodeFlags_NoTreePushOnOpen |
                                ImGuiTreeNodeFlags_SpanAvailWidth;
 
-    if (EditorUI::Get()->GetSelectedEntity() == i)
+    if (editor->GetSelectedEntity() == entity) {
       flags |= ImGuiTreeNodeFlags_Selected;
+    }
 
-    ImGui::TreeNodeEx((void*)(intptr_t)i, flags, "%s", entityNames[i].c_str());
+    std::string label =
+        transform.name_.empty()
+            ? "Entity " + std::to_string(entt::to_integral(entity))
+            : transform.name_;
+
+    ImGui::TreeNodeEx((void*)((intptr_t)entity), flags, "%s", label.c_str());
 
     if (ImGui::IsItemClicked()) {
-      EditorUI::Get()->SetSelectedEntity(i);
+      editor->SetSelectedEntity(entity);
     }
-  }
+  });
 
   ImGui::Spacing();
   ImGui::Separator();
   ImGui::Spacing();
 
   //------------------------- FILES ------------------------------------------
+
   ImGui::TextUnformatted("Assets");
   ImGui::Separator();
 
@@ -48,6 +54,10 @@ inline void HierarchyPanel(const std::vector<std::string>& entityNames,
 
   std::function<void(const std::filesystem::path&, int)> recurse =
       [&](const std::filesystem::path& p, int depth) {
+        // Error handling in case the path doesn't exist or isn't a directory
+        if (!std::filesystem::exists(p) || !std::filesystem::is_directory(p)) {
+          return;
+        }
         for (auto& entry : std::filesystem::directory_iterator(p)) {
           const bool isDir = entry.is_directory();
           ImGuiTreeNodeFlags f = ImGuiTreeNodeFlags_SpanFullWidth;
@@ -72,8 +82,10 @@ inline void HierarchyPanel(const std::vector<std::string>& entityNames,
         }
       };
 
-  if (std::filesystem::exists(assetsRoot))
-    recurse(assetsRoot, 0);
+  // Replaced the undefined 'assetsRoot' variable with a hardcoded
+  // path for now
+  const std::filesystem::path assetsRootPath = "assets";
+  recurse(assetsRootPath, 0);
 
   ImGui::End();
 }
