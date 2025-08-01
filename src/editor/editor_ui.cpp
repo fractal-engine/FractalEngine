@@ -145,6 +145,7 @@ void EditorUI::Run() {
 
     /* 2 - Build ImGui UI structure */
     BeginImGuiFrame(WindowManager::GetWindow());
+    Runtime::sceneViewPipeline().Render();
     RenderUI();
 
     /* 3 - Finalize ImGui frame definition */

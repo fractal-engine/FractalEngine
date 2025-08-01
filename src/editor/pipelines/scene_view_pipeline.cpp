@@ -3,7 +3,7 @@
 #include <bgfx/bgfx.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
-#include "engine/gizmos/component_gizmos.h" 
+#include "editor/gizmos/component_gizmos.h" 
 #include "editor/editor_ui.h"
 #include "engine/ecs/world.h"
 #include "editor/runtime/runtime.h"  // TODO: Remove this once pipeline is done

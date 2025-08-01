@@ -8,7 +8,7 @@
 #include "imgui.h"
 #include "imgui_internal.h"
 #include "platform/input/key_map_sdl.h"
-#include "engine/gizmos/component_gizmos.h" 
+#include "editor/gizmos/component_gizmos.h" 
 #include <entt/entt.hpp> // Provides entt::entity
 #include "editor/gui/orbit_camera.h" 
 

@@ -21,8 +21,7 @@ target("engine")
             "renderer/model/*.h")
     add_headerfiles("resources/*.h", "resources/textures/*.h", "resources/3d/*.h")
 
-    add_files("vendor/imguizmo/*.cpp")
-    add_files("gizmos/*.cpp")
+    
 
     add_rules("shaderc.build")
     add_files("$(projectdir)/src/assets/shaders/**.sc")

@@ -3,7 +3,7 @@
 
 #include "engine/ecs/world.h"
 #include <imgui.h>
-#include "engine/vendor/imguizmo/ImGuizmo.h" // Direct include
+#include "editor/vendor/imguizmo/ImGuizmo.h" // Direct include
 
 namespace ComponentGizmos {
     // The main function called by the renderer to draw the transform gizmo.

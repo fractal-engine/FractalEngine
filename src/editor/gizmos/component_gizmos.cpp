@@ -1,6 +1,6 @@
 #include <imgui.h>
 #include <glm/gtc/type_ptr.hpp>
-#include "engine/gizmos/component_gizmos.h"
+#include "editor/gizmos/component_gizmos.h"
 
 namespace ComponentGizmos {
 static ImGuizmo::OPERATION current_operation = ImGuizmo::TRANSLATE;
