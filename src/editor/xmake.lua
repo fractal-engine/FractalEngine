@@ -15,6 +15,9 @@ target("fractal")
     add_headerfiles("runtime/*.h", "gui/*.h", "gui/inspectables/*.cpp", "systems/*.h", "project/*.h",
             "registry/*.h", "pipelines/*.h")
 
+    add_files("vendor/imguizmo/*.cpp")
+    add_files("gizmos/*.cpp")
+
     add_packages("imgui", "boost", "libsdl2", "bgfx", "glm", "libsdl2_ttf", "portaudio", "efsw", "nlohmann_json", "reflect-cpp", "entt")
 
     -- copy all assets 

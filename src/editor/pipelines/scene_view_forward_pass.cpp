@@ -9,7 +9,8 @@
 #include "engine/ecs/entity_container.h"
 #include "engine/renderer/graphics_renderer.h"
 #include "engine/renderer/model/mesh.h"
-#include "engine/gizmos/component_gizmos.h"
+#include "engine/renderer/renderer_graphics.h"
+#include "editor/gizmos/component_gizmos.h"
 
 SceneViewForwardPass::SceneViewForwardPass()
     : framebuffer_(BGFX_INVALID_HANDLE),
