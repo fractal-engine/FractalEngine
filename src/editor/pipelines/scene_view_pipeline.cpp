@@ -3,7 +3,7 @@
 #include <bgfx/bgfx.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
-#include "editor/gizmos/component_gizmos.h" 
+#include "editor/gizmos/scene_view_gizmo.h" 
 #include "editor/editor_ui.h"
 #include "engine/ecs/world.h"
 #include "editor/runtime/runtime.h"  // TODO: Remove this once pipeline is done
@@ -164,5 +164,5 @@ void SceneViewPipeline::Render() {
 
   // 7. Draw the gizmo ONCE, after all meshes have been rendered.
   // We pass the matrices we got from the OrbitCamera.
-  ComponentGizmos::DrawTransformGizmo(selectedEntity, viewMatrix, projMatrix);
+  m_scene_view_gizmo.OnRender(EditorUI::Get()->GetCamera(), selectedEntity);
 }

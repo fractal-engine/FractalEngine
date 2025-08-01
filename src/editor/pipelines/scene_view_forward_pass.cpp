@@ -3,13 +3,13 @@
 #include <bx/math.h>
 #include <glm/gtc/type_ptr.hpp>
 
+#include "editor/gizmos/scene_view_gizmo.h"
 #include "editor/runtime/runtime.h"  // TODO: remove this once pipeline is done
 #include "engine/core/engine_globals.h"
 #include "engine/core/logger.h"
 #include "engine/ecs/entity_container.h"
 #include "engine/renderer/model/mesh.h"
 #include "engine/renderer/renderer_graphics.h"
-#include "editor/gizmos/component_gizmos.h"
 
 SceneViewForwardPass::SceneViewForwardPass()
     : framebuffer_(BGFX_INVALID_HANDLE),
@@ -157,11 +157,6 @@ bgfx::TextureHandle SceneViewForwardPass::Render(
       RenderSelectedEntity(entity, view_projection, camera);
     }
   }
-
-  // --- New for Gizmo ---
-  // After all meshes are drawn, draw the gizmo on top
-  ComponentGizmos::DrawTransformGizmo(selectedEntity, glm::value_ptr(view),
-                                      glm::value_ptr(projection));
 
   // Return the color texture for display
   return color_texture_;

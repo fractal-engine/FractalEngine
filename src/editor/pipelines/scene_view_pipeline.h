@@ -5,6 +5,7 @@
 
 #include "editor/pipelines/scene_view_forward_pass.h"
 #include "engine/ecs/ecs_collection.h"
+#include "editor/gizmos/scene_view_gizmo.h"
 
 class SceneViewPipeline {
 public:
@@ -20,7 +21,7 @@ public:
 private:
   // Forward pass for scene view
   SceneViewForwardPass scene_view_forward_pass_;
-
+  SceneViewGizmo m_scene_view_gizmo;
   bgfx::ProgramHandle program_ BGFX_INVALID_HANDLE;
 
   // Entity selection
