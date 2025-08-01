@@ -3,7 +3,7 @@
 #include <bgfx/bgfx.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
-#include "engine/gizmos/component_gizmos.h" 
+#include "editor/gizmos/component_gizmos.h" 
 #include "editor/editor_ui.h"
 #include "engine/ecs/world.h"
 #include "editor/runtime/runtime.h"  // TODO: Remove this once pipeline is done
@@ -124,8 +124,8 @@ void SceneViewPipeline::RealRender() {
 
 // PLACEHOLDER: Remove this once pipeline is done
 void SceneViewPipeline::Render() {
-  Logger::getInstance().Log(LogLevel::Debug,
-                            "[Render] SceneViewPipeline::Render called");
+  /* Logger::getInstance().Log(LogLevel::Debug,
+                            "[Render] SceneViewPipeline::Render called");*/
   auto& world = ECS::Main();
 
   // 1. Get the LIVE editor OrbitCamera from the EditorUI singleton.
