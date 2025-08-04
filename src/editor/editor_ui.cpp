@@ -5,7 +5,6 @@
 #include "engine/core/logger.h"
 #include "engine/core/view_ids.h"
 #include "engine/ecs/world.h"
-#include "gui/inspector_panel.h"
 #include "gui/asset_browser.h"
 #include "gui/camera_controls.h"
 #include "gui/console_panel.h"
@@ -71,110 +70,68 @@ void EditorUI::Initialize() {
       ImVec2(WindowManager::GetDPIScale(), WindowManager::GetDPIScale());
 }
 
-// TODO: refactor loop, should be split into EditorUI::NewFrame() / EditorUI::Render()
-// Renamed to NextFrame()??
-void EditorUI::Run() {
-  Logger::getInstance().Log(LogLevel::Info, "EditorUI main loop start");
+// --- DELETED: The entire old Run() method is removed. ---
+// Its logic has been moved to runtime.cpp (the while loop) and the new
+// functions below.
 
-  Initialize();
+// --- NEW: Implementation for the new public interface ---
+void EditorUI::HandleEvent(
+    const SDL_Event& event) {  // ADDED: New function to handle platform events.
+  ImGui_ImplSDL2_ProcessEvent(&event);  // Pass event to ImGui.
 
-  SDL_Event event;
-  while (!quit_) {
-
-    // ── 0. SDL EVENTS ───────────────────────────────────────────
-    while (SDL_PollEvent(&event)) {
-      ImGui_ImplSDL2_ProcessEvent(&event);
-
-      if (event.type == SDL_KEYDOWN) {
-        Key key = sdl_key_to_key(event);
-        if (key != Key::NONE)
-          HandleInput(key);
-      }
-
-      // ── WINDOW EVENTS ────────────────────────
-      if (event.type == SDL_WINDOWEVENT) {
-        switch (event.window.event) {
-          case SDL_WINDOWEVENT_SIZE_CHANGED:
-            if (!WindowManager::IsFullscreen() && !WindowManager::minimized) {
-              WindowManager::OnWindowResize(event.window.data1,
-                                            event.window.data2);
-              ImGui::GetIO().DisplaySize =
-                  ImVec2((float)event.window.data1, (float)event.window.data2);
-              built_layout_ = false;
-            }
-            break;
-
-          case SDL_WINDOWEVENT_MINIMIZED:
-            WindowManager::minimized = true;
-            break;
-
-          case SDL_WINDOWEVENT_RESTORED:
-            WindowManager::minimized = false;
-            WindowManager::OnWindowResize(event.window.data1,
-                                          event.window.data2);
-            break;
-
-          default:
-            break;
-        }
-      }
-
-      // toggle biorderless fullscreen with F11
-      if (event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_F11)
-        WindowManager::ToggleFullscreen();
-
-      if (event.type == SDL_QUIT) {
-        quit_ = true;
-        editor_exit_pressed();
-      }
-    }  // end PollEvent loop
-
-    // Skip while window is minimised
-    if (WindowManager::minimized) {
-      SDL_Delay(16);  // ~60 FPS idle
-      continue;
-    }
-
-    // Process system events
-    Runtime::Project().PollEvents();
-
-    /* 1 - Clear background and initialize frame */
-    bgfx::setViewClear(ViewID::UI_BACKGROUND, BGFX_CLEAR_COLOR, 0x1e1e1eff,
-                       1.0f, 0);
-    bgfx::touch(ViewID::UI_BACKGROUND);  // process background
-
-    /* 2 - Build ImGui UI structure */
-    BeginImGuiFrame(WindowManager::GetWindow());
-    Runtime::sceneViewPipeline().Render();
-    RenderUI();
-
-    /* 3 - Finalize ImGui frame definition */
-    ImGui::Render();  // prepre imgui draw data (no rendering yet)
-
-    /* 4 - Prepare rendering target */
-    auto* graphics = static_cast<GraphicsRenderer*>(renderer_);
-    graphics->PrepareFrame();  // set up scene framebuffer view
-
-    /* 5 - Render game content to framebuffer */
-    if (is_game_started_) {
-      Runtime::Game()->Render();  // Render 3D scene
-    }
-
-    /* 6 - Render ImGui elements */
-    ImGui_Implbgfx_RenderDrawLists(ImGui::GetDrawData());  // main window UI
-
-    /* 7 - Handle multi-viewport (detached windows) */
-    ImGui::UpdatePlatformWindows();
-    ImGui::RenderPlatformWindowsDefault();
-
-    /* 8 - Submit frame to display */
-    renderer_->Render();  // finalize rendering
-    bgfx::frame();        // submit to GPU and swap buffers
+  // This is the event handling logic from the old Run() loop.
+  if (event.type == SDL_KEYDOWN) {
+    Key key = sdl_key_to_key(event);
+    if (key != Key::NONE)
+      HandleInput(key);
   }
-  Logger::getInstance().Log(LogLevel::Info, "EditorUI loop exited");
+
+  // ── WINDOW EVENTS ────────────────────────
+  if (event.type == SDL_WINDOWEVENT) {
+    switch (event.window.event) {
+      case SDL_WINDOWEVENT_SIZE_CHANGED:
+        if (!WindowManager::IsFullscreen() && !WindowManager::minimized) {
+          WindowManager::OnWindowResize(event.window.data1, event.window.data2);
+          ImGui::GetIO().DisplaySize =
+              ImVec2((float)event.window.data1, (float)event.window.data2);
+          built_layout_ = false;
+        }
+        break;
+      case SDL_WINDOWEVENT_MINIMIZED:
+        WindowManager::minimized = true;
+        break;
+      case SDL_WINDOWEVENT_RESTORED:
+        WindowManager::minimized = false;
+        WindowManager::OnWindowResize(event.window.data1, event.window.data2);
+        break;
+      default:
+        break;
+    }
+  }
+
+  // toggle biorderless fullscreen with F11
+  if (event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_F11)
+    WindowManager::ToggleFullscreen();
+
+  if (event.type == SDL_QUIT) {
+    // We signal the main loop in runtime.cpp by connecting to the
+    // editor_exit_pressed signal.
+    editor_exit_pressed();
+  }
 }
 
-void EditorUI::RequestUpdate() {}
+void EditorUI::BeginFrame() {  // ADDED: New function to prepare the ImGui
+                               // frame.
+  // This logic was moved from the old Run() and BeginImGuiFrame() methods.
+  ImGui_Implbgfx_NewFrame();
+  ImGui_ImplSDL2_NewFrame();
+  ImGui::NewFrame();
+}
+
+void EditorUI::RenderPanels() {  // ADDED: New function that just calls the
+                                 // private UI rendering logic.
+  RenderUI();
+}
 
 void EditorUI::Destroy() {
   Logger::getInstance().Log(LogLevel::Info, "Shutting down EditorUI");
@@ -189,7 +146,8 @@ void EditorUI::HandleInput(Key key) {
 
   switch (key) {
     case Key::DIGIT_0:
-      quit_ = true;
+      // quit_ = true; // REPLACED: This is now handled by the main loop in
+      // runtime.cpp.
       editor_exit_pressed();
       return;
     case Key::DIGIT_1:
@@ -249,7 +207,8 @@ void EditorUI::DockSpace() {
   // ———— Menu bar —————
   Panels::MenuBar(
       [&]() {
-        quit_ = true;
+        // quit_ = true; // REPLACED: The main loop in runtime.cpp now handles
+        // quitting.
         editor_exit_pressed();
       },
       debug_highlight_ids_, debug_show_metrics_, debug_show_log_,
@@ -260,6 +219,7 @@ void EditorUI::DockSpace() {
   ImGui::PopStyleVar(3);
 }
 
+// This function is now the heart of your UI rendering. It is now private.
 void EditorUI::RenderUI() {
   ImGuiIO& io = ImGui::GetIO();
   io.IniFilename = nullptr;
@@ -314,7 +274,8 @@ void EditorUI::RenderUI() {
                                   },
                               .onQuit =
                                   [&] {
-                                    quit_ = true;
+                                    // quit_ = true; // REPLACED: The main loop
+                                    // handles this.
                                     editor_exit_pressed();
                                   }};
   ImGui::Begin("Toolbar", nullptr);
@@ -326,30 +287,24 @@ void EditorUI::RenderUI() {
 
   // -------- LEFT : HIERARCHY (Now reads live data from ECS) --------
   ImGui::Begin("Hierarchy", nullptr);
-  Panels::HierarchyPanel();  // We will also update this panel to be data-driven
+  Panels::HierarchyPanel();
   ImGui::End();
 
   // -------- MIDDLE : SCENE --------
-  // The rendering pipeline now handles the gizmo, so this panel is just a
-  // simple canvas.
   ImGui::Begin("Scene", nullptr);
   Panels::GameCanvas(is_game_started_, game_canvas_hovered_);
   ImGui::End();
 
- // -------- RIGHT : INSPECTOR (now calls the new panel) -----------------
+  // -------- RIGHT : INSPECTOR (now calls the new panel) -----------------
   ImGui::Begin("Inspector", nullptr);
 
   Entity selectedEntity = GetSelectedEntity();
   if (selectedEntity != entt::null && ecs.Reg().valid(selectedEntity)) {
-    // 1. Get the TransformComponent from the selected entity.
     auto& transform = ecs.Get<TransformComponent>(selectedEntity);
-
-    // 2. Call the newly designed Inspector panel with the live component.
     Panels::Inspector(transform);
   } else {
     ImGui::TextDisabled("Select an entity to inspect its components.");
   }
-
   ImGui::End();
 
   //--------------------------- Panels ------------------------------
@@ -357,13 +312,10 @@ void EditorUI::RenderUI() {
   Panels::ConsolePanel();
   ImGui::End();
 
-  // Panels::FileExplorer();
-
   ImGui::Begin("Asset Browser", nullptr);
   Panels::AssetBrowser();
   ImGui::End();
 
-  // Camera Controls
   ImGui::Begin("Camera", nullptr);
   Panels::CameraControls();
   ImGui::End();
@@ -400,16 +352,13 @@ void EditorUI::LoadIcons() {
   // tab_icons_.insert({"File Explorer", ICON_FA_FOLDER});
 }
 
-void EditorUI::BeginImGuiFrame(SDL_Window* window) {
-  ImGui_ImplSDL2_NewFrame();  // platform backend
-  ImGui_Implbgfx_NewFrame();  // renderer backend
-  ImGui::NewFrame();          // ImGui begins
+// --- DELETED: The old BeginImGuiFrame() method is removed. ---
+// Its logic has been merged into the new public BeginFrame().
 
-  // ---- decorators start here ----
-  // drop shadow effect
-  // static bool shadowOn = true;
-  // ui::shadow::BeginFrame(shadowOn);
-}
+// ---- decorators start here ----
+// drop shadow effect
+// static bool shadowOn = true;
+// ui::shadow::BeginFrame(shadowOn);
 
 // ── Selection API ─────────────────────────────────────────────────────────
 void EditorUI::SetSelectedEntity(Entity entity) {

@@ -22,7 +22,7 @@ private:
   // Forward pass for scene view
   SceneViewForwardPass scene_view_forward_pass_;
   SceneViewGizmo m_scene_view_gizmo;
-  bgfx::ProgramHandle program_ BGFX_INVALID_HANDLE;
+  bgfx::ProgramHandle m_gltf_program = BGFX_INVALID_HANDLE;
 
   // Entity selection
   std::vector<EntityContainer*> selected_entities;

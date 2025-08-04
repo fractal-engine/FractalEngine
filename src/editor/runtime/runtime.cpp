@@ -5,15 +5,14 @@
 #include "engine/audio/sound_manager.h"  // TODO: remove later
 #include "engine/context/engine_context.h"
 #include "engine/core/logger.h"
+#include "engine/ecs/ecs_collection.h"
 #include "engine/renderer/icons/icon_loader.h"
 #include "game/game_test.h"
-#include "engine/ecs/ecs_collection.h"
 
 // ------------------ single-instance state (internal linkage) -----------------
 namespace Runtime {
 
 // ---------- globals ----------
-static std::thread g_game_thread;
 
 std::unique_ptr<EditorBase> g_editor;
 std::unique_ptr<GameManager> g_game_manager;
@@ -120,18 +119,17 @@ static void _LaunchEditor() {
 }
 
 static void _NextFrame() {
-
-  // TODO: Start EngineContext::_NextFrame(); ???
-
-  // Render next frame
-  g_scene_view_pipeline.Render();
-
-  // Render editor
+  // 1. Process asset events from the file watcher. This is where imports
+  // happen.
   g_project_manager.PollEvents();
-  // TODO: start profiler for ui
-  // TODO: stop profiler for ui
 
-  // TODO: Stop EngineContext::EndFrame(); ???
+  // 2. Update the game state. This is now on the main thread.
+  if (g_game_manager) {
+    g_game_manager->Update();
+  }
+
+  // 3. Render the 3D scene into its framebuffer.
+  g_scene_view_pipeline.Render();
 }
 
 static void _ConnectSignals() {
@@ -155,48 +153,55 @@ int START_LOOP() {
   _CreateResources();
   _LaunchEditor();
 
-  // Setup game (manager)
+  // Initialize the game manager. It no longer starts its own thread.
   g_game_manager = std::make_unique<GameManager>(std::make_unique<GameTest>());
+  g_game_manager->Init();  // Call one-time setup
   Logger::getInstance().Log(LogLevel::Info, "GameManager initialized");
 
   _ConnectSignals();
 
-  // Setup game
-  g_game_thread = std::thread([] {
-    if (g_game_manager)
-      g_game_manager->Run();
-  });
-  Logger::getInstance().Log(LogLevel::Info,
-                            "Game initialized in its own thread");
+  // --- THIS IS THE NEW, UNIFIED MAIN LOOP ---
+  while (EngineContext::Running()) {
+    // A. Poll platform events (mouse, keyboard, window)
+    SDL_Event event;
+    while (SDL_PollEvent(&event)) {
+      ImGui_ImplSDL2_ProcessEvent(&event);
+      if (event.type == SDL_QUIT) {
+        // This needs to be connected to quit logic
+        // For now, we can call TERMINATE directly.
+        return TERMINATE();
+      }
+      // You would handle other input here or pass it to the editor
+      static_cast<EditorUI*>(g_editor.get())
+          ->HandleInputEvent(event);  // Example
+    }
 
-  // Run the editor
-  g_editor->Run();
-  Logger::getInstance().Log(LogLevel::Info, "Editor initialized and running");
+    // B. Prepare the frame for rendering
+    bgfx::setViewClear(ViewID::UI_BACKGROUND, BGFX_CLEAR_COLOR, 0x1e1e1eff,
+                       1.0f, 0);
+    bgfx::touch(ViewID::UI_BACKGROUND);
 
-  // TODO: remove once _NextFrame() is used
-  g_scene_view_pipeline.Render();
+    // C. Prepare the ImGui frame
+    static_cast<EditorUI*>(g_editor.get())->BeginFrame();
 
-  // Main loop
-  // TODO: uncomment once EditorUI::Run() is refactored
-  /* while (EngineContext::Running())
-    _NextFrame(); */
+    // D. Run all core logic (game update, scene render)
+    _NextFrame();
 
-  // TODO: remove once _NextFrame() is used
-  g_project_manager.PollEvents();
+    // E. Render the Editor UI panels themselves
+    static_cast<EditorUI*>(g_editor.get())->RenderPanels();
+
+    // F. Finalize and submit the entire frame
+    ImGui::Render();
+    ImGui_Implbgfx_RenderDraws(ImGui::GetDrawData());
+    ImGui::UpdatePlatformWindows();
+    ImGui::RenderPlatformWindowsDefault();
+    bgfx::frame();
+  }
 
   return TERMINATE();
 }
 
 int TERMINATE() {
-
-  // Terminate game thread
-  if (g_game_manager) {
-    g_game_manager->Terminate();
-  }
-
-  // join game thread
-  if (g_game_thread.joinable())
-    g_game_thread.join();
 
   // Stop game logic
   if (g_game_manager) {

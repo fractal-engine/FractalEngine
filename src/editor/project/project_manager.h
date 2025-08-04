@@ -30,6 +30,7 @@ ProjectAssets& Assets();
 std::filesystem::path AbsolutePath(const std::filesystem::path& path);
 
 std::string ProjectName() const;
+std::filesystem::path GetAssetsPath() const;
 
 private:
 

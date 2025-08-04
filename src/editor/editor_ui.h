@@ -1,35 +1,48 @@
 #ifndef EDITOR_UI_H
 #define EDITOR_UI_H
 
+#include <entt/entt.hpp>  // Provides entt::entity
 #include <memory>
+#include "editor/gizmos/scene_view_gizmo.h"
+#include "editor/gui/orbit_camera.h"
 #include "editor_base.h"
 #include "engine/renderer/renderer_graphics.h"
 #include "game/game_test.h"
 #include "imgui.h"
 #include "imgui_internal.h"
 #include "platform/input/key_map_sdl.h"
-#include "editor/gizmos/scene_view_gizmo.h" 
-#include <entt/entt.hpp> // Provides entt::entity
-#include "editor/gui/orbit_camera.h" 
+
+// Forward declare SDL_Event
+union SDL_Event;
+
+// Use the Entity type alias for consistency
+using Entity = entt::entity;
 
 class EditorUI : public EditorBase {
 public:
   explicit EditorUI(RendererBase* renderer);
   ~EditorUI();
 
-  static EditorUI* Get();  // Singleton access
+  static EditorUI* Get();
 
   void Initialize();
-  void Run() override;
-  void RequestUpdate() override;
-  void Destroy() override;
-  void BeginImGuiFrame(SDL_Window* window);
+  void Destroy();
+
+  // --- THESE ARE THE NEW PUBLIC FUNCTIONS ---
+  // They replace the old Run() method. The main loop in runtime.cpp will call
+  // these.
+
+  // Handles an incoming platform event (like mouse, keyboard, window).
+  void HandleEvent(const SDL_Event& event);
+  // Prepares ImGui for a new frame.
+  void BeginFrame();
+  // Renders all the editor's ImGui windows and panels.
+  void RenderPanels();
 
   // selection API
   void SetSelectedEntity(Entity entity);
   Entity GetSelectedEntity() const;
   Entity GetLastSelectedEntity() const;
-
   OrbitCamera& GetCamera() { return camera_; }
 
 private:

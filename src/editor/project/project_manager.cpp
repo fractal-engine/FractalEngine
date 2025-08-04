@@ -20,6 +20,17 @@ bool ProjectManager::Load(const std::filesystem::path& directory) {
   // Set project path
   project_.path_ = directory;
 
+  // Ensure the standard project subdirectories exist.
+  try {
+    std::filesystem::create_directory(project_.path_ / "assets");
+    // You can add others here too, e.g., "scenes", "materials"
+  } catch (const std::filesystem::filesystem_error& e) {
+    Logger::getInstance().Log(
+        LogLevel::Error,
+        "Failed to create project directories: " + std::string(e.what()));
+    return false;
+  }
+
   // Ensure project configuration is valid
   if (!EnsureConfig()) {
     Logger::getInstance().Log(LogLevel::Error,
@@ -83,3 +94,9 @@ std::string ProjectManager::ProjectName() const
     return project_.path_.filename().string();
 }
 
+std::filesystem::path ProjectManager::GetAssetsPath() const {
+  // This simply takes the project's root directory (e.g.,
+  // "C:/.../example-project") and appends the standard "assets" folder name to
+  // it.
+  return project_.path_ / "assets";
+}

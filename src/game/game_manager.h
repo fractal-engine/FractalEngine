@@ -8,45 +8,32 @@
 #ifndef GAME_MANAGER_H
 #define GAME_MANAGER_H
 
-#include <condition_variable>
 #include <memory>
-#include <mutex>
-#include <thread>
-
+#include "engine/scene/scene_manager.h"
 #include "game_base.h"
 
-#include "engine/scene/scene_manager.h"
-
 class GameManager {
-  enum GameState { ENDED, STARTING, RUNNING, ENDING, PAUSING, PAUSED };
-
 private:
   std::unique_ptr<GameBase> core_;
   std::unique_ptr<SceneManager> scene_manager_;
-
-  GameState gamestate_;
-  std::thread game_thread_;
   uint64_t frame_count_;
-  bool is_terminating_ = false;
-
-  std::mutex state_mutex_;
-  std::condition_variable condition_;
-
-  GameManager() = delete;
-  void LoadScene(std::unique_ptr<Scene> scene);
-
-  bool is_running_ = false;
+  bool is_game_running_ = false;  // To track play/stop state
 
 public:
-  void Render();
-  void StartGame();
-  void EndGame();
-  void Run();
-  void Terminate();
-  void Destroy();
-  uint64_t GetFrameCount();
-  GameBase* GetGame() const { return core_.get(); }
   GameManager(std::unique_ptr<GameBase>&& core);
+
+  // --- THE NEW, SIMPLE INTERFACE ---
+  void Init();     // Called once at startup.
+  void Update();   // Called once per frame by the main loop.
+  void Render();   // Called once per frame by the main loop.
+  void Destroy();  // Called once at shutdown.
+
+  // --- STATE CONTROL (called by UI signals) ---
+  void StartGame();  // This now just sets a flag
+  void EndGame();    // This also just sets a flag
+
+  uint64_t GetFrameCount() const;
+  GameBase* GetGame() const { return core_.get(); }
 };
 
 #endif  // GAME_MANAGER_H

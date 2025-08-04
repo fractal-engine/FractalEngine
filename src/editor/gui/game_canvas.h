@@ -3,6 +3,8 @@
 
 #include <imgui.h>
 
+#include <filesystem>
+#include "editor/pipelines/scene_view_forward_pass.h"
 #include "editor/runtime/runtime.h"
 #include "engine/core/engine_globals.h"
 #include "engine/core/logger.h"
@@ -11,9 +13,8 @@
 #include "engine/renderer/model/model.h"
 #include "engine/renderer/renderer_graphics.h"
 #include "engine/resources/file_system_utils.h"
-#include "editor/pipelines/scene_view_forward_pass.h"
 
-// TODO: rename window to scene_view_window 
+// TODO: rename window to scene_view_window
 
 namespace Panels {
 
@@ -72,64 +73,36 @@ inline void GameCanvas(bool isGameRunning, bool& hovered) {
 
       // Handle drop operations for glTF files after drawing image
       if (ImGui::BeginDragDropTarget()) {
+        // The payload type "GLTF_FILE" must match the one in asset_browser.cpp
         const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("GLTF_FILE");
         if (payload) {
-          // Get file path from payload
-          std::string rel(static_cast<const char*>(payload->Data));
+          std::filesystem::path sourcePath = (const char*)payload->Data;
 
-          // Convert to absolute path
-          std::filesystem::path abs_path = Runtime::Project().AbsolutePath(rel);
+          // 1. Get the destination path within project's assets folder.
+          //    implement GetAssetsPath() in ProjectManager.
+          std::filesystem::path destPath =
+              Runtime::Project().GetAssetsPath() / sourcePath.filename();
 
-          // Check extension before importing
-          if (!FileSystem::HasExtension(abs_path, ".gltf") &&
-              !FileSystem::HasExtension(abs_path, ".glb")) {
+          try {
+            // 2. The handler's ONLY job is to copy the file. This is a safe
+            // operation.
+            std::filesystem::copy_file(
+                sourcePath, destPath,
+                std::filesystem::copy_options::overwrite_existing);
             Logger::getInstance().Log(
-                LogLevel::Warning,
-                "Dropped file is not a glTF model: " + abs_path.string());
-          } else {
+                LogLevel::Info,
+                "Asset dropped and copied to: " + destPath.string());
+
+          } catch (const std::filesystem::filesystem_error& e) {
             Logger::getInstance().Log(
-                LogLevel::Info, "Importing glTF model: " + abs_path.string());
-
-            // Load meshes
-            std::shared_ptr<Model> model = Model::Load(abs_path.string());
-
-            // debug
-            Logger::getInstance().Log(
-                LogLevel::Debug,
-                "[GameCanvas] Model loaded, mesh count: " +
-                    std::to_string(model ? model->NLoadedMeshes() : 0));
-
-            if (!model) {
-              Logger::getInstance().Log(
-                  LogLevel::Error,
-                  "Import failed: no meshes in " + abs_path.string());
-            } else {
-              // Create ECS entity
-              auto& world = ECS::Main();
-              auto [entity, tr] =
-                  world.CreateEntity(abs_path.filename().string());
-
-              Logger::getInstance().Log(
-                  LogLevel::Debug,
-                  "[GameCanvas] Created entity: " + std::to_string((int)entity));
-
-              // Attach a MeshRendererComponent for each mesh
-              for (uint32_t i = 0; i < model->NLoadedMeshes(); ++i) {
-                const Mesh* mesh = model->QueryMesh(i);
-                if (!mesh)
-                  continue;
-
-                MeshRendererComponent& mr =
-                    world.Add<MeshRendererComponent>(entity);
-                mr.mesh_ = mesh;
-                mr.enabled_ = true;
-              }
-
-              // Keep model alive for the lifetime of the scene
-              static std::vector<std::shared_ptr<Model>> asset_cache;
-              asset_cache.emplace_back(std::move(model));
-            }
+                LogLevel::Error,
+                "Failed to copy dropped asset: " + std::string(e.what()));
           }
+
+          // 3. We do NOT load the model or create any entities here.
+          //    The ProjectObserver will now see the new file and queue an
+          //    event. The main loop's PollEvents() call will safely process
+          //    that event.
         }
         ImGui::EndDragDropTarget();
       }

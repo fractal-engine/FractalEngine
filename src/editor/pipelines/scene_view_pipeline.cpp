@@ -27,17 +27,24 @@ void SceneViewPipeline::Create() {
   // Use GameViewPipeline for the gizmos
 
   // TODO: remove this once the above is implemented
-  if (bgfx::isValid(program_))
-    return;
+  // Load the shader program ONCE when the pipeline is created.
+  m_gltf_program = Runtime::Shader()->LoadProgram("gltf_default", "vs_gltf.bin",
+                                                  "fs_gltf.bin");
+
+  if (!bgfx::isValid(m_gltf_program)) {
+    Logger::getInstance().Log(LogLevel::Error,
+                              "Failed to load gltf_default shader program!");
+  }
 }
 
 void SceneViewPipeline::Destroy() {
 
   // TODO: simply call destroyPasses();
 
-  // TODO: remove this once the above is implemented
-  if (bgfx::isValid(program_))
-    bgfx::destroy(program_), program_ = BGFX_INVALID_HANDLE;
+  if (bgfx::isValid(m_gltf_program)) {
+    bgfx::destroy(m_gltf_program);
+    m_gltf_program = BGFX_INVALID_HANDLE;
+  }
 }
 
 // TODO: rename to Render() once placeholder is removed
@@ -157,6 +164,10 @@ void SceneViewPipeline::Render() {
     bgfx::submit(ViewID::SCENE_MESH,
                  Runtime::Shader()->LoadProgram("gltf_default", "vs_gltf.bin",
                                                 "fs_gltf.bin"));
+    // Use the cheap, pre-loaded program handle. Do NOT load from disk here.
+    if (bgfx::isValid(m_gltf_program)) {
+      bgfx::submit(ViewID::SCENE_MESH, m_gltf_program);
+    }
   }
 
   // 6. Get the selected entity from the UI singleton.
