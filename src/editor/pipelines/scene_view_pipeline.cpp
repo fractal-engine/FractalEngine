@@ -161,9 +161,6 @@ void SceneViewPipeline::Render() {
     bgfx::setTransform(glm::value_ptr(transform.model_));
     renderer.mesh_->Bind();
     bgfx::setState(BGFX_STATE_DEFAULT | BGFX_STATE_CULL_CW);
-    bgfx::submit(ViewID::SCENE_MESH,
-                 Runtime::Shader()->LoadProgram("gltf_default", "vs_gltf.bin",
-                                                "fs_gltf.bin"));
     // Use the cheap, pre-loaded program handle. Do NOT load from disk here.
     if (bgfx::isValid(m_gltf_program)) {
       bgfx::submit(ViewID::SCENE_MESH, m_gltf_program);

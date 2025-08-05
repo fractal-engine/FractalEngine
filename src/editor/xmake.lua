@@ -18,7 +18,8 @@ target("fractal")
     add_files("vendor/imguizmo/*.cpp")
     add_files("gizmos/*.cpp")
 
-    add_packages("imgui", "boost", "libsdl2", "bgfx", "glm", "libsdl2_ttf", "portaudio", "efsw", "nlohmann_json", "reflect-cpp", "entt")
+    add_packages("boost", "libsdl2", "bgfx", "glm", "libsdl2_ttf", "portaudio", "tinygltf", "nlohmann_json", "entt", {public = true})
+    add_packages("imgui", "efsw", "reflect-cpp", {public = true})
 
     -- copy all assets 
     after_build(function (target)

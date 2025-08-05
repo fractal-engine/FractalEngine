@@ -17,20 +17,20 @@ private:
   std::unique_ptr<GameBase> core_;
   std::unique_ptr<SceneManager> scene_manager_;
   uint64_t frame_count_;
-  bool is_game_running_ = false;  // To track play/stop state
+  bool is_game_running_ = false;  // The simple flag to track Play Mode
 
 public:
   GameManager(std::unique_ptr<GameBase>&& core);
 
-  // --- THE NEW, SIMPLE INTERFACE ---
-  void Init();     // Called once at startup.
-  void Update();   // Called once per frame by the main loop.
-  void Render();   // Called once per frame by the main loop.
-  void Destroy();  // Called once at shutdown.
+  // The new, simple, single-threaded interface
+  void Init();     // Called once at startup by runtime.cpp
+  void Update();   // Called once per frame by the main loop in runtime.cpp
+  void Render();   // Called once per frame
+  void Destroy();  // Called once at shutdown
 
-  // --- STATE CONTROL (called by UI signals) ---
-  void StartGame();  // This now just sets a flag
-  void EndGame();    // This also just sets a flag
+  // State control functions called by the UI signals
+  void StartGame();
+  void EndGame();
 
   uint64_t GetFrameCount() const;
   GameBase* GetGame() const { return core_.get(); }

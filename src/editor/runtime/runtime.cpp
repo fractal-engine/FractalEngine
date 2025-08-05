@@ -9,6 +9,9 @@
 #include "engine/renderer/icons/icon_loader.h"
 #include "game/game_test.h"
 
+#include "imgui.h" 
+#include <SDL.h>
+
 // ------------------ single-instance state (internal linkage) -----------------
 namespace Runtime {
 
@@ -137,21 +140,20 @@ static void _ConnectSignals() {
   // connect editor event handles
   g_editor->game_start_pressed.connect([&] { g_game_manager->StartGame(); });
   g_editor->game_end_pressed.connect([&] { g_game_manager->EndGame(); });
-  g_editor->editor_exit_pressed.connect([&] { g_game_manager->Terminate(); });
+  g_editor->editor_exit_pressed.connect([] { TERMINATE(); });
 
   g_editor->game_inputed.connect([&](InputEvent event) {
     g_input->FowardInputEvent(event, g_game_manager->GetFrameCount());
   });
-
-  g_renderer->redrawn.connect([&] { g_editor->RequestUpdate(); });
 }
 
 int START_LOOP() {
   Logger::getInstance().Log(LogLevel::Info, "Runtime::StartLoop");
   _CreateEngineContext();
   _LoadDependencies();
-  _CreateResources();
   _LaunchEditor();
+  _CreateResources();
+  
 
   // Initialize the game manager. It no longer starts its own thread.
   g_game_manager = std::make_unique<GameManager>(std::make_unique<GameTest>());
@@ -165,17 +167,13 @@ int START_LOOP() {
     // A. Poll platform events (mouse, keyboard, window)
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
-      ImGui_ImplSDL2_ProcessEvent(&event);
+      static_cast<EditorUI*>(g_editor.get())->HandleEvent(event); // Handle other input here or pass it to the editor
       if (event.type == SDL_QUIT) {
         // This needs to be connected to quit logic
         // For now, we can call TERMINATE directly.
         return TERMINATE();
       }
-      // You would handle other input here or pass it to the editor
-      static_cast<EditorUI*>(g_editor.get())
-          ->HandleInputEvent(event);  // Example
     }
-
     // B. Prepare the frame for rendering
     bgfx::setViewClear(ViewID::UI_BACKGROUND, BGFX_CLEAR_COLOR, 0x1e1e1eff,
                        1.0f, 0);
@@ -191,8 +189,9 @@ int START_LOOP() {
     static_cast<EditorUI*>(g_editor.get())->RenderPanels();
 
     // F. Finalize and submit the entire frame
-    ImGui::Render();
-    ImGui_Implbgfx_RenderDraws(ImGui::GetDrawData());
+    // Instead of calling the backend function directly, we call our new
+    // encapsulated method.
+    static_cast<EditorUI*>(g_editor.get())->RenderDraws();
     ImGui::UpdatePlatformWindows();
     ImGui::RenderPlatformWindowsDefault();
     bgfx::frame();
@@ -206,7 +205,6 @@ int TERMINATE() {
   // Stop game logic
   if (g_game_manager) {
     g_game_manager->Destroy();
-    g_game_manager->Terminate();
     g_game_manager.reset();
   }
 

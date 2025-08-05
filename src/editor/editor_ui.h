@@ -38,7 +38,8 @@ public:
   void BeginFrame();
   // Renders all the editor's ImGui windows and panels.
   void RenderPanels();
-
+  // This function will contain the final ImGui rendering calls.
+  void RenderDraws();
   // selection API
   void SetSelectedEntity(Entity entity);
   Entity GetSelectedEntity() const;

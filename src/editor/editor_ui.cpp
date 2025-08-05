@@ -15,15 +15,18 @@
 #include "gui/menu_bar.h"
 #include "gui/status_bar.h"
 #include "gui/toolbar.h"
+
 #include "imgui.h"
 #include "imgui_internal.h"
 #include "imgui_utils.h"
+#include "editor/vendor/imgui/imgui_impl_sdl2.h"
+#include "editor/vendor/imgui/imgui_impl_bgfx.h"
+
+
 #include "platform/platform_utils.h"
 #include "platform/window_manager.h"
 #include "resources/decorators/drop_shadows.h"
 
-#include <backends/imgui_impl_sdl2.h>
-#include "editor/vendor/imgui/imgui_impl_bgfx.h"
 
 #include <SDL.h>
 #include <chrono>
@@ -133,6 +136,13 @@ void EditorUI::RenderPanels() {  // ADDED: New function that just calls the
   RenderUI();
 }
 
+void EditorUI::RenderDraws() {
+  // This call belongs here, with the other ImGui backend functions like Init and
+  // Shutdown.
+  ImGui::Render();  // It's good practice to keep ImGui::Render() and the draw
+                    // call together.
+  ImGui_Implbgfx_RenderDrawLists(ImGui::GetDrawData());
+}
 void EditorUI::Destroy() {
   Logger::getInstance().Log(LogLevel::Info, "Shutting down EditorUI");
   ImGui_Implbgfx_Shutdown();

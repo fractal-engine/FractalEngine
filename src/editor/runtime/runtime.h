@@ -23,6 +23,7 @@ class ShaderManager;
 class Input;
 class WindowManager;
 class ProjectManager;
+union SDL_Event;
 
 namespace Runtime {
 

@@ -6,8 +6,8 @@ set_languages("c++20")
 -- default compiler flags (MSVC only)
 if is_plat("windows") then
     add_cxxflags("/Zc:__cplusplus", "/Zc:preprocessor")
-    -- use static CRT
-    set_runtimes("MT")
+    -- use static CRT, match Debug/Release
+    set_runtimes(is_mode("debug") and "MTd" or "MT")
 end
 
 -- set path globally
@@ -20,7 +20,12 @@ set_policy("check.auto_ignore_flags", false)
 -- external dependencies
 add_requires("boost", "libsdl2", "libsdl2_ttf", "portaudio", "glm", "tinygltf", "efsw", "nlohmann_json", "entt")
 add_requires("imgui 1.91.8-docking", {configs={sdl2=true, sdl2_renderer=true, docking=true}})
-add_requires("bgfx", {configs = {tools = true}})
+add_requires("bgfx", {configs = {
+    tools = true,
+    debug = is_mode("debug"),
+    runtimes = is_mode("debug") and "MTd" or "MT",
+    shared = false
+}})
 add_requires("reflect-cpp", {configs = {json = true}})
 
 if is_mode("debug") then
