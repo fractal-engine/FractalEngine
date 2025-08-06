@@ -70,6 +70,10 @@ public:
 
   ImTextureID GetSceneTexId() const { return scene_tex_id_; }
 
+  // This allows an external system, like a rendering pipeline, to
+  // tell the main renderer which texture should be displayed in the UI.
+  void SetSceneTexture(bgfx::TextureHandle handle);
+
 private:
   SDL_Window* window_;
   mutable std::mutex canvas_mutex_;

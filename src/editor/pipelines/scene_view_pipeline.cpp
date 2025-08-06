@@ -3,13 +3,13 @@
 #include <bgfx/bgfx.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
-#include "editor/gizmos/scene_view_gizmo.h" 
 #include "editor/editor_ui.h"
-#include "engine/ecs/world.h"
+#include "editor/gizmos/scene_view_gizmo.h"
 #include "editor/runtime/runtime.h"  // TODO: Remove this once pipeline is done
 #include "engine/core/engine_globals.h"
 #include "engine/core/logger.h"
 #include "engine/core/view_ids.h"
+#include "engine/ecs/world.h"
 #include "engine/renderer/model/mesh.h"
 
 SceneViewPipeline::SceneViewPipeline()
@@ -50,8 +50,8 @@ void SceneViewPipeline::Destroy() {
 // TODO: rename to Render() once placeholder is removed
 void SceneViewPipeline::RealRender() {
   // debug
- // Logger::getInstance().Log(LogLevel::Debug,
- //                           "[Render] SceneViewPipeline::Render called");
+  // Logger::getInstance().Log(LogLevel::Debug,
+  //                           "[Render] SceneViewPipeline::Render called");
 
   // Set default view and matrices
   /*bgfx::ViewId view = ViewID::SCENE_MESH;
@@ -127,8 +127,8 @@ void SceneViewPipeline::RealRender() {
 
 // PLACEHOLDER: Remove this once pipeline is done
 void SceneViewPipeline::Render() {
- // Logger::getInstance().Log(LogLevel::Debug,
-//                            "[Render] SceneViewPipeline::Render called");
+  // Logger::getInstance().Log(LogLevel::Debug,
+  //                            "[Render] SceneViewPipeline::Render called");
   auto& world = ECS::Main();
 
   // 1. Get the LIVE editor OrbitCamera from the EditorUI singleton.
@@ -165,9 +165,10 @@ void SceneViewPipeline::Render() {
 
   // 3. RENDER THE MAIN GAME WORLD (TERRAIN, SKYBOX, WATER, ETC.)
   // Now, when this function submits to SCENE_SKYBOX, SCENE_TERRAIN, etc.,
-  // BGFX will know what to do with them 
+  // BGFX will know what to do with them, pass the view and projection matrices
+  // to Render()
   if (Runtime::Game()) {
-    Runtime::Game()->Render();
+    Runtime::Game()->Render(viewMatrix, projMatrix);
   }
 
   // 4. Update transforms and get the render queue.
@@ -194,4 +195,14 @@ void SceneViewPipeline::Render() {
   // 7. Draw the gizmo ONCE, after all meshes have been rendered.
   // We pass the matrices we got from the OrbitCamera.
   m_scene_view_gizmo.OnRender(EditorUI::Get()->GetCamera(), selectedEntity);
+
+  // 8. Finalize the scene view forward pass.
+  bgfx::TextureHandle final_scene_texture =
+      scene_view_forward_pass_.GetColorTexture();
+
+  // Get the main renderer instance from the runtime and call our new setter.
+  auto* graphics = static_cast<GraphicsRenderer*>(Runtime::Renderer());
+  if (graphics) {
+    graphics->SetSceneTexture(final_scene_texture);
+  }
 }

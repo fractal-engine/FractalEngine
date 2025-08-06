@@ -29,6 +29,9 @@ public:
 
   // Settings TODO: values should be defined in implementation file
   bool wireframe_;
+  bgfx::TextureHandle GetColorTexture() const {
+    return color_texture_;
+  }  // Get color texture handle
 
 private:
   // Framebuffer handles
@@ -64,7 +67,6 @@ private:
     uint8_t a = 255;
     return (a << 24) | (b << 16) | (g << 8) | r;
   }
-
   void RenderMeshes(const std::vector<EntityContainer*>& skipped_entities);
   void RenderMesh(const TransformComponent& transform,
                   const MeshRendererComponent& renderer);

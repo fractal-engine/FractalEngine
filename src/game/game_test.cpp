@@ -534,8 +534,8 @@ void GameTest::Update() {
   _waterTime += dt;
 }
 
-// Renders the game scene
-void GameTest::Render() {
+// Renders the game scene, get projection matrices from scene pipeline
+void GameTest::Render(const float* viewMatrix, const float* projMatrix) {
   // Ensure essential shader programs are valid before attempting to render
   if (!bgfx::isValid(_skyProgram) || !bgfx::isValid(_terrainProgramHeight) ||
       !bgfx::isValid(_waterProgram) || !bgfx::isValid(_terrainShadowProgram)) {
@@ -562,14 +562,15 @@ void GameTest::Render() {
   float finalLightMatrixForShader[16];  // Final light matrix for terrain shader
 
   // --- Camera and Lighting Setup ---
-  float viewMatrix[16], projMatrix[16];
+
+  /* float viewMatrix[16], projMatrix[16];
   camera.getViewMatrix(viewMatrix);  // Get current view matrix from camera
   float aspectRatio = (canvasViewportW > 0 && canvasViewportH > 0)
                           ? float(canvasViewportW) / float(canvasViewportH)
                           : 1.0f;  // Calculate aspect ratio
   camera.getProjectionMatrix(projMatrix,
                              aspectRatio);  // Get current projection matrix
-
+                             */
   // Calculate sun direction and color based on cycle time
   float sunAngle = _cycleTime;
   bx::Vec3 sunDirectionVec =

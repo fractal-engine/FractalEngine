@@ -24,10 +24,12 @@ void GameManager::Update() {
   }
 }
 
-void GameManager::Render() {
-  // The main loop calls this every frame.
+void GameManager::Render(const float* viewMatrix, const float* projMatrix) {
+  // Always render the world in the editor. The "is_game_running_" flag
+  // should only control LOGIC in the Update() function.
   if (core_) {
-    core_->Render();  // TODO:  Add a Play button check to start world rendering.
+    // Pass the matrices down to the GameTest object.
+    core_->Render(viewMatrix, projMatrix);
   }
 }
 

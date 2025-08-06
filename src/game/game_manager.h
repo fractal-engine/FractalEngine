@@ -25,7 +25,8 @@ public:
   // The new, simple, single-threaded interface
   void Init();     // Called once at startup by runtime.cpp
   void Update();   // Called once per frame by the main loop in runtime.cpp
-  void Render();   // Called once per frame
+  void Render(const float* viewMatrix,
+              const float* projMatrix);  // Called once per frame
   void Destroy();  // Called once at shutdown
 
   // State control functions called by the UI signals

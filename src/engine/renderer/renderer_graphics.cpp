@@ -404,6 +404,12 @@ SDL_Window* GraphicsRenderer::GetWindow() const {
   return window_;
 }
 
+void GraphicsRenderer::SetSceneTexture(bgfx::TextureHandle handle) {
+  // This function updates the member variables that the UI reads from.
+  scene_color_texture_ = handle;
+  scene_tex_id_ = (ImTextureID)(uintptr_t)handle.idx;
+}
+
 void GraphicsRenderer::UpdateCanvasSize(uint16_t w, uint16_t h) {
   // Only update if significantly different or enough frames have passed since
   // last resize
