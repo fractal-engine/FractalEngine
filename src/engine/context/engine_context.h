@@ -14,8 +14,9 @@ class ShaderManager;
 namespace EngineContext {
 
 // ---------------------- life-cycle ----------------
-bool Init(); // TODO: rename to Create later? 
+bool Init();     // TODO: rename to Create later?
 bool Running();  // returns false when SDL quit requested
+void Stop();	// A new function to signal the application to stop.
 void Destroy();
 
 // --------------- global singletons ----------------

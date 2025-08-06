@@ -50,8 +50,8 @@ void SceneViewPipeline::Destroy() {
 // TODO: rename to Render() once placeholder is removed
 void SceneViewPipeline::RealRender() {
   // debug
-  Logger::getInstance().Log(LogLevel::Debug,
-                            "[Render] SceneViewPipeline::Render called");
+ // Logger::getInstance().Log(LogLevel::Debug,
+ //                           "[Render] SceneViewPipeline::Render called");
 
   // Set default view and matrices
   /*bgfx::ViewId view = ViewID::SCENE_MESH;
@@ -127,15 +127,15 @@ void SceneViewPipeline::RealRender() {
 
 // PLACEHOLDER: Remove this once pipeline is done
 void SceneViewPipeline::Render() {
-  Logger::getInstance().Log(LogLevel::Debug,
-                            "[Render] SceneViewPipeline::Render called");
+ // Logger::getInstance().Log(LogLevel::Debug,
+//                            "[Render] SceneViewPipeline::Render called");
   auto& world = ECS::Main();
 
   // 1. Get the LIVE editor OrbitCamera from the EditorUI singleton.
   // This is the camera controlled by the user in the editor.
   OrbitCamera& camera = EditorUI::Get()->GetCamera();
 
-  // 2. Calculate the LIVE view and projection matrices FROM THE ORBIT CAMERA.
+  // 2A. Calculate the LIVE view and projection matrices FROM THE ORBIT CAMERA.
   // Note: OrbitCamera uses float arrays, not glm::mat4, so we adapt.
   float viewMatrix[16];
   float projMatrix[16];
@@ -143,11 +143,32 @@ void SceneViewPipeline::Render() {
   camera.getProjectionMatrix(projMatrix,
                              float(canvasViewportW) / float(canvasViewportH));
 
-  // 3. Set up the BGFX view using the matrices from the OrbitCamera.
-  bgfx::setViewTransform(ViewID::SCENE_MESH, viewMatrix, projMatrix);
-  bgfx::setViewRect(ViewID::SCENE_MESH, 0, 0, canvasViewportW, canvasViewportH);
-  bgfx::setViewClear(ViewID::SCENE_MESH, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH,
-                     0x303030ff, 1.0f, 0);
+  // 2B. Set up ALL the views that will be rendered into the scene framebuffer.
+  // We use the kSceneViews array from viewids.h, which was designed for this
+  // exact purpose.
+  bool first_view = true;
+  for (uint8_t view_id : ViewID::kSceneViews) {
+    bgfx::setViewTransform(view_id, viewMatrix, projMatrix);
+    bgfx::setViewRect(view_id, 0, 0, canvasViewportW, canvasViewportH);
+
+    if (first_view) {
+      // Clear the framebuffer on the FIRST view only.
+      bgfx::setViewClear(view_id, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH,
+                         0x303030ff, 1.0f, 0);
+      first_view = false;
+    }
+
+    // "Touch" the view to ensure it's processed, even if nothing is submitted
+    // to it.
+    bgfx::touch(view_id);
+  }
+
+  // 3. RENDER THE MAIN GAME WORLD (TERRAIN, SKYBOX, WATER, ETC.)
+  // Now, when this function submits to SCENE_SKYBOX, SCENE_TERRAIN, etc.,
+  // BGFX will know what to do with them 
+  if (Runtime::Game()) {
+    Runtime::Game()->Render();
+  }
 
   // 4. Update transforms and get the render queue.
   world.UpdateTransforms();

@@ -26,9 +26,8 @@ void GameManager::Update() {
 
 void GameManager::Render() {
   // The main loop calls this every frame.
-  // We only render the game's content if the state is "playing".
-  if (is_game_running_ && core_) {
-    core_->Render();
+  if (core_) {
+    core_->Render();  // TODO:  Add a Play button check to start world rendering.
   }
 }
 
@@ -44,7 +43,7 @@ void GameManager::Destroy() {
 void GameManager::StartGame() {
   Logger::getInstance().Log(LogLevel::Info, "Game manager state: STARTING");
   is_game_running_ = true;
-  // You could reset the frame count here if you want.
+  // Ccould reset the frame count here if you want.
   // frame_count_ = 0;
 }
 

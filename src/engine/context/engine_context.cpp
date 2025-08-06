@@ -23,6 +23,11 @@ static std::unique_ptr<::Input> input_device_instance_;
 static SubsystemList dynamic_registry;
 
 // ------------------------------------------------------------------
+//  Running state flag
+// ------------------------------------------------------------------
+static bool g_is_running = true;
+
+// ------------------------------------------------------------------
 //  Init / Tick / Shutdown
 // ------------------------------------------------------------------
 bool Init() {
@@ -61,7 +66,7 @@ bool Running() {
   previous = now;
 
   dynamic_registry.TickAll(dt);
-  return !::WindowManager::WindowShouldClose();
+  return g_is_running && !::WindowManager::WindowShouldClose();
 }
 
 void Destroy() {
@@ -72,6 +77,11 @@ void Destroy() {
   graphics_renderer_instance_.reset();
 
   SoundManager::Instance().terminate();
+}
+
+// --- IMPLEMENT Stop() ---
+void Stop() {
+  g_is_running = false;
 }
 
 // ------------------------------------------------------------------

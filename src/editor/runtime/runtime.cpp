@@ -9,8 +9,8 @@
 #include "engine/renderer/icons/icon_loader.h"
 #include "game/game_test.h"
 
-#include "imgui.h" 
 #include <SDL.h>
+#include "imgui.h"
 
 // ------------------ single-instance state (internal linkage) -----------------
 namespace Runtime {
@@ -105,6 +105,7 @@ static void _LaunchEditor() {
   // initialize editor layer
   // TODO: should be EditorUI::Setup();
   g_editor = std::make_unique<EditorUI>(g_renderer);
+  g_editor->Initialize();
   Logger::getInstance().Log(LogLevel::Info, "Editor initialized");
 
   // TODO: Show editor window here?
@@ -140,7 +141,8 @@ static void _ConnectSignals() {
   // connect editor event handles
   g_editor->game_start_pressed.connect([&] { g_game_manager->StartGame(); });
   g_editor->game_end_pressed.connect([&] { g_game_manager->EndGame(); });
-  g_editor->editor_exit_pressed.connect([] { TERMINATE(); });
+  g_editor->editor_exit_pressed.connect(
+      [] { EngineContext::Stop(); });  // Stop the main loop
 
   g_editor->game_inputed.connect([&](InputEvent event) {
     g_input->FowardInputEvent(event, g_game_manager->GetFrameCount());
@@ -153,7 +155,6 @@ int START_LOOP() {
   _LoadDependencies();
   _LaunchEditor();
   _CreateResources();
-  
 
   // Initialize the game manager. It no longer starts its own thread.
   g_game_manager = std::make_unique<GameManager>(std::make_unique<GameTest>());
@@ -167,12 +168,16 @@ int START_LOOP() {
     // A. Poll platform events (mouse, keyboard, window)
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
-      static_cast<EditorUI*>(g_editor.get())->HandleEvent(event); // Handle other input here or pass it to the editor
+      static_cast<EditorUI*>(g_editor.get())
+          ->HandleEvent(
+              event);  // Handle other input here or pass it to the editor
       if (event.type == SDL_QUIT) {
-        // This needs to be connected to quit logic
-        // For now, we can call TERMINATE directly.
-        return TERMINATE();
+        EngineContext::Stop();
       }
+    }
+    // If the loop should stop, we break out to the clean shutdown path.
+    if (!EngineContext::Running()) {
+      break;
     }
     // B. Prepare the frame for rendering
     bgfx::setViewClear(ViewID::UI_BACKGROUND, BGFX_CLEAR_COLOR, 0x1e1e1eff,
