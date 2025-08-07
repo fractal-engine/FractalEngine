@@ -1,34 +1,40 @@
 #include "game_manager.h"
 #include "engine/core/logger.h"
 
-// The one and only constructor
 GameManager::GameManager(std::unique_ptr<GameBase>&& core)
-    : core_(std::move(core)),
+    : gamestate_(GameState::ENDED),  // Start in the ENDED state.
+      core_(std::move(core)),
       scene_manager_(std::make_unique<SceneManager>()),
       frame_count_(0) {}
 
 void GameManager::Init() {
-  // We call Init() here, once, when the GameManager is created.
   if (core_) {
     core_->Init();
-    Logger::getInstance().Log(LogLevel::Info, "Game initialized");
   }
 }
 
+// This is the new heart of the GameManager. It's called every frame from the
+// main loop.
 void GameManager::Update() {
-  // The main loop in runtime.cpp calls this every frame.
-  // We only run the game's core update logic if the state is "playing".
-  if (is_game_running_ && core_) {
+  // Handle state transitions.
+  if (gamestate_ == GameState::STARTING) {
+    gamestate_ = GameState::RUNNING;
+    Logger::getInstance().Log(LogLevel::Info, "Game manager state: RUNNING");
+  } else if (gamestate_ == GameState::ENDING) {
+    gamestate_ = GameState::ENDED;
+    Logger::getInstance().Log(LogLevel::Info, "Game manager state: ENDED");
+  }
+
+  // Only update the core game logic if we are in the RUNNING state.
+  if (gamestate_ == GameState::RUNNING && core_) {
     core_->Update();
     frame_count_++;
   }
 }
 
+// The renderer calls this every frame, regardless of state.
 void GameManager::Render(const float* viewMatrix, const float* projMatrix) {
-  // Always render the world in the editor. The "is_game_running_" flag
-  // should only control LOGIC in the Update() function.
   if (core_) {
-    // Pass the matrices down to the GameTest object.
     core_->Render(viewMatrix, projMatrix);
   }
 }
@@ -40,18 +46,21 @@ void GameManager::Destroy() {
   }
 }
 
-// --- State Control Implementations ---
-
+// --- STATE CONTROL ---
+// These are called by the UI signals. They just change the state.
 void GameManager::StartGame() {
   Logger::getInstance().Log(LogLevel::Info, "Game manager state: STARTING");
-  is_game_running_ = true;
-  // Ccould reset the frame count here if you want.
-  // frame_count_ = 0;
+  gamestate_ = GameState::STARTING;
 }
 
 void GameManager::EndGame() {
   Logger::getInstance().Log(LogLevel::Info, "Game manager state: ENDING");
-  is_game_running_ = false;
+  gamestate_ = GameState::ENDING;
+}
+
+void GameManager::Terminate() {
+  // This function is now just a signal for cleanup.
+  // The actual program termination is handled by the main loop in runtime.cpp.
 }
 
 uint64_t GameManager::GetFrameCount() const {

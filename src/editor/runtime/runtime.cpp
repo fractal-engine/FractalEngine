@@ -163,19 +163,16 @@ int START_LOOP() {
 
   _ConnectSignals();
 
-  // --- THIS IS THE NEW, UNIFIED MAIN LOOP ---
+  // --  UNIFIED MAIN LOOP --
   while (EngineContext::Running()) {
     // A. Poll platform events (mouse, keyboard, window)
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
-      static_cast<EditorUI*>(g_editor.get())
-          ->HandleEvent(
-              event);  // Handle other input here or pass it to the editor
+      static_cast<EditorUI*>(g_editor.get())->HandleEvent(event);
       if (event.type == SDL_QUIT) {
         EngineContext::Stop();
       }
     }
-    // If the loop should stop, we break out to the clean shutdown path.
     if (!EngineContext::Running()) {
       break;
     }
@@ -194,8 +191,6 @@ int START_LOOP() {
     static_cast<EditorUI*>(g_editor.get())->RenderPanels();
 
     // F. Finalize and submit the entire frame
-    // Instead of calling the backend function directly, we call our new
-    // encapsulated method.
     static_cast<EditorUI*>(g_editor.get())->RenderDraws();
     ImGui::UpdatePlatformWindows();
     ImGui::RenderPlatformWindowsDefault();
@@ -231,6 +226,7 @@ int TERMINATE() {
   return 0;
 }
 
+// Getters
 EditorBase* Editor() {
   return g_editor.get();
 }

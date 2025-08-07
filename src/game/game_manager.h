@@ -13,28 +13,34 @@
 #include "game_base.h"
 
 class GameManager {
+public:  // Public for easy state checking by the UI
+  enum GameState { ENDED, STARTING, RUNNING, ENDING, PAUSING, PAUSED };
+
 private:
   std::unique_ptr<GameBase> core_;
   std::unique_ptr<SceneManager> scene_manager_;
+
+  GameState gamestate_;  // The state machine is back.
   uint64_t frame_count_;
-  bool is_game_running_ = false;  // The simple flag to track Play Mode
 
 public:
   GameManager(std::unique_ptr<GameBase>&& core);
 
-  // The new, simple, single-threaded interface
-  void Init();     // Called once at startup by runtime.cpp
-  void Update();   // Called once per frame by the main loop in runtime.cpp
+  // --- THE NEW, SINGLE-THREADED INTERFACE ---
+  void Init();
+  void Update();  // This will be our "tick" function, called by the main loop.
   void Render(const float* viewMatrix,
-              const float* projMatrix);  // Called once per frame
-  void Destroy();  // Called once at shutdown
+              const float* projMatrix);  // Accepts camera matrices.
+  void Destroy();
 
-  // State control functions called by the UI signals
+  // State control functions, now just simple state setters.
   void StartGame();
   void EndGame();
+  void Terminate();  // This is just for cleanup now.
 
   uint64_t GetFrameCount() const;
   GameBase* GetGame() const { return core_.get(); }
+  GameState GetState() const { return gamestate_; }
 };
 
 #endif  // GAME_MANAGER_H
