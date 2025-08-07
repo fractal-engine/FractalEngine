@@ -131,11 +131,23 @@ void SceneViewPipeline::Render() {
   //                            "[Render] SceneViewPipeline::Render called");
   auto& world = ECS::Main();
 
-  // 1. Get the LIVE editor OrbitCamera from the EditorUI singleton.
+  // 1. Get the main graphics renderer.
+  auto* graphics = static_cast<GraphicsRenderer*>(Runtime::Renderer());
+  if (!graphics) {
+    return;  // Can't render without the main renderer.
+  }
+
+  // 2. Get the correct framebuffer from the master renderer.
+  bgfx::FrameBufferHandle scene_fbo = graphics->GetSceneFramebuffer();
+  if (!bgfx::isValid(scene_fbo)) {
+    return;  // Don't render if the target is invalid.
+  }
+
+  // 3. Get the LIVE editor OrbitCamera from the EditorUI singleton.
   // This is the camera controlled by the user in the editor.
   OrbitCamera& camera = EditorUI::Get()->GetCamera();
 
-  // 2A. Calculate the LIVE view and projection matrices FROM THE ORBIT CAMERA.
+  // 4. Calculate the LIVE view and projection matrices FROM THE ORBIT CAMERA.
   // Note: OrbitCamera uses float arrays, not glm::mat4, so we adapt.
   float viewMatrix[16];
   float projMatrix[16];
@@ -143,13 +155,15 @@ void SceneViewPipeline::Render() {
   camera.getProjectionMatrix(projMatrix,
                              float(canvasViewportW) / float(canvasViewportH));
 
-  // 2B. Set up ALL the views that will be rendered into the scene framebuffer.
+  // 5. Set up ALL the views that will be rendered into the scene framebuffer.
   // We use the kSceneViews array from viewids.h, which was designed for this
   // exact purpose.
   bool first_view = true;
   for (uint8_t view_id : ViewID::kSceneViews) {
     bgfx::setViewTransform(view_id, viewMatrix, projMatrix);
     bgfx::setViewRect(view_id, 0, 0, canvasViewportW, canvasViewportH);
+    // We explicitly tell BGFX to render into the correct framebuffer.
+    bgfx::setViewFrameBuffer(view_id, scene_fbo);
 
     if (first_view) {
       // Clear the framebuffer on the FIRST view only.
@@ -163,7 +177,7 @@ void SceneViewPipeline::Render() {
     bgfx::touch(view_id);
   }
 
-  // 3. RENDER THE MAIN GAME WORLD (TERRAIN, SKYBOX, WATER, ETC.)
+  // 6. RENDER THE MAIN GAME WORLD (TERRAIN, SKYBOX, WATER, ETC.)
   // Now, when this function submits to SCENE_SKYBOX, SCENE_TERRAIN, etc.,
   // BGFX will know what to do with them, pass the view and projection matrices
   // to Render()
@@ -171,11 +185,11 @@ void SceneViewPipeline::Render() {
     Runtime::Game()->Render(viewMatrix, projMatrix);
   }
 
-  // 4. Update transforms and get the render queue.
+  // 7. Update transforms and get the render queue.
   world.UpdateTransforms();
   const auto& render_queue = world.GetRenderQueue();
 
-  // 5. Render all the meshes in the scene.
+  // 8. Render all the meshes in the scene.
   for (const auto& [entity, transform, renderer] : render_queue) {
     if (!renderer.enabled_ || !renderer.mesh_)
       continue;
@@ -189,20 +203,14 @@ void SceneViewPipeline::Render() {
     }
   }
 
-  // 6. Get the selected entity from the UI singleton.
+  // 9. Get the selected entity from the UI singleton.
   Entity selectedEntity = EditorUI::Get()->GetSelectedEntity();
 
-  // 7. Draw the gizmo ONCE, after all meshes have been rendered.
+  // 10. Draw the gizmo ONCE, after all meshes have been rendered.
   // We pass the matrices we got from the OrbitCamera.
   m_scene_view_gizmo.OnRender(EditorUI::Get()->GetCamera(), selectedEntity);
 
-  // 8. Finalize the scene view forward pass.
+  // 11. Finalize the scene view forward pass.
   bgfx::TextureHandle final_scene_texture =
       scene_view_forward_pass_.GetColorTexture();
-
-  // Get the main renderer instance from the runtime and call our new setter.
-  auto* graphics = static_cast<GraphicsRenderer*>(Runtime::Renderer());
-  if (graphics) {
-    graphics->SetSceneTexture(final_scene_texture);
-  }
 }

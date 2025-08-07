@@ -54,6 +54,11 @@ public:
   SDL_Window* GetWindow() const;
   SDL_Texture* GetGameTexture();
   std::string GetCurrentGameContent();
+
+  // Determine which framebuffer to use for rendering
+  bgfx::FrameBufferHandle GetSceneFramebuffer() const {
+    return scene_framebuffer_;
+  }
   // Scene framebuffer and texture handles
   bgfx::TextureHandle GetSceneColorTexture() const {
     return scene_color_texture_;

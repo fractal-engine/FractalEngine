@@ -137,43 +137,6 @@ void GraphicsRenderer::PrepareFrame() {
 
   if (fbw != last_framebuffer_width_ || fbh != last_framebuffer_height_)
     CreateFramebuffers(fbw, fbh);
-
-  // Common clear for the scene_framebuffer_ (done by the first view using it)
-  // GraphicsRenderer::PrepareFrame()
-  bgfx::setViewClear(ViewID::SCENE_SKYBOX, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH,
-                     0x303030ff, 1.0f, 0);
-
-  for (uint8_t vid : ViewID::kSceneViews) {
-    bgfx::setViewRect(vid, 0, 0, fbw, fbh);
-    bgfx::setViewFrameBuffer(vid, scene_framebuffer_);
-  }
-
-  // ViewID::UI_BACKGROUND (ID 0) - Clears the actual window backbuffer
-  bgfx::setViewClear(
-      ViewID::UI_BACKGROUND,
-      BGFX_CLEAR_COLOR /* no depth clear needed if nothing 3D draws here */,
-      0x1e1e1eff, 1.0f, 0);
-  bgfx::setViewRect(ViewID::UI_BACKGROUND, 0, 0, fbw,
-                    fbh);  // Assuming fbw/fbh here match window size
-  bgfx::setViewFrameBuffer(
-      ViewID::UI_BACKGROUND,
-      BGFX_INVALID_HANDLE);  // Ensure it targets default backbuffer
-
-  // Separete reflection pass framebuffer
-  if (bgfx::isValid(reflectionFB)) {
-    bgfx::setViewRect(ViewID::REFLECTION_PASS, 0, 0, fbw, fbh);
-    bgfx::setViewFrameBuffer(ViewID::REFLECTION_PASS, reflectionFB);
-
-    // Optional: clear reflection buffer
-    bgfx::setViewClear(ViewID::REFLECTION_PASS,
-                       BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH, 0x000000ff, 1.0f,
-                       0);
-  }
-
-  if (!bgfx::isValid(scene_framebuffer_)) {
-    Logger::getInstance().Log(LogLevel::Error,
-                              "Scene framebuffer invalid in PrepareFrame!");
-  }
 }
 
 // Framebuffer initialization and handling
