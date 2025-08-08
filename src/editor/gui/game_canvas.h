@@ -5,6 +5,7 @@
 
 #include <filesystem>
 #include "editor/pipelines/scene_view_forward_pass.h"
+#include "editor/editor_ui.h"
 #include "editor/runtime/runtime.h"
 #include "engine/core/engine_globals.h"
 #include "engine/core/logger.h"
@@ -60,6 +61,39 @@ inline void GameCanvas(bool isGameRunning, bool& hovered) {
   }
 
   hovered = ImGui::IsWindowHovered();  // hover detection for the canvas
+
+  // --- NEW: UNIFIED CAMERA INPUT HANDLING ---
+  if (hovered) {
+    // Get the one true editor camera.
+    OrbitCamera& camera = EditorUI::Get()->GetCamera();
+    ImGuiIO& io = ImGui::GetIO();
+
+    // 1. Mouse Orbit (Middle Mouse Button)
+    if (ImGui::IsMouseDown(ImGuiMouseButton_Middle)) {
+      camera.orbit(io.MouseDelta.x, io.MouseDelta.y);
+    }
+
+    // 2. Mouse Zoom (Mouse Wheel)
+    if (io.MouseWheel != 0.0f) {
+      camera.zoom(io.MouseWheel);
+    }
+
+    // 3. Mouse Pan (Right Mouse Button)
+    if (ImGui::IsMouseDown(ImGuiMouseButton_Right)) {
+      camera.pan(io.MouseDelta.x, io.MouseDelta.y);
+    }
+
+    // 4. Keyboard Pan (from the old CameraSystem)
+    // You can use ImGui::IsKeyDown() for a smoother feel.
+    if (ImGui::IsKeyDown(ImGuiKey_W))
+      camera.pan(0.0f, 5.0f);  // Adjusted speed
+    if (ImGui::IsKeyDown(ImGuiKey_S))
+      camera.pan(0.0f, -5.0f);
+    if (ImGui::IsKeyDown(ImGuiKey_A))
+      camera.pan(-5.0f, 0.0f);
+    if (ImGui::IsKeyDown(ImGuiKey_D))
+      camera.pan(5.0f, 0.0f);
+  }
 
   auto* renderer = static_cast<GraphicsRenderer*>(Runtime::Renderer());
 

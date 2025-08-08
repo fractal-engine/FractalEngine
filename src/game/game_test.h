@@ -4,7 +4,6 @@
 #include <bgfx/bgfx.h>
 #include <vector>
 #include "editor/gui/orbit_camera.h"
-#include "editor/systems/camera_system.h"
 #include "game_base.h"
 
 // ──────────────────────────────────────────────────────
@@ -37,10 +36,6 @@ public:
   static constexpr uint16_t TerrainSize = 128;
   static constexpr float TerrainExtent =
       ((TerrainSize - 1) * TerrainScale) * 0.5f;
-
-  // simple camera function call
-  OrbitCamera camera;
-  CameraSystem cameraSystem;
 
   int canvasViewportW = 1600;  // TODO: remove this, should use engine_globals.h
   int canvasViewportH = 900;   // TODO: remove this, should use engine_globals.h

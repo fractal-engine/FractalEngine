@@ -103,9 +103,7 @@ void PosTexCoord0Vertex::init() {
 
 // Constructor: Initializes BGFX handles to invalid and sets default values
 GameTest::GameTest()
-    : camera(),
-      cameraSystem(&camera),
-      _terrainProgramHeight(BGFX_INVALID_HANDLE),
+    : _terrainProgramHeight(BGFX_INVALID_HANDLE),
       _heightUniform(BGFX_INVALID_HANDLE),
       _heightTexture(BGFX_INVALID_HANDLE),
       terrainORM(BGFX_INVALID_HANDLE),
@@ -482,15 +480,6 @@ void GameTest::Init() {
       bgfx::TextureFormat::D32, BGFX_TEXTURE_RT | BGFX_SAMPLER_COMPARE_LESS);
   shadowMapFB = bgfx::createFrameBuffer(1, &shadowMapTexture, true);
 
-  // Setup camera
-  float terrainCenterPos[3] = {TerrainExtent, 0.0f, TerrainExtent};
-  float targetPos[3] = {
-      TerrainExtent, 0.0f,
-      TerrainExtent};           // Define the camera's initial target position
-  camera.setTarget(targetPos);  // Set the camera to look at the target position
-  camera.setDistance(TerrainScale * 2.0f);  // Set initial camera distance
-  camera.setPitch(bx::toRad(30.0f));        // Look downward
-  camera.setYaw(bx::toRad(45.0f));          // Set initial yaw
 
   // Initialize terrain world matrix (scale)
   bx::mtxIdentity(this->world_matrix);
@@ -521,8 +510,6 @@ void GameTest::Init() {
 
 // Updates game state per frame
 void GameTest::Update() {
-  // Update camera from keyboard input
-  cameraSystem.UpdateFromKeyboard();
 
   // Increment time
   _cycleTime += 0.001f;
@@ -693,30 +680,21 @@ void GameTest::Render(const float* viewMatrix, const float* projMatrix) {
     bgfx::setViewFrameBuffer(ViewID::REFLECTION_PASS,
                              graphicsRendererPtr->GetReflectionFramebuffer());
 
-    float viewMatrix[16], projMatrix[16];
-    camera.getViewMatrix(viewMatrix);
-    camera.getProjectionMatrix(projMatrix, float(fbw) / float(fbh));
-
-    // Defined here for reflection pass, we cannot reuse the terrain's one
-    float cameraView[16];
-    // Get view matrix with translation
-    camera.getViewMatrix(viewMatrix);
 
     // Construct reflection matrix
     float reflectMat[16];
     bx::mtxIdentity(reflectMat);
     reflectMat[5] = -1.0f;
-    reflectMat[13] = 1.0f * waterModelMatrix[13];  // reflection plane Y
+    reflectMat[13] = 1.0f * waterModelMatrix[13];
 
-    // Create reflected view matrix (WITH camera translation � for terrain)
+    // Create reflected view matrix using the CORRECT viewMatrix parameter.
     float reflectedView[16];
     bx::mtxMul(reflectedView, viewMatrix, reflectMat);
 
     // Create *rotation-only* version for skybox
     float viewRotOnly[16];
     memcpy(viewRotOnly, reflectedView, sizeof(viewRotOnly));
-    viewRotOnly[12] = viewRotOnly[13] = viewRotOnly[14] =
-        0.0f;  // remove translation
+    viewRotOnly[12] = viewRotOnly[13] = viewRotOnly[14] = 0.0f;
 
     // Skybox pass
     float skyModel[16];
@@ -777,8 +755,9 @@ void GameTest::Render(const float* viewMatrix, const float* projMatrix) {
   bgfx::setViewTransform(terrainViewID, viewMatrix, projMatrix);
   bgfx::setTransform(this->world_matrix);
 
-  float camPos[4];
-  camera.getPosition(camPos);
+  // Get camera position in world space from the view matrix
+  float camPos[4] = {invViewMatrix[12], invViewMatrix[13], invViewMatrix[14],
+                     1.0f};
   camPos[3] = 1.0f;
   bgfx::setUniform(_cameraPosUniform, camPos);
   bgfx::setUniform(_sunDirUniform, sunDirShader);

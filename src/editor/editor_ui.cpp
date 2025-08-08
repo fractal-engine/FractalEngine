@@ -71,6 +71,13 @@ void EditorUI::Initialize() {
                           (float)WindowManager::GetHeight());
   io.DisplayFramebufferScale =
       ImVec2(WindowManager::GetDPIScale(), WindowManager::GetDPIScale());
+
+  // Initialize the camera with a default position and orientation
+  float targetPos[3] = {77.5f, 0.0f, 77.5f};  // Example target
+  camera_.setTarget(targetPos);
+  camera_.setDistance(150.0f);
+  camera_.setPitch(bx::toRad(30.0f));
+  camera_.setYaw(bx::toRad(45.0f));
 }
 
 // --- DELETED: The entire old Run() method is removed. ---
