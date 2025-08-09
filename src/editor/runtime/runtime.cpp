@@ -6,6 +6,7 @@
 #include "engine/context/engine_context.h"
 #include "engine/core/logger.h"
 #include "engine/ecs/ecs_collection.h"
+#include "engine/resources/command_queue.h"
 #include "engine/renderer/icons/icon_loader.h"
 #include "game/game_test.h"
 
@@ -123,6 +124,25 @@ static void _LaunchEditor() {
 }
 
 static void _NextFrame() {
+
+  // PROCESS DEFERRED COMMANDS
+  // At the very start of the frame, we execute any commands that were
+  // queued by the UI or other systems. This is the "Consumer".
+  std::vector<std::function<void()>> commands_to_run;
+  {
+    // Lock the mutex just long enough to steal the commands.
+    std::lock_guard<std::mutex> lock(CommandQueue::g_command_mutex);
+    if (!CommandQueue::g_main_thread_commands.empty()) {
+      // Swap is a very fast, efficient way to move the items.
+      commands_to_run.swap(CommandQueue::g_main_thread_commands);
+    }
+  }
+
+  // Now, with the mutex unlocked, we can safely execute the commands.
+  for (const auto& command : commands_to_run) {
+    command();  // This will run our import logic on the main thread.
+  }
+
   // 1. Process asset events from the file watcher. This is where imports
   // happen.
   g_project_manager.PollEvents();

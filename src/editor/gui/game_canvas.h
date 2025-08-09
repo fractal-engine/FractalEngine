@@ -4,8 +4,8 @@
 #include <imgui.h>
 
 #include <filesystem>
-#include "editor/pipelines/scene_view_forward_pass.h"
 #include "editor/editor_ui.h"
+#include "editor/pipelines/scene_view_forward_pass.h"
 #include "editor/runtime/runtime.h"
 #include "engine/core/engine_globals.h"
 #include "engine/core/logger.h"
@@ -14,6 +14,7 @@
 #include "engine/renderer/model/model.h"
 #include "engine/renderer/renderer_graphics.h"
 #include "engine/resources/file_system_utils.h"
+#include "engine/resources/command_queue.h"
 
 // TODO: rename window to scene_view_window
 
@@ -97,6 +98,7 @@ inline void GameCanvas(bool isGameRunning, bool& hovered) {
 
   auto* renderer = static_cast<GraphicsRenderer*>(Runtime::Renderer());
 
+  // Start game if conditions are ok.
   if (isGameRunning && canvasViewportW > 0 && canvasViewportH > 0) {
     // render when we have valid dimensions
     ImTextureID texId = renderer->GetSceneTexId();
@@ -107,39 +109,50 @@ inline void GameCanvas(bool isGameRunning, bool& hovered) {
 
       // Handle drop operations for glTF files after drawing image
       if (ImGui::BeginDragDropTarget()) {
-        // The payload type "GLTF_FILE" must match the one in asset_browser.cpp
         const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("GLTF_FILE");
         if (payload) {
-          std::filesystem::path sourcePath = (const char*)payload->Data;
+          // We capture the file path. Using std::string ensures the data is
+          // copied and lives long enough for the command to execute.
+          std::string path_str(static_cast<const char*>(payload->Data));
 
-          // 1. Get the destination path within project's assets folder.
-          //    implement GetAssetsPath() in ProjectManager.
-          std::filesystem::path destPath =
-              Runtime::Project().GetAssetsPath() / sourcePath.filename();
-
-          try {
-            // 2. The handler's ONLY job is to copy the file. This is a safe
-            // operation.
-            std::filesystem::copy_file(
-                sourcePath, destPath,
-                std::filesystem::copy_options::overwrite_existing);
+          // Instead of executing the import logic now, we wrap it in a lambda
+          // and enqueue it. This is thread-safe and defers the execution.
+          CommandQueue::Enqueue([path_str]() {
+            // This is the old EXACT, working import logic from before.
+            // It has simply been moved inside this lambda.
+            std::filesystem::path abs_path = path_str;
             Logger::getInstance().Log(
                 LogLevel::Info,
-                "Asset dropped and copied to: " + destPath.string());
+                "Executing deferred import: " + abs_path.string());
 
-          } catch (const std::filesystem::filesystem_error& e) {
-            Logger::getInstance().Log(
-                LogLevel::Error,
-                "Failed to copy dropped asset: " + std::string(e.what()));
-          }
-
-          // 3. We do NOT load the model or create any entities here.
-          //    The ProjectObserver will now see the new file and queue an
-          //    event. The main loop's PollEvents() call will safely process
-          //    that event.
+            std::shared_ptr<Model> model = Model::Load(abs_path.string());
+            if (!model || model->NLoadedMeshes() == 0) {
+              Logger::getInstance().Log(
+                  LogLevel::Error,
+                  "Import failed: no meshes in " + abs_path.string());
+            } else {
+              auto& world = ECS::Main();
+              auto [entity, tr] =
+                  world.CreateEntity(abs_path.filename().string());
+              Logger::getInstance().Log(
+                  LogLevel::Debug,
+                  "[GameCanvas] Created entity: " +
+                      std::to_string(entt::to_integral(entity)));
+              for (uint32_t i = 0; i < model->NLoadedMeshes(); ++i) {
+                const Mesh* mesh = model->QueryMesh(i);
+                if (mesh) {
+                  MeshRendererComponent& mr =
+                      world.Add<MeshRendererComponent>(entity);
+                  mr.mesh_ = mesh;
+                  mr.enabled_ = true;
+                }
+              }
+              static std::vector<std::shared_ptr<Model>> asset_cache;
+              asset_cache.emplace_back(std::move(model));
+            }
+          });
         }
         ImGui::EndDragDropTarget();
-      }
 
     } else {
       ImGui::TextColored(ImVec4(1, 0, 0, 1), "Texture ID invalid!");
