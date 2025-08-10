@@ -5,9 +5,9 @@
 #include "engine/audio/sound_manager.h"  // TODO: remove later
 #include "engine/context/engine_context.h"
 #include "engine/core/logger.h"
+#include "engine/ecs/ecs_collection.h"
 #include "engine/renderer/icons/icon_loader.h"
 #include "game/game_test.h"
-#include "engine/ecs/ecs_collection.h"
 
 // ------------------ single-instance state (internal linkage) -----------------
 namespace Runtime {
@@ -39,6 +39,7 @@ SceneViewPipeline g_scene_view_pipeline;
 
 static void _LoadDependencies() {
   // TODO: resource manager
+  ResourceManager& resource = EngineContext::resourceManager();
 
   // TODO: load shaders
   // ShaderPool::loadAllSync("./shaders/materials");
