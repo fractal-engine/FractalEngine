@@ -32,10 +32,14 @@ void SceneViewPipeline::Create() {
 void SceneViewPipeline::Destroy() {
 
   // TODO: simply call destroyPasses();
+  DestroyPasses();
 
   // TODO: remove this once the above is implemented
   if (bgfx::isValid(program_))
     bgfx::destroy(program_), program_ = BGFX_INVALID_HANDLE;
+
+  Logger::getInstance().Log(LogLevel::Debug,
+                            "[Render] SceneViewPipeline::Destroy");
 }
 
 // TODO: rename to Render() once placeholder is removed
@@ -159,4 +163,10 @@ void SceneViewPipeline::Render() {
                  Runtime::Shader()->LoadProgram("gltf_default", "vs_gltf.bin",
                                                 "fs_gltf.bin"));
   }
+}
+
+void SceneViewPipeline::CreatePasses() {}
+
+void SceneViewPipeline::DestroyPasses() {
+  scene_view_forward_pass_.Destroy();
 }
