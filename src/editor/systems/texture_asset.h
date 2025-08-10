@@ -48,7 +48,7 @@ private:
 
   std::filesystem::path file_path_;
   Meta meta_{};
-  std::shared_ptr<Gfx::Texture> texture_;  // nullptr until loaded
+  std::shared_ptr<Texture> texture_;  // nullptr until loaded
 };
 
 #endif  // TEXTURE_ASSET_H

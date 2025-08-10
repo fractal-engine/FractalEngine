@@ -20,10 +20,10 @@ bool Running();  // returns false when SDL quit requested
 void Destroy();
 
 // --------------- global singletons ----------------
-::WindowManager& Window();
-::RendererBase& Renderer();
-::Input& Input();
-::ShaderManager& Shader();
+WindowManager& Window();
+RendererBase& Renderer();
+Input& InputDevice();
+ShaderManager& Shader();
 ResourceManager& resourceManager();
 
 }  // namespace EngineContext

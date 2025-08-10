@@ -66,7 +66,7 @@ TextureAsset::TextureAsset(std::filesystem::path file)
 void TextureAsset::LoadSync() {
   // direct call into the global TextureCache
   texture_ =
-      Gfx::TextureCache::Instance().Get(file_path_, Gfx::TextureType::IMAGE);
+      TextureCache::Instance().Get(file_path_, TextureType::IMAGE);
 
   if (!texture_ || !texture_->Valid()) {
     Logger::getInstance().Log(
