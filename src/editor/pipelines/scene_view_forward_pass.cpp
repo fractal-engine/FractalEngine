@@ -7,8 +7,8 @@
 #include "engine/core/engine_globals.h"
 #include "engine/core/logger.h"
 #include "engine/ecs/entity_container.h"
+#include "engine/renderer/graphics_renderer.h"
 #include "engine/renderer/model/mesh.h"
-#include "engine/renderer/renderer_graphics.h"
 
 SceneViewForwardPass::SceneViewForwardPass()
     : framebuffer_(BGFX_INVALID_HANDLE),

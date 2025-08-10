@@ -3,7 +3,7 @@
 #include "engine/context/subsystem_list.h"
 #include "engine/core/logger.h"
 #include "engine/ecs/world.h"
-#include "engine/renderer/renderer_graphics.h"
+#include "engine/renderer/graphics_renderer.h"
 #include "engine/renderer/shaders/shader_manager.h"
 #include "platform/input/input.h"
 #include "platform/window_manager.h"

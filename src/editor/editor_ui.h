@@ -3,7 +3,7 @@
 
 #include <memory>
 #include "editor_base.h"
-#include "engine/renderer/renderer_graphics.h"
+#include "engine/renderer/graphics_renderer.h"
 #include "game/game_test.h"
 #include "imgui.h"
 #include "imgui_internal.h"
