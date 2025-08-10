@@ -40,7 +40,7 @@ SceneViewPipeline& sceneViewPipeline();
 EditorBase* Editor();
 RendererBase* Renderer();
 GameManager* Game();
-Input* InputSystem();
+Input* InputDevice();
 WindowManager* Window();
 ShaderManager* Shader();
 

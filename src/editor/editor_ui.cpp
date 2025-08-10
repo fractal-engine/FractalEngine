@@ -69,8 +69,8 @@ void EditorUI::Initialize() {
       ImVec2(WindowManager::GetDPIScale(), WindowManager::GetDPIScale());
 }
 
-// TODO: refactor loop, should be split into EditorUI::NewFrame() / EditorUI::Render()
-// Renamed to NextFrame()??
+// TODO: refactor loop, should be split into EditorUI::NewFrame() /
+// EditorUI::Render() Renamed to NextFrame()??
 void EditorUI::Run() {
   Logger::getInstance().Log(LogLevel::Info, "EditorUI main loop start");
 
@@ -215,8 +215,8 @@ void EditorUI::HandleInput(Key key) {
   if (auto* gm = Runtime::Game()) {
     input_event.pressed_frame_ = gm->GetFrameCount();
   }
-  Runtime::InputSystem()->FowardInputEvent(input_event,
-                                           input_event.pressed_frame_);
+  Runtime::InputDevice()->ForwardInputEvent(input_event,
+                                            input_event.pressed_frame_);
 }
 
 void EditorUI::DockSpace() {

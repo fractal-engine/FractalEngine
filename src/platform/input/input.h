@@ -20,7 +20,7 @@ public:
   Input() = default;
   bool IsJustPressed(const Key& key) const;
   bool IsPressed(const Key& key) const;
-  void FowardInputEvent(InputEvent event, uint64_t frame);
+  void ForwardInputEvent(InputEvent event, uint64_t frame);
   void FlushInputEvent();
 };
 

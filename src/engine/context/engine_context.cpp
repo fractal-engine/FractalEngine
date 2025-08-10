@@ -13,9 +13,9 @@ namespace EngineContext {
 // ------------------------------------------------------------------
 //  Process-wide singletons
 // ------------------------------------------------------------------
-static std::unique_ptr<::GraphicsRenderer> graphics_renderer_instance_;
-static std::unique_ptr<::ShaderManager> shader_manager_instance_;
-static std::unique_ptr<::Input> input_device_instance_;
+static std::unique_ptr<GraphicsRenderer> graphics_renderer_instance_;
+static std::unique_ptr<ShaderManager> shader_manager_instance_;
+static std::unique_ptr<Input> input_device_instance_;
 static std::unique_ptr<ResourceManager> resource_manager_;
 
 // ------------------------------------------------------------------
@@ -30,14 +30,14 @@ bool Init() {
   if (!WindowManager::Initialize())
     return false;
 
-  graphics_renderer_instance_ = std::make_unique<::GraphicsRenderer>();
+  graphics_renderer_instance_ = std::make_unique<GraphicsRenderer>();
   if (!graphics_renderer_instance_->InitBgfx())
     return false;
 
-  shader_manager_instance_ = std::make_unique<::ShaderManager>();
+  shader_manager_instance_ = std::make_unique<ShaderManager>();
   shader_manager_instance_->Init();
 
-  input_device_instance_ = std::make_unique<::Input>();
+  input_device_instance_ = std::make_unique<Input>();
 
   resource_manager_ = std::make_unique<ResourceManager>();
 
@@ -68,7 +68,7 @@ bool Running() {
   }
 
   dynamic_registry.TickAll(dt);
-  return !::WindowManager::WindowShouldClose();
+  return !WindowManager::WindowShouldClose();
 }
 
 void Destroy() {
@@ -85,17 +85,19 @@ void Destroy() {
 // ------------------------------------------------------------------
 //  Accessors
 // ------------------------------------------------------------------
-::WindowManager& Window() {
+WindowManager& Window() {
   return WindowManager::getInstance();
 }
 
-::RendererBase& Renderer() {
+RendererBase& Renderer() {
   return *graphics_renderer_instance_;
 }
-::Input& Input() {
+
+Input& InputDevice() {
   return *input_device_instance_;
 }
-::ShaderManager& Shader() {
+
+ShaderManager& Shader() {
   return *shader_manager_instance_;
 }
 

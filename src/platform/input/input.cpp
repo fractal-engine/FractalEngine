@@ -16,7 +16,7 @@ bool Input::IsJustPressed(const Key& key) const {
   return false;
 }
 
-void Input::FowardInputEvent(InputEvent event, uint64_t frame) {
+void Input::ForwardInputEvent(InputEvent event, uint64_t frame) {
   std::lock_guard<std::mutex> lock(event_mutex_);
   for (InputEvent& buffered_event : buffered_events_) {
     if (buffered_event.key_ == event.key_) {

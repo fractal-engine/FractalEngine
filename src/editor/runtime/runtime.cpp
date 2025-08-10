@@ -83,7 +83,7 @@ static void _CreateEngineContext() {
   g_window_manager = &EngineContext::Window();
   g_renderer = &EngineContext::Renderer();
   g_shader_manager = &EngineContext::Shader();
-  g_input = &EngineContext::Input();
+  g_input = &EngineContext::InputDevice();
 
   // Set audio
   // TODO: remove once we have a proper audio context
@@ -143,7 +143,7 @@ static void _ConnectSignals() {
   g_editor->editor_exit_pressed.connect([&] { g_game_manager->Terminate(); });
 
   g_editor->game_inputed.connect([&](InputEvent event) {
-    g_input->FowardInputEvent(event, g_game_manager->GetFrameCount());
+    g_input->ForwardInputEvent(event, g_game_manager->GetFrameCount());
   });
 
   g_renderer->redrawn.connect([&] { g_editor->RequestUpdate(); });
@@ -233,7 +233,7 @@ RendererBase* Renderer() {
 GameManager* Game() {
   return g_game_manager.get();
 }
-Input* InputSystem() {
+Input* InputDevice() {
   return g_input;
 }
 WindowManager* Window() {
