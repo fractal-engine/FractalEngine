@@ -18,6 +18,12 @@ public:
   bool wireframe_;
 
 private:
+  // Creates all passes
+  void CreatePasses();
+
+  // Destroys all passes
+  void DestroyPasses();
+  
   // Forward pass for scene view
   SceneViewForwardPass scene_view_forward_pass_;
 
