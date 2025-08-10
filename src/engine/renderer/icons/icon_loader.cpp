@@ -15,7 +15,7 @@
 namespace IconLoader::Internal {
 
 using Path = std::filesystem::path;
-using TexturePtr = std::shared_ptr<Gfx::Texture>;
+using TexturePtr = std::shared_ptr<Texture>;
 
 // file extensions
 static constexpr std::array<std::string_view, 3> kValidExt{".png", ".jpg",
@@ -82,7 +82,7 @@ void LoadDirectory(const Path& dir, bool async) {
 
       // Load texture through TextureCache, avoids duplicates
       auto texture =
-          Gfx::TextureCache::Instance().Get(file_path, Gfx::TextureType::IMAGE);
+          TextureCache::Instance().Get(file_path, TextureType::IMAGE);
 
       if (texture) {
         InsertIcon(id, texture);
@@ -136,7 +136,7 @@ uint32_t Get(const std::string& id) {
 // Set fallback texture used when icon is not found
 void CreatePlaceholderIcon(const std::filesystem::path& file) {
   auto texture =
-      Gfx::TextureCache::Instance().Get(file, Gfx::TextureType::IMAGE);
+      TextureCache::Instance().Get(file, TextureType::IMAGE);
 
   if (texture && texture->Valid()) {
     std::scoped_lock lock(Internal::g_mutex);

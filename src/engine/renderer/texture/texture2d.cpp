@@ -3,9 +3,6 @@
 
 #include <stb/stb_image.h>
 
-using namespace Gfx;
-
-namespace Gfx::TextureInternal {
 // ----------------------------------------------------------------------
 // Format information for texture configuration
 // ----------------------------------------------------------------------
@@ -55,7 +52,6 @@ FormatInfo ChooseFormat(TextureType type, int channels) {
   }
   return info;
 }
-}  // namespace Gfx::TextureInternal
 
 // Private constructors used to create textures with existing GPU handles
 Texture::Texture(bgfx::TextureHandle handle_param, uint16_t width_param,
@@ -110,7 +106,7 @@ std::shared_ptr<Texture> Texture::Load2D(
   stbi_image_free(pixels);
 
   // Select appropriate format and flags based on texture type
-  const auto fmt_info = TextureInternal::ChooseFormat(type, channels);
+  const auto fmt_info = ChooseFormat(type, channels);
   const uint64_t flags =
       sampler_flags | (fmt_info.srgb ? BGFX_TEXTURE_SRGB : 0ULL);
 
