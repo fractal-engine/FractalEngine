@@ -1,5 +1,5 @@
-#ifndef RENDERER_GRAPHICS_H
-#define RENDERER_GRAPHICS_H
+#ifndef GRAPHICS_RENDERER_H
+#define GRAPHICS_RENDERER_H
 
 #include <SDL.h>
 #include <imgui.h>
@@ -104,4 +104,4 @@ private:
   uint32_t frame_count_ = 0;
 };
 
-#endif  // RENDERER_GRAPHICS_H
+#endif  // graphics_renderer_H

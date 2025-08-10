@@ -3,17 +3,17 @@
 
 #include <imgui.h>
 
+#include "editor/pipelines/scene_view_forward_pass.h"
 #include "editor/runtime/runtime.h"
 #include "engine/core/engine_globals.h"
 #include "engine/core/logger.h"
 #include "engine/core/view_ids.h"
 #include "engine/ecs/world.h"
+#include "engine/renderer/graphics_renderer.h"
 #include "engine/renderer/model/model.h"
-#include "engine/renderer/renderer_graphics.h"
 #include "engine/resources/file_system_utils.h"
-#include "editor/pipelines/scene_view_forward_pass.h"
 
-// TODO: rename window to scene_view_window 
+// TODO: rename window to scene_view_window
 
 namespace Panels {
 
@@ -109,9 +109,9 @@ inline void GameCanvas(bool isGameRunning, bool& hovered) {
               auto [entity, tr] =
                   world.CreateEntity(abs_path.filename().string());
 
-              Logger::getInstance().Log(
-                  LogLevel::Debug,
-                  "[GameCanvas] Created entity: " + std::to_string((int)entity));
+              Logger::getInstance().Log(LogLevel::Debug,
+                                        "[GameCanvas] Created entity: " +
+                                            std::to_string((int)entity));
 
               // Attach a MeshRendererComponent for each mesh
               for (uint32_t i = 0; i < model->NLoadedMeshes(); ++i) {

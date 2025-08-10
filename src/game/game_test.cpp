@@ -12,8 +12,8 @@
 #include "engine/core/logger.h"
 #include "engine/core/view_ids.h"
 #include "engine/ecs/world.h"
+#include "engine/renderer/graphics_renderer.h"
 #include "engine/renderer/lighting/sky_lighting.h"
-#include "engine/renderer/renderer_graphics.h"
 #include "engine/resources/shader_utils.h"
 #include "engine/resources/textures/texture_utils.h"
 
