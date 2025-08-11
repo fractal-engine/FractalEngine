@@ -1,3 +1,33 @@
+/**************************************************************************
+ * EngineContext
+ * -------------
+ * Central access point for low-level engine systems and services.
+ *
+ * Owns / lifetime-managed:
+ *  - GraphicsRenderer (graphics_renderer_instance_)
+ *  - ShaderManager (shader_manager_instance_)
+ *  - Input (input_device_instance_)
+ *  - ResourceManager (resource_manager_)
+ *  - SubsystemList hot-reload registry (dynamic_registry)
+ *
+ * Initializes / coordinates (not owned):
+ *  - WindowManager (Initialize, WindowShouldClose)
+ *  - ECS (entt::locator<ECS>::emplace)
+ *  - SoundManager (Instance().init / Instance().terminate)
+ *
+ * Lifecycle:
+ *  - Init(): Creates subsystems, initializes WindowManager, BGFX, ECS, Audio
+ *  - Running(): Updates resources, ticks dynamic registry, polls window state
+ *  - Destroy(): Shuts down subsystems in reverse dependency order
+ *
+ * Accessors:
+ *  - Window(): Access to window and display operations
+ *  - Renderer(): Access to rendering pipeline
+ *  - InputDevice(): Access to input handling
+ *  - Shader(): Access to shader management
+ *  - resourceManager(): Access to resource
+ **************************************************************************/
+
 #include "engine_context.h"
 #include "engine/audio/sound_manager.h"
 #include "engine/context/subsystem_list.h"

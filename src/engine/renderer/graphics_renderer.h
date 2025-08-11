@@ -12,6 +12,7 @@
 
 #include "platform/platform_utils.h"
 #include "platform/window_manager.h"
+#include "engine/renderer/frame_graph.h"
 
 class GraphicsRenderer : public RendererBase {
 public:
@@ -22,19 +23,13 @@ public:
   // Initializes BGFX
   bool InitBgfx();
 
-  // RendererBase interface
-  void ClearDisplay() override;
-  void ShowText(const std::string& text, int x, int y) override;
-  void ShowText(const std::vector<std::string>& text_area, int x,
-                int y) override;
-
   void RenderGameContent();
   void ConfigureViews();
   void PrepareFrame();
   void BeginImGuiFrame();
   void EndImGuiFrame();
   void CreateFramebuffers(uint16_t w, uint16_t h);
-  void SetSize(int w, int h) override;
+  void OnResize(uint16_t w, uint16_t h);
   void UpdateCanvasSize(uint16_t w, uint16_t h);
 
   // Called after drawing to present the frame.
@@ -74,6 +69,8 @@ private:
   SDL_Window* window_;
   mutable std::mutex canvas_mutex_;
   SDL_Texture* game_texture_;  // Texture for the game canvas
+
+  FrameGraph frame_graph_{static_cast<RendererBase&>(*this)};
 
   // BGFX framebuffer handles
   // bgfx::FrameBufferHandle scene_framebuffer_ = BGFX_INVALID_HANDLE;

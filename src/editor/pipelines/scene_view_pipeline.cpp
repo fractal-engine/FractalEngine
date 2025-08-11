@@ -45,8 +45,8 @@ void SceneViewPipeline::Destroy() {
 // TODO: rename to Render() once placeholder is removed
 void SceneViewPipeline::RealRender() {
   // debug
-  Logger::getInstance().Log(LogLevel::Debug,
-                            "[Render] SceneViewPipeline::Render called");
+  /*Logger::getInstance().Log(LogLevel::Debug,
+                            "[Render] SceneViewPipeline::Render called");*/
 
   // Set default view and matrices
   /*bgfx::ViewId view = ViewID::SCENE_MESH;
@@ -122,8 +122,8 @@ void SceneViewPipeline::RealRender() {
 
 // PLACEHOLDER: Remove this once pipeline is done
 void SceneViewPipeline::Render() {
-  Logger::getInstance().Log(LogLevel::Debug,
-                            "[Render] SceneViewPipeline::Render called");
+  /* Logger::getInstance().Log(LogLevel::Debug,
+                            "[Render] SceneViewPipeline::Render called");*/
 
   // Basic setup
   glm::mat4 view =
@@ -142,9 +142,11 @@ void SceneViewPipeline::Render() {
   auto& world = ECS::Main();
   world.UpdateTransforms();
   const auto& render_queue = world.GetRenderQueue();
-  Logger::getInstance().Log(
+
+  // Debug
+  /* Logger::getInstance().Log(
       LogLevel::Debug,
-      "[Render] Render queue size: " + std::to_string(render_queue.size()));
+      "[Render] Render queue size: " + std::to_string(render_queue.size()));*/
 
   for (const auto& [entity, transform, renderer] : render_queue) {
     Logger::getInstance().Log(

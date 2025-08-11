@@ -43,7 +43,7 @@ GraphicsRenderer::GraphicsRenderer() {
 
   // Register for window resize notifications
   WindowManager::RegisterResizeCallback(
-      [this](int width, int height) { SetSize(width, height); });
+      [this](int width, int height) { OnResize(width, height); });
 
   Logger::getInstance().Log(
       LogLevel::Info, "GraphicsRenderer initialized successfully with BGFX.");
@@ -79,30 +79,6 @@ bool GraphicsRenderer::InitBgfx() {
   return true;
 }
 
-// Store single-line text as shared game content.
-void GraphicsRenderer::ShowText(const std::string& text, int x, int y) {
-  std::lock_guard<std::mutex> lock(canvas_mutex_);
-  current_game_content_ = text;
-  pos_x_ = x;
-  pos_y_ = y;
-}
-
-/* Convert vector of text lines into single multi-line string
-and store it as shared game content for rendering. */
-void GraphicsRenderer::ShowText(const std::vector<std::string>& text_area,
-                                int x, int y) {
-  if (!text_area.empty()) {
-    std::string combined;
-    for (const auto& line : text_area) {
-      combined += line + "\n";  // Append newline to combined string
-    }
-    std::lock_guard<std::mutex> lock(canvas_mutex_);
-    current_game_content_ = combined;  // Store combined string
-    pos_x_ = x;
-    pos_y_ = y;
-  }
-}
-
 std::string GraphicsRenderer::GetCurrentGameContent() {
   std::lock_guard<std::mutex> lock(canvas_mutex_);
   return current_game_content_;
@@ -124,10 +100,11 @@ void GraphicsRenderer::ConfigureViews() {
   bgfx::setViewRect(ViewID::UI_BACKGROUND, 0, 0, fbw, fbh);
 }
 
-void GraphicsRenderer::SetSize(int w, int h) {
+void GraphicsRenderer::OnResize(uint16_t w, uint16_t h) {
   last_framebuffer_width_ = 0;  // force rebuild on next PrepareFrame()
   last_framebuffer_height_ = 0;
-  ConfigureViews();  // rebuild views for new window
+  ConfigureViews();            // rebuild views for new window
+  frame_graph_.Rebuild(w, h);  // notify the graph
 }
 
 // Set up per-frame and clear operations
@@ -301,6 +278,9 @@ void GraphicsRenderer::CreateFramebuffers(uint16_t w, uint16_t h) {
 
 void GraphicsRenderer::Render() {
 
+  // Execute frame graph passes
+  frame_graph_.Render();
+
   bgfx::touch(ViewID::UI_BACKGROUND);  // dummy background view
   // bgfx::touch(ViewID::UI);             // ImGui rendering into UI view
   // bgfx::touch(ViewID::SCENE);
@@ -323,11 +303,6 @@ void GraphicsRenderer::ProcessEvents(bool& quit) {
   if (w != WindowManager::GetWidth() || h != WindowManager::GetHeight()) {
     WindowManager::OnWindowResize(w, h);  // Will trigger the BGFX resize logic
   }
-}
-
-void GraphicsRenderer::ClearDisplay() {
-  // clear the BGFX view with nothing drawn
-  bgfx::touch(0);
 }
 
 void GraphicsRenderer::Shutdown() {
