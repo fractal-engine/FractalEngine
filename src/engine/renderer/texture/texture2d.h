@@ -7,6 +7,7 @@
 #include <mutex>
 #include <string>
 #include <unordered_map>
+#include <array>
 
 // --------------------------------------------------------------------------
 //  2D texture wrapper
