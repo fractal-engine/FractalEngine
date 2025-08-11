@@ -17,7 +17,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 1
           submodules: true
 
       - name: Setup Xmake
@@ -29,11 +29,7 @@ jobs:
       - name: Configure & Build
         shell: bash
         run: |
-          xmake f -p windows --toolchain=${{ matrix.toolchain }} -a ${{ matrix.arch }} -y -v --diagnosis
-          xmake build engine
-          xmake build sample_game
-          xmake build tests
-          xmake build platform
+          xmake f -p windows --toolchain=${{ matrix.toolchain }} -a ${{ matrix.arch }} -y -v
           xmake build fractal
 
       - name: Check shader binaries

@@ -13,7 +13,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 1
           submodules: true
 
       - name: Install system dependencies
@@ -27,11 +27,7 @@ jobs:
 
       - name: Configure & Build
         run: |
-          xmake f -p linux --toolchain=gcc -y -v --diagnosis
-          xmake build engine
-          xmake build sample_game
-          xmake build platform
-          xmake build tests
+          xmake f -p linux --toolchain=gcc -y -v
           xmake build fractal
 
       - name: Check shader binaries
