@@ -1,0 +1,43 @@
+name: macOS CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: macos-latest
+    strategy:
+      matrix:
+        arch: [arm64]
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          submodules: true
+
+      - name: Install Xcode Command Line Tools
+        run: xcode-select --install || true
+
+      - name: Setup Xmake
+        uses: xmake-io/github-action-setup-xmake@v1
+
+      - name: Configure & Build
+        run: |
+          xmake f -p macosx --toolchain=clang -a ${{ matrix.arch }} -y -v
+          xmake build fractal
+
+      - name: Check shader binaries
+        shell: bash
+        run: |
+          builddir="build/macosx/${{ matrix.arch }}/release"
+          shaderdir="$builddir/assets/shaders/metal"
+          echo "Checking shader binaries in $shaderdir"
+          count=$(find "$shaderdir" -name '*.bin' | wc -l)
+          if [ "$count" -eq 0 ]; then
+            echo "::error ::No shader binaries found in $shaderdir"
+            exit 1
+          fi

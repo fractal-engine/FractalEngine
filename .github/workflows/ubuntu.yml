@@ -1,0 +1,44 @@
+name: Ubuntu CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          submodules: true
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libgl1-mesa-dev
+
+      - name: Setup Xmake
+        uses: xmake-io/github-action-setup-xmake@v1
+
+      - name: Configure & Build
+        run: |
+          xmake f -p linux --toolchain=gcc -y -v
+          xmake build fractal
+
+      - name: Check shader binaries
+        run: |
+          builddir="build/linux/x86_64/release"
+          for folder in glsl spirv; do
+            shaderdir="$builddir/assets/shaders/$folder"
+            echo "Checking shader binaries in $shaderdir"
+            count=$(find "$shaderdir" -name '*.bin' | wc -l)
+            if [ "$count" -eq 0 ]; then
+              echo "::error ::No shader binaries found in $shaderdir"
+              exit 1
+            fi
+          done

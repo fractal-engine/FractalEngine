@@ -1,0 +1,47 @@
+name: Windows CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        arch: [x64]
+        toolchain: [msvc]
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          submodules: true
+
+      - name: Setup Xmake
+        uses: xmake-io/github-action-setup-xmake@v1
+
+      - name: Clean xmake package cache
+        run: xmake require --clean
+
+      - name: Configure & Build
+        shell: bash
+        run: |
+          xmake f -p windows --toolchain=${{ matrix.toolchain }} -a ${{ matrix.arch }} -y -v
+          xmake build fractal
+
+      - name: Check shader binaries
+        shell: bash
+        run: |
+          builddir="build/windows/${{ matrix.arch }}/release"
+          for folder in dx11 dx12; do
+            shaderdir="$builddir/assets/shaders/$folder"
+            echo "Checking shader binaries in $shaderdir"
+            count=$(find "$shaderdir" -name '*.bin' | wc -l)
+            if [ "$count" -eq 0 ]; then
+              echo "::error ::No shader binaries found in $shaderdir"
+              exit 1
+            fi
+          done

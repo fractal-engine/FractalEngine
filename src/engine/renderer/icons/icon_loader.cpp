@@ -11,6 +11,7 @@
 #include <thread>
 #include <unordered_map>
 #include <vector>
+#include <algorithm>
 
 namespace IconLoader::Internal {
 
@@ -33,8 +34,8 @@ std::mutex g_mutex;
 // ─────────────── helpers ────────────────
 [[nodiscard]] bool IsSupported(const Path& path) noexcept {
   const std::string ext = path.extension().string();
-  return std::ranges::any_of(kValidExt,
-                             [&](std::string_view v) { return ext == v; });
+  return std::any_of(kValidExt.begin(), kValidExt.end(),
+                     [&](std::string_view v) { return ext == v; });
 }
 
 // Scan directory for supported image files, returns their paths
@@ -48,7 +49,7 @@ static std::vector<Path> CollectFiles(const Path& dir) {
     return out;  // Return empty vector
   }
 
-  // 
+  //
   for (auto& entry : std::filesystem::directory_iterator(dir))
     if (!entry.is_directory() && IsSupported(entry.path()))
       out.emplace_back(entry.path());
