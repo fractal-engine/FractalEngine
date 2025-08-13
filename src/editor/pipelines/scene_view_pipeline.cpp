@@ -124,8 +124,8 @@ void SceneViewPipeline::RealRender() {
 
 // PLACEHOLDER: Remove this once pipeline is done
 void SceneViewPipeline::Render() {
-  Logger::getInstance().Log(LogLevel::Debug,
-                            "[Render] SceneViewPipeline::Render called");
+  /* Logger::getInstance().Log(LogLevel::Debug,
+                            "[Render] SceneViewPipeline::Render called");*/
   auto& world = ECS::Main();
 
   // 1. Get the LIVE editor OrbitCamera from the EditorUI singleton.
