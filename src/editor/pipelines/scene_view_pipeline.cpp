@@ -3,13 +3,13 @@
 #include <bgfx/bgfx.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
-#include "editor/gizmos/component_gizmos.h" 
 #include "editor/editor_ui.h"
-#include "engine/ecs/world.h"
+#include "editor/gizmos/component_gizmos.h"
 #include "editor/runtime/runtime.h"  // TODO: Remove this once pipeline is done
 #include "engine/core/engine_globals.h"
 #include "engine/core/logger.h"
 #include "engine/core/view_ids.h"
+#include "engine/ecs/world.h"
 #include "engine/renderer/model/mesh.h"
 
 SceneViewPipeline::SceneViewPipeline()
@@ -18,11 +18,105 @@ SceneViewPipeline::SceneViewPipeline()
   // Check reference project for details
 }
 
+void SceneViewPipeline::CreateFrameGraph() {
+  // Get reference to the FrameGraph owned by Runtime
+  auto& frameGraph = Runtime::GetFrameGraph();
+
+  // Clear any existing passes and attachments
+  frameGraph.Clear();
+
+  // Define scene attachments
+  AttachmentDesc colorAttachment{
+      .name = "scene_color",
+      .width = 0,   // Will be updated during Rebuild()
+      .height = 0   // Will be updated during Rebuild()
+  };
+
+  AttachmentDesc depthAttachment{
+      .name = "scene_depth",
+      .width = 0,   // Will be updated during Rebuild()
+      .height = 0   // Will be updated during Rebuild()
+  };
+
+  // Add attachments to frame graph
+  frameGraph.AddAttachment(colorAttachment);
+  frameGraph.AddAttachment(depthAttachment);
+
+  // Define scene rendering pass
+  Pass scenePass{.name = "scene_forward_pass",
+                             .execute =
+                                 [this](const Pass::Context& ctx) {
+                                   // This lambda contains all the rendering
+                                   // logic that was previously in Render()
+                                   this->RenderScenePass(ctx);
+                                 },
+                             .reads = {},
+                             .writes = {"scene_color", "scene_depth"}};
+
+  // Add pass to frame graph
+  frameGraph.AddPass(scenePass);
+
+  // Bake frame graph to finalize
+  frameGraph.Bake();
+
+  Logger::getInstance().Log(LogLevel::Info,
+                            "SceneViewPipeline: Frame graph created");
+}
+
+void SceneViewPipeline::RenderScenePass(
+    const Pass::Context& /*ctx*/) {
+
+  auto& world = ECS::Main();
+
+  // Orbit camera from editor
+  OrbitCamera& camera = EditorUI::Get()->GetCamera();
+
+  // Calculate the LIVE view and projection matrices FROM THE ORBIT CAMERA.
+  float viewMatrix[16];
+  float projMatrix[16];
+  camera.getViewMatrix(viewMatrix);
+  camera.getProjectionMatrix(projMatrix,
+                             float(canvasViewportW) / float(canvasViewportH));
+
+  // View setup for scene using the matrices from the OrbitCamera
+  bgfx::setViewTransform(ViewID::SCENE_MESH, viewMatrix, projMatrix);
+  bgfx::setViewRect(ViewID::SCENE_MESH, 0, 0, canvasViewportW, canvasViewportH);
+  bgfx::setViewClear(ViewID::SCENE_MESH, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH,
+                     0x303030ff, 1.0f, 0);
+
+  // Update transforms and draw
+  world.UpdateTransforms();
+  const auto& render_queue = world.GetRenderQueue();
+
+  // Render all the meshes in the scene.
+  for (const auto& [entity, transform, renderer] : render_queue) {
+    if (!renderer.enabled_ || !renderer.mesh_)
+      continue;
+
+    bgfx::setTransform(glm::value_ptr(transform.model_));
+    renderer.mesh_->Bind();
+
+    bgfx::setState(BGFX_STATE_DEFAULT | BGFX_STATE_CULL_CW);
+    bgfx::submit(ViewID::SCENE_MESH,
+                 Runtime::Shader()->LoadProgram("gltf_default", "vs_gltf.bin",
+                                                "fs_gltf.bin"));
+  }
+
+  // Get the selected entity from the UI singleton.
+  Entity selectedEntity = EditorUI::Get()->GetSelectedEntity();
+
+  // Draw the gizmo ONCE, after all meshes have been rendered.
+  ComponentGizmos::DrawTransformGizmo(selectedEntity, viewMatrix, projMatrix);
+}
+
 void SceneViewPipeline::Create() {
   // TODO: Initialize default profile (exposure, contrast, gamma, etc)
 
   // TODO: set up fly camera for scene view
-  // TODO: create passes
+
+  // Build frame graph
+  CreateFrameGraph();
+
   // TODO: set future game view for gizmos
   // Use GameViewPipeline for the gizmos
 
@@ -32,9 +126,6 @@ void SceneViewPipeline::Create() {
 }
 
 void SceneViewPipeline::Destroy() {
-
-  // TODO: simply call destroyPasses();
-  DestroyPasses();
 
   // TODO: remove this once the above is implemented
   if (bgfx::isValid(program_))
@@ -124,61 +215,15 @@ void SceneViewPipeline::RealRender() {
 
 // PLACEHOLDER: Remove this once pipeline is done
 void SceneViewPipeline::Render() {
-  /* Logger::getInstance().Log(LogLevel::Debug,
-                            "[Render] SceneViewPipeline::Render called");*/
-  auto& world = ECS::Main();
 
-  // 1. Get the LIVE editor OrbitCamera from the EditorUI singleton.
-  // This is the camera controlled by the user in the editor.
-  OrbitCamera& camera = EditorUI::Get()->GetCamera();
+  // TODO: add missing inits and calls noted in RealRender
 
-  // 2. Calculate the LIVE view and projection matrices FROM THE ORBIT CAMERA.
-  // Note: OrbitCamera uses float arrays, not glm::mat4, so we adapt.
-  float viewMatrix[16];
-  float projMatrix[16];
-  camera.getViewMatrix(viewMatrix);
-  camera.getProjectionMatrix(projMatrix,
-                             float(canvasViewportW) / float(canvasViewportH));
-
-  // 3. Set up the BGFX view using the matrices from the OrbitCamera.
-  bgfx::setViewTransform(ViewID::SCENE_MESH, viewMatrix, projMatrix);
-  bgfx::setViewRect(ViewID::SCENE_MESH, 0, 0, canvasViewportW, canvasViewportH);
-  bgfx::setViewClear(ViewID::SCENE_MESH, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH,
-                     0x303030ff, 1.0f, 0);
-
-  // 4. Update transforms and get the render queue.
-  world.UpdateTransforms();
-  const auto& render_queue = world.GetRenderQueue();
-
-  // Debug
-  /* Logger::getInstance().Log(
-      LogLevel::Debug,
-      "[Render] Render queue size: " + std::to_string(render_queue.size()));*/
-
-  // 5. Render all the meshes in the scene.
-  for (const auto& [entity, transform, renderer] : render_queue) {
-    if (!renderer.enabled_ || !renderer.mesh_)
-      continue;
-
-    bgfx::setTransform(glm::value_ptr(transform.model_));
-    renderer.mesh_->Bind();
-    bgfx::setState(BGFX_STATE_DEFAULT | BGFX_STATE_CULL_CW);
-    bgfx::submit(ViewID::SCENE_MESH,
-                 Runtime::Shader()->LoadProgram("gltf_default", "vs_gltf.bin",
-                                                "fs_gltf.bin"));
-  }
-
-  // 6. Get the selected entity from the UI singleton.
-  Entity selectedEntity = EditorUI::Get()->GetSelectedEntity();
-
-  // 7. Draw the gizmo ONCE, after all meshes have been rendered.
-  // We pass the matrices we got from the OrbitCamera.
-  ComponentGizmos::DrawTransformGizmo(selectedEntity, viewMatrix, projMatrix);
+  Runtime::GetFrameGraph().Render();
 }
 
-
+/*
 void SceneViewPipeline::CreatePasses() {}
 
 void SceneViewPipeline::DestroyPasses() {
   scene_view_forward_pass_.Destroy();
-}
+}*/

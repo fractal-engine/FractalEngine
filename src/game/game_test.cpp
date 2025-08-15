@@ -19,7 +19,7 @@
 
 /*******************************************************************************
  * TODO:
- * - Move bgfx uniforms to scene_view_forward_pass.cpp
+ * - Move bgfx uniforms to graphics renderer?
  * - Move load terrain textures to runtime.cpp (?)
  ******************************************************************************/
 

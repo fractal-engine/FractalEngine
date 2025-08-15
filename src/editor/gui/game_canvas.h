@@ -3,7 +3,7 @@
 
 #include <imgui.h>
 
-#include "editor/pipelines/scene_view_forward_pass.h"
+#include "engine/renderer/frame_graph.h"
 #include "editor/runtime/runtime.h"
 #include "engine/core/engine_globals.h"
 #include "engine/core/logger.h"
@@ -112,6 +112,8 @@ inline void GameCanvas(bool isGameRunning, bool& hovered) {
               Logger::getInstance().Log(LogLevel::Debug,
                                         "[GameCanvas] Created entity: " +
                                             std::to_string((int)entity));
+
+              EditorUI::Get()->SetSelectedEntity(entity);
 
               // Attach a MeshRendererComponent for each mesh
               for (uint32_t i = 0; i < model->NLoadedMeshes(); ++i) {

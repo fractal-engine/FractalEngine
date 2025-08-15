@@ -132,7 +132,6 @@ ShaderManager& Shader() {
 }
 
 ResourceManager& resourceManager() {
-  assert(resource_manager_);
   return *resource_manager_;
 }
 

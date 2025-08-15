@@ -14,6 +14,7 @@
 #include "game/game_manager.h"
 #include "platform/input/input.h"
 #include "platform/window_manager.h"
+#include "engine/renderer/frame_graph.h"
 
 // Forward declarations
 class EditorBase;
@@ -34,7 +35,8 @@ int TERMINATE();
 ProjectManager& Project();
 
 /* ------------ Pipeline getters ------------ */
-SceneViewPipeline& sceneViewPipeline();
+SceneViewPipeline& GetSceneViewPipeline();
+FrameGraph& GetFrameGraph();
 
 /* ------------ Getters ------------ */
 EditorBase* Editor();
