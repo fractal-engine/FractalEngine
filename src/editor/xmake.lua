@@ -10,13 +10,12 @@ target("fractal")
     add_includedirs("..", "vendor", "systems")
 
     add_files("main.cpp", "*.cpp", "runtime/*.cpp", "gui/*.cpp", "gui/inspectables/*.cpp", "systems/*.cpp",
-            "project/*.cpp", "registry/*.cpp", "pipelines/*.cpp")
-    add_files("vendor/imgui/imgui_impl_bgfx.cpp", "vendor/ImGuiFileDialog/ImGuiFileDialog.cpp")
+            "project/*.cpp", "registry/*.cpp", "pipelines/*.cpp", "gizmos/*.cpp")
+    
+    add_files("vendor/imgui/imgui_impl_bgfx.cpp", "vendor/ImGuiFileDialog/ImGuiFileDialog.cpp", "vendor/imguizmo/*.cpp")
+
     add_headerfiles("runtime/*.h", "gui/*.h", "gui/inspectables/*.cpp", "systems/*.h", "project/*.h",
             "registry/*.h", "pipelines/*.h")
-
-    add_files("vendor/imguizmo/*.cpp")
-    add_files("gizmos/*.cpp")
 
     add_packages("imgui", "boost", "libsdl2", "bgfx", "glm", "libsdl2_ttf", "portaudio", "efsw", "nlohmann_json", "reflect-cpp", "entt")
 

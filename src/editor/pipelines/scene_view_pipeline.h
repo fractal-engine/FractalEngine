@@ -5,6 +5,7 @@
 
 #include "editor/pipelines/scene_view_forward_pass.h"
 #include "engine/ecs/ecs_collection.h"
+#include "engine/renderer/frame_graph.h"
 
 class SceneViewPipeline {
 public:
@@ -14,16 +15,21 @@ public:
   void Render();
   void RealRender();  // PLACEHOLDER: Remove this once pipeline is done
 
+  void CreateFrameGraph();
+  void RenderScenePass(const Pass::Context& ctx);
+
+  // void SetSelectedEntity(EntityContainer* selected);
+
   // wireframe option
   bool wireframe_;
 
 private:
   // Creates all passes
-  void CreatePasses();
+  /* void CreatePasses();
 
   // Destroys all passes
-  void DestroyPasses();
-  
+  void DestroyPasses();*/
+
   // Forward pass for scene view
   SceneViewForwardPass scene_view_forward_pass_;
 

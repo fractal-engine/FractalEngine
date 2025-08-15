@@ -12,7 +12,6 @@
 
 #include "platform/platform_utils.h"
 #include "platform/window_manager.h"
-#include "engine/renderer/frame_graph.h"
 
 class GraphicsRenderer : public RendererBase {
 public:
@@ -69,8 +68,6 @@ private:
   SDL_Window* window_;
   mutable std::mutex canvas_mutex_;
   SDL_Texture* game_texture_;  // Texture for the game canvas
-
-  FrameGraph frame_graph_{static_cast<RendererBase&>(*this)};
 
   // BGFX framebuffer handles
   // bgfx::FrameBufferHandle scene_framebuffer_ = BGFX_INVALID_HANDLE;

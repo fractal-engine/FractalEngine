@@ -1,30 +1,27 @@
 /**************************************************************************
- * RenderGraph
- * -------------
- * High-level backend-agnostic pass orchestration layer.
+ * FrameGraph
+ * ----------
+ * Backend-agnostic pass orchestration layer owned by Runtime.
  *
- * Models a directed graph of:
- *  - Passes (depth pre-pass, SSAO, forward lighting, post-processing, etc.)
- *  - Attachments (color, depth, intermediate textures)
- *  - Edges (output of pass A feeds as input to pass B)
+ * Models:
+ *  - Passes (depth pre-pass, SSAO, forward lighting, post-FX, etc.)
+ *  - Attachments (color/depth/intermediate) as logical IDs only
+ *  - Implicit edges via pass.reads / pass.writes
  *
  * Responsibilities:
- *  - Manages pass sequencing and dependency resolution
- *  - Handles transient texture allocation/reuse
- *  - Rebuilds graph on viewport/resolution changes
- *  - Provides high-level API that abstracts BGFX details
+ *  - Pass registration (AddPass) and attachment registration (AddAttachment)
+ *  - Simple sequencing (Bake -> current: insertion order)
+ *  - Per-frame execution (Render) invoking pass lambdas
+ *  - Resize hook (Rebuild) updating logical sizes and re-baking
  *
- * Usage:
- *  - Build once at startup via Build(GraphDesc)
- *  - Call Render() each frame
- *  - Rebuild when viewport changes
- *
- * TODOs:
- *  - Pass creation API (addPass, addEdge)
- *  - Dependency tracking between passes
- *  - Resource management?
- *  - Graph-traversal and execution logic?
- *  - Validation of graph
+ * TODO:
+ *  - Topological sort from reads/writes (real dependency resolution)
+ *  - Attachment validation (unwritten reads, multiple writers, cycles)
+ *  - Transient resource allocation/reuse via RendererBase (populate texture/fbo
+ *ids)
+ *  - Attachment metadata: format, clear values, sample count, flags
+ *  - Populate Context.view_id / width / height consistently (policy)
+ *  - Build(GraphDesc) as a single-shot construction API? 
  **************************************************************************/
 
 #ifndef FRAME_GRAPH_H

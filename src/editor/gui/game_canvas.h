@@ -113,6 +113,8 @@ inline void GameCanvas(bool isGameRunning, bool& hovered) {
                                         "[GameCanvas] Created entity: " +
                                             std::to_string((int)entity));
 
+              EditorUI::Get()->SetSelectedEntity(entity);
+
               // Attach a MeshRendererComponent for each mesh
               for (uint32_t i = 0; i < model->NLoadedMeshes(); ++i) {
                 const Mesh* mesh = model->QueryMesh(i);

@@ -1,8 +1,8 @@
 #ifndef RENDERER_BASE_H
 #define RENDERER_BASE_H
 
-#include "engine/core/singleton.hpp"
 #include "engine/core/logger.h"
+#include "engine/core/singleton.hpp"
 
 #include <boost/signals2/signal.hpp>
 #include <memory>

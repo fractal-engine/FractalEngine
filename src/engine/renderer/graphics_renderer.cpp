@@ -104,7 +104,6 @@ void GraphicsRenderer::OnResize(uint16_t w, uint16_t h) {
   last_framebuffer_width_ = 0;  // force rebuild on next PrepareFrame()
   last_framebuffer_height_ = 0;
   ConfigureViews();            // rebuild views for new window
-  frame_graph_.Rebuild(w, h);  // notify the graph
 }
 
 // Set up per-frame and clear operations
@@ -277,9 +276,6 @@ void GraphicsRenderer::CreateFramebuffers(uint16_t w, uint16_t h) {
 }
 
 void GraphicsRenderer::Render() {
-
-  // Execute frame graph passes
-  frame_graph_.Render();
 
   bgfx::touch(ViewID::UI_BACKGROUND);  // dummy background view
   // bgfx::touch(ViewID::UI);             // ImGui rendering into UI view
