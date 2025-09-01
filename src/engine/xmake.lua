@@ -13,7 +13,7 @@ target("engine")
     -- renderer files
     add_files("renderer/*.cpp", "renderer/lighting/*.cpp", "renderer/shaders/*.cpp",
             "renderer/icons/*.cpp", "renderer/texture/*.cpp", "renderer/transformation/*.cpp",
-            "renderer/model/*.cpp")
+            "renderer/model/*.cpp", "renderer/skybox/*.cpp")
 
     -- resources files
     add_files("resources/*.cpp", "resources/textures/*.cpp", "resources/3d/*.cpp")
@@ -22,7 +22,7 @@ target("engine")
             "ecs/*.h", "memory/*.h")
     add_headerfiles("renderer/*.h", "renderer/lighting/*.h", "renderer/shaders/*.h",
             "renderer/icons/*.h", "renderer/texture/*.h", "renderer/transformation/*.h",
-            "renderer/model/*.h")
+            "renderer/model/*.h", "renderer/skybox/*.h")
     add_headerfiles("resources/*.h", "resources/textures/*.h", "resources/3d/*.h")
 
     
