@@ -33,15 +33,22 @@
 #include <unordered_map>
 #include <vector>
 
-class RendererBase;
+// --- Change 1: Include BGFX types and forward-declare our concrete renderer ---
+// We need the concrete BGFX types to manage physical resources.
+#include <bgfx/bgfx.h> 
+class RendererBase; 
 
+// --- Change 2: Enhance AttachmentDesc with creation info ---
 struct AttachmentDesc {
   std::string name;
   uint16_t width = 0;  // 0 == swap-chain sized
   uint16_t height = 0;
-  uint8_t mip = 1;
-  bool is_depth = false;
-  // TODO: format, flags, clear value
+  
+  // ADDED: Provide the necessary info for texture creation
+  bgfx::TextureFormat::Enum format = bgfx::TextureFormat::BGRA8;
+  uint64_t flags = BGFX_TEXTURE_RT; // e.g., BGFX_TEXTURE_RT | BGFX_SAMPLER_U_CLAMP
+
+  // REMOVED: is_depth is replaced by the more specific 'format'
 };
 
 struct Pass {
@@ -49,16 +56,16 @@ struct Pass {
   std::vector<std::string> reads;
   std::vector<std::string> writes;
 
+  // --- Change 3: Update Context to use real, type-safe BGFX handles ---
   struct Context {
-    RendererBase& renderer;
+    GraphicsRenderer& renderer; // Use the concrete renderer for BGFX calls
     uint8_t view_id;
     uint16_t width;
     uint16_t height;
 
-    // helpers
-    std::function<uint32_t(const std::string&)>
-        tex;  // return opaque texture id
-    std::function<uint32_t(const std::string&)> fbo;  // return opaque fbo id
+    // The lambdas now return actual BGFX handles, not opaque integers.
+    std::function<bgfx::TextureHandle(const std::string&)> tex;
+    std::function<bgfx::FrameBufferHandle(const std::string&)> fbo;
   };
 
   std::function<void(const Context&)> execute;
@@ -66,14 +73,16 @@ struct Pass {
 
 class FrameGraph {
 public:
-  explicit FrameGraph(RendererBase& renderer) : renderer_(renderer) {}
+  // --- Change 4: Depend on the concrete GraphicsRenderer to do BGFX work ---
+  explicit FrameGraph(GraphicsRenderer& renderer) : renderer_(renderer) {}
+  
 
   // Graph construction
   void AddAttachment(const AttachmentDesc& desc);
   void AddPass(const Pass& pass);
 
-  void Bake();   // topo sort + allocate texture/fbos via renderer_
-  void Clear();  // reset to empty graph
+  void Bake();
+  void Clear();
 
   // Per-frame
   void Render();
@@ -81,13 +90,23 @@ public:
   // Resize
   void Rebuild(uint16_t width, uint16_t height);
 
-private:
-  RendererBase& renderer_;
+   // A public getter for the UI to get the final texture handle
+  bgfx::TextureHandle GetAttachmentTexture(const std::string& name) {
+      if (attachments_.count(name)) {
+          return attachments_.at(name).texture_handle;
+      }
+      return BGFX_INVALID_HANDLE;
+  }
 
+private:
+  // We need the concrete facade to call CreateTexture2D, etc.
+  GraphicsRenderer& renderer_;
+
+  // --- Change 5: AttachmentRT holds physical BGFX handles ---
   struct AttachmentRT {
     AttachmentDesc desc;
-    uint32_t texture_id = 0xFFFFFFFF;  // opaque handle from RendererBase
-    uint32_t fbo_id = 0xFFFFFFFF;      // use if per-pass is allocated
+    bgfx::TextureHandle texture_handle = BGFX_INVALID_HANDLE;
+    bgfx::FrameBufferHandle fbo_handle = BGFX_INVALID_HANDLE;
   };
 
   std::unordered_map<std::string, AttachmentRT> attachments_;

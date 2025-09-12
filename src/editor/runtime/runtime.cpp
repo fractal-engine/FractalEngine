@@ -116,24 +116,26 @@ static void _CreateResources() {
 }
 
 static void _CreateEngineContext() {
-  if (!EngineContext::Init()) {
-    Logger::getInstance().Log(LogLevel::Error, "EngineContext init failed");
-    std::exit(1);
-  }
+    if (!EngineContext::Init()) {
+        Logger::getInstance().Log(LogLevel::Error, "EngineContext init failed");
+        std::exit(1);
+    }
 
-  // cache subsystem references
-  g_window_manager = &EngineContext::Window();
-  g_renderer = &EngineContext::Renderer();
-  g_shader_manager = &EngineContext::Shader();
-  g_input = &EngineContext::InputDevice();
+    g_window_manager = &EngineContext::Window();
+    // EngineContext creates our concrete GraphicsRenderer instance
+    g_renderer = &EngineContext::Renderer(); 
+    g_shader_manager = &EngineContext::Shader();
+    g_input = &EngineContext::InputDevice();
 
-  g_frame_graph = std::make_unique<FrameGraph>(*g_renderer);
+    // Pass the concrete renderer to the FrameGraph constructor
+    g_frame_graph = std::make_unique<FrameGraph>(*static_cast<GraphicsRenderer*>(g_renderer));
 
-  // Register for window resize notifications
-  WindowManager::RegisterResizeCallback([](int width, int height) {
-    // Rebuild frame graph when window size changes
-    g_frame_graph->Rebuild(width, height);
-  });
+    WindowManager::RegisterResizeCallback([](int width, int height) {
+        if (g_frame_graph) {
+            // This one call now handles destroying and recreating all framebuffer resources correctly.
+            g_frame_graph->Rebuild(width, height);
+        }
+    });
 
   // Set audio
   // TODO: remove once we have a proper audio context

@@ -20,10 +20,11 @@ public:
   static EditorUI* Get();  // Singleton access
 
   void Initialize();
-  void Run() override;
-  void RequestUpdate() override;
-  void Destroy() override;
-  void BeginImGuiFrame(SDL_Window* window);
+  void HandleEvent(const SDL_Event& event);
+  void BeginFrame();
+  void RenderPanels();
+  void RenderDraws();
+  void Destroy();
 
   // selection API
   void SetSelectedEntity(Entity entity);

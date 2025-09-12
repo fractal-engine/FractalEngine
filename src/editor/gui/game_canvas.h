@@ -3,12 +3,12 @@
 
 #include <imgui.h>
 
-#include "engine/renderer/frame_graph.h"
 #include "editor/runtime/runtime.h"
 #include "engine/core/engine_globals.h"
 #include "engine/core/logger.h"
 #include "engine/core/view_ids.h"
 #include "engine/ecs/world.h"
+#include "engine/renderer/frame_graph.h"
 #include "engine/renderer/graphics_renderer.h"
 #include "engine/renderer/model/model.h"
 #include "engine/resources/file_system_utils.h"
@@ -24,7 +24,8 @@ inline float DistanceSqr(const ImVec2& delta) {
 }
 
 // Resize is deferred until the viewport has stabilized
-inline void GameCanvas(bool isGameRunning, bool& hovered) {
+inline void GameCanvas(bool isGameRunning, bool& hovered,
+                       ImTextureID scene_texture) {
   ImGui::BeginChild("GameCanvas", ImVec2(0, ImGui::GetContentRegionAvail().y),
                     true);
 
@@ -62,90 +63,90 @@ inline void GameCanvas(bool isGameRunning, bool& hovered) {
 
   auto* renderer = static_cast<GraphicsRenderer*>(Runtime::Renderer());
 
-  if (isGameRunning && canvasViewportW > 0 && canvasViewportH > 0) {
-    // render when we have valid dimensions
-    ImTextureID texId = renderer->GetSceneTexId();
-    if (texId) {
-      ImGui::Image(texId, size, ImVec2(0, 1),  // uv0
-                   ImVec2(1, 0)                // uv1
-      );
+  if (scene_texture != (ImTextureID)0 && canvasViewportW > 0 &&
+      canvasViewportH > 0) {
+    // This now uses the texture that EditorUI gets from the FrameGraph and
+    // passes into this function.
+    ImGui::Image(scene_texture, size, ImVec2(0, 1), ImVec2(1, 0));
 
-      // Handle drop operations for glTF files after drawing image
-      if (ImGui::BeginDragDropTarget()) {
-        const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("GLTF_FILE");
-        if (payload) {
-          // Get file path from payload
-          std::string rel(static_cast<const char*>(payload->Data));
+    // Handle drop operations for glTF files after drawing image
+    if (ImGui::BeginDragDropTarget()) {
+      const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("GLTF_FILE");
+      if (payload) {
+        // Get file path from payload
+        std::string rel(static_cast<const char*>(payload->Data));
 
-          // Convert to absolute path
-          std::filesystem::path abs_path = Runtime::Project().AbsolutePath(rel);
+        // Convert to absolute path
+        std::filesystem::path abs_path = Runtime::Project().AbsolutePath(rel);
 
-          // Check extension before importing
-          if (!FileSystem::HasExtension(abs_path, ".gltf") &&
-              !FileSystem::HasExtension(abs_path, ".glb")) {
+        // Check extension before importing
+        if (!FileSystem::HasExtension(abs_path, ".gltf") &&
+            !FileSystem::HasExtension(abs_path, ".glb")) {
+          Logger::getInstance().Log(
+              LogLevel::Warning,
+              "Dropped file is not a glTF model: " + abs_path.string());
+        } else {
+          Logger::getInstance().Log(
+              LogLevel::Info, "Importing glTF model: " + abs_path.string());
+
+          // Load meshes
+          std::shared_ptr<Model> model = Model::Load(abs_path.string());
+
+          // debug
+          Logger::getInstance().Log(
+              LogLevel::Debug,
+              "[GameCanvas] Model loaded, mesh count: " +
+                  std::to_string(model ? model->NLoadedMeshes() : 0));
+
+          if (!model) {
             Logger::getInstance().Log(
-                LogLevel::Warning,
-                "Dropped file is not a glTF model: " + abs_path.string());
+                LogLevel::Error,
+                "Import failed: no meshes in " + abs_path.string());
           } else {
-            Logger::getInstance().Log(
-                LogLevel::Info, "Importing glTF model: " + abs_path.string());
+            // Create ECS entity
+            auto& world = ECS::Main();
+            auto [entity, tr] =
+                world.CreateEntity(abs_path.filename().string());
 
-            // Load meshes
-            std::shared_ptr<Model> model = Model::Load(abs_path.string());
-
-            // debug
             Logger::getInstance().Log(
                 LogLevel::Debug,
-                "[GameCanvas] Model loaded, mesh count: " +
-                    std::to_string(model ? model->NLoadedMeshes() : 0));
+                "[GameCanvas] Created entity: " + std::to_string((int)entity));
 
-            if (!model) {
-              Logger::getInstance().Log(
-                  LogLevel::Error,
-                  "Import failed: no meshes in " + abs_path.string());
-            } else {
-              // Create ECS entity
-              auto& world = ECS::Main();
-              auto [entity, tr] =
-                  world.CreateEntity(abs_path.filename().string());
+            EditorUI::Get()->SetSelectedEntity(entity);
 
-              Logger::getInstance().Log(LogLevel::Debug,
-                                        "[GameCanvas] Created entity: " +
-                                            std::to_string((int)entity));
+            // Attach a MeshRendererComponent for each mesh
+            for (uint32_t i = 0; i < model->NLoadedMeshes(); ++i) {
+              const Mesh* mesh = model->QueryMesh(i);
+              if (!mesh)
+                continue;
 
-              EditorUI::Get()->SetSelectedEntity(entity);
-
-              // Attach a MeshRendererComponent for each mesh
-              for (uint32_t i = 0; i < model->NLoadedMeshes(); ++i) {
-                const Mesh* mesh = model->QueryMesh(i);
-                if (!mesh)
-                  continue;
-
-                MeshRendererComponent& mr =
-                    world.Add<MeshRendererComponent>(entity);
-                mr.mesh_ = mesh;
-                mr.enabled_ = true;
-              }
-
-              // Keep model alive for the lifetime of the scene
-              static std::vector<std::shared_ptr<Model>> asset_cache;
-              asset_cache.emplace_back(std::move(model));
+              MeshRendererComponent& mr =
+                  world.Add<MeshRendererComponent>(entity);
+              mr.mesh_ = mesh;
+              mr.enabled_ = true;
             }
+
+            // Keep model alive for the lifetime of the scene
+            static std::vector<std::shared_ptr<Model>> asset_cache;
+            asset_cache.emplace_back(std::move(model));
           }
         }
-        ImGui::EndDragDropTarget();
       }
-
-    } else {
-      ImGui::TextColored(ImVec4(1, 0, 0, 1), "Texture ID invalid!");
+      ImGui::EndDragDropTarget();
     }
-  } else {
-    ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1), isGameRunning
-                                                        ? "Resizing viewport..."
-                                                        : "Game not started");
   }
 
-  ImGui::EndChild();
+  else {
+    ImGui::TextColored(ImVec4(1, 0, 0, 1), "Texture ID invalid!");
+  }
+}
+else {
+  ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1), isGameRunning
+                                                      ? "Resizing viewport..."
+                                                      : "Game not started");
+}
+
+ImGui::EndChild();
 }
 
 }  // namespace Panels

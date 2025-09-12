@@ -44,145 +44,111 @@ EditorUI* EditorUI::Get() {
   return s_instance_;
 }
 
-void EditorUI::Initialize() {
-  IMGUI_CHECKVERSION();
-  ImGui::CreateContext();
-  Theme::Initialize();
-  LoadIcons();
-
-  ImGuiIO& io = ImGui::GetIO();
-  io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;    // Enable Docking
-  io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;  // Enable Multi-Viewport
-
-  io.ConfigViewportsNoAutoMerge = true;
-  io.ConfigViewportsNoTaskBarIcon = true;
-
-  // handle docking behavior
-  // ImGui::GetStyle().WindowMenuButtonPosition = ImGuiDir_None;
-
-  // backends
-  ImGui_Implbgfx_Init(ViewID::UI);
-  ApplyImGuiShaders();
-  ImGui_ImplSDL2_InitForOther(WindowManager::GetWindow());
-
-  io.DisplaySize = ImVec2((float)WindowManager::GetWidth(),
-                          (float)WindowManager::GetHeight());
-  io.DisplayFramebufferScale =
-      ImVec2(WindowManager::GetDPIScale(), WindowManager::GetDPIScale());
-}
-
 // TODO: refactor loop, should be split into EditorUI::NewFrame() /
 // EditorUI::Render() Renamed to NextFrame()??
-void EditorUI::Run() {
-  Logger::getInstance().Log(LogLevel::Info, "EditorUI main loop start");
 
-  Initialize();
+// --- NEW IMPLEMENTATIONS ---
+// The logic from the old, monolithic Run() method has been split into the
+// following functions. This allows the main loop in `runtime.cpp` to
+// orchestrate the frame execution step-by-step, which is essential for
+// the new FrameGraph-based rendering architecture.
 
-  SDL_Event event;
-  while (!quit_) {
+// ---- Pending approval by Louis Mercier ----
 
-    // ── 0. SDL EVENTS ───────────────────────────────────────────
-    while (SDL_PollEvent(&event)) {
-      ImGui_ImplSDL2_ProcessEvent(&event);
+void EditorUI::Initialize() {
+    // This function contains the one-time setup logic that was previously
+    // at the very beginning of the EditorUI::Run() method.
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    Theme::Initialize();
+    LoadIcons();
 
-      if (event.type == SDL_KEYDOWN) {
-        Key key = sdl_key_to_key(event);
-        if (key != Key::NONE)
-          HandleInput(key);
-      }
+    ImGuiIO& io = ImGui::GetIO();
+    io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+    io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
+    io.ConfigViewportsNoAutoMerge = true;
+    io.ConfigViewportsNoTaskBarIcon = true;
 
-      // ── WINDOW EVENTS ────────────────────────
-      if (event.type == SDL_WINDOWEVENT) {
-        switch (event.window.event) {
-          case SDL_WINDOWEVENT_SIZE_CHANGED:
-            if (!WindowManager::IsFullscreen() && !WindowManager::minimized) {
-              WindowManager::OnWindowResize(event.window.data1,
-                                            event.window.data2);
-              ImGui::GetIO().DisplaySize =
-                  ImVec2((float)event.window.data1, (float)event.window.data2);
-              built_layout_ = false;
-            }
-            break;
+    // Initialize the ImGui backends for SDL2 and BGFX.
+    ImGui_Implbgfx_Init(ViewID::UI);
+    // ApplyImGuiShaders(); // This should be called here if it exists
+    ImGui_ImplSDL2_InitForOther(WindowManager::GetWindow());
 
-          case SDL_WINDOWEVENT_MINIMIZED:
-            WindowManager::minimized = true;
-            break;
-
-          case SDL_WINDOWEVENT_RESTORED:
-            WindowManager::minimized = false;
-            WindowManager::OnWindowResize(event.window.data1,
-                                          event.window.data2);
-            break;
-
-          default:
-            break;
-        }
-      }
-
-      // toggle biorderless fullscreen with F11
-      if (event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_F11)
-        WindowManager::ToggleFullscreen();
-
-      if (event.type == SDL_QUIT) {
-        quit_ = true;
-        editor_exit_pressed();
-      }
-    }  // end PollEvent loop
-
-    // Skip while window is minimised
-    if (WindowManager::minimized) {
-      SDL_Delay(16);  // ~60 FPS idle
-      continue;
-    }
-
-    // Process system events
-    Runtime::Project().PollEvents();
-
-    /* 1 - Clear background and initialize frame */
-    bgfx::setViewClear(ViewID::UI_BACKGROUND, BGFX_CLEAR_COLOR, 0x1e1e1eff,
-                       1.0f, 0);
-    bgfx::touch(ViewID::UI_BACKGROUND);  // process background
-
-    /* 2 - Build ImGui UI structure */
-    BeginImGuiFrame(WindowManager::GetWindow());
-
-    Runtime::GetSceneViewPipeline().Render();
-
-    RenderUI();
-
-    /* 3 - Finalize ImGui frame definition */
-    ImGui::Render();  // prepre imgui draw data (no rendering yet)
-
-    /* 4 - Prepare rendering target */
-    auto* graphics = static_cast<GraphicsRenderer*>(renderer_);
-    graphics->PrepareFrame();  // set up scene framebuffer view
-
-    /* 5 - Render game content to framebuffer */
-    if (is_game_started_) {
-      Runtime::Game()->Render();  // Render 3D scene
-    }
-
-    /* 6 - Render ImGui elements */
-    ImGui_Implbgfx_RenderDrawLists(ImGui::GetDrawData());  // main window UI
-
-    /* 7 - Handle multi-viewport (detached windows) */
-    ImGui::UpdatePlatformWindows();
-    ImGui::RenderPlatformWindowsDefault();
-
-    /* 8 - Submit frame to display */
-    renderer_->Render();  // finalize rendering
-    bgfx::frame();        // submit to GPU and swap buffers
-  }
-  Logger::getInstance().Log(LogLevel::Info, "EditorUI loop exited");
+    io.DisplaySize = ImVec2((float)WindowManager::GetWidth(), (float)WindowManager::GetHeight());
+    io.DisplayFramebufferScale = ImVec2(WindowManager::GetDPIScale(), WindowManager::GetDPIScale());
 }
 
-void EditorUI::RequestUpdate() {}
+void EditorUI::HandleEvent(const SDL_Event& event) {
+    // --- RETAINED FROM OLD Run() METHOD ---
+    // This function encapsulates all event processing logic that was previously
+    // inside the `while (SDL_PollEvent(&event))` loop in the old Run() method.
+    // No logic has been removed, only relocated.
+    ImGui_ImplSDL2_ProcessEvent(&event);
+
+    if (event.type == SDL_KEYDOWN) {
+        Key key = sdl_key_to_key(event);
+        if (key != Key::NONE)
+            HandleInput(key);
+    }
+
+    if (event.type == SDL_WINDOWEVENT) {
+        switch (event.window.event) {
+        case SDL_WINDOWEVENT_SIZE_CHANGED:
+            if (!WindowManager::IsFullscreen() && !WindowManager::minimized) {
+                WindowManager::OnWindowResize(event.window.data1, event.window.data2);
+                ImGui::GetIO().DisplaySize = ImVec2((float)event.window.data1, (float)event.window.data2);
+                built_layout_ = false;
+            }
+            break;
+        case SDL_WINDOWEVENT_MINIMIZED:
+            WindowManager::minimized = true;
+            break;
+        case SDL_WINDOWEVENT_RESTORED:
+            WindowManager::minimized = false;
+            WindowManager::OnWindowResize(event.window.data1, event.window.data2);
+            break;
+        default:
+            break;
+        }
+    }
+
+    if (event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_F11)
+        WindowManager::ToggleFullscreen();
+
+    if (event.type == SDL_QUIT) {
+        quit_ = true; // Still useful for internal state checks
+        editor_exit_pressed(); // Signal Runtime to orchestrate a clean shutdown
+    }
+}
+
+void EditorUI::BeginFrame() {
+    // This function kicks off a new ImGui frame. It contains the calls that
+    // used to be at the top of the main `while(!quit_)` loop in Run().
+    ImGui_ImplSDL2_NewFrame();
+    ImGui_Implbgfx_NewFrame();
+    ImGui::NewFrame();
+}
+
+void EditorUI::RenderPanels() {
+    // This is the primary UI drawing step. It simply calls the main RenderUI()
+    // function, which is responsible for defining all ImGui windows and widgets.
+    RenderUI();
+}
+
+void EditorUI::RenderDraws() {
+    // This function handles the final step of rendering the UI. It takes the draw
+    // data prepared by ImGui::Render() and submits it to the BGFX backend.
+    // This logic was previously at the end of the Run() method.
+    ImGui::Render();
+    ImGui_Implbgfx_RenderDrawLists(ImGui::GetDrawData());
+}
 
 void EditorUI::Destroy() {
-  Logger::getInstance().Log(LogLevel::Info, "Shutting down EditorUI");
-  ImGui_Implbgfx_Shutdown();
-  ImGui_ImplSDL2_Shutdown();
-  ImGui::DestroyContext();
+    // Contains the shutdown logic from the end of the old Run() or destructor.
+    Logger::getInstance().Log(LogLevel::Info, "Shutting down EditorUI");
+    ImGui_Implbgfx_Shutdown();
+    ImGui_ImplSDL2_Shutdown();
+    ImGui::DestroyContext();
 }
 
 void EditorUI::HandleInput(Key key) {
@@ -335,8 +301,29 @@ void EditorUI::RenderUI() {
   // The rendering pipeline now handles the gizmo, so this panel is just a
   // simple canvas.
   ImGui::Begin("Scene", nullptr);
-  Panels::GameCanvas(is_game_started_, game_canvas_hovered_);
-  ImGui::End();
+    // The GraphicsRenderer no longer knows about a "scene texture". That responsibility
+    // has moved to the FrameGraph, which manages all rendering targets (attachments).
+    // This decouples the UI from the low-level renderer's internal state.
+
+    // Now we have a new method as follows:
+    // We now ask the FrameGraph for the final "scene_color" attachment by its logical name.
+    bgfx::TextureHandle scene_texture_handle = Runtime::GetFrameGraph().GetAttachmentTexture("scene_color");
+    ImTextureID scene_tex_id = (ImTextureID)0;
+
+    // We must check if the handle is valid. It might be invalid on the very first
+    // frame or during a resize operation before the new texture is created.
+    if (bgfx::isValid(scene_texture_handle)) {
+        // Convert the BGFX handle to an ImTextureID that ImGui's Image() function can use.
+        scene_tex_id = (ImTextureID)(uintptr_t)scene_texture_handle.idx;
+    }
+    
+    // Now we can use the retrieved texture ID in the GameCanvas panel.
+    // We now pass the texture ID directly into the GameCanvas panel. This makes
+    // the panel more self-contained and easier to reuse.
+    Panels::GameCanvas(is_game_started_, game_canvas_hovered_, scene_tex_id);
+
+    ImGui::End();
+
 
  // -------- RIGHT : INSPECTOR (now calls the new panel) -----------------
   ImGui::Begin("Inspector", nullptr);
@@ -402,16 +389,6 @@ void EditorUI::LoadIcons() {
   // tab_icons_.insert({"File Explorer", ICON_FA_FOLDER});
 }
 
-void EditorUI::BeginImGuiFrame(SDL_Window* window) {
-  ImGui_ImplSDL2_NewFrame();  // platform backend
-  ImGui_Implbgfx_NewFrame();  // renderer backend
-  ImGui::NewFrame();          // ImGui begins
-
-  // ---- decorators start here ----
-  // drop shadow effect
-  // static bool shadowOn = true;
-  // ui::shadow::BeginFrame(shadowOn);
-}
 
 // ── Selection API ─────────────────────────────────────────────────────────
 void EditorUI::SetSelectedEntity(Entity entity) {
