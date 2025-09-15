@@ -68,6 +68,7 @@ void FrameGraph::Render() {
           }};
 
       // Execute pass
+      ctx.globals = globals_;
       pass->execute(ctx);
     }
   }

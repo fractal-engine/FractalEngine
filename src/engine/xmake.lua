@@ -25,8 +25,6 @@ target("engine")
             "renderer/model/*.h", "renderer/skybox/*.h")
     add_headerfiles("resources/*.h", "resources/textures/*.h", "resources/3d/*.h")
 
-    
-
     add_rules("shaderc.build")
     add_files("$(projectdir)/src/assets/shaders/**.sc")
     remove_files("$(projectdir)/src/assets/shaders/varying*.sc")

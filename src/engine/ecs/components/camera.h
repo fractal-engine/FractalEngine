@@ -2,19 +2,18 @@
 #define CAMERA_H
 
 #include <glm/glm.hpp>
-
 struct CameraComponent {
   // Set if camera is enabled
-  bool enabled = true;
+  bool enabled_ = true;
 
   // Cameras y fov in degrees
-  float fov = 70.0f;
+  float fov_ = 70.0f;
 
   // Near clipping
-  float near_clip = 0.3f;
+  float near_clip_ = 0.3f;
 
   // Far clipping
-  float far_clip = 1000.0f;
+  float far_clip_ = 1000.0f;
 };
 
 #endif  // CAMERA_H

@@ -21,7 +21,7 @@
  *ids)
  *  - Attachment metadata: format, clear values, sample count, flags
  *  - Populate Context.view_id / width / height consistently (policy)
- *  - Build(GraphDesc) as a single-shot construction API? 
+ *  - Build(GraphDesc) as a single-shot construction API?
  **************************************************************************/
 
 #ifndef FRAME_GRAPH_H
@@ -33,6 +33,8 @@
 #include <unordered_map>
 #include <vector>
 
+#include "engine/renderer/skybox/skybox.h"
+
 class RendererBase;
 
 struct AttachmentDesc {
@@ -42,6 +44,14 @@ struct AttachmentDesc {
   uint8_t mip = 1;
   bool is_depth = false;
   // TODO: format, flags, clear value
+};
+
+struct GlobalResources {
+  Skybox* skybox = nullptr;
+  // IMGizmo* scene_gizmos = nullptr;
+  // ShadowMap* shadow_map = nullptr;
+  // Terrain* terrain = nullptr;
+  // Water* water = nullptr;
 };
 
 struct Pass {
@@ -59,6 +69,8 @@ struct Pass {
     std::function<uint32_t(const std::string&)>
         tex;  // return opaque texture id
     std::function<uint32_t(const std::string&)> fbo;  // return opaque fbo id
+
+    GlobalResources globals;
   };
 
   std::function<void(const Context&)> execute;
@@ -67,6 +79,10 @@ struct Pass {
 class FrameGraph {
 public:
   explicit FrameGraph(RendererBase& renderer) : renderer_(renderer) {}
+
+  void SetGlobalResources(const GlobalResources& resources) {
+    globals_ = resources;
+  }
 
   // Graph construction
   void AddAttachment(const AttachmentDesc& desc);
@@ -83,6 +99,7 @@ public:
 
 private:
   RendererBase& renderer_;
+  GlobalResources globals_;
 
   struct AttachmentRT {
     AttachmentDesc desc;
