@@ -1,5 +1,5 @@
-#ifndef LIGHT_H
-#define LIGHT_H
+#ifndef LIGHT_COMPONENT_H
+#define LIGHT_COMPONENT_H
 
 #include <cstdint>
 #include <glm/glm.hpp>
@@ -56,4 +56,4 @@ struct SpotlightComponent {
   float shadow_softness_ = 1.0f;
 };
 
-#endif  // LIGHT_H
+#endif  // LIGHT_COMPONENT_H

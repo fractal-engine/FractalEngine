@@ -1,5 +1,5 @@
-#ifndef MESH_RENDERER_H
-#define MESH_RENDERER_H
+#ifndef MESH_RENDERER_COMPONENT_H
+#define MESH_RENDERER_COMPONENT_H
 
 #include <entt/entt.hpp>
 #include <glm/glm.hpp>
@@ -12,4 +12,4 @@ struct MeshRendererComponent {
   bool enabled_{true};
 };
 
-#endif  // MESH_RENDERER_H
+#endif  // MESH_RENDERER_COMPONENT_H

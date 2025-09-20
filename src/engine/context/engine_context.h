@@ -7,6 +7,7 @@
 #include "platform/input/input.h"
 #include "platform/window_manager.h"
 #include "engine/memory/resource_manager.h"
+#include "engine/time/time.h"
 
 class RendererBase;
 class Input;

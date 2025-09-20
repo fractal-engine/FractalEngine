@@ -1,7 +1,7 @@
 #ifndef INSPECTOR_PANEL_H
 #define INSPECTOR_PANEL_H
 
-#include "engine/ecs/components/transform.h"
+#include "engine/ecs/components/transform_component.h"
 
 #include <imgui.h>
 #include <glm/gtc/type_ptr.hpp>  // Required for glm::value_ptr

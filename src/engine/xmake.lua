@@ -8,7 +8,7 @@ target("engine")
     add_includedirs("..", {public = true})
 
     add_files("core/*.cpp", "audio/*.cpp", "misc/*.cpp", "scene/*.cpp", "context/*.cpp",
-        "formats/*.cpp", "ecs/*.cpp", "memory/*.cpp")
+        "formats/*.cpp", "ecs/*.cpp", "memory/*.cpp", "transform/*.cpp", "time/*.cpp")
 
     -- renderer files
     add_files("renderer/*.cpp", "renderer/lighting/*.cpp", "renderer/shaders/*.cpp",
@@ -18,11 +18,14 @@ target("engine")
     -- resources files
     add_files("resources/*.cpp", "resources/textures/*.cpp", "resources/3d/*.cpp")
 
+    -- header files
     add_headerfiles("core/*.h", "audio/*.h", "scene/*.h", "context/*.h", "formats/*.h",
-            "ecs/*.h", "memory/*.h")
+            "ecs/*.h", "memory/*.h", "transform/*.h", "time/*.h")
+
     add_headerfiles("renderer/*.h", "renderer/lighting/*.h", "renderer/shaders/*.h",
             "renderer/icons/*.h", "renderer/texture/*.h", "renderer/transformation/*.h",
             "renderer/model/*.h", "renderer/skybox/*.h")
+
     add_headerfiles("resources/*.h", "resources/textures/*.h", "resources/3d/*.h")
 
     add_rules("shaderc.build")

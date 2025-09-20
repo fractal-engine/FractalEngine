@@ -1,9 +1,10 @@
-#ifndef TRANSFORM_H
-#define TRANSFORM_H
+#ifndef TRANSFORM_COMPONENT_H
+#define TRANSFORM_COMPONENT_H
 
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
 #include <entt/entt.hpp>
+
 #include "engine/renderer/model/mesh.h"
 
 using Entity = entt::entity;
@@ -33,4 +34,4 @@ struct TransformComponent
     glm::mat4 mvp_    = glm::mat4(1.0f);  // filled each frame by the renderer
 };
 
-#endif  // TRANSFORM_H
+#endif  // TRANSFORM_COMPONENT_H

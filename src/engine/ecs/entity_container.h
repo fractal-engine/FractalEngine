@@ -7,7 +7,8 @@
 #include <utility>
 
 #include "engine/core/logger.h"
-#include "engine/ecs/components/transform.h"
+#include "engine/ecs/components/transform_component.h"
+#include "engine/ecs/world.h"
 
 /*************************************************
 -------------- SECURE ECS CONTAINER ----------------

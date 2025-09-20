@@ -1,7 +1,8 @@
-#ifndef CAMERA_H
-#define CAMERA_H
+#ifndef CAMERA_COMPONENT_H
+#define CAMERA_COMPONENT_H
 
 #include <glm/glm.hpp>
+
 struct CameraComponent {
   // Set if camera is enabled
   bool enabled_ = true;
@@ -16,4 +17,4 @@ struct CameraComponent {
   float far_clip_ = 1000.0f;
 };
 
-#endif  // CAMERA_H
+#endif  // CAMERA_COMPONENT_H
