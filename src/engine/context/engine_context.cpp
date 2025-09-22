@@ -87,11 +87,15 @@ bool Init() {
 }
 
 bool Running() {
+
+  // Calculate delta time
   using clock = std::chrono::steady_clock;
   static auto previous = clock::now();
   auto now = clock::now();
   double dt = std::chrono::duration<double>(now - previous).count();
   previous = now;
+
+  Time::Step(dt);
 
   if (resource_manager_) {
     resource_manager_->UpdateContext();
