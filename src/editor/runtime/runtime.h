@@ -9,12 +9,12 @@
 #include "editor/pipelines/scene_view_pipeline.h"
 #include "editor/project/project_manager.h"
 #include "engine/core/singleton.hpp"
+#include "engine/renderer/frame_graph.h"
 #include "engine/renderer/renderer_base.h"
 #include "engine/renderer/shaders/shader_manager.h"
 #include "game/game_manager.h"
 #include "platform/input/input.h"
 #include "platform/window_manager.h"
-#include "engine/renderer/frame_graph.h"
 
 // Forward declarations
 class EditorBase;
@@ -30,6 +30,12 @@ namespace Runtime {
 /* ------------ Core functions ------------ */
 int START_LOOP();
 int TERMINATE();
+
+/* ------------ Resource functions ------------ */
+void UpdateGlobalResources();
+
+/* ------------ Global resources ------------ */
+GlobalResources BuildGlobalResources();
 
 /* ------------ Project ------------ */
 ProjectManager& Project();

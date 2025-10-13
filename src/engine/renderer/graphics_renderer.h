@@ -37,9 +37,9 @@ public:
   // Processes SDL events, including quitting – called from the Editor loop.
   void ProcessEvents(bool& quit);
 
-  void InitShaders();
+  void CreateShaders();
 
-  void Shutdown() override;
+  void Destroy() override;
 
   // Called when window resizes to update BGFX viewport
   void onResize(uint32_t width, uint32_t height);
@@ -48,6 +48,7 @@ public:
   SDL_Window* GetWindow() const;
   SDL_Texture* GetGameTexture();
   std::string GetCurrentGameContent();
+
   // Scene framebuffer and texture handles
   bgfx::TextureHandle GetSceneColorTexture() const {
     return scene_color_texture_;
@@ -59,10 +60,15 @@ public:
   bgfx::TextureHandle GetReflectionColorTex() const {
     return reflectionColorTex;
   }
+
   uint16_t GetFramebufferWidth() const { return last_framebuffer_width_; }
   uint16_t GetFramebufferHeight() const { return last_framebuffer_height_; }
 
   ImTextureID GetSceneTexId() const { return scene_tex_id_; }
+
+  bgfx::UniformHandle GetSunDirectionUniform() const { return sunDirUniform_; }
+  bgfx::UniformHandle GetSunLuminanceUniform() const { return sunLumUniform_; }
+  bgfx::UniformHandle GetViewPosUniform() const { return viewPosUniform_; }
 
 private:
   SDL_Window* window_;
@@ -85,6 +91,11 @@ private:
   // Reflection FBO
   bgfx::FrameBufferHandle reflectionFB = BGFX_INVALID_HANDLE;
   bgfx::TextureHandle reflectionColorTex = BGFX_INVALID_HANDLE;
+
+  // Uniform handles
+  bgfx::UniformHandle sunDirUniform_;
+  bgfx::UniformHandle sunLumUniform_;
+  bgfx::UniformHandle viewPosUniform_;
 
   ImTextureID scene_tex_id_{0};
 

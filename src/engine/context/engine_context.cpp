@@ -87,22 +87,27 @@ bool Init() {
 }
 
 bool Running() {
+  return !WindowManager::WindowShouldClose();
+}
+
+void NextFrame() {
+
 
   // Calculate delta time
+  // TODO: move time stuff to profiler, we just keep the call
   using clock = std::chrono::steady_clock;
   static auto previous = clock::now();
   auto now = clock::now();
-  double dt = std::chrono::duration<double>(now - previous).count();
+  double delta_time = std::chrono::duration<double>(now - previous).count();
   previous = now;
 
-  Time::Step(dt);
+  Time::Step(delta_time);
 
   if (resource_manager_) {
     resource_manager_->UpdateContext();
   }
 
-  dynamic_registry.TickAll(dt);
-  return !WindowManager::WindowShouldClose();
+  dynamic_registry.TickAll(delta_time);
 }
 
 void Destroy() {

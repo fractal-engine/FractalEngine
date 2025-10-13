@@ -3,20 +3,18 @@
 #include <bx/math.h>
 #include <glm/gtc/type_ptr.hpp>
 
+#include "editor/gizmos/component_gizmos.h"
 #include "editor/runtime/runtime.h"  // TODO: remove this once pipeline is done
 #include "engine/core/engine_globals.h"
 #include "engine/core/logger.h"
-#include "engine/ecs/entity_container.h"
 #include "engine/renderer/graphics_renderer.h"
 #include "engine/renderer/model/mesh.h"
-#include "engine/renderer/graphics_renderer.h"
-#include "editor/gizmos/component_gizmos.h"
 
 SceneViewForwardPass::SceneViewForwardPass()
     : framebuffer_(BGFX_INVALID_HANDLE),
       color_texture_(BGFX_INVALID_HANDLE),
       depth_texture_(BGFX_INVALID_HANDLE),
-      view_id_(ViewID::SCENE_MESH),
+      view_id_(ViewID::SCENE_FORWARD),
       wireframe_(false),
       selection_material_(BGFX_INVALID_HANDLE) {}
 

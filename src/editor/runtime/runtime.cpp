@@ -9,6 +9,7 @@
  *  - GameManager (g_game_manager)
  *  - ProjectManager (g_project_manager)
  *  - Rendering pipelines (g_scene_view_pipeline)
+ *  - Global resources (skybox, scene gizmos, shadowMap, etc)
  *
  * Initializes / coordinates:
  *  - EngineContext subsystems (renderer, shaders, input)
@@ -36,6 +37,7 @@
 
 #include "runtime.h"
 
+#include <engine/renderer/skybox/skybox.h>
 #include "editor/registry/asset_registry.h"
 #include "editor/registry/component_registry.h"
 #include "engine/audio/sound_manager.h"  // TODO: remove later
@@ -44,6 +46,7 @@
 #include "engine/core/logger.h"
 #include "engine/ecs/ecs_collection.h"
 #include "engine/renderer/icons/icon_loader.h"
+#include "engine/time/time.h"
 #include "game/game_test.h"
 
 // ------------------ single-instance state (internal linkage) -----------------
@@ -71,6 +74,7 @@ SceneViewPipeline g_scene_view_pipeline;
 // TODO: scene gizmos
 
 // TODO: default assets
+Skybox default_skybox;
 
 // TODO: default settings
 
@@ -96,8 +100,7 @@ static void _LoadDependencies() {
   IconLoader::LoadIconsAsync("./resources/icons/scene");
 
   // Create default skybox
-
-  // Create default cubemap
+  default_skybox.Create(g_shader_manager);
 
   // Create default texture
 }
@@ -106,11 +109,14 @@ static void _CreateResources() {
 
   // TODO: create pipelines here
   g_scene_view_pipeline.Create();
+  // g_game_view_pipeline.Create();
+  // g_preview_pipeline.Create();
 
   // Initialize FrameGraph with current viewport dimensions
   g_frame_graph->Rebuild(canvasViewportW, canvasViewportH);
 
   // TODO: setup scene gizmos here
+  // g_scene_gizmos.Create();
 
   // TODO: Create main shadow disk and main shadow map here ?
 }
@@ -172,10 +178,22 @@ static void _LaunchEditor() {
 
 static void _NextFrame() {
 
-  // TODO: Start EngineContext::_NextFrame(); ???
+  // Start engine context frame
+  EngineContext::NextFrame();
 
-  // Render next frame
-  g_scene_view_pipeline.Render();
+  // Update resources
+  UpdateGlobalResources();
+
+  // Set global resources in frame graph
+  g_frame_graph->SetGlobalResources(BuildGlobalResources());
+
+  // Execute all passes from all pipelines
+  g_frame_graph->Render();
+
+  // Render next frame (not needed anymore)
+  // g_scene_view_pipeline.Render();
+  // g_preview_pipeline.Render();
+  // g_game_view_pipeline.Render();
 
   // Render editor
   g_project_manager.PollEvents();
@@ -197,6 +215,22 @@ static void _ConnectSignals() {
   });
 
   g_renderer->redrawn.connect([&] { g_editor->RequestUpdate(); });
+}
+
+void UpdateGlobalResources() {
+
+  // Get delta time from time
+  float dt = Time::Deltaf();
+
+  default_skybox.Update(dt);
+  // TODO: g_terrain.Update(dt); g_water.Update(dt);
+}
+
+GlobalResources BuildGlobalResources() {
+  GlobalResources r;
+  r.skybox = &default_skybox;
+  // TODO: r.terrain = &g_terrain; r.water = &g_water;
+  return r;
 }
 
 int START_LOOP() {
@@ -221,19 +255,19 @@ int START_LOOP() {
                             "Game initialized in its own thread");
 
   // Run the editor
-  g_editor->Run();
+  g_editor->Run(); // TODO: this blocks global resources, needs fix!
   Logger::getInstance().Log(LogLevel::Info, "Editor initialized and running");
 
   // TODO: remove once _NextFrame() is used
-  g_scene_view_pipeline.Render();
+  // g_scene_view_pipeline.Render();
 
   // Main loop
-  // TODO: uncomment once EditorUI::Run() is refactored
-  /* while (EngineContext::Running())
-    _NextFrame(); */
+  // TODO: EditorUI::Run() needs refactoring
+  while (EngineContext::Running())
+    _NextFrame();
 
   // TODO: remove once _NextFrame() is used
-  g_project_manager.PollEvents();
+  // g_project_manager.PollEvents();
 
   return TERMINATE();
 }

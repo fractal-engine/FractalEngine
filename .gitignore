@@ -23,3 +23,6 @@ packages/
 
 # stupid macos generated files
 .DS_Store
+
+# clangd files
+.cache/

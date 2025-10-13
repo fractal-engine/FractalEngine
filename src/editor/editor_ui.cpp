@@ -2,10 +2,10 @@
 #include "editor/resources/theme/dark_theme.hpp"
 #include "editor/runtime/runtime.h"
 #include "engine/core/engine_globals.h"
+#include "engine/context/engine_context.h"
 #include "engine/core/logger.h"
 #include "engine/core/view_ids.h"
 #include "engine/ecs/world.h"
-#include "gui/inspector_panel.h"
 #include "gui/asset_browser.h"
 #include "gui/camera_controls.h"
 #include "gui/console_panel.h"
@@ -27,8 +27,6 @@
 #include "editor/vendor/imgui/imgui_impl_bgfx.h"
 
 #include <SDL.h>
-#include <chrono>
-#include <thread>
 
 EditorUI* EditorUI::s_instance_ = nullptr;
 
@@ -73,6 +71,7 @@ void EditorUI::Initialize() {
 
 // TODO: refactor loop, should be split into EditorUI::NewFrame() /
 // EditorUI::Render() Renamed to NextFrame()??
+// Also create a window_viewport for SDL stuff in the loop 
 void EditorUI::Run() {
   Logger::getInstance().Log(LogLevel::Info, "EditorUI main loop start");
 
@@ -80,6 +79,9 @@ void EditorUI::Run() {
 
   SDL_Event event;
   while (!quit_) {
+
+    // TODO: move this out of the loop later
+    EngineContext::NextFrame();
 
     // ── 0. SDL EVENTS ───────────────────────────────────────────
     while (SDL_PollEvent(&event)) {
@@ -146,16 +148,23 @@ void EditorUI::Run() {
     /* 2 - Build ImGui UI structure */
     BeginImGuiFrame(WindowManager::GetWindow());
 
+    /* 3 - Prepare rendering target */
+    auto* graphics = static_cast<GraphicsRenderer*>(renderer_);
+    graphics->PrepareFrame();  // set up scene framebuffer view
+
+    // Update global resources and set them in frame graph
+    // TODO: check if this should be called here
+    Runtime::UpdateGlobalResources();
+
+    Runtime::GetFrameGraph().SetGlobalResources(
+        Runtime::BuildGlobalResources());
+
     Runtime::GetSceneViewPipeline().Render();
 
     RenderUI();
 
-    /* 3 - Finalize ImGui frame definition */
-    ImGui::Render();  // prepre imgui draw data (no rendering yet)
-
-    /* 4 - Prepare rendering target */
-    auto* graphics = static_cast<GraphicsRenderer*>(renderer_);
-    graphics->PrepareFrame();  // set up scene framebuffer view
+    /* 4 - Finalize ImGui frame definition */
+    ImGui::Render();  // prepare imgui draw data (no rendering yet)
 
     /* 5 - Render game content to framebuffer */
     if (is_game_started_) {
@@ -338,7 +347,7 @@ void EditorUI::RenderUI() {
   Panels::GameCanvas(is_game_started_, game_canvas_hovered_);
   ImGui::End();
 
- // -------- RIGHT : INSPECTOR (now calls the new panel) -----------------
+  // -------- RIGHT : INSPECTOR (now calls the new panel) -----------------
   ImGui::Begin("Inspector", nullptr);
 
   Entity selectedEntity = GetSelectedEntity();

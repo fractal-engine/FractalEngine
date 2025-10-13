@@ -103,7 +103,7 @@ void GraphicsRenderer::ConfigureViews() {
 void GraphicsRenderer::OnResize(uint16_t w, uint16_t h) {
   last_framebuffer_width_ = 0;  // force rebuild on next PrepareFrame()
   last_framebuffer_height_ = 0;
-  ConfigureViews();            // rebuild views for new window
+  ConfigureViews();  // rebuild views for new window
 }
 
 // Set up per-frame and clear operations
@@ -301,7 +301,7 @@ void GraphicsRenderer::ProcessEvents(bool& quit) {
   }
 }
 
-void GraphicsRenderer::Shutdown() {
+void GraphicsRenderer::Destroy() {
   Logger::getInstance().Log(LogLevel::Info, "Shutting down GraphicsRenderer");
 
   // 1. Destroy framebuffer attachments first
@@ -348,7 +348,7 @@ void GraphicsRenderer::BeginImGuiFrame() {}
 void GraphicsRenderer::EndImGuiFrame() {}
 
 // function to initialize shaders
-void GraphicsRenderer::InitShaders() {
+void GraphicsRenderer::CreateShaders() {
 
   // Fullscreen quad vertices
   struct FSVertex {

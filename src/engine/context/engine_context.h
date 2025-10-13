@@ -19,6 +19,7 @@ namespace EngineContext {
 bool Init(); // TODO: rename to Create later? 
 bool Running();  // returns false when SDL quit requested
 void Destroy();
+void NextFrame();
 
 // --------------- global singletons ----------------
 WindowManager& Window();

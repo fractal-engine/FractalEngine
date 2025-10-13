@@ -6,6 +6,7 @@
 #include <string>
 #include <tuple>
 #include <vector>
+#include <algorithm> 
 
 #include "engine/ecs/components/camera_component.h"
 #include "engine/ecs/components/mesh_renderer_component.h"

@@ -21,7 +21,7 @@ public:
   virtual ~RendererBase() = default;
 
   virtual void Render() = 0;
-  virtual void Shutdown() = 0;
+  virtual void Destroy() = 0;
 
   boost::signals2::signal<void()> redrawn;
 };

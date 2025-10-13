@@ -117,6 +117,7 @@ void ECS::SetParent(Entity entity, Entity parent) {
         LogLevel::Warning, "[ECS]: Tried to modify parent of invalid entity");
     return;
   }
+
   if (!Has<TransformComponent>(parent)) {
     Logger::getInstance().Log(LogLevel::Warning,
                               "[ECS]: Tried to make invalid entity a parent");
@@ -194,3 +195,19 @@ std::optional<Camera> ECS::GetActiveCamera() {
     t.modified_ = false;
   });
 } */
+
+/* ---------- helpers ---------- */
+// Sets an entire subtree dirty and fixes depth values bottom-up.
+static void _SetSubtreeDirtyAndFixDepth(ECS& ecs, Entity root, uint32_t depth) {
+  if (!ecs.Has<TransformComponent>(root)) return;
+
+  auto& t = ecs.Get<TransformComponent>(root);
+  t.depth_    = depth;
+  t.modified_ = true;
+
+  for (Entity c : t.children_) {
+    if (ecs.Has<TransformComponent>(c)) {
+      _SetSubtreeDirtyAndFixDepth(ecs, c, depth + 1);
+    }
+  }
+}
