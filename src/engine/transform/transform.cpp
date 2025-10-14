@@ -8,11 +8,11 @@
 #include "engine/math/transformation.h"
 
 namespace Transform {
-bool IsRoot(const TransformComponent& transform) {
+bool IsRoot(TransformComponent& transform) {
   return transform.depth_ == 0;
 }
 
-bool HasParent(const TransformComponent& transform) {
+bool HasParent(TransformComponent& transform) {
   return transform.parent_ != entt::null &&
          ECS::Main().Has<TransformComponent>(transform.parent_);
 }
@@ -27,7 +27,7 @@ void Evaluate(TransformComponent& transform) {
   transform.normal_ = Transformation::Normal(transform.model_);
 }
 
-void Evaluate(TransformComponent& transform, const TransformComponent& parent) {
+void Evaluate(TransformComponent& transform, TransformComponent& parent) {
   transform.model_ = parent.model_ * Transformation::Model(transform.position_,
                                                            transform.rotation_,
                                                            transform.scale_);
@@ -125,7 +125,7 @@ void SetScale(TransformComponent& transform, const glm::vec3& scale,
   transform.modified_ = true;
 }
 
-glm::vec3 GetPosition(const TransformComponent& transform, Space space) {
+glm::vec3 GetPosition(TransformComponent& transform, Space space) {
 
   // Local space
   if (space == Space::LOCAL || !HasParent(transform)) {
@@ -137,7 +137,7 @@ glm::vec3 GetPosition(const TransformComponent& transform, Space space) {
   }
 }
 
-glm::quat GetRotation(const TransformComponent& transform, Space space) {
+glm::quat GetRotation(TransformComponent& transform, Space space) {
 
   // Local space
   if (space == Space::LOCAL || !HasParent(transform)) {
@@ -156,7 +156,7 @@ glm::quat GetRotation(const TransformComponent& transform, Space space) {
   }
 }
 
-glm::vec3 GetEulerAngles(const TransformComponent& transform, Space space) {
+glm::vec3 GetEulerAngles(TransformComponent& transform, Space space) {
 
   // Local space
   if (space == Space::LOCAL || !HasParent(transform)) {
@@ -169,7 +169,7 @@ glm::vec3 GetEulerAngles(const TransformComponent& transform, Space space) {
   }
 }
 
-glm::vec3 GetScale(const TransformComponent& transform, Space space) {
+glm::vec3 GetScale(TransformComponent& transform, Space space) {
 
   // Local space
   if (space == Space::LOCAL || !HasParent(transform)) {
@@ -222,7 +222,7 @@ void Scale(TransformComponent& transform, const glm::vec3& scale, Space space) {
 }
 
 // Direction helpers
-glm::vec3 _Direction(const glm::vec3& base, const TransformComponent& transform,
+glm::vec3 _Direction(const glm::vec3& base, TransformComponent& transform,
                      Space space) {
   if (space == Space::LOCAL) {
     return glm::rotate(transform.rotation_, base);
@@ -231,22 +231,22 @@ glm::vec3 _Direction(const glm::vec3& base, const TransformComponent& transform,
   }
 }
 
-glm::vec3 Forward(const TransformComponent& transform, Space space) {
+glm::vec3 Forward(TransformComponent& transform, Space space) {
   return _Direction(glm::vec3(0.0f, 0.0f, 1.0f), transform, space);
 }
-glm::vec3 Backward(const TransformComponent& transform, Space space) {
+glm::vec3 Backward(TransformComponent& transform, Space space) {
   return _Direction(glm::vec3(0.0f, 0.0f, -1.0f), transform, space);
 }
-glm::vec3 Right(const TransformComponent& transform, Space space) {
+glm::vec3 Right(TransformComponent& transform, Space space) {
   return _Direction(glm::vec3(1.0f, 0.0f, 0.0f), transform, space);
 }
-glm::vec3 Left(const TransformComponent& transform, Space space) {
+glm::vec3 Left(TransformComponent& transform, Space space) {
   return _Direction(glm::vec3(-1.0f, 0.0f, 0.0f), transform, space);
 }
-glm::vec3 Up(const TransformComponent& transform, Space space) {
+glm::vec3 Up(TransformComponent& transform, Space space) {
   return _Direction(glm::vec3(0.0f, 1.0f, 0.0f), transform, space);
 }
-glm::vec3 Down(const TransformComponent& transform, Space space) {
+glm::vec3 Down(TransformComponent& transform, Space space) {
   return _Direction(glm::vec3(0.0f, -1.0f, 0.0f), transform, space);
 }
 

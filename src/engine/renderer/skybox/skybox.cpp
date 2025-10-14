@@ -7,7 +7,7 @@
 bgfx::VertexLayout Skybox::ScreenPosVertex::layout;
 
 // ---- helpers ----
-// TODO: check that functions are like in GameTest)
+// TODO: check that functions are like in GameTest
 static inline float local_min(float a, float b) {
   return a < b ? a : b;
 }
@@ -47,7 +47,7 @@ void Skybox::Create(ShaderManager* ShaderManager) {
   // Geometry
   CreateFullscreenQuad();
 
-  // Initialize constant scattering totals (exactly as you did)
+  // Initialize constant scattering totals
   params_.totalBetaR[0] = k_betaR_per_meter[0] * H_R;
   params_.totalBetaR[1] = k_betaR_per_meter[1] * H_R;
   params_.totalBetaR[2] = k_betaR_per_meter[2] * H_R;
@@ -63,10 +63,10 @@ void Skybox::Create(ShaderManager* ShaderManager) {
   params_.scatterParams[2] = 0.0f;
   params_.scatterParams[3] = 0.0f;
 
-  // Default UI-ish parameters, time will be kept in params_._cycleTime
+  // Default UI parameters, time will be kept in params_._cycleTime
   SetParams(/*sunAngularRadius*/ 0.00465f, /*bloom*/ 1.0f, /*exposure*/ 0.25f);
 
-  // Initialize ambient to a safe dark color (as in ctor of GameTest)
+  // Initialize ambient to a safe dark color (like in ctor of GameTest)
   params_._skyAmbientArray[0] = 0.1f;
   params_._skyAmbientArray[1] = 0.1f;
   params_._skyAmbientArray[2] = 0.1f;
@@ -225,7 +225,7 @@ void Skybox::CreateFullscreenQuad() {
       {-1.0f, -1.0f},
       {1.0f, -1.0f},
   };
-  
+
   static const uint16_t quadIndices[] = {0, 2, 1, 1, 2, 3};
 
   _skyVbh = bgfx::createVertexBuffer(

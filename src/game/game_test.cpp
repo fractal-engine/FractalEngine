@@ -106,9 +106,7 @@ void PosTexCoord0Vertex::init() {
 // Constructor: Initializes BGFX handles to invalid and sets default values
 // TODO: comment out once all passes have been moved!
 GameTest::GameTest()
-    : camera(),
-      cameraSystem(&camera),
-      _terrainProgramHeight(BGFX_INVALID_HANDLE),
+    : _terrainProgramHeight(BGFX_INVALID_HANDLE),
       _heightUniform(BGFX_INVALID_HANDLE),
       _heightTexture(BGFX_INVALID_HANDLE),
       terrainORM(BGFX_INVALID_HANDLE),
@@ -462,10 +460,13 @@ void GameTest::Init() {
   float targetPos[3] = {
       TerrainExtent, 0.0f,
       TerrainExtent};           // Define the camera's initial target position
-  camera.setTarget(targetPos);  // Set the camera to look at the target position
+
+
+  /* camera.setTarget(targetPos);  // Set the camera to look at the target position
   camera.setDistance(TerrainScale * 2.0f);  // Set initial camera distance
   camera.setPitch(bx::toRad(30.0f));        // Look downward
   camera.setYaw(bx::toRad(45.0f));          // Set initial yaw
+  */
 
   // Initialize terrain world matrix (scale)
   bx::mtxIdentity(this->world_matrix);
@@ -497,7 +498,7 @@ void GameTest::Init() {
 // Updates game state per frame
 void GameTest::Update() {
   // Update camera from keyboard input
-  cameraSystem.UpdateFromKeyboard();
+  // cameraSystem.UpdateFromKeyboard();
 
   float dt = bx::kPi * 0.002f;  // water time step
   _waterTime += dt;

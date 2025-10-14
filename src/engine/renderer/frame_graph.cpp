@@ -4,14 +4,15 @@
  * Backend-agnostic pass orchestration layer owned by Runtime.
  *
  * Models:
- *  - Passes (depth pre-pass, SSAO, forward lighting, post-FX, etc.)
+ *  - Passes through nodes (depth pre-pass, SSAO, forward lighting, post-FX,
+ *etc.)
  *  - Attachments (color/depth/intermediate) as logical IDs only
- *  - Implicit edges via pass.reads / pass.writes
+ *  - Implicit edges via node.reads / node.writes
  *
  * Responsibilities:
- *  - Pass registration (AddPass) and attachment registration (AddAttachment)
+ *  - Node registration (AddNode) and attachment registration (AddAttachment)
  *  - Simple sequencing (Bake -> current: insertion order)
- *  - Per-frame execution (Render) invoking pass lambdas
+ *  - Per-frame execution (Render) invoking node lambdas
  *  - Resize hook (Rebuild) updating logical sizes and re-baking
  *
  * TODO:
@@ -42,9 +43,9 @@ void FrameGraph::AddAttachment(const AttachmentDesc& desc) {
   attachments_[desc.name] = rt;
 }
 
-void FrameGraph::AddPass(const Pass& pass) {
-  // Add pass to graph
-  passes_.push_back(pass);
+void FrameGraph::AddNode(const Node& node) {
+  // Add node to graph
+  nodes_.push_back(node);
 }
 
 void FrameGraph::Bake() {
@@ -52,29 +53,29 @@ void FrameGraph::Bake() {
   exec_order_.clear();
 
   // TODO: Basic sequential topo sort, enhance later
-  for (auto& pass : passes_) {
-    exec_order_.push_back(&pass);
+  for (auto& node : nodes_) {
+    exec_order_.push_back(&node);
   }
 
   Logger::getInstance().Log(
       LogLevel::Info,
       "FrameGraph: Baked with " + std::to_string(attachments_.size()) +
-          " attachments and " + std::to_string(passes_.size()) + " passes");
+          " attachments and " + std::to_string(nodes_.size()) + " nodes");
 }
 
 void FrameGraph::Clear() {
   // Reset graph
   attachments_.clear();
-  passes_.clear();
+  nodes_.clear();
   exec_order_.clear();
 }
 
 void FrameGraph::Render() {
-  // Execute passes in order
-  for (Pass* pass : exec_order_) {
-    if (pass && pass->execute) {
-      // Create context for specified pass
-      Pass::Context ctx{
+  // Execute nodes in order
+  for (Node* node : exec_order_) {
+    if (node && node->execute) {
+      // Create context for specified node
+      Node::Context context{
           .renderer = renderer_,
           .view_id = 0,  // Will be set properly in future
           .width = 0,    // Will be set properly in future
@@ -91,11 +92,13 @@ void FrameGraph::Render() {
           .fbo = [this](const std::string& name) -> uint32_t {
             auto it = attachments_.find(name);
             return (it != attachments_.end()) ? it->second.fbo_id : 0xFFFFFFFF;
-          }};
+          },
+          .globals = globals_
+        };
 
-      // Execute pass
-      ctx.globals = globals_;
-      pass->execute(ctx);
+      // Execute node
+      // context.globals = globals_;
+      node->execute(context);
     }
   }
 }

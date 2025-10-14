@@ -3,45 +3,42 @@
 
 #include <imgui.h>
 #include "editor/runtime/runtime.h"
-#include "game/game_test.h"
+#include "engine/ecs/world.h"
 
 namespace Panels {
 
 inline void CameraControls() {
   ImGui::BeginChild("CameraControls", ImVec2(300, 0), true);
   ImGui::Text("Camera Controls");
-  ImGui::Separator();  // TODO: create custom UI separator
+  ImGui::Separator();
 
-  auto* game = dynamic_cast<GameTest*>(Runtime::Game()->GetGame());
-  if (game) {
-    OrbitCamera& cam = game->camera;
+  // Get selected camera entity from hierarchy
+  Entity selected = EditorUI::Get()->GetSelectedEntity();
+  auto& world = ECS::Main();
 
-    float pitch = cam.getPitch();
-    float yaw = cam.getYaw();
-    float roll = cam.getRoll();
-    float dist = cam.getDistance();
-    float target[3];
-    std::memcpy(target, cam.getTarget(), sizeof(target));
+  if (selected != entt::null && world.Has<CameraComponent>(selected)) {
+    auto& camera = world.Get<CameraComponent>(selected);
+    auto& transform = world.Get<TransformComponent>(selected);
 
-    if (ImGui::SliderFloat("Pitch", &pitch, -bx::kPi, bx::kPi))
-      cam.setPitch(pitch);
-    if (ImGui::SliderFloat("Yaw", &yaw, -bx::kPi, bx::kPi))
-      cam.setYaw(yaw);
-    if (ImGui::SliderFloat("Roll", &roll, -bx::kPi, bx::kPi))
-      cam.setRoll(roll);
-    if (ImGui::SliderFloat("Distance", &dist, 1.0f, 1500.0f))
-      cam.setDistance(dist);
-    if (ImGui::SliderFloat3("Target", target, -2000.0f, 2000.0f))
-      cam.setTarget(target);
+    // Camera properties
+    if (ImGui::SliderFloat("FOV", &camera.fov_, 30.0f, 120.0f))
+      transform.modified_ = true;
+
+    if (ImGui::SliderFloat("Near", &camera.near_clip_, 0.1f, 10.0f))
+      transform.modified_ = true;
+
+    if (ImGui::SliderFloat("Far", &camera.far_clip_, 100.0f, 10000.0f))
+      transform.modified_ = true;
+
+    ImGui::Checkbox("Enabled", &camera.enabled_);
 
     if (ImGui::Button("Reset Camera")) {
-      cam.setDistance(100.0f);
-      cam.setPitch(0.509f);
-      cam.setYaw(1.422f);
-      cam.setRoll(3.142f);
-      float resetTarget[3] = {32.0f, -147.826f, 200.0f};
-      cam.setTarget(resetTarget);
+      camera.fov_ = 60.0f;
+      camera.near_clip_ = 0.1f;
+      camera.far_clip_ = 1000.0f;
     }
+  } else {
+    ImGui::TextDisabled("Select a camera entity to edit");
   }
 
   ImGui::EndChild();

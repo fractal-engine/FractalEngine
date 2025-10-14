@@ -20,14 +20,14 @@ public:
   EntityContainer() : handle_(entt::null), transform_(nullptr) {}
   EntityContainer(const EntityContainer& other) = default;
 
-  explicit EntityContainer(Entity handle) : handle_(handle) {
+  EntityContainer(Entity handle) : handle_(handle) {
     if (Verify())
       transform_ = &ECS::Main().Get<TransformComponent>(handle_);
   }
 
-  EntityContainer(std::tuple<Entity, TransformComponent&> tup)
-      : handle_(std::get<0>(tup)) {
-    transform_ = &std::get<1>(tup);
+  EntityContainer(std::tuple<Entity, TransformComponent&> data)
+      : handle_(std::get<0>(data)) {
+    transform_ = &std::get<1>(data);
   }
 
   EntityContainer& operator=(const EntityContainer&) = default;

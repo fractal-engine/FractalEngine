@@ -1,16 +1,16 @@
 #ifndef EDITOR_UI_H
 #define EDITOR_UI_H
 
+#include <entt/entt.hpp>
 #include <memory>
+#include "editor/camera/god_camera.h"
+#include "editor/gizmos/component_gizmos.h"
 #include "editor_base.h"
 #include "engine/renderer/graphics_renderer.h"
 #include "game/game_test.h"
 #include "imgui.h"
 #include "imgui_internal.h"
 #include "platform/input/key_map_sdl.h"
-#include "editor/gizmos/component_gizmos.h" 
-#include <entt/entt.hpp> 
-#include "editor/gui/orbit_camera.h" 
 
 class EditorUI : public EditorBase {
 public:
@@ -30,13 +30,12 @@ public:
   Entity GetSelectedEntity() const;
   Entity GetLastSelectedEntity() const;
 
-  OrbitCamera& GetCamera() { return camera_; }
-
 private:
   void HandleInput(Key key);
   void RenderUI();
   void DockSpace();
   void LoadIcons();
+  void UpdateMovement();
 
   RendererBase* renderer_ = nullptr;
   bool quit_ = false;
@@ -67,8 +66,7 @@ private:
   // Map component names to icons
   std::unordered_map<std::string, std::string> tab_icons_;
 
-  // Orbit camera for scene view
-  OrbitCamera camera_;
+  GodCameraState god_state_{};
 };
 
 #endif  // EDITOR_UI_H

@@ -3,6 +3,7 @@
 #include <bgfx/bgfx.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
+#include "editor/camera/camera_view.h"
 #include "editor/editor_ui.h"
 #include "editor/gizmos/component_gizmos.h"
 #include "editor/runtime/runtime.h"  // TODO: Remove this once pipeline is done
@@ -18,117 +19,171 @@ SceneViewPipeline::SceneViewPipeline()
     : wireframe_(false),
       show_skybox_(true),
       msaa_samples_(4),
-      frame_initialized_(false),
       show_terrain_(true),
       show_water_(true),
       show_gizmos_(true),
+      god_camera_transform_(),
+      god_camera_root_(),
+      god_camera_(god_camera_transform_, god_camera_root_),
       render_shadows_(true),
-      program_(BGFX_INVALID_HANDLE),
-      transform_system(),
-      selected_entities(),
-      selection_material_(BGFX_INVALID_HANDLE) {
-  // TODO: Initialize other members e.g. profile, camera, viewport, passes, etc.
+      gltf_program_(BGFX_INVALID_HANDLE),
+      transform_system_(),
+      selected_entities_(),
+      selection_program_(BGFX_INVALID_HANDLE) {
+  // TODO: Initialize other members e.g. profile, viewport, passes, etc.
   // Check reference project for details
 }
 
-void SceneViewPipeline::CreateFrameGraph() {
-  // Get reference to FrameGraph owned by Runtime
-  auto& frame_graph = Runtime::GetFrameGraph();
+void SceneViewPipeline::Create() {
+  // TODO: Initialize default profile (exposure, contrast, gamma, etc)?
 
-  // Clear passes and attachments
-  frame_graph.Clear();
+  // Set up fly camera for scene view
+  std::get<1>(god_camera_).fov_ = 90.0f;
 
-  // Attachments
-  AttachmentDesc colorAttachment{
-      .name = "scene_color", .width = 0, .height = 0};
+  // Load shared shaders
+  gltf_program_ = Runtime::Shader()->LoadProgram("gltf_default", "vs_gltf.bin",
+                                                 "fs_gltf.bin");
+  selection_program_ = Runtime::Shader()->LoadProgram(
+      "selection", "vs_selection.bin", "fs_selection.bin");
 
-  AttachmentDesc depthAttachment{
-      .name = "scene_depth", .width = 0, .height = 0};
-
-  AttachmentDesc reflectionAttachment{
-      .name = "reflection", .width = 0, .height = 0};
-
-  // Add attachments to frame graph
-  frame_graph.AddAttachment(colorAttachment);
-  frame_graph.AddAttachment(depthAttachment);
-  frame_graph.AddAttachment(reflectionAttachment);
-
-  /* ---------- DEFINE PASSES ---------- */
-  // Reflection pass
-  Pass reflection_pass{
-      .name = "reflection_pass",
-      .execute =
-          [this](const Pass::Context& ctx) { this->RenderReflectionPass(ctx); },
-      .reads = {},
-      .writes = {"reflection"}};
-  frame_graph.AddPass(reflection_pass);
-
-  // Mesh pass
-  Pass forward_pass{
-      .name = "forward_pass",
-      .execute =
-          [this](const Pass::Context& ctx) { this->RenderForwardPass(ctx); },
-      .reads = {},  // can sample reflection
-      .writes = {"scene_color", "scene_depth"}};
-
-  // Add pass to frame graph
-  frame_graph.AddPass(forward_pass);
-
-  // Bake frame graph to finalize
-  frame_graph.Bake();
+  RegisterNodes();
 
   Logger::getInstance().Log(LogLevel::Info,
                             "SceneViewPipeline: Frame graph created");
 }
 
+void SceneViewPipeline::RegisterNodes() {
+  auto& frame_graph = Runtime::GetFrameGraph();
+
+  // Clear existing graph
+  frame_graph.Clear();
+
+  // --- ATTACHMENTS ---
+  // GraphicsRenderer should create these, but for now declare them logically
+  frame_graph.AddAttachment(
+      AttachmentDesc{.name = "scene_color",
+                     .width = 0,  // 0 = use viewport dimensions
+                     .height = 0});
+
+  frame_graph.AddAttachment(
+      AttachmentDesc{.name = "scene_depth", .width = 0, .height = 0});
+
+  frame_graph.AddAttachment(
+      AttachmentDesc{.name = "reflection", .width = 0, .height = 0});
+
+  // --- NODES ---
+
+  // Node 1: Reflection rendering (for water)
+  frame_graph.AddNode(Node{.name = "reflection",
+                           .execute =
+                               [this](const Node::Context& context) {
+                                 RenderReflectionNode(context);
+                               },
+                           .reads = {},
+                           .writes = {"reflection"}});
+
+  // Node 2: Forward opaque rendering
+  frame_graph.AddNode(Node{
+      .name = "forward_opaque",
+      .execute =
+          [this](const Node::Context& context) { RenderForwardNode(context); },
+      .reads = {"reflection"},  // Can sample reflection texture
+      .writes = {"scene_color", "scene_depth"}});
+
+  // Node 3: Selection outline (reads depth from forward pass)
+  frame_graph.AddNode(Node{
+      .name = "selection_outline",
+      .execute =
+          [this](const Node::Context& context) {
+            if (show_gizmos_ && !selected_entities_.empty()) {
+              RenderSelectionOutlineNode(context);
+            }
+          },
+      .reads = {"scene_depth"},
+      .writes = {"scene_color"}  // Modifies color, preserves depth
+  });
+
+  // Node 4: Gizmos (transform handles, etc.)
+  frame_graph.AddNode(Node{.name = "gizmos",
+                           .execute =
+                               [this](const Node::Context& context) {
+                                 if (show_gizmos_) {
+                                   RenderGizmosNode(context);
+                                 }
+                               },
+                           .reads = {"scene_depth"},
+                           .writes = {"scene_color"}});
+
+  // Bake the graph
+  frame_graph.Bake();
+
+  Logger::getInstance().Log(LogLevel::Info,
+                            "SceneViewPipeline: Registered nodes");
+}
+
 // TODO: implement into a larger standalone render pass (?)
-// TODO: we already use OrbitCamera& camera in ForwardPass, maybe we should
+// TODO: we already use SceneCamera& camera in ForwardPass, maybe we should
 // delete it here
-void SceneViewPipeline::RenderReflectionPass(const Pass::Context& ctx) {
+void SceneViewPipeline::RenderReflectionNode(const Node::Context& context) {
   // Get the GraphicsRenderer
-  auto* graphics_renderer = static_cast<GraphicsRenderer*>(Runtime::Renderer());
-  if (!graphics_renderer) {
+  auto* renderer = static_cast<GraphicsRenderer*>(Runtime::Renderer());
+  if (!renderer) {
     Logger::getInstance().Log(
         LogLevel::Error,
         "RenderReflectionPass: Failed to get GraphicsRenderer");
     return;
   }
 
+  // Get reflection framebuffer from GraphicsRenderer
+  bgfx::FrameBufferHandle reflection_fb = renderer->GetReflectionFramebuffer();
+
   // Bind reflection target
-  uint16_t fbw = graphics_renderer->GetFramebufferWidth();
-  uint16_t fbh = graphics_renderer->GetFramebufferHeight();
+  uint16_t fbw = renderer->GetFramebufferWidth();
+  uint16_t fbh = renderer->GetFramebufferHeight();
+
+  // Set up BGFX view for reflection
   bgfx::setViewRect(ViewID::REFLECTION_PASS, 0, 0, fbw, fbh);
-  bgfx::setViewFrameBuffer(ViewID::REFLECTION_PASS,
-                           graphics_renderer->GetReflectionFramebuffer());
+  bgfx::setViewFrameBuffer(ViewID::REFLECTION_PASS, reflection_fb);
   bgfx::setViewClear(ViewID::REFLECTION_PASS,
                      BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH, 0x303030ff, 1.0f, 0);
 
-  OrbitCamera& camera = EditorUI::Get()->GetCamera();
+  // Get camera matrices
+  TransformComponent& camera_transform = std::get<0>(god_camera_);
+  CameraComponent& camera_component = std::get<1>(god_camera_);
+
   float viewMatrix[16];
   float projMatrix[16];
-  camera.getViewMatrix(viewMatrix);
-  camera.getProjectionMatrix(projMatrix,
-                             float(canvasViewportW) / float(canvasViewportH));
+  CameraView::GetViewMatrix(camera_transform, viewMatrix);
+  CameraView::GetProjectionMatrix(
+      camera_component, projMatrix,
+      float(canvasViewportW) / float(canvasViewportH));
 
   // Build reflected view (Y-plane mirror)
   float reflect[16];
   bx::mtxIdentity(reflect);
   reflect[5] = -1.0f;  // flip Y
+
   float reflectedView[16];
   bx::mtxMul(reflectedView, viewMatrix, reflect);
 
-  // Skybox in reflection (rotation-only)
-  float rotOnly[16];
-  memcpy(rotOnly, reflectedView, sizeof(rotOnly));
-  rotOnly[12] = rotOnly[13] = rotOnly[14] = 0.0f;
+  bgfx::setViewTransform(ViewID::REFLECTION_PASS, reflectedView, projMatrix);
 
-  if (show_skybox_ && ctx.globals.skybox) {
-    ctx.globals.skybox->Submit(ViewID::REFLECTION_PASS, rotOnly, projMatrix,
-                               /*useInverseViewProj=*/false);
+  // Render skybox in reflection (rotation-only)
+  if (show_skybox_ && context.globals.skybox) {
+    float rotation_only[16];
+    memcpy(rotation_only, reflectedView, sizeof(rotation_only));
+    rotation_only[12] = rotation_only[13] = rotation_only[14] =
+        0.0f;  // Remove translation
+
+    context.globals.skybox->Submit(ViewID::REFLECTION_PASS, rotation_only,
+                                   projMatrix,
+                                   /*useInverseViewProj=*/false);
   }
+
+  // TODO: Render scene geometry for reflection
 }
 
-void SceneViewPipeline::RenderForwardPass(const Pass::Context& ctx) {
+void SceneViewPipeline::RenderForwardNode(const Node::Context& context) {
 
   // TODO: In this function, we should:
   // Setup view
@@ -136,91 +191,103 @@ void SceneViewPipeline::RenderForwardPass(const Pass::Context& ctx) {
   // Render all scene meshes
   // Draw gizmos
 
-  auto* graphics_renderer = static_cast<GraphicsRenderer*>(Runtime::Renderer());
-
+  auto* renderer = static_cast<GraphicsRenderer*>(Runtime::Renderer());
   auto& world = ECS::Main();
 
-  // Orbit camera from editor
-  OrbitCamera& camera = EditorUI::Get()->GetCamera();
+  // Get Camera
+  TransformComponent& camera_transform = std::get<0>(god_camera_);
+  CameraComponent& camera_component = std::get<1>(god_camera_);
 
-  // Calculate the LIVE view and projection matrices FROM THE ORBIT CAMERA.
   float viewMatrix[16];
   float projMatrix[16];
-  camera.getViewMatrix(viewMatrix);
-  camera.getProjectionMatrix(projMatrix,
-                             float(canvasViewportW) / float(canvasViewportH));
+  CameraView::GetViewMatrix(camera_transform, viewMatrix);
+  CameraView::GetProjectionMatrix(
+      camera_component, projMatrix,
+      float(canvasViewportW) / float(canvasViewportH));
 
-  // View setup for scene using the matrices from the OrbitCamera
+  // Setup BGFX view
   bgfx::setViewTransform(ViewID::SCENE_FORWARD, viewMatrix, projMatrix);
   bgfx::setViewRect(ViewID::SCENE_FORWARD, 0, 0, canvasViewportW,
                     canvasViewportH);
+
+  // Get scene FBO from GraphicsRenderer
+  bgfx::setViewFrameBuffer(ViewID::SCENE_FORWARD,
+                           renderer->GetSceneFramebuffer());
+
   bgfx::setViewClear(ViewID::SCENE_FORWARD, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH,
-                     0x303030ff, 1.0f, 0);
+                     wireframe_ ? 0xffffffff : 0x303030ff, 1.0f, 0);
 
-  const auto& render_queue = world.GetRenderQueue();
-
-  // Build view_projection
+  // Build view_projection matrix
   glm::mat4 view = glm::make_mat4(viewMatrix);
   glm::mat4 projection = glm::make_mat4(projMatrix);
   glm::mat4 view_projection = projection * view;
 
-  // Update transforms and draw
-  transform_system.Perform(view_projection);
-
-  // Query directional light with ECS and set uniforms
-  auto light_view = world.View<DirectionalLightComponent, TransformComponent>();
-
-  for (auto [e, light, tr] : light_view.each()) {
-    if (!light.enabled_)
-      continue;
-
-    glm::vec3 dir = glm::normalize(Transform::Forward(tr, Space::WORLD));
-    Light::SetDirectionalLight(dir, light.color_, light.intensity_);
-    break;
-  }
-
-  Light::ApplyUniforms();
+  // Update transforms
+  transform_system_.Perform(view_projection);
 
   // Bulk MVP update
-  for (auto& [entity, transform, renderer] : render_queue) {
+  const auto& render_queue = world.GetRenderQueue();
+  for (auto& [entity, transform, renderer_comp] : render_queue) {
     Transform::UpdateMVP(transform, view_projection);
   }
 
-  // Render all the meshes in scene
-  for (const auto& [entity, transform, renderer] : render_queue) {
-    if (!renderer.enabled_ || !renderer.mesh_)
+  // Set directional lights uniforms
+  auto light_view = world.View<DirectionalLightComponent, TransformComponent>();
+  for (auto [e, light, transform] : light_view.each()) {
+    if (!light.enabled_)
       continue;
 
-    bgfx::setTransform(glm::value_ptr(transform.model_));
-    renderer.mesh_->Bind();
+    glm::vec3 direction =
+        glm::normalize(Transform::Forward(transform, Space::WORLD));
+    Light::SetDirectionalLight(direction, light.color_, light.intensity_);
+    break;
+  }
+  Light::ApplyUniforms();
 
+  // Render all scene meshes
+  for (const auto& [entity, transform, renderer_comp] : render_queue) {
+    if (!renderer_comp.enabled_ || !renderer_comp.mesh_)
+      continue;
+
+    // Skip selected entities (rendered in selection pass)
+    bool is_selected = false;
+    for (auto* selected : selected_entities_) {
+      if (selected && selected->Handle() == entity) {
+        is_selected = true;
+        break;
+      }
+    }
+    if (is_selected)
+      continue;
+
+    // Submit mesh
+    bgfx::setTransform(glm::value_ptr(transform.model_));
+    renderer_comp.mesh_->Bind();
     bgfx::setState(BGFX_STATE_DEFAULT | BGFX_STATE_CULL_CW);
-    bgfx::submit(ViewID::SCENE_FORWARD,
-                 Runtime::Shader()->LoadProgram("gltf_default", "vs_gltf.bin",
-                                                "fs_gltf.bin"));
+    bgfx::submit(ViewID::SCENE_FORWARD, gltf_program_);
   }
 
-  if (show_gizmos_) {
+  /* if (show_gizmos_) {
     // Selection outline first (uses depth from the forward pass)
-    for (auto* e : selected_entities) {
+    for (auto* e : selected_entities_) {
       if (e)
-        RenderSelectedEntity(e, view_projection, camera);
+        RenderSelectedEntityOutline(e, view_projection);
     }
     Entity selected_entity = EditorUI::Get()->GetSelectedEntity();
     ComponentGizmos::DrawTransformGizmo(selected_entity, viewMatrix,
                                         projMatrix);
-  }
+  }*/
 
-  // Skybox
-  if (show_skybox_ && ctx.globals.skybox) {
-    ctx.globals.skybox->Submit(ViewID::SCENE_FORWARD, viewMatrix, projMatrix,
-                               /*useInverseViewProj=*/true);
+  // Render skybox
+  if (show_skybox_ && context.globals.skybox) {
+    context.globals.skybox->Submit(ViewID::SCENE_SKYBOX, viewMatrix, projMatrix,
+                                   /*useInverseViewProj=*/true);
   }
 
   // Terrain
-  /* if (ctx.globals.terrain) {
-    ctx.globals.terrain->Submit(ViewID::SCENE_FORWARD, viewMatrix, projMatrix,
-                                camPos);
+  /* if (context.globals.terrain) {
+    context.globals.terrain->Submit(ViewID::SCENE_FORWARD, viewMatrix,
+  projMatrix, camPos);
   }*/
 
   // TODO: make sure it uses reflection
@@ -228,32 +295,60 @@ void SceneViewPipeline::RenderForwardPass(const Pass::Context& ctx) {
   /* if (show_water_) {
     auto* game = static_cast<GameTest*>(Runtime::Game());
     game->RenderWater(viewMatrix, projMatrix, camPos);
-    // future: ctx.globals.water->SetReflectionTexture(... from
-    // ctx.tex("reflection") ...);
-    //         ctx.globals.water->Submit(ViewID::SCENE_FORWARD, viewMatrix,
+    // future: context.globals.water->SetReflectionTexture(... from
+    // context.tex("reflection") ...);
+    //         context.globals.water->Submit(ViewID::SCENE_FORWARD, viewMatrix,
     //         projMatrix, camPos);
   }*/
 }
 
-void SceneViewPipeline::Create() {
-  // TODO: Initialize default profile (exposure, contrast, gamma, etc)
+void SceneViewPipeline::RenderSelectionOutlineNode(
+    const Node::Context& context) {
+  if (wireframe_)
+    return;  // No outline in wireframe mode
 
-  // TODO: set up fly camera for scene view
+  // Get Camera
+  TransformComponent& camera_transform = std::get<0>(god_camera_);
+  CameraComponent& camera_component = std::get<1>(god_camera_);
 
-  // Build frame graph
-  CreateFrameGraph();
+  float viewMatrix[16];
+  float projMatrix[16];
+  CameraView::GetViewMatrix(camera_transform, viewMatrix);
+  CameraView::GetProjectionMatrix(
+      camera_component, projMatrix,
+      float(canvasViewportW) / float(canvasViewportH));
 
-  // TODO: set future game view for gizmos
-  // Use GameViewPipeline for the gizmos
+  // Build view_projection matrix
+  glm::mat4 view = glm::make_mat4(viewMatrix);
+  glm::mat4 projection = glm::make_mat4(projMatrix);
+  glm::mat4 view_projection = projection * view;
 
-  // TODO: remove this once the above is implemented
-  if (bgfx::isValid(program_))
-    return;
+  bgfx::setViewTransform(ViewID::SCENE_FORWARD, viewMatrix, projMatrix);
+
+  // Render each selected entity with outline
+  for (auto* entity : selected_entities_) {
+    if (!entity || !entity->Has<MeshRendererComponent>())
+      continue;
+
+    TransformComponent& transform = entity->Transform();
+    MeshRendererComponent& renderer = entity->Get<MeshRendererComponent>();
+
+    if (!renderer.enabled_)
+      continue;
+
+    // Render base mesh
+    bgfx::setTransform(glm::value_ptr(transform.model_));
+    renderer.mesh_->Bind();
+    bgfx::setState(BGFX_STATE_DEFAULT | BGFX_STATE_CULL_CW);
+    bgfx::submit(ViewID::SCENE_FORWARD, gltf_program_);
+
+    // Render outline (scaled up)
+    RenderSelectedEntityOutline(entity, view_projection);
+  }
 }
 
-void SceneViewPipeline::RenderSelectedEntity(EntityContainer* entity,
-                                             const glm::mat4& view_projection,
-                                             const OrbitCamera& camera) {
+void SceneViewPipeline::RenderSelectedEntityOutline(
+    EntityContainer* entity, const glm::mat4& view_projection) {
   // Render selected entity gizmos if needed
   // TODO: if (gizmos) ComponentGizmos::drawEntityGizmos(*gizmos, *entity);
 
@@ -269,28 +364,6 @@ void SceneViewPipeline::RenderSelectedEntity(EntityContainer* entity,
   if (!renderer.enabled_)
     return;
 
-  // Get camera transform
-  // TODO: TransformComponent& cameraTransform = std::get<0>(camera);
-
-  // Render the selected entity and write to stencil
-  // TODO: Set BGFX stencil state for outline rendering
-
-  // Forward render entity's base mesh
-  // TODO: Set shader uniforms (mvp, model, normal)
-  // TODO: should use Shader and Material systems once implemented
-  bgfx::setTransform(glm::value_ptr(transform.model_));
-  renderer.mesh_->Bind();
-  bgfx::setState(BGFX_STATE_DEFAULT);
-  bgfx::submit(ViewID::SCENE_FORWARD, program_);
-
-  // Don't render outline if wireframe is enabled
-  if (wireframe_)
-    return;
-
-  // Render outline of selected entity
-  // TODO: Set BGFX stencil state for outline rendering
-  // TODO: Enable blending for outline
-
   // Placeholder transform component for outline
   TransformComponent outline_transform = transform;
   float thickness = 0.038f;
@@ -302,115 +375,161 @@ void SceneViewPipeline::RenderSelectedEntity(EntityContainer* entity,
       glm::mat4_cast(outline_transform.rotation_) *
       glm::scale(glm::mat4(1.0f), outline_transform.scale_);
 
-  Transform::UpdateMVP(outline_transform, view_projection);
+  // Get camera transform
+  // TODO: TransformComponent& cameraTransform = std::get<0>(camera);
+
+  // Render the selected entity and write to stencil
+  // TODO: Set BGFX stencil state for outline rendering
+
+  // Forward render entity's base mesh
+  // TODO: Set shader uniforms (mvp, model, normal)
+  // TODO: should use Shader and Material systems once implemented
+  /* bgfx::setTransform(glm::value_ptr(transform.model_));
+  renderer.mesh_->Bind();
+  bgfx::setState(BGFX_STATE_DEFAULT);
+  bgfx::submit(ViewID::SCENE_FORWARD, gltf_program_);*/
+
+  // Render outline of selected entity
+  // TODO: Set BGFX stencil state for outline rendering
+  // TODO: Enable blending for outline
+
+  // Transform::UpdateMVP(outline_transform, view_projection);
 
   // Render mesh as outline
-  // TODO: should use Shader and Material systems once implemented
+  // TODO: should use Shader and Material systems once implemented?
+  // TODO: Use stencil test to only draw outline edges
   bgfx::setTransform(glm::value_ptr(outline_transform.model_));
   renderer.mesh_->Bind();
   // TODO: Use selection_material_ for outline shader
-  bgfx::setState(BGFX_STATE_DEFAULT | BGFX_STATE_BLEND_ALPHA);
-  bgfx::submit(ViewID::SCENE_FORWARD, selection_material_);
+  bgfx::setState(BGFX_STATE_DEFAULT | BGFX_STATE_BLEND_ALPHA |
+                 BGFX_STATE_CULL_CCW);
+  bgfx::submit(ViewID::SCENE_FORWARD, selection_program_);
 
   // TODO: Reset BGFX blend and stencil state if needed
 }
 
-void SceneViewPipeline::Destroy() {
+void SceneViewPipeline::RenderGizmosNode(const Node::Context& context) {
 
-  // TODO: remove this once the above is implemented
-  if (bgfx::isValid(program_))
-    bgfx::destroy(program_), program_ = BGFX_INVALID_HANDLE;
+  // Get Camera
+  TransformComponent& camera_transform = std::get<0>(god_camera_);
+  CameraComponent& camera_component = std::get<1>(god_camera_);
 
-  Logger::getInstance().Log(LogLevel::Debug,
-                            "[Render] SceneViewPipeline::Destroy");
-}
+  float viewMatrix[16];
+  float projMatrix[16];
+  CameraView::GetViewMatrix(camera_transform, viewMatrix);
+  CameraView::GetProjectionMatrix(
+      camera_component, projMatrix,
+      float(canvasViewportW) / float(canvasViewportH));
 
-// TODO: rename to Render() once placeholder is removed
-void SceneViewPipeline::RealRender() {
-  // debug
-  /*Logger::getInstance().Log(LogLevel::Debug,
-                            "[Render] SceneViewPipeline::Render called");*/
-
-  // Set default view and matrices
-  /*bgfx::ViewId view = ViewID::SCENE_FORWARD;
-  glm::mat4 view_mtx = glm::mat4(1.0f);
-  glm::mat4 proj_mtx = glm::mat4(1.0f);*/
-
-  // TODO: Start profiler ("scene_view")
-
-  // TODO: Pick camera and get camera bindings
-  // TODO: Select profile (default or game profile)
-  // TODO: Compute view/projection matrices
-
-  // TODO: start new gizmo frame
-
-  // TRANSFORM PASS
-  // TODO: Evaluate and update transforms
-
-  // PRE PASS
-  // TODO: Geometry/depth pass before forward pass
-
-  // SSAO PASS
-  // TODO: calculate screen space ambient occlusion if enabled
-
-  // VELOCITY BUFFER PASS
-  // TODO: Set velocity buffer to none
-
-  // FORWARD PASS
-  // TODO: Prepare material, lighting, shadow data
-  // TODO: Set wireframe, skybox, gizmo flags here
-  // TODO: Link skybox
-
-  // TODO: remove this once all todos are implemented
-  /* auto& world = ECS::Main();
-  TransformSystem::Perform(viewProjection);
-  const auto& render_queue = world.GetRenderQueue();
-
-  Logger::getInstance().Log(
-      LogLevel::Debug,
-      "[Render] Render queue size: " + std::to_string(render_queue.size()));
-
-  bgfx::setViewTransform(view, glm::value_ptr(view_mtx),
-                         glm::value_ptr(proj_mtx));
-
-  for (const auto& item : render_queue) {
-
-    const auto& transform = std::get<1>(item);
-    const auto& renderer = std::get<2>(item);
-
-    Logger::getInstance().Log(
-        LogLevel::Debug,
-        "[Render] Entity: " +
-            std::to_string(static_cast<uint32_t>(std::get<0>(item))) +
-            " enabled: " + std::to_string(renderer.enabled_) + " mesh: " +
-            std::to_string(reinterpret_cast<uintptr_t>(renderer.mesh_)));
-
-    if (!renderer.enabled_ || !renderer.mesh_)
-      continue;
-
-    bgfx::setTransform(glm::value_ptr(transform.model_));
-    renderer.mesh_->Bind();
-    Logger::getInstance().Log(LogLevel::Debug,
-                              "[Render] Mesh bound and submitted");
-    bgfx::setState(BGFX_STATE_DEFAULT | BGFX_STATE_CULL_CW);
-    bgfx::submit(view, program_);
-  } */
-
-  // POST PROCESSING PASS
-  // TODO: Render post-processing effects here
-  // use forward pass output as input
-
-  // TODO: Stop profiler ("scene_view")
+  // Draw transform gizmo for selected entity
+  Entity selected_entity = EditorUI::Get()->GetSelectedEntity();
+  if (selected_entity != entt::null) {
+    ComponentGizmos::DrawTransformGizmo(selected_entity, viewMatrix,
+                                        projMatrix);
+  }
 }
 
 // PLACEHOLDER: Remove this once pipeline is done
 void SceneViewPipeline::Render() {
 
-  // TODO: add missing inits and calls noted in RealRender
+  // TODO: add missing inits and calls noted in RealRender?
 
   // Execute frame graph
   Runtime::GetFrameGraph().Render();
 }
+
+void SceneViewPipeline::Destroy() {
+  if (bgfx::isValid(gltf_program_)) {
+    bgfx::destroy(gltf_program_);
+    gltf_program_ = BGFX_INVALID_HANDLE;
+  }
+
+  if (bgfx::isValid(selection_program_)) {
+    bgfx::destroy(selection_program_);
+    selection_program_ = BGFX_INVALID_HANDLE;
+  }
+
+  Logger::getInstance().Log(LogLevel::Debug,
+                            "[Render] SceneViewPipeline: Destroyed");
+}
+
+// TODO: rename to Render() once placeholder is removed
+// void SceneViewPipeline::RealRender() {
+// debug
+/*Logger::getInstance().Log(LogLevel::Debug,
+                          "[Render] SceneViewPipeline::Render called");*/
+
+// Set default view and matrices
+/*bgfx::ViewId view = ViewID::SCENE_FORWARD;
+glm::mat4 view_mtx = glm::mat4(1.0f);
+glm::mat4 proj_mtx = glm::mat4(1.0f);*/
+
+// TODO: Start profiler ("scene_view")
+
+// TODO: Pick camera and get camera bindings
+// TODO: Select profile (default or game profile)
+// TODO: Compute view/projection matrices
+
+// TODO: start new gizmo frame
+
+// TRANSFORM PASS
+// TODO: Evaluate and update transforms
+
+// PRE PASS
+// TODO: Geometry/depth pass before forward pass
+
+// SSAO PASS
+// TODO: calculate screen space ambient occlusion if enabled
+
+// VELOCITY BUFFER PASS
+// TODO: Set velocity buffer to none
+
+// FORWARD PASS
+// TODO: Prepare material, lighting, shadow data
+// TODO: Set wireframe, skybox, gizmo flags here
+// TODO: Link skybox
+
+// TODO: remove this once all todos are implemented
+/* auto& world = ECS::Main();
+TransformSystem::Perform(viewProjection);
+const auto& render_queue = world.GetRenderQueue();
+
+Logger::getInstance().Log(
+    LogLevel::Debug,
+    "[Render] Render queue size: " + std::to_string(render_queue.size()));
+
+bgfx::setViewTransform(view, glm::value_ptr(view_mtx),
+                       glm::value_ptr(proj_mtx));
+
+for (const auto& item : render_queue) {
+
+  const auto& transform = std::get<1>(item);
+  const auto& renderer = std::get<2>(item);
+
+  Logger::getInstance().Log(
+      LogLevel::Debug,
+      "[Render] Entity: " +
+          std::to_string(static_cast<uint32_t>(std::get<0>(item))) +
+          " enabled: " + std::to_string(renderer.enabled_) + " mesh: " +
+          std::to_string(reinterpret_cast<uintptr_t>(renderer.mesh_)));
+
+  if (!renderer.enabled_ || !renderer.mesh_)
+    continue;
+
+  bgfx::setTransform(glm::value_ptr(transform.model_));
+  renderer.mesh_->Bind();
+  Logger::getInstance().Log(LogLevel::Debug,
+                            "[Render] Mesh bound and submitted");
+  bgfx::setState(BGFX_STATE_DEFAULT | BGFX_STATE_CULL_CW);
+  bgfx::submit(view, program_);
+} */
+
+// POST PROCESSING PASS
+// TODO: Render post-processing effects here
+// use forward pass output as input
+
+// TODO: Stop profiler ("scene_view")
+// }
 
 /*
 void SceneViewPipeline::CreatePasses() {}
@@ -419,3 +538,7 @@ void SceneViewPipeline::DestroyPasses() {
   scene_view_forward_pass_.Destroy();
   // make frame graph destory passes?
 }*/
+
+Camera& SceneViewPipeline::GetGodCamera() {
+  return god_camera_;
+}

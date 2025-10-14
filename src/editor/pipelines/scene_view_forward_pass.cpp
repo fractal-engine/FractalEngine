@@ -1,6 +1,6 @@
 #include "scene_view_forward_pass.h"
 
-#include <bx/math.h>
+/* #include <bx/math.h>
 #include <glm/gtc/type_ptr.hpp>
 
 #include "editor/gizmos/component_gizmos.h"
@@ -224,11 +224,11 @@ void SceneViewForwardPass::RenderMeshes(
        new_bound_materials++;
      } */
 
-    RenderMesh(transform, renderer);
+    /* RenderMesh(transform, renderer);
   }
-}
+} */
 
-void SceneViewForwardPass::RenderSelectedEntity(
+/* void SceneViewForwardPass::RenderSelectedEntity(
     EntityContainer* entity, const glm::mat4& view_projection,
     const Camera& camera) {
   // Render selected entity gizmos if needed
@@ -289,4 +289,5 @@ void SceneViewForwardPass::RenderSelectedEntity(
   bgfx::submit(view_id_, selection_material_);
 
   // TODO: Reset BGFX blend and stencil state if needed
-}
+} 
+*/

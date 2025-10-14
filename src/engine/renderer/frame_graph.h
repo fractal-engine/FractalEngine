@@ -1,17 +1,17 @@
 /**************************************************************************
  * FrameGraph
  * ----------
- * Backend-agnostic pass orchestration layer owned by Runtime.
+ * Backend-agnostic node orchestration layer owned by Runtime.
  *
  * Models:
- *  - Passes (depth pre-pass, SSAO, forward lighting, post-FX, etc.)
+ *  - Passes through nodes (depth pre-pass, SSAO, forward lighting, post-FX, etc.)
  *  - Attachments (color/depth/intermediate) as logical IDs only
- *  - Implicit edges via pass.reads / pass.writes
+ *  - Implicit edges via node.reads / node.writes
  *
  * Responsibilities:
- *  - Pass registration (AddPass) and attachment registration (AddAttachment)
+ *  - Node registration (AddNode) and attachment registration (AddAttachment)
  *  - Simple sequencing (Bake -> current: insertion order)
- *  - Per-frame execution (Render) invoking pass lambdas
+ *  - Per-frame execution (Render) invoking node lambdas
  *  - Resize hook (Rebuild) updating logical sizes and re-baking
  *
  * TODO:
@@ -54,7 +54,7 @@ struct GlobalResources {
   // Water* water = nullptr;
 };
 
-struct Pass {
+struct Node {
   std::string name;
   std::vector<std::string> reads;
   std::vector<std::string> writes;
@@ -86,7 +86,7 @@ public:
 
   // Graph construction
   void AddAttachment(const AttachmentDesc& desc);
-  void AddPass(const Pass& pass);
+  void AddNode(const Node& node);
 
   void Bake();   // topo sort + allocate texture/fbos via renderer_
   void Clear();  // reset to empty graph
@@ -108,8 +108,8 @@ private:
   };
 
   std::unordered_map<std::string, AttachmentRT> attachments_;
-  std::vector<Pass> passes_;
-  std::vector<Pass*> exec_order_;
+  std::vector<Node> nodes_;
+  std::vector<Node*> exec_order_;
 };
 
 #endif  // FRAME_GRAPH_H

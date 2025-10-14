@@ -19,7 +19,8 @@ add_files(
 	"project/*.cpp",
 	"registry/*.cpp",
 	"pipelines/*.cpp",
-	"gizmos/*.cpp"
+	"gizmos/*.cpp",
+	"camera/*.cpp"
 )
 
 add_files("vendor/imgui/imgui_impl_bgfx.cpp", "vendor/ImGuiFileDialog/ImGuiFileDialog.cpp", "vendor/imguizmo/*.cpp")
@@ -31,7 +32,9 @@ add_headerfiles(
 	"systems/*.h",
 	"project/*.h",
 	"registry/*.h",
-	"pipelines/*.h"
+	"pipelines/*.h",
+	"gizmos/*.h",
+	"camera/*.h"
 )
 
 add_packages(

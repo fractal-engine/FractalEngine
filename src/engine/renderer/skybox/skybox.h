@@ -72,19 +72,19 @@ private:
   };
 
   // Handles (same names as you used)
-  bgfx::ProgramHandle _skyProgram{BGFX_INVALID_HANDLE};
-  bgfx::VertexBufferHandle _skyVbh{BGFX_INVALID_HANDLE};
-  bgfx::IndexBufferHandle _skyIbh{BGFX_INVALID_HANDLE};
+  bgfx::ProgramHandle _skyProgram = BGFX_INVALID_HANDLE;
+  bgfx::VertexBufferHandle _skyVbh = BGFX_INVALID_HANDLE;
+  bgfx::IndexBufferHandle _skyIbh = BGFX_INVALID_HANDLE;
 
   // Uniforms (same names)
-  bgfx::UniformHandle _sunDirUniform{BGFX_INVALID_HANDLE};
-  bgfx::UniformHandle _sunLumUniform{BGFX_INVALID_HANDLE};
-  bgfx::UniformHandle _paramsUniform{BGFX_INVALID_HANDLE};
-  bgfx::UniformHandle _viewInvUniform{BGFX_INVALID_HANDLE};
-  bgfx::UniformHandle _projInvUniform{BGFX_INVALID_HANDLE};
-  bgfx::UniformHandle _scatterParamsUniform{BGFX_INVALID_HANDLE};
-  bgfx::UniformHandle _betaRUniform{BGFX_INVALID_HANDLE};
-  bgfx::UniformHandle _betaMUniform{BGFX_INVALID_HANDLE};
+  bgfx::UniformHandle _sunDirUniform = BGFX_INVALID_HANDLE;
+  bgfx::UniformHandle _sunLumUniform = BGFX_INVALID_HANDLE;
+  bgfx::UniformHandle _paramsUniform = BGFX_INVALID_HANDLE;
+  bgfx::UniformHandle _viewInvUniform = BGFX_INVALID_HANDLE;
+  bgfx::UniformHandle _projInvUniform = BGFX_INVALID_HANDLE;
+  bgfx::UniformHandle _scatterParamsUniform = BGFX_INVALID_HANDLE;
+  bgfx::UniformHandle _betaRUniform = BGFX_INVALID_HANDLE;
+  bgfx::UniformHandle _betaMUniform = BGFX_INVALID_HANDLE;
 
   // Stored values/params (same arrays/vars)
   SkyboxParams params_{};

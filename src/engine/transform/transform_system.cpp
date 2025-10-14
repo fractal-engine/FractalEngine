@@ -61,7 +61,7 @@ void TransformSystem::Perform(glm::mat4 /*viewProjection*/) {
     const bool dirty = parent_dirty || t.modified_;
     if (dirty) {
       if (t.parent_ != entt::null && ecs.Has<TransformComponent>(t.parent_)) {
-        const auto& p = ecs.Get<TransformComponent>(t.parent_);
+        auto& p = ecs.Get<TransformComponent>(t.parent_);
         Transform::Evaluate(t, p);  // world = parent.world * local
       } else {
         Transform::Evaluate(t);  // world = local
@@ -90,7 +90,7 @@ void TransformSystem::Perform(glm::mat4 /*viewProjection*/) {
 }
 
 void TransformSystem::Evaluate(TransformComponent& transform,
-                               const TransformComponent& parent,
+                              TransformComponent& parent,
                                bool propagateModified) {
   if (propagateModified)
     transform.modified_ = true;

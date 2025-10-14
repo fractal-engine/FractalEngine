@@ -49,16 +49,21 @@ public:
   SDL_Texture* GetGameTexture();
   std::string GetCurrentGameContent();
 
-  // Scene framebuffer and texture handles
+  // Framebuffer accessors
+  bgfx::FrameBufferHandle GetSceneFramebuffer() const {
+    return scene_framebuffer_;
+  }
+
+  bgfx::FrameBufferHandle GetReflectionFramebuffer() const {
+    return reflection_fb_;
+  }
+
+  bgfx::TextureHandle GetReflectionColorTex() const {
+    return reflection_color_tex_;
+  }
+
   bgfx::TextureHandle GetSceneColorTexture() const {
     return scene_color_texture_;
-  }
-  // Reflection framebuffer and texture handles
-  bgfx::FrameBufferHandle GetReflectionFramebuffer() const {
-    return reflectionFB;
-  }
-  bgfx::TextureHandle GetReflectionColorTex() const {
-    return reflectionColorTex;
   }
 
   uint16_t GetFramebufferWidth() const { return last_framebuffer_width_; }
@@ -89,8 +94,8 @@ private:
   bgfx::TextureHandle scene_depth_texture_ = BGFX_INVALID_HANDLE;
 
   // Reflection FBO
-  bgfx::FrameBufferHandle reflectionFB = BGFX_INVALID_HANDLE;
-  bgfx::TextureHandle reflectionColorTex = BGFX_INVALID_HANDLE;
+  bgfx::FrameBufferHandle reflection_fb_ = BGFX_INVALID_HANDLE;
+  bgfx::TextureHandle reflection_color_tex_ = BGFX_INVALID_HANDLE;
 
   // Uniform handles
   bgfx::UniformHandle sunDirUniform_;

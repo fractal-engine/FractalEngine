@@ -3,8 +3,7 @@
 
 #include <bgfx/bgfx.h>
 #include <vector>
-#include "editor/gui/orbit_camera.h"
-#include "editor/systems/camera_system.h"
+#include "editor/camera/camera_view.h" 
 #include "game_base.h"
 
 // ──────────────────────────────────────────────────────
@@ -39,8 +38,8 @@ public:
       ((TerrainSize - 1) * TerrainScale) * 0.5f;
 
   // simple camera function call
-  OrbitCamera camera;
-  CameraSystem cameraSystem;
+  // SceneCamera camera;
+  // CameraSystem cameraSystem;
 
   int canvasViewportW = 1600;  // TODO: remove this, should use engine_globals.h
   int canvasViewportH = 900;   // TODO: remove this, should use engine_globals.h

@@ -1,8 +1,8 @@
 #include "editor/editor_ui.h"
 #include "editor/resources/theme/dark_theme.hpp"
 #include "editor/runtime/runtime.h"
-#include "engine/core/engine_globals.h"
 #include "engine/context/engine_context.h"
+#include "engine/core/engine_globals.h"
 #include "engine/core/logger.h"
 #include "engine/core/view_ids.h"
 #include "engine/ecs/world.h"
@@ -51,7 +51,7 @@ void EditorUI::Initialize() {
   ImGuiIO& io = ImGui::GetIO();
   io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;    // Enable Docking
   io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;  // Enable Multi-Viewport
-
+  
   io.ConfigViewportsNoAutoMerge = true;
   io.ConfigViewportsNoTaskBarIcon = true;
 
@@ -71,7 +71,7 @@ void EditorUI::Initialize() {
 
 // TODO: refactor loop, should be split into EditorUI::NewFrame() /
 // EditorUI::Render() Renamed to NextFrame()??
-// Also create a window_viewport for SDL stuff in the loop 
+// Also create a window_viewport for SDL stuff in the loop
 void EditorUI::Run() {
   Logger::getInstance().Log(LogLevel::Info, "EditorUI main loop start");
 
@@ -345,6 +345,7 @@ void EditorUI::RenderUI() {
   // simple canvas.
   ImGui::Begin("Scene", nullptr);
   Panels::GameCanvas(is_game_started_, game_canvas_hovered_);
+  UpdateMovement();
   ImGui::End();
 
   // -------- RIGHT : INSPECTOR (now calls the new panel) -----------------
@@ -434,4 +435,55 @@ Entity EditorUI::GetSelectedEntity() const {
 
 Entity EditorUI::GetLastSelectedEntity() const {
   return last_selected_entity_;
+}
+
+// TODO: move this to viewport
+void EditorUI::UpdateMovement() {
+  // Build per-frame input
+  GodCameraFrameInput input{};
+  input.scene_hovered = game_canvas_hovered_;
+  input.right_mouse =
+      input.scene_hovered && ImGui::IsMouseDown(ImGuiMouseButton_Right);
+  input.middle_mouse =
+      input.scene_hovered && ImGui::IsMouseDown(ImGuiMouseButton_Middle);
+
+  ImGuiIO& io = ImGui::GetIO();
+  input.mouse_delta = (input.right_mouse || input.middle_mouse)
+                          ? glm::vec2(io.MouseDelta.x, io.MouseDelta.y)
+                          : glm::vec2(0.0f);
+  input.mouse_wheel = io.MouseWheel;
+
+  // WASD axis
+  if (input.scene_hovered) {
+    const float fwd = (ImGui::IsKeyDown(ImGuiKey_W) ? 1.0f : 0.0f) -
+                      (ImGui::IsKeyDown(ImGuiKey_S) ? 1.0f : 0.0f);
+    const float sid = (ImGui::IsKeyDown(ImGuiKey_D) ? 1.0f : 0.0f) -
+                      (ImGui::IsKeyDown(ImGuiKey_A) ? 1.0f : 0.0f);
+    input.move_axis = glm::vec2(fwd, sid);
+
+    // Arrow keys for camera rotation
+    const float look_y = (ImGui::IsKeyDown(ImGuiKey_UpArrow) ? 1.0f : 0.0f) -
+                         (ImGui::IsKeyDown(ImGuiKey_DownArrow) ? 1.0f : 0.0f);
+    const float look_x = (ImGui::IsKeyDown(ImGuiKey_RightArrow) ? 1.0f : 0.0f) -
+                         (ImGui::IsKeyDown(ImGuiKey_LeftArrow) ? 1.0f : 0.0f);
+    input.look_axis = glm::vec2(look_x, look_y);
+
+    // Speed boost with SHIFT
+    input.hold_shift = ImGui::IsKeyDown(ImGuiKey_LeftShift) ||
+                       ImGui::IsKeyDown(ImGuiKey_RightShift);
+  } else {
+    input.move_axis = glm::vec2(0.0f);
+    input.look_axis = glm::vec2(0.0f);
+    input.hold_shift = false;
+  }
+
+  // Get the ECS transform
+  auto& pipeline = Runtime::GetSceneViewPipeline();
+  TransformComponent& CameraTransform = std::get<0>(pipeline.GetGodCamera());
+
+  // Run update
+  GodCameraUpdateMovement(god_state_, CameraTransform, input);
+
+  // Rebuild model matrix
+  Transform::Evaluate(CameraTransform);
 }

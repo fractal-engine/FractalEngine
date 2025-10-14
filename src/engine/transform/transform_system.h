@@ -14,7 +14,7 @@ public:
 private:
   // Update model matrix (local or with parent)
   void Evaluate(TransformComponent& transform);
-  void Evaluate(TransformComponent& transform, const TransformComponent& parent,
+  void Evaluate(TransformComponent& transform, TransformComponent& parent,
                 bool propagateModified);
 };
 
