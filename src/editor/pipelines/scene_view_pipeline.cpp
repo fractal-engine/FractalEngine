@@ -280,7 +280,7 @@ void SceneViewPipeline::RenderForwardNode(const Node::Context& context) {
 
   // Render skybox
   if (show_skybox_ && context.globals.skybox) {
-    context.globals.skybox->Submit(ViewID::SCENE_SKYBOX, viewMatrix, projMatrix,
+    context.globals.skybox->Submit(ViewID::SCENE_FORWARD, viewMatrix, projMatrix,
                                    /*useInverseViewProj=*/true);
   }
 

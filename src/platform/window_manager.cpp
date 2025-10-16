@@ -45,6 +45,8 @@ bool WindowManager::Initialize(const char* title, int width, int height) {
   // ------------------------------------------------
   instance.dpiScale_ = platform::GetDPIScale(instance.window_);
 
+  platform::DisableTextInput();
+
   Logger::getInstance().Log(
       LogLevel::Info, "WindowManager initialized with size: " +
                           std::to_string(width) + "x" + std::to_string(height));

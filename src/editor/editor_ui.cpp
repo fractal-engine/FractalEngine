@@ -16,6 +16,7 @@
 #include "gui/menu_bar.h"
 #include "gui/status_bar.h"
 #include "gui/toolbar.h"
+#include "gui/world_settings.h"
 #include "imgui.h"
 #include "imgui_internal.h"
 #include "imgui_utils.h"
@@ -51,7 +52,7 @@ void EditorUI::Initialize() {
   ImGuiIO& io = ImGui::GetIO();
   io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;    // Enable Docking
   io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;  // Enable Multi-Viewport
-  
+
   io.ConfigViewportsNoAutoMerge = true;
   io.ConfigViewportsNoTaskBarIcon = true;
 
@@ -298,6 +299,7 @@ void EditorUI::RenderUI() {
     ImGui::DockBuilderDockWindow("Toolbar", top);
     ImGui::DockBuilderDockWindow("Hierarchy", left);
     ImGui::DockBuilderDockWindow("Inspector", right);
+    ImGui::DockBuilderDockWindow("World", right);
     ImGui::DockBuilderDockWindow("Scene", dock_id_);
     ImGui::DockBuilderDockWindow("Console", bottom);
     // ImGui::DockBuilderDockWindow(Panels::kDlgWinName, bottom);
@@ -348,9 +350,8 @@ void EditorUI::RenderUI() {
   UpdateMovement();
   ImGui::End();
 
-  // -------- RIGHT : INSPECTOR (now calls the new panel) -----------------
+  // -------- RIGHT : INSPECTOR -----------------
   ImGui::Begin("Inspector", nullptr);
-
   Entity selectedEntity = GetSelectedEntity();
   if (selectedEntity != entt::null && ecs.Reg().valid(selectedEntity)) {
     // 1. Get the TransformComponent from the selected entity.
@@ -361,7 +362,11 @@ void EditorUI::RenderUI() {
   } else {
     ImGui::TextDisabled("Select an entity to inspect its components.");
   }
+  ImGui::End();
 
+  // -------- RIGHT : WORLD SETTINGS --------
+  ImGui::Begin("World", nullptr);
+  Panels::WorldSettings();
   ImGui::End();
 
   //--------------------------- Panels ------------------------------
@@ -409,6 +414,7 @@ void EditorUI::LoadIcons() {
   tab_icons_.insert({"Console", ICON_FA_TERMINAL});
   tab_icons_.insert({"Camera", ICON_FA_VIDEO});
   tab_icons_.insert({"Assets", ICON_FA_FOLDER_OPEN});
+  tab_icons_.insert({"World", ICON_FA_GLOBE});
   // tab_icons_.insert({"File Explorer", ICON_FA_FOLDER});
 }
 
@@ -442,6 +448,14 @@ void EditorUI::UpdateMovement() {
   // Build per-frame input
   GodCameraFrameInput input{};
   input.scene_hovered = game_canvas_hovered_;
+
+  // Enable/disable text input
+  if (input.scene_hovered) {
+    platform::DisableTextInput();
+  } else {
+    platform::EnableTextInput();
+  }
+
   input.right_mouse =
       input.scene_hovered && ImGui::IsMouseDown(ImGuiMouseButton_Right);
   input.middle_mouse =

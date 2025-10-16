@@ -37,7 +37,7 @@
 
 #include "runtime.h"
 
-#include <engine/renderer/skybox/skybox.h>
+#include "engine/renderer/skybox/skybox.h"
 #include "editor/registry/asset_registry.h"
 #include "editor/registry/component_registry.h"
 #include "engine/audio/sound_manager.h"  // TODO: remove later
@@ -143,8 +143,8 @@ static void _CreateEngineContext() {
 
   // Set audio
   // TODO: remove once we have a proper audio context
-  SoundManager::Instance().setAmbientVolume(0.7f);
-  SoundManager::Instance().startAmbient();
+  // SoundManager::Instance().setAmbientVolume(0.7f);
+  // SoundManager::Instance().startAmbient();
 }
 
 static void _LaunchEditor() {

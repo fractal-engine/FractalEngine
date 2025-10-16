@@ -30,4 +30,10 @@ void RefreshFramebufferSize(SDL_Window* win);  // bgfx+ImGui sync
 bool InFullscreenSpace(SDL_Window* w);
 void LockMinSize(SDL_Window* w, int minW, int minH);
 void RestoreMinSize(SDL_Window* w);
+
+// Text input control
+void DisableTextInput();
+void EnableTextInput();
+bool IsTextInputActive();
+
 }  // namespace platform

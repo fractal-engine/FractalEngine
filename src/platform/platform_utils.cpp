@@ -97,6 +97,18 @@ void RestoreMinSize(SDL_Window* w) {
   SDL_SetWindowMinimumSize(w, 0, 0);  // remove lower bound
 }
 
+void DisableTextInput() {
+  SDL_StopTextInput();
+}
+
+void EnableTextInput() {
+  SDL_StartTextInput();
+}
+
+bool IsTextInputActive() {
+  return SDL_IsTextInputActive() == SDL_TRUE;
+}
+
 }  // namespace platform
 
 #endif

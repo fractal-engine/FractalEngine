@@ -63,10 +63,10 @@ void Skybox::Create(ShaderManager* ShaderManager) {
   params_.scatterParams[2] = 0.0f;
   params_.scatterParams[3] = 0.0f;
 
-  // Default UI parameters, time will be kept in params_._cycleTime
+  // Default UI parameters, time is kept in params_._cycleTime
   SetParams(/*sunAngularRadius*/ 0.00465f, /*bloom*/ 1.0f, /*exposure*/ 0.25f);
 
-  // Initialize ambient to a safe dark color (like in ctor of GameTest)
+  // Initialize ambient to a dark color
   params_._skyAmbientArray[0] = 0.1f;
   params_._skyAmbientArray[1] = 0.1f;
   params_._skyAmbientArray[2] = 0.1f;
@@ -102,27 +102,53 @@ void Skybox::Destroy() {
 // Update (advance time + recompute)
 // ---------------------------------------------------------------
 void Skybox::Update(float dt) {
-  params_._cycleTime += dt;
-  if (params_._cycleTime > bx::kPi * 2.0f) {
-    params_._cycleTime -= bx::kPi * 2.0f;
+  if (!cycle_paused_) {
+    params_._cycleTime += dt * cycle_speed_;
+    if (params_._cycleTime > bx::kPi * 2.0f) {
+      params_._cycleTime -= bx::kPi * 2.0f;
+    }
   }
   ComputeSun();
 }
 
 // ---------------------------------------------------------------
-// SetParams (UI knobs except time)
+// Day/night control
+// ---------------------------------------------------------------
+void Skybox::SetTimeOfDay(float normalizedTime) {
+  // Clamp to [0, 1] and convert to radians
+  normalizedTime = local_clamp(normalizedTime, 0.0f, 1.0f);
+  params_._cycleTime = normalizedTime * bx::kPi * 2.0f;
+  ComputeSun();
+}
+
+float Skybox::GetTimeOfDay() const {
+  return params_._cycleTime / (bx::kPi * 2.0f);
+}
+
+std::string Skybox::GetTimeString() const {
+  // Convert radians to 24-hour time
+  float normalized = GetTimeOfDay();
+  int hours = static_cast<int>(normalized * 24.0f) % 24;
+  int minutes = static_cast<int>((normalized * 24.0f - hours) * 60.0f);
+  
+  char buffer[16];
+  snprintf(buffer, sizeof(buffer), "%02d:%02d", hours, minutes);
+  return std::string(buffer);
+}
+
+// ---------------------------------------------------------------
+// SetParams
 // ---------------------------------------------------------------
 void Skybox::SetParams(float sunAngularRadius, float proceduralBloom,
                        float exposure) {
-  params_._parametersArray[0] =
-      sunAngularRadius;  // matches _parametersArray in your code
+  params_._parametersArray[0] = sunAngularRadius;
   params_._parametersArray[1] = proceduralBloom;
   params_._parametersArray[2] = exposure;
   // .w (index 3) is time; filled from _cycleTime in ComputeSun()
 }
 
 // ---------------------------------------------------------------
-// ComputeSun (exact same logic as in GameTest::Render)
+// ComputeSun
 // ---------------------------------------------------------------
 void Skybox::ComputeSun() {
   const float sunAngle = params_._cycleTime;
@@ -153,7 +179,7 @@ void Skybox::ComputeSun() {
   // parameters.w holds time
   params_._parametersArray[3] = params_._cycleTime;
 
-  // Ambient from elevation + tiny boost (identical numbers)
+  // Ambient from elevation + tiny boost
   params_._skyAmbientArray[0] = bx::lerp(0.02f, 0.3f, sunElevationFactor);
   params_._skyAmbientArray[1] = bx::lerp(0.03f, 0.4f, sunElevationFactor);
   params_._skyAmbientArray[2] = bx::lerp(0.05f, 0.55f, sunElevationFactor);
@@ -165,7 +191,7 @@ void Skybox::ComputeSun() {
 }
 
 // ---------------------------------------------------------------
-// Submit (draw the skybox)
+// Submit (draw skybox)
 // ---------------------------------------------------------------
 void Skybox::Submit(bgfx::ViewId viewId, const float* viewMatrix,
                     const float* projMatrix, bool useInverseViewProj) {
@@ -193,13 +219,13 @@ void Skybox::Submit(bgfx::ViewId viewId, const float* viewMatrix,
     bgfx::setUniform(_viewInvUniform, invView);
     bgfx::setUniform(_projInvUniform, invProj);
   } else {
-    // Reflection path from your code: pass rotation-only "view" directly,
+    // Reflection path: pass rotation-only "view" directly,
     // and the non-inverted projection into the *Inv uniforms*.
     bgfx::setUniform(_viewInvUniform, viewMatrix);
     bgfx::setUniform(_projInvUniform, projMatrix);
   }
 
-  // Sky/sun uniforms (exact names)
+  // Sky/sun uniforms
   bgfx::setUniform(_sunDirUniform, params_.sunDirShader);
   bgfx::setUniform(_sunLumUniform, params_._sunColorArray);
   bgfx::setUniform(_paramsUniform, params_._parametersArray);
@@ -214,7 +240,7 @@ void Skybox::Submit(bgfx::ViewId viewId, const float* viewMatrix,
 }
 
 // ---------------------------------------------------------------
-// CreateFullscreenQuad (identical data as GameTest::createSkyboxBuffers)
+// CreateFullscreenQuad
 // ---------------------------------------------------------------
 void Skybox::CreateFullscreenQuad() {
   ScreenPosVertex::initLayout();

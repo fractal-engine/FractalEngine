@@ -24,38 +24,45 @@ class Skybox {
 public:
   Skybox() = default;
 
-  // Create shaders, uniforms, and fullscreen quad.
-  // Expects Runtime::Shader()->LoadProgram(...) to be available globally (as in
-  // your codebase).
   void Create(ShaderManager* ShaderManager);
-
-  // Destroy all BGFX handles.
   void Destroy();
+  void Update(float dt);  // Advance time + sun/ambient
 
-  // Advance time (seconds or arbitrary units) and recompute sun/ambient.
-  void Update(float dt);
-
-  // Manually tweak skybox UI-ish params (not time).
-  // (time is taken from Update / _cycleTime).
+  // Tweak skybox params
   void SetParams(float sunAngularRadius, float proceduralBloom, float exposure);
 
-  // Recompute sun direction, luminance, ambient, and scattering from current
-  // _cycleTime.
+  // Recompute sun direction, luminance, ambient, and scattering
   void ComputeSun();
 
   // Submit a draw for the skybox to the given view.
   // If useInverseViewProj==true: we compute inverse(view/proj) and set
   // u_viewInv/u_projInv accordingly (this matches your main skybox path). If
   // false: we assume the caller passed a "rotation-only" view (e.g.,
-  // reflection) and set uniforms directly (this matches your reflection path).
+  // reflection) and set uniforms directly
   void Submit(bgfx::ViewId viewId, const float* viewMatrix,
               const float* projMatrix, bool useInverseViewProj);
 
-  // Give access to the computed parameters (for terrain/water).
+  // Give access to the computed parameters (for terrain/water)
   const SkyboxParams& GetParams() const { return params_; }
 
-  // Explicit helper if you need to rebuild just the quad.
+  // Rebuild quad only
   void CreateFullscreenQuad();
+
+  // Day/night cycle control
+  void SetCycleSpeed(float speed) { cycle_speed_ = speed; }
+  float GetCycleSpeed() const { return cycle_speed_; }
+
+  void SetCyclePaused(bool paused) { cycle_paused_ = paused; }
+  bool IsCyclePaused() const { return cycle_paused_; }
+
+  // Direct time-of-day control
+  // 0.0 = midnight, 0.25 = sunrise, 0.5 = noon,
+  // 0.75 = sunset
+  void SetTimeOfDay(float normalizedTime);
+  float GetTimeOfDay() const;
+
+  // Get time string
+  std::string GetTimeString() const;
 
 private:
   // Geometry for fullscreen quad
@@ -71,12 +78,12 @@ private:
     }
   };
 
-  // Handles (same names as you used)
+  // Handles
   bgfx::ProgramHandle _skyProgram = BGFX_INVALID_HANDLE;
   bgfx::VertexBufferHandle _skyVbh = BGFX_INVALID_HANDLE;
   bgfx::IndexBufferHandle _skyIbh = BGFX_INVALID_HANDLE;
 
-  // Uniforms (same names)
+  // Uniforms
   bgfx::UniformHandle _sunDirUniform = BGFX_INVALID_HANDLE;
   bgfx::UniformHandle _sunLumUniform = BGFX_INVALID_HANDLE;
   bgfx::UniformHandle _paramsUniform = BGFX_INVALID_HANDLE;
@@ -86,10 +93,13 @@ private:
   bgfx::UniformHandle _betaRUniform = BGFX_INVALID_HANDLE;
   bgfx::UniformHandle _betaMUniform = BGFX_INVALID_HANDLE;
 
-  // Stored values/params (same arrays/vars)
+  // Stored values/params
   SkyboxParams params_{};
 
-  // Constants used by your original code (no logic changes)
+  float cycle_speed_ = 0.05f;
+  bool cycle_paused_ = false;
+
+  // Constants
   const float H_R = 8000.0f;
   const float H_M = 1200.0f;
   const float k_betaR_per_meter[3] = {5.8e-6f, 13.5e-6f, 33.1e-6f};
