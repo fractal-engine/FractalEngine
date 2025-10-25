@@ -3,6 +3,7 @@
 #include <bgfx/bgfx.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
+
 #include "editor/camera/camera_view.h"
 #include "editor/editor_ui.h"
 #include "editor/gizmos/component_gizmos.h"
@@ -11,6 +12,7 @@
 #include "engine/core/logger.h"
 #include "engine/core/view_ids.h"
 #include "engine/ecs/world.h"
+#include "engine/math/transformation.h"
 #include "engine/renderer/lighting/light.h"
 #include "engine/renderer/model/mesh.h"
 #include "engine/transform/transform.h"
@@ -19,6 +21,8 @@ SceneViewPipeline::SceneViewPipeline()
     : wireframe_(false),
       show_skybox_(true),
       msaa_samples_(4),
+      view_(glm::mat4(1.0f)),
+      projection_(glm::mat4(1.0f)),
       show_terrain_(true),
       show_water_(true),
       show_gizmos_(true),
@@ -26,9 +30,10 @@ SceneViewPipeline::SceneViewPipeline()
       god_camera_root_(),
       god_camera_(god_camera_transform_, god_camera_root_),
       render_shadows_(true),
-      gltf_program_(BGFX_INVALID_HANDLE),
+      default_program_(BGFX_INVALID_HANDLE),
       transform_system_(),
       selected_entities_(),
+      show_grid_(true),
       selection_program_(BGFX_INVALID_HANDLE) {
   // TODO: Initialize other members e.g. profile, viewport, passes, etc.
   // Check reference project for details
@@ -41,8 +46,8 @@ void SceneViewPipeline::Create() {
   std::get<1>(god_camera_).fov_ = 90.0f;
 
   // Load shared shaders
-  gltf_program_ = Runtime::Shader()->LoadProgram("gltf_default", "vs_gltf.bin",
-                                                 "fs_gltf.bin");
+  default_program_ = Runtime::Shader()->LoadProgram(
+      "gltf_default", "vs_gltf.bin", "fs_gltf.bin");
   selection_program_ = Runtime::Shader()->LoadProgram(
       "selection", "vs_selection.bin", "fs_selection.bin");
 
@@ -198,12 +203,25 @@ void SceneViewPipeline::RenderForwardNode(const Node::Context& context) {
   TransformComponent& camera_transform = std::get<0>(god_camera_);
   CameraComponent& camera_component = std::get<1>(god_camera_);
 
+  // TODO: revise code here
+  // Build view and projection matrices
+  view_ = Transformation::View(camera_transform.position_,
+                               camera_transform.rotation_);
+  projection_ = Transformation::Projection(
+      camera_component.fov_, float(canvasViewportW) / float(canvasViewportH),
+      camera_component.near_clip_, camera_component.far_clip_);
+
   float viewMatrix[16];
   float projMatrix[16];
   CameraView::GetViewMatrix(camera_transform, viewMatrix);
   CameraView::GetProjectionMatrix(
       camera_component, projMatrix,
       float(canvasViewportW) / float(canvasViewportH));
+
+  /* Logger::getInstance().Log(
+      LogLevel::Debug, "BGFX view[0]: " + std::to_string(viewMatrix[0]) + ", " +
+                           std::to_string(viewMatrix[1]) + ", " +
+                           std::to_string(viewMatrix[2]));*/
 
   // Setup BGFX view
   bgfx::setViewTransform(ViewID::SCENE_FORWARD, viewMatrix, projMatrix);
@@ -263,8 +281,18 @@ void SceneViewPipeline::RenderForwardNode(const Node::Context& context) {
     // Submit mesh
     bgfx::setTransform(glm::value_ptr(transform.model_));
     renderer_comp.mesh_->Bind();
-    bgfx::setState(BGFX_STATE_DEFAULT | BGFX_STATE_CULL_CW);
-    bgfx::submit(ViewID::SCENE_FORWARD, gltf_program_);
+
+    // Set culling/state
+    // ? Create a method for handling render states?
+    uint64_t render_state = BGFX_STATE_DEFAULT | BGFX_STATE_CULL_CW;
+
+    // Enable wireframe
+    if (wireframe_) {
+      render_state |= BGFX_STATE_PT_LINES;
+    }
+
+    bgfx::setState(render_state);
+    bgfx::submit(ViewID::SCENE_FORWARD, default_program_);
   }
 
   /* if (show_gizmos_) {
@@ -280,7 +308,8 @@ void SceneViewPipeline::RenderForwardNode(const Node::Context& context) {
 
   // Render skybox
   if (show_skybox_ && context.globals.skybox) {
-    context.globals.skybox->Submit(ViewID::SCENE_FORWARD, viewMatrix, projMatrix,
+    context.globals.skybox->Submit(ViewID::SCENE_FORWARD, viewMatrix,
+                                   projMatrix,
                                    /*useInverseViewProj=*/true);
   }
 
@@ -339,8 +368,9 @@ void SceneViewPipeline::RenderSelectionOutlineNode(
     // Render base mesh
     bgfx::setTransform(glm::value_ptr(transform.model_));
     renderer.mesh_->Bind();
+
     bgfx::setState(BGFX_STATE_DEFAULT | BGFX_STATE_CULL_CW);
-    bgfx::submit(ViewID::SCENE_FORWARD, gltf_program_);
+    bgfx::submit(ViewID::SCENE_FORWARD, default_program_);
 
     // Render outline (scaled up)
     RenderSelectedEntityOutline(entity, view_projection);
@@ -384,10 +414,10 @@ void SceneViewPipeline::RenderSelectedEntityOutline(
   // Forward render entity's base mesh
   // TODO: Set shader uniforms (mvp, model, normal)
   // TODO: should use Shader and Material systems once implemented
-  /* bgfx::setTransform(glm::value_ptr(transform.model_));
+  bgfx::setTransform(glm::value_ptr(transform.model_));
   renderer.mesh_->Bind();
   bgfx::setState(BGFX_STATE_DEFAULT);
-  bgfx::submit(ViewID::SCENE_FORWARD, gltf_program_);*/
+  bgfx::submit(ViewID::SCENE_FORWARD, default_program_);
 
   // Render outline of selected entity
   // TODO: Set BGFX stencil state for outline rendering
@@ -402,12 +432,13 @@ void SceneViewPipeline::RenderSelectedEntityOutline(
   renderer.mesh_->Bind();
   // TODO: Use selection_material_ for outline shader
   bgfx::setState(BGFX_STATE_DEFAULT | BGFX_STATE_BLEND_ALPHA |
-                 BGFX_STATE_CULL_CCW);
+                 BGFX_STATE_CULL_CW);
   bgfx::submit(ViewID::SCENE_FORWARD, selection_program_);
 
   // TODO: Reset BGFX blend and stencil state if needed
 }
 
+// TODO: should be used for IMGizmo rendering
 void SceneViewPipeline::RenderGizmosNode(const Node::Context& context) {
 
   // Get Camera
@@ -421,12 +452,12 @@ void SceneViewPipeline::RenderGizmosNode(const Node::Context& context) {
       camera_component, projMatrix,
       float(canvasViewportW) / float(canvasViewportH));
 
-  // Draw transform gizmo for selected entity
-  Entity selected_entity = EditorUI::Get()->GetSelectedEntity();
+  // TODO: Draw transform gizmo for selected entity
+  /* Entity selected_entity = EditorUI::Get()->GetSelectedEntity();
   if (selected_entity != entt::null) {
     ComponentGizmos::DrawTransformGizmo(selected_entity, viewMatrix,
                                         projMatrix);
-  }
+  }*/
 }
 
 // PLACEHOLDER: Remove this once pipeline is done
@@ -439,9 +470,9 @@ void SceneViewPipeline::Render() {
 }
 
 void SceneViewPipeline::Destroy() {
-  if (bgfx::isValid(gltf_program_)) {
-    bgfx::destroy(gltf_program_);
-    gltf_program_ = BGFX_INVALID_HANDLE;
+  if (bgfx::isValid(default_program_)) {
+    bgfx::destroy(default_program_);
+    default_program_ = BGFX_INVALID_HANDLE;
   }
 
   if (bgfx::isValid(selection_program_)) {
@@ -454,15 +485,15 @@ void SceneViewPipeline::Destroy() {
 }
 
 // TODO: rename to Render() once placeholder is removed
-// void SceneViewPipeline::RealRender() {
+/* void SceneViewPipeline::RealRender() {
 // debug
-/*Logger::getInstance().Log(LogLevel::Debug,
-                          "[Render] SceneViewPipeline::Render called");*/
+Logger::getInstance().Log(LogLevel::Debug,
+                          "[Render] SceneViewPipeline::Render called");
 
 // Set default view and matrices
-/*bgfx::ViewId view = ViewID::SCENE_FORWARD;
+bgfx::ViewId view = ViewID::SCENE_FORWARD;
 glm::mat4 view_mtx = glm::mat4(1.0f);
-glm::mat4 proj_mtx = glm::mat4(1.0f);*/
+glm::mat4 proj_mtx = glm::mat4(1.0f);
 
 // TODO: Start profiler ("scene_view")
 
@@ -490,7 +521,7 @@ glm::mat4 proj_mtx = glm::mat4(1.0f);*/
 // TODO: Link skybox
 
 // TODO: remove this once all todos are implemented
-/* auto& world = ECS::Main();
+auto& world = ECS::Main();
 TransformSystem::Perform(viewProjection);
 const auto& render_queue = world.GetRenderQueue();
 
@@ -522,7 +553,7 @@ for (const auto& item : render_queue) {
                             "[Render] Mesh bound and submitted");
   bgfx::setState(BGFX_STATE_DEFAULT | BGFX_STATE_CULL_CW);
   bgfx::submit(view, program_);
-} */
+}*/
 
 // POST PROCESSING PASS
 // TODO: Render post-processing effects here
@@ -531,8 +562,7 @@ for (const auto& item : render_queue) {
 // TODO: Stop profiler ("scene_view")
 // }
 
-/*
-void SceneViewPipeline::CreatePasses() {}
+/* void SceneViewPipeline::CreatePasses() {}
 
 void SceneViewPipeline::DestroyPasses() {
   scene_view_forward_pass_.Destroy();
@@ -541,4 +571,12 @@ void SceneViewPipeline::DestroyPasses() {
 
 Camera& SceneViewPipeline::GetGodCamera() {
   return god_camera_;
+}
+
+const glm::mat4& SceneViewPipeline::GetView() const {
+  return view_;
+}
+
+const glm::mat4& SceneViewPipeline::GetProjection() const {
+  return projection_;
 }

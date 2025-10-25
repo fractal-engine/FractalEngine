@@ -18,6 +18,12 @@ public:
 
   Camera& GetGodCamera();
 
+  // Get latest view matrix used
+  const glm::mat4& GetView() const;
+
+  // Get latest projection matrix used
+  const glm::mat4& GetProjection() const;
+
   // void CreateFrameGraph();
 
   // void RenderSelectedEntity(EntityContainer* entity, const glm::mat4&
@@ -29,6 +35,7 @@ public:
   void SetWireframe(bool enabled) { wireframe_ = enabled; }
   void SetShowSkybox(bool enabled) { show_skybox_ = enabled; }
   void SetShowGizmos(bool enabled) { show_gizmos_ = enabled; }
+  void SetShowGrid(bool enabled) { show_grid_ = enabled; }
   void SetSelectedEntities(const std::vector<EntityContainer*>& entities) {
     selected_entities_ = entities;
   }
@@ -40,6 +47,7 @@ public:
   bool show_water_;
   bool show_gizmos_;
   bool render_shadows_;
+  bool show_grid_;
   uint32_t msaa_samples_;
 
 private:
@@ -60,9 +68,12 @@ private:
   void RenderSelectionOutlineNode(const Node::Context& context);
   void RenderGizmosNode(const Node::Context& context);
 
-  // Helper
+  // Outline helper
   void RenderSelectedEntityOutline(EntityContainer* entity,
                                    const glm::mat4& view_projection);
+
+  void RenderGrid(bgfx::ViewId view_id, const float* view_mtx,
+                  const float* proj_mtx);
 
   // Camera
   TransformComponent god_camera_transform_;
@@ -72,8 +83,9 @@ private:
   // Transform system
   TransformSystem transform_system_;
 
-  // Cache
-  // bgfx::ProgramHandle program_ BGFX_INVALID_HANDLE;
+  // Matrix cache
+  glm::mat4 view_;
+  glm::mat4 projection_;
 
   // Entity selection
   std::vector<EntityContainer*> selected_entities_;
@@ -85,7 +97,7 @@ private:
   // bool frame_initialized_;
 
   // Shader handles (loaded once)
-  bgfx::ProgramHandle gltf_program_;
+  bgfx::ProgramHandle default_program_;
   bgfx::ProgramHandle selection_program_;
 };
 

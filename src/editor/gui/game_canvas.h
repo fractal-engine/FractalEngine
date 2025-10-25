@@ -1,14 +1,20 @@
 #ifndef GAME_CANVAS_H
 #define GAME_CANVAS_H
 
+#define GLM_ENABLE_EXPERIMENTAL
+#include <glm/gtc/type_ptr.hpp>
+#include <glm/gtx/matrix_decompose.hpp>
+
 #include <imgui.h>
 
-#include "engine/renderer/frame_graph.h"
 #include "editor/runtime/runtime.h"
+#include "editor/vendor/imguizmo/ImGuizmo.h"
 #include "engine/core/engine_globals.h"
 #include "engine/core/logger.h"
 #include "engine/core/view_ids.h"
 #include "engine/ecs/world.h"
+#include "engine/math/transformation.h"
+#include "engine/renderer/frame_graph.h"
 #include "engine/renderer/graphics_renderer.h"
 #include "engine/renderer/model/model.h"
 #include "engine/resources/file_system_utils.h"
@@ -17,6 +23,21 @@
 
 namespace Panels {
 
+struct TransformGizmoState {
+  ImGuizmo::OPERATION operation = ImGuizmo::TRANSLATE;
+  ImGuizmo::MODE mode = ImGuizmo::WORLD;
+  float scale_min = 0.1f;
+
+  void HandleKeyboardShortcuts() {
+    if (ImGui::IsKeyPressed(ImGuiKey_W))
+      operation = ImGuizmo::TRANSLATE;
+    if (ImGui::IsKeyPressed(ImGuiKey_E))
+      operation = ImGuizmo::ROTATE;
+    if (ImGui::IsKeyPressed(ImGuiKey_R))
+      operation = ImGuizmo::SCALE;
+  }
+};
+
 // calculate squared distance between two vectors
 // Avoids rapid FBO recreation while resizing scene window
 inline float DistanceSqr(const ImVec2& delta) {
@@ -24,7 +45,9 @@ inline float DistanceSqr(const ImVec2& delta) {
 }
 
 // Resize is deferred until the viewport has stabilized
-inline void GameCanvas(bool isGameRunning, bool& hovered) {
+inline void GameCanvas(bool isGameRunning, bool& hovered, bool& focused) {
+  static TransformGizmoState gizmo_state;  // Persistent state
+
   ImGui::BeginChild("GameCanvas", ImVec2(0, ImGui::GetContentRegionAvail().y),
                     true);
 
@@ -58,17 +81,102 @@ inline void GameCanvas(bool isGameRunning, bool& hovered) {
     canvasViewportH = static_cast<uint16_t>(scaledSize.y);
   }
 
-  hovered = ImGui::IsWindowHovered();  // hover detection for the canvas
+  hovered = ImGui::IsWindowHovered();
+  focused = ImGui::IsWindowFocused();
 
   auto* renderer = static_cast<GraphicsRenderer*>(Runtime::Renderer());
 
   if (isGameRunning && canvasViewportW > 0 && canvasViewportH > 0) {
-    // render when we have valid dimensions
+
+    // render when dimensions are valid
     ImTextureID texId = renderer->GetSceneTexId();
     if (texId) {
+
+      // Draw scene image
       ImGui::Image(texId, size, ImVec2(0, 1),  // uv0
                    ImVec2(1, 0)                // uv1
       );
+
+      // ImGuizmo transform manipulation
+      auto& pipeline = Runtime::GetSceneViewPipeline();
+      Entity selected = EditorUI::Get()->GetSelectedEntity();
+
+      // Get camera matrices
+      auto& camera_transform = std::get<0>(pipeline.GetGodCamera());
+      auto& camera_component = std::get<1>(pipeline.GetGodCamera());
+
+      const glm::mat4& view = pipeline.GetView();
+      const glm::mat4& projection = pipeline.GetProjection();
+
+      /* Logger::getInstance().Log(
+          LogLevel::Debug, "ImGuizmo view[0]: " + std::to_string(view[0][0]) +
+                               ", " + std::to_string(view[0][1]) + ", " +
+                               std::to_string(view[0][2])); */
+
+      // Setup ImGuizmo viewport
+      ImGuizmo::SetOrthographic(false);
+      ImGuizmo::SetDrawlist();
+      ImGuizmo::SetRect(pos.x, pos.y, size.x, size.y);
+
+      // Only show gizmos if: pipeline enabled, entity selected, not interacting
+      bool show_gizmos = pipeline.show_gizmos_ && selected != entt::null;
+      bool right_click = ImGui::IsMouseDown(ImGuiMouseButton_Right);
+      bool middle_click = ImGui::IsMouseDown(ImGuiMouseButton_Middle);
+
+      if (show_gizmos && !right_click && !middle_click) {
+        auto& world = ECS::Main();
+        if (world.Has<TransformComponent>(selected)) {
+
+          // Handle keyboard shortcuts
+          if (focused) {
+            gizmo_state.HandleKeyboardShortcuts();
+          }
+
+          // Get transform
+          auto& transform = world.Get<TransformComponent>(selected);
+          glm::mat4 modelMatrix = transform.model_;
+
+          // Snapping (hold Ctrl)
+          bool snapping = ImGui::IsKeyDown(ImGuiKey_LeftCtrl) ||
+                          ImGui::IsKeyDown(ImGuiKey_RightCtrl);
+          float snapValue =
+              (gizmo_state.operation == ImGuizmo::ROTATE) ? 45.0f : 0.5f;
+          float snapValues[3] = {snapValue, snapValue, snapValue};
+
+          // Manipulate
+          bool manipulated = ImGuizmo::Manipulate(
+              glm::value_ptr(view), glm::value_ptr(projection),
+              gizmo_state.operation, gizmo_state.mode,
+              glm::value_ptr(modelMatrix),
+              nullptr,  // delta
+              snapping ? snapValues : nullptr);
+
+          // If modified, update transform
+          if (manipulated && ImGuizmo::IsUsing()) {
+            glm::vec3 position, scale, skew;
+            glm::vec4 perspective;
+            glm::quat rotation;
+            glm::decompose(modelMatrix, scale, rotation, position, skew,
+                           perspective);
+
+            Transform::SetPosition(transform, Transformation::Swap(position),
+                                   Space::WORLD);
+            Transform::SetRotation(
+                transform, Transformation::Swap(glm::normalize(rotation)),
+                Space::WORLD);
+
+            // Apply constraints for scale
+            if (gizmo_state.operation == ImGuizmo::SCALE) {
+              scale = glm::max(scale, glm::vec3(gizmo_state.scale_min));
+            }
+
+            Transform::SetScale(transform, scale, Space::WORLD);
+
+            // Re-evaluate transform
+            Transform::Evaluate(transform);
+          }
+        }
+      }
 
       // Handle drop operations for glTF files after drawing image
       if (ImGui::BeginDragDropTarget()) {

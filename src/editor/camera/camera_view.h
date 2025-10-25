@@ -9,6 +9,8 @@
 #include "engine/ecs/components/camera_component.h"
 #include "engine/ecs/components/transform_component.h"
 
+// TODO: Should use View and Projection from Transformation.cpp?
+
 class CameraView {
 public:
   static void GetViewMatrix(const TransformComponent& transform, float* out) {

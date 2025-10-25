@@ -231,6 +231,7 @@ glm::vec3 _Direction(const glm::vec3& base, TransformComponent& transform,
   }
 }
 
+// Describe coordinate system
 glm::vec3 Forward(TransformComponent& transform, Space space) {
   return _Direction(glm::vec3(0.0f, 0.0f, 1.0f), transform, space);
 }

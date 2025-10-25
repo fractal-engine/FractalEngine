@@ -1,13 +1,24 @@
 #ifndef COMPONENT_GIZMOS_H
 #define COMPONENT_GIZMOS_H
 
-#include "engine/ecs/world.h"
 #include <imgui.h>
-#include "editor/vendor/imguizmo/ImGuizmo.h" // Direct include
+
+#include "engine/ecs/world.h"
 
 namespace ComponentGizmos {
-    // The main function called by the renderer to draw the transform gizmo.
-    void DrawTransformGizmo(Entity selectedEntity, const float* viewMatrix, const float* projectionMatrix);
+// TODO: Draw debug shapes for components (wireframes, icons, etc.)
+// These will use a custom IMGizmo class for 3D debug rendering
+
+// void DrawSceneViewIcons(IMGizmo& gizmos, TransformComponent& cameraTransform);
+// void DrawEntityGizmos(IMGizmo& gizmos, EntityContainer& entity);
+
+// COMPONENTS:
+// void DrawCamera(IMGizmo& gizmos, TransformComponent& transform, CameraComponent& camera);
+// void DrawBoxCollider(IMGizmo& gizmos, TransformComponent& transform, BoxColliderComponent& collider);
+// void DrawSphereCollider(IMGizmo& gizmos, TransformComponent& transform, SphereColliderComponent& sphereCollider);
+// void DrawPointLight(IMGizmo& gizmos, TransformComponent& transform, PointLightComponent& pointLight);
+// void DrawSpotlight(IMGizmo& gizmos, TransformComponent& transform, SpotlightComponent& spotlight);
+// void DrawAudioSource(IMGizmo& gizmos, TransformComponent& transform, AudioSourceComponent& audioSource);
 }
 
-#endif // COMPONENT_GIZMOS_H
+#endif  // COMPONENT_GIZMOS_H

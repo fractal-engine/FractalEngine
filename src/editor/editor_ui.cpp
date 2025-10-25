@@ -346,7 +346,7 @@ void EditorUI::RenderUI() {
   // The rendering pipeline now handles the gizmo, so this panel is just a
   // simple canvas.
   ImGui::Begin("Scene", nullptr);
-  Panels::GameCanvas(is_game_started_, game_canvas_hovered_);
+  Panels::GameCanvas(is_game_started_, game_canvas_hovered_, game_canvas_focused_);
   UpdateMovement();
   ImGui::End();
 
@@ -422,6 +422,7 @@ void EditorUI::BeginImGuiFrame(SDL_Window* window) {
   ImGui_ImplSDL2_NewFrame();  // platform backend
   ImGui_Implbgfx_NewFrame();  // renderer backend
   ImGui::NewFrame();          // ImGui begins
+  ImGuizmo::BeginFrame();     // ImGuizmo begins
 
   // ---- decorators start here ----
   // drop shadow effect
