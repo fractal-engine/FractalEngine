@@ -37,7 +37,6 @@
 
 #include "runtime.h"
 
-#include "engine/renderer/skybox/skybox.h"
 #include "editor/registry/asset_registry.h"
 #include "editor/registry/component_registry.h"
 #include "engine/audio/sound_manager.h"  // TODO: remove later
@@ -46,6 +45,7 @@
 #include "engine/core/logger.h"
 #include "engine/ecs/ecs_collection.h"
 #include "engine/renderer/icons/icon_loader.h"
+#include "engine/renderer/skybox/skybox.h"
 #include "engine/time/time.h"
 #include "game/game_test.h"
 
@@ -71,7 +71,8 @@ ProjectManager g_project_manager;
 // Pipelines
 SceneViewPipeline g_scene_view_pipeline;
 
-// TODO: scene gizmos
+// Scene gizmos
+IMGizmo g_scene_gizmos;
 
 // TODO: default assets
 Skybox default_skybox;
@@ -115,8 +116,8 @@ static void _CreateResources() {
   // Initialize FrameGraph with current viewport dimensions
   g_frame_graph->Rebuild(canvasViewportW, canvasViewportH);
 
-  // TODO: setup scene gizmos here
-  // g_scene_gizmos.Create();
+  // setup scene gizmos
+  g_scene_gizmos.Create();
 
   // TODO: Create main shadow disk and main shadow map here ?
 }
@@ -255,7 +256,7 @@ int START_LOOP() {
                             "Game initialized in its own thread");
 
   // Run the editor
-  g_editor->Run(); // TODO: this blocks global resources, needs fix!
+  g_editor->Run();  // TODO: this blocks global resources, needs fix!
   Logger::getInstance().Log(LogLevel::Info, "Editor initialized and running");
 
   // TODO: remove once _NextFrame() is used
@@ -330,6 +331,10 @@ ShaderManager* Shader() {
 }
 ProjectManager& Project() {
   return g_project_manager;
+}
+
+IMGizmo& SceneGizmos() {
+  return g_scene_gizmos;
 }
 
 SceneViewPipeline& GetSceneViewPipeline() {

@@ -51,6 +51,7 @@ GameManager* Game();
 Input* InputDevice();
 WindowManager* Window();
 ShaderManager* Shader();
+IMGizmo& SceneGizmos();
 
 }  // namespace Runtime
 

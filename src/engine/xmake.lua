@@ -7,27 +7,36 @@ target("engine")
     add_deps("platform")
     add_includedirs("..", {public = true})
 
+    -- IMPLEMENTATION FILES -------
     add_files("core/*.cpp", "audio/*.cpp", "misc/*.cpp", "scene/*.cpp", "context/*.cpp",
-        "formats/*.cpp", "ecs/*.cpp", "memory/*.cpp", "transform/*.cpp", "time/*.cpp",
-        "math/*.cpp")
+            "formats/*.cpp", "ecs/*.cpp", "memory/*.cpp", "transform/*.cpp", "time/*.cpp",
+            "math/*.cpp", "generator/*.cpp",
 
     -- renderer files
-    add_files("renderer/*.cpp", "renderer/lighting/*.cpp", "renderer/shaders/*.cpp",
+    "renderer/*.cpp", "renderer/lighting/*.cpp", "renderer/shaders/*.cpp",
             "renderer/icons/*.cpp", "renderer/texture/*.cpp", "renderer/model/*.cpp",
-            "renderer/skybox/*.cpp")
+            "renderer/skybox/*.cpp", "renderer/gizmos/*.cpp",
 
     -- resources files
-    add_files("resources/*.cpp", "resources/textures/*.cpp", "resources/3d/*.cpp")
+    "resources/*.cpp", "resources/textures/*.cpp", "resources/3d/*.cpp",
 
-    -- header files
+    -- generator files
+    "generator/noise/simplex.cpp", "generator/operators/fbm.cpp", "generator/operators/domain_warp.cpp",
+            "generator/operators/erosion.cpp", "generator/operators/ridge.cpp", "generator/operators/remap.cpp",
+            "generator/constraints/rule_system.cpp", "generator/generator.cpp")
+
+    -- HEADER FILES -------
     add_headerfiles("core/*.h", "audio/*.h", "scene/*.h", "context/*.h", "formats/*.h",
-            "ecs/*.h", "memory/*.h", "transform/*.h", "time/*.h", "math/*.h")
+            "ecs/*.h", "memory/*.h", "transform/*.h", "time/*.h", "math/*.h", "generator/*.h",
 
-    add_headerfiles("renderer/*.h", "renderer/lighting/*.h", "renderer/shaders/*.h",
+
+    -- renderer files
+    "renderer/*.h", "renderer/lighting/*.h", "renderer/shaders/*.h",
             "renderer/icons/*.h", "renderer/texture/*.h", "renderer/model/*.h",
-            "renderer/skybox/*.h")
+            "renderer/skybox/*.h", "renderer/gizmos/*.h",
 
-    add_headerfiles("resources/*.h", "resources/textures/*.h", "resources/3d/*.h")
+    -- resource files
+    "resources/*.h", "resources/textures/*.h", "resources/3d/*.h")
 
     add_rules("shaderc.build")
     add_files("$(projectdir)/src/assets/shaders/**.sc")
@@ -110,6 +119,9 @@ rule("shaderc.build")
             shadow  = "varying_shadow.def.sc",
             water   = "varying_water.def.sc",
             gltf    = "varying_gltf.def.sc",
+            default = "varying_default.def.sc",
+            debug   = "varying_debug.def.sc",
+            gizmo   = "varying_gizmo.def.sc"
         }
 
         -- pick first key matching anywhere in relative path

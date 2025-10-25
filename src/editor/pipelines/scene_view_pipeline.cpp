@@ -295,16 +295,16 @@ void SceneViewPipeline::RenderForwardNode(const Node::Context& context) {
     bgfx::submit(ViewID::SCENE_FORWARD, default_program_);
   }
 
-  /* if (show_gizmos_) {
+  if (show_gizmos_) {
     // Selection outline first (uses depth from the forward pass)
     for (auto* e : selected_entities_) {
       if (e)
         RenderSelectedEntityOutline(e, view_projection);
     }
-    Entity selected_entity = EditorUI::Get()->GetSelectedEntity();
+    /* Entity selected_entity = EditorUI::Get()->GetSelectedEntity();
     ComponentGizmos::DrawTransformGizmo(selected_entity, viewMatrix,
-                                        projMatrix);
-  }*/
+                                        projMatrix);*/
+  }
 
   // Render skybox
   if (show_skybox_ && context.globals.skybox) {
@@ -440,6 +440,10 @@ void SceneViewPipeline::RenderSelectedEntityOutline(
 
 // TODO: should be used for IMGizmo rendering
 void SceneViewPipeline::RenderGizmosNode(const Node::Context& context) {
+  if (!show_gizmos_)
+    return;
+
+  IMGizmo& gizmos = Runtime::SceneGizmos();
 
   // Get Camera
   TransformComponent& camera_transform = std::get<0>(god_camera_);
@@ -452,18 +456,39 @@ void SceneViewPipeline::RenderGizmosNode(const Node::Context& context) {
       camera_component, projMatrix,
       float(canvasViewportW) / float(canvasViewportH));
 
+  // Setup BGFX view for gizmo rendering
+  bgfx::setViewTransform(ViewID::SCENE_FORWARD, viewMatrix, projMatrix);
+  bgfx::setViewRect(ViewID::SCENE_FORWARD, 0, 0, canvasViewportW,
+                    canvasViewportH);
+
+  auto* renderer = static_cast<GraphicsRenderer*>(Runtime::Renderer());
+  bgfx::setViewFrameBuffer(ViewID::SCENE_FORWARD,
+                           renderer->GetSceneFramebuffer());
+
+  // Build view-projection for gizmo rendering
+  glm::mat4 view = glm::make_mat4(viewMatrix);
+  glm::mat4 projection = glm::make_mat4(projMatrix);
+  glm::mat4 view_projection = projection * view;
+
   // TODO: Draw transform gizmo for selected entity
   /* Entity selected_entity = EditorUI::Get()->GetSelectedEntity();
   if (selected_entity != entt::null) {
     ComponentGizmos::DrawTransformGizmo(selected_entity, viewMatrix,
                                         projMatrix);
   }*/
+
+  gizmos.RenderAll(view_projection);
 }
 
 // PLACEHOLDER: Remove this once pipeline is done
 void SceneViewPipeline::Render() {
-
   // TODO: add missing inits and calls noted in RealRender?
+
+  // Start gizmos frame
+  IMGizmo& gizmos = Runtime::SceneGizmos();
+  gizmos.NewFrame(ViewID::SCENE_FORWARD);
+  // ComponentGizmos::DrawSceneViewIcons(gizmos, CameraTransform);
+  ComponentGizmos::DrawReferenceGrid(gizmos, 100.0f, 1.0f);
 
   // Execute frame graph
   Runtime::GetFrameGraph().Render();
