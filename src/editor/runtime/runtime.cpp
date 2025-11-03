@@ -45,6 +45,7 @@
 #include "engine/core/logger.h"
 #include "engine/ecs/ecs_collection.h"
 #include "engine/renderer/icons/icon_loader.h"
+#include "engine/renderer/shadows/shadow_map.h"
 #include "engine/renderer/skybox/skybox.h"
 #include "engine/time/time.h"
 #include "game/game_test.h"
@@ -74,12 +75,15 @@ SceneViewPipeline g_scene_view_pipeline;
 // Scene gizmos
 IMGizmo g_scene_gizmos;
 
-// TODO: default assets
-Skybox default_skybox;
+// default assets
+Skybox g_default_skybox;
+
+// shadow
+ShadowMap g_main_shadow_map;
 
 // TODO: default settings
 
-// TODO: global game state
+// TODO: global game state?
 
 static void _LoadDependencies() {
   // TODO: resource manager
@@ -101,7 +105,7 @@ static void _LoadDependencies() {
   IconLoader::LoadIconsAsync("./resources/icons/scene");
 
   // Create default skybox
-  default_skybox.Create(g_shader_manager);
+  g_default_skybox.Create(g_shader_manager);
 
   // Create default texture
 }
@@ -118,6 +122,9 @@ static void _CreateResources() {
 
   // setup scene gizmos
   g_scene_gizmos.Create();
+
+  // Setup shadows
+  g_main_shadow_map.Create();
 
   // TODO: Create main shadow disk and main shadow map here ?
 }
@@ -223,13 +230,13 @@ void UpdateGlobalResources() {
   // Get delta time from time
   float dt = Time::Deltaf();
 
-  default_skybox.Update(dt);
+  g_default_skybox.Update(dt);
   // TODO: g_terrain.Update(dt); g_water.Update(dt);
 }
 
 GlobalResources BuildGlobalResources() {
   GlobalResources r;
-  r.skybox = &default_skybox;
+  r.skybox = &g_default_skybox;
   // TODO: r.terrain = &g_terrain; r.water = &g_water;
   return r;
 }
@@ -302,6 +309,8 @@ int TERMINATE() {
 
   g_frame_graph.reset();
 
+  g_main_shadow_map.Destroy();
+
   EngineContext::Destroy();
 
   Logger::getInstance().Log(LogLevel::Info, "Runtime::Terminate");
@@ -335,6 +344,10 @@ ProjectManager& Project() {
 
 IMGizmo& SceneGizmos() {
   return g_scene_gizmos;
+}
+
+ShadowMap& MainShadowMap() {
+  return g_main_shadow_map;
 }
 
 SceneViewPipeline& GetSceneViewPipeline() {

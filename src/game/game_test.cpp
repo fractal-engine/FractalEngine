@@ -12,6 +12,9 @@
 #include "engine/core/logger.h"
 #include "engine/core/view_ids.h"
 #include "engine/ecs/ecs_collection.h"
+#include "engine/generator/constraints/biome_presets.h"
+#include "engine/generator/feature_descriptors.h"
+#include "engine/generator/generator.h"
 #include "engine/renderer/graphics_renderer.h"
 #include "engine/renderer/lighting/light.h"
 #include "engine/resources/shader_utils.h"
@@ -147,7 +150,8 @@ GameTest::GameTest()
       _s_grassDiffuseUniform(BGFX_INVALID_HANDLE),
       _s_grassORMUniform(BGFX_INVALID_HANDLE),
       _s_grassNormalUniform(BGFX_INVALID_HANDLE),
-      _u_slopeBlendParamsUniform(BGFX_INVALID_HANDLE) {
+      _u_slopeBlendParamsUniform(BGFX_INVALID_HANDLE),
+      generator_(Generator::Config{}) {
   bx::mtxIdentity(world_matrix);  // Initialize world matrix to identity
 }
 
@@ -196,12 +200,13 @@ void GameTest::Init() {
   // Load shader programs
   auto& ShaderManager = *Runtime::Shader();
 
-  _terrainProgramHeight = ShaderManager.LoadProgram(
-      "terrain_pbr", "vs_terrain.bin", "fs_terrain.bin");
+  /*  _terrainProgramHeight = ShaderManager.LoadProgram(
+      "terrain", "vs_vertex_color.bin", "fs_vertex_color.bin");
   Logger::getInstance().Log(
       LogLevel::Debug,
       std::string("_terrainPBR valid = ") +
-          (bgfx::isValid(_terrainProgramHeight) ? "true" : "false"));
+          (bgfx::isValid(_terrainProgramHeight) ? "true" : "false"));*/
+
 
   Logger::getInstance().Log(
       LogLevel::Debug, std::string("_Skybox valid = ") +
@@ -212,7 +217,8 @@ void GameTest::Init() {
       LogLevel::Debug,
       std::string("_terrainShadowProgram valid = ") +
           (bgfx::isValid(_terrainShadowProgram) ? "true" : "false"));
-  Logger::getInstance().Log(
+
+Logger::getInstance().Log(
       LogLevel::Info,
       "GameTest::Init: Loading water shaders: vs_water.bin, fs_water.bin");
   _waterProgram =
@@ -287,10 +293,10 @@ void GameTest::Init() {
   }
 
   // Generate initial heightmap data
-  const uint16_t hm_sz = TerrainSize;
+  /* const uint16_t hm_sz = TerrainSize;
   std::vector<float> rawHeights(hm_sz * hm_sz);
   float minRawHeight = std::numeric_limits<float>::max();
-  float maxRawHeight = std::numeric_limits<float>::lowest();
+  float maxRawHeight = std::numeric_limits<float>::lowest();*/
 
   // --- Parameters to Tune ---
   float dune_freq_x =
@@ -303,7 +309,7 @@ void GameTest::Init() {
              // central features more sharply and prevent distant, broad
              // plateaus if frequencies are low. If hills are too small/central,
              // reduce this (e.g., 0.4-0.6)
-  float noise_amplitude = 1.5f;  // Kept relatively small
+  /* float noise_amplitude = 1.5f;  // Kept relatively small
   float exaggeration = 30.0f;    // Kept high
 
   for (uint16_t y_coord = 0; y_coord < hm_sz; ++y_coord) {
@@ -369,20 +375,20 @@ void GameTest::Init() {
       hm_sz, hm_sz, false, 1, bgfx::TextureFormat::RGBA8,
       BGFX_TEXTURE_NONE | BGFX_SAMPLER_U_CLAMP | BGFX_SAMPLER_V_CLAMP,
       bgfx::copy(heightmapData.data(),
-                 heightmapData.size() * sizeof(uint32_t)));
+                 heightmapData.size() * sizeof(uint32_t))); */
 
   // Create water mesh data
   // TODO: mesh data should not be here, that is handled in mesh_data.cpp/.h
   std::vector<PosTexCoord0Vertex> waterVertices;
   std::vector<uint16_t> waterIndices;
 
-  for (uint16_t y = 0; y < TerrainSize; ++y) {
+  /* for (uint16_t y = 0; y < TerrainSize; ++y) {
     for (uint16_t x = 0; x < TerrainSize; ++x) {
       float u = float(x) / (TerrainSize - 1);
       float v = float(y) / (TerrainSize - 1);
       waterVertices.push_back({(float)x, 0.0f, (float)y, u, v});
     }
-  }
+  } */
 
   // Create waterIndices using same grid method as terrain
   const uint16_t gridSize = TerrainSize;
@@ -401,7 +407,7 @@ void GameTest::Init() {
   }
 
   // Generate terrain mesh (grid)
-  terrainVertices.clear();
+  /* terrainVertices.clear();
   terrainIndices.clear();
   for (uint16_t y = 0; y < TerrainSize; ++y) {
     for (uint16_t x = 0; x < TerrainSize; ++x) {
@@ -420,15 +426,15 @@ void GameTest::Init() {
       terrainIndices.push_back(i + TerrainSize + 1);
       terrainIndices.push_back(i + TerrainSize);
     }
-  }
+  } */
 
   // Create terrain vertex and index buffers
-  _terrainVbh = bgfx::createVertexBuffer(
+  /* _terrainVbh = bgfx::createVertexBuffer(
       bgfx::copy(terrainVertices.data(),
                  terrainVertices.size() * sizeof(PosTexCoord0Vertex)),
       PosTexCoord0Vertex::layout);
   _terrainIbh = bgfx::createIndexBuffer(bgfx::copy(
-      terrainIndices.data(), terrainIndices.size() * sizeof(uint16_t)));
+      terrainIndices.data(), terrainIndices.size() * sizeof(uint16_t)));*/
 
   // Create shadow vertex buffer
   std::vector<ShadowVertex> shadowVertices;
@@ -456,20 +462,19 @@ void GameTest::Init() {
 
   // Setup camera
   // TODO: use camera component here
-  float terrainCenterPos[3] = {TerrainExtent, 0.0f, TerrainExtent};
+  /* float terrainCenterPos[3] = {TerrainExtent, 0.0f, TerrainExtent};
   float targetPos[3] = {
       TerrainExtent, 0.0f,
-      TerrainExtent};           // Define the camera's initial target position
+      TerrainExtent};  // Define the camera's initial target position */
 
-
-  /* camera.setTarget(targetPos);  // Set the camera to look at the target position
-  camera.setDistance(TerrainScale * 2.0f);  // Set initial camera distance
-  camera.setPitch(bx::toRad(30.0f));        // Look downward
+  /* camera.setTarget(targetPos);  // Set the camera to look at the target
+  position camera.setDistance(TerrainScale * 2.0f);  // Set initial camera
+  distance camera.setPitch(bx::toRad(30.0f));        // Look downward
   camera.setYaw(bx::toRad(45.0f));          // Set initial yaw
   */
 
   // Initialize terrain world matrix (scale)
-  bx::mtxIdentity(this->world_matrix);
+  /* bx::mtxIdentity(this->world_matrix);
   float terrainCenterOffset = (TerrainSize - 1) * 0.5f;
   float scaleMtx[16];
   float translateMtx[16];
@@ -492,7 +497,53 @@ void GameTest::Init() {
       desiredTerrainCenter[0] - terrainCenterOffset * TerrainScale,
       desiredTerrainCenter[1] + 0.1f,  // Slight Y offset to sit above terrain
       desiredTerrainCenter[2] - terrainCenterOffset * TerrainScale);
-  bx::mtxMul(this->waterModelMatrix, scaleMtx, translateMtx);
+  bx::mtxMul(this->waterModelMatrix, scaleMtx, translateMtx);*/
+}
+
+// ═══════════════════════════════════════════════════════════════
+// CREATE TERRAIN ENTITY
+// ═══════════════════════════════════════════════════════════════
+void GameTest::GenerateTerrain(const Generator::Config& gen_config,
+                               uint16_t gridSize) {
+
+  // Generate mesh
+  Generator::Generator gen(gen_config);
+  Generator::Generator::MeshOutput mesh_params;
+  mesh_params.size = gridSize;      // GRID SIZE
+  mesh_params.with_normals = true;  // ENABLE NORMALS
+  mesh_params.with_colors = true;
+
+  auto mesh_data = gen.GenerateMesh(mesh_params);
+  terrain_mesh_ = std::make_shared<Mesh>(mesh_data);
+
+  // Create ECS entity
+  auto& world = ECS::Main();
+
+  // Check if terrain exists
+  if (terrain_entity_ == entt::null) {
+    auto [entity, transform] = world.CreateEntity("Terrain");
+
+    world.Add<MeshRendererComponent>(entity, terrain_mesh_.get(), true);
+
+    Transform::SetPosition(transform, glm::vec3(0.0f, 0.0f, 0.0f),
+                           Space::LOCAL);
+    Transform::SetScale(transform, glm::vec3(2.0f),
+                        Space::LOCAL);  // WORLD SCALE
+    Transform::Evaluate(transform);
+
+    terrain_entity_ = entity;
+    Logger::getInstance().Log(LogLevel::Info, "Terrain entity created.");
+
+  } else {
+    // Update terrain mesh
+    auto& renderer = world.Get<MeshRendererComponent>(terrain_entity_);
+    renderer.mesh_ = terrain_mesh_.get();
+    Logger::getInstance().Log(LogLevel::Info, "Terrain mesh updated.");
+  }
+  Logger::getInstance().Log(
+      LogLevel::Info, "Terrain entity created: " +
+                          std::to_string(mesh_data.positions_.size() / 3) +
+                          " verts");
 }
 
 // Updates game state per frame
@@ -507,13 +558,13 @@ void GameTest::Update() {
 // Renders the game scene
 void GameTest::Render() {
   // Ensure essential shader programs are valid before attempting to render
-  if (!bgfx::isValid(_terrainProgramHeight) || !bgfx::isValid(_waterProgram) ||
+  /* if (!bgfx::isValid(_terrainProgramHeight) || !bgfx::isValid(_waterProgram) ||
       !bgfx::isValid(_terrainShadowProgram)) {
     Logger::getInstance().Log(LogLevel::Error,
                               "GameTest::Render: One or more game programs "
                               "invalid. Aborting Render.");
     return;
-  }
+  }*/
 
   // --- Shadow Map Pass ---
   /* bgfx::setViewFrameBuffer(ViewID::SHADOW_PASS,
@@ -546,16 +597,16 @@ void GameTest::Render() {
   float terrainWorldSize = (TerrainSize - 1) * TerrainScale;
   bx::Vec3 actualLightTarget = actualLightTarget_WorldCorrected;
   bx::Vec3 lightPos = bx::mad(sunDirectionVec, -terrainWorldSize * 1.5f,
-                              actualLightTarget);  // Offset from the new target
-  bx::mtxLookAt(lightViewMatrix, lightPos, actualLightTarget,
+                              actualLightTarget);  // Offset from the new
+  target bx::mtxLookAt(lightViewMatrix, lightPos, actualLightTarget,
                 bx::Vec3(0.0f, 1.0f, 0.0f));
 
   float orthoHalfSize = terrainWorldSize * 0.6f;
   bx::mtxOrtho(lightProjMatrix, -orthoHalfSize, orthoHalfSize, -orthoHalfSize,
                orthoHalfSize, 0.1f, terrainWorldSize * 3.0f, 0.0f,
                bgfx::getCaps()->homogeneousDepth);
-  bgfx::setViewTransform(ViewID::SHADOW_PASS, lightViewMatrix, lightProjMatrix);
-  bgfx::setTransform(this->world_matrix);
+  bgfx::setViewTransform(ViewID::SHADOW_PASS, lightViewMatrix,
+  lightProjMatrix); bgfx::setTransform(this->world_matrix);
 
   float terrainParamsArr[4] = {TERRAIN_MAX_ACTUAL_HEIGHT, 0.0f, TerrainScale,
                                TerrainScale};
@@ -573,8 +624,8 @@ void GameTest::Render() {
 
   // Allow access to the renderer subsystem
   // Get the GraphicsRenderer instance
-  /* GraphicsRenderer* graphicsRendererPtr = nullptr;  // Initialize to nullptr
-  auto* baseRendererPtr = Runtime::Renderer();
+  /* GraphicsRenderer* graphicsRendererPtr = nullptr;  // Initialize to
+  nullptr auto* baseRendererPtr = Runtime::Renderer();
 
   if (baseRendererPtr) {
     graphicsRendererPtr = dynamic_cast<GraphicsRenderer*>(baseRendererPtr);
@@ -625,8 +676,8 @@ void GameTest::Render() {
   // --- Main Scene Pass ---
   /* bgfx::setViewRect(ViewID::SCENE_SKYBOX, 0, 0, canvasViewportW,
                     canvasViewportH);
-  bgfx::setViewClear(ViewID::SCENE_SKYBOX, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH,
-                     0x303030ff, 1.0f, 0);
+  bgfx::setViewClear(ViewID::SCENE_SKYBOX, BGFX_CLEAR_COLOR |
+  BGFX_CLEAR_DEPTH, 0x303030ff, 1.0f, 0);
 
   // Calculate inverse view and projection matrices for skybox
   float invViewMatrix[16], invProjMatrix[16];
@@ -709,8 +760,9 @@ void GameTest::Render() {
 
   // --- Water Pass ---
   /* bgfx::setViewClear(ViewID::WATER_PASS, BGFX_CLEAR_NONE, 0, 1.0f, 0);
-  bgfx::setViewRect(ViewID::WATER_PASS, 0, 0, canvasViewportW, canvasViewportH);
-  bgfx::setViewTransform(ViewID::WATER_PASS, viewMatrix, projMatrix);
+  bgfx::setViewRect(ViewID::WATER_PASS, 0, 0, canvasViewportW,
+  canvasViewportH); bgfx::setViewTransform(ViewID::WATER_PASS, viewMatrix,
+  projMatrix);
 
   bgfx::setTransform(waterModelMatrix);  // Flat plane or positioned
   float timeVec[4] = {_waterTime, 0.0f, 0.0f, 0.0f};
@@ -733,7 +785,8 @@ void GameTest::Render() {
   bgfx::setIndexBuffer(_waterIbh);
   const uint64_t WATER_STATE = BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A |
                                BGFX_STATE_MSAA | BGFX_STATE_BLEND_ALPHA |
-                               BGFX_STATE_DEPTH_TEST_LEQUAL;  // no DEPTH_WRITE
+                               BGFX_STATE_DEPTH_TEST_LEQUAL;  // no
+  DEPTH_WRITE
 
   bgfx::setState(WATER_STATE);
 

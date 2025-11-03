@@ -4,7 +4,9 @@
 target("engine")
     set_kind("static")
 
-    add_deps("platform")
+    add_deps("platform", "FastNoise2")
+
+     -- PUBLIC INCLUDE DIRS -------
     add_includedirs("..", {public = true})
 
     -- IMPLEMENTATION FILES -------
@@ -15,25 +17,24 @@ target("engine")
     -- renderer files
     "renderer/*.cpp", "renderer/lighting/*.cpp", "renderer/shaders/*.cpp",
             "renderer/icons/*.cpp", "renderer/texture/*.cpp", "renderer/model/*.cpp",
-            "renderer/skybox/*.cpp", "renderer/gizmos/*.cpp",
+            "renderer/skybox/*.cpp", "renderer/gizmos/*.cpp", "renderer/shadows/*.cpp",
 
     -- resources files
     "resources/*.cpp", "resources/textures/*.cpp", "resources/3d/*.cpp",
 
     -- generator files
-    "generator/noise/simplex.cpp", "generator/operators/fbm.cpp", "generator/operators/domain_warp.cpp",
-            "generator/operators/erosion.cpp", "generator/operators/ridge.cpp", "generator/operators/remap.cpp",
-            "generator/constraints/rule_system.cpp", "generator/generator.cpp")
+    "generator/operators/erosion.cpp", "generator/operators/ridge.cpp", "generator/operators/fbm.cpp",
+            "generator/operators/remap.cpp", "generator/constraints/constraint_system.cpp",
+            "generator/generator.cpp")
 
     -- HEADER FILES -------
     add_headerfiles("core/*.h", "audio/*.h", "scene/*.h", "context/*.h", "formats/*.h",
             "ecs/*.h", "memory/*.h", "transform/*.h", "time/*.h", "math/*.h", "generator/*.h",
 
-
     -- renderer files
     "renderer/*.h", "renderer/lighting/*.h", "renderer/shaders/*.h",
             "renderer/icons/*.h", "renderer/texture/*.h", "renderer/model/*.h",
-            "renderer/skybox/*.h", "renderer/gizmos/*.h",
+            "renderer/skybox/*.h", "renderer/gizmos/*.h", "renderer/shadows/*.h",
 
     -- resource files
     "resources/*.h", "resources/textures/*.h", "resources/3d/*.h")
@@ -121,7 +122,6 @@ rule("shaderc.build")
             gltf    = "varying_gltf.def.sc",
             default = "varying_default.def.sc",
             debug   = "varying_debug.def.sc",
-            gizmo   = "varying_gizmo.def.sc"
         }
 
         -- pick first key matching anywhere in relative path

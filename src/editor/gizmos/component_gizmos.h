@@ -13,7 +13,6 @@ namespace ComponentGizmos {
 // void DrawSceneViewIcons(IMGizmo& gizmos, TransformComponent&
 // cameraTransform); void DrawEntityGizmos(IMGizmo& gizmos, EntityContainer&
 // entity);
-void DrawReferenceGrid(IMGizmo& gizmos, float gridSize, float gridSpacing);
 
 // COMPONENTS:
 // void DrawCamera(IMGizmo& gizmos, TransformComponent& transform,

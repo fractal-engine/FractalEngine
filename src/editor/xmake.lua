@@ -5,7 +5,7 @@ target("fractal")
 set_kind("binary")
 set_default(true)
 
-add_deps("engine", "platform", "sample_game")
+add_deps("engine", "platform", "sample_game", "FastNoise2")
 
 add_includedirs("..", "vendor", "systems")
 

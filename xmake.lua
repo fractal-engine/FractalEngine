@@ -42,3 +42,5 @@ includes("src/engine/xmake.lua")
 includes("src/editor/xmake.lua")
 includes("src/tests/xmake.lua")
 includes("src/game/xmake.lua")
+
+includes("thirdparty/xmake.lua")

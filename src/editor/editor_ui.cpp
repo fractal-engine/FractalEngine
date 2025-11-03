@@ -9,6 +9,7 @@
 #include "gui/asset_browser.h"
 #include "gui/camera_controls.h"
 #include "gui/console_panel.h"
+#include "gui/terrain_editor.h"
 #include "gui/file_explorer.h"
 #include "gui/game_canvas.h"
 #include "gui/hierarchy_panel.h"
@@ -300,6 +301,7 @@ void EditorUI::RenderUI() {
     ImGui::DockBuilderDockWindow("Hierarchy", left);
     ImGui::DockBuilderDockWindow("Inspector", right);
     ImGui::DockBuilderDockWindow("World", right);
+     ImGui::DockBuilderDockWindow("Terrain Editor", right);
     ImGui::DockBuilderDockWindow("Scene", dock_id_);
     ImGui::DockBuilderDockWindow("Console", bottom);
     // ImGui::DockBuilderDockWindow(Panels::kDlgWinName, bottom);
@@ -367,6 +369,11 @@ void EditorUI::RenderUI() {
   // -------- RIGHT : WORLD SETTINGS --------
   ImGui::Begin("World", nullptr);
   Panels::WorldSettings();
+  ImGui::End();
+
+    // -------- RIGHT : TERRAIN EDITOR --------
+  ImGui::Begin("Terrain Editor", nullptr);
+  Panels::TerrainEditor();
   ImGui::End();
 
   //--------------------------- Panels ------------------------------

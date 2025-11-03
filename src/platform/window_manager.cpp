@@ -1,10 +1,10 @@
 #include <bgfx/bgfx.h>
 #include <bgfx/platform.h>
-#include "engine/core/logger.h"
+#include "engine/core/logger.h" // ! remove engine dependency
 #include "imgui.h"
 
 #include "platform/platform_utils.h"
-#include "window_manager.h"
+#include "window_manager.h" 
 
 // Track window state
 bool WindowManager::fullscreen_ = false;

@@ -4,6 +4,8 @@
 target("platform")
     set_kind("static")
 
+    add_deps("FastNoise2")
+
     add_files("*.cpp", "input/*.cpp")
     add_headerfiles("*.h", "input/*.h")
 

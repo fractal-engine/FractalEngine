@@ -1,7 +1,9 @@
 [submodule "src/editor/vendor/ImGuiFileDialog"]
 	path = src/editor/vendor/ImGuiFileDialog
 	url = https://github.com/aiekick/ImGuiFileDialog
-
 [submodule "thirdparty/stb"]
 	path = thirdparty/stb
 	url = https://github.com/nothings/stb
+[submodule "thirdparty/FastNoise2"]
+	path = thirdparty/FastNoise2
+	url = https://github.com/Auburn/FastNoise2.git

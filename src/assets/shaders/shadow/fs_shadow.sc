@@ -1,5 +1,6 @@
-$input v_out_uv
-#include "../common/common.sh"
+$input v_depth
+
+#include <bgfx_shader.sh>
 
 void main() {
     // Depth only, no color output required

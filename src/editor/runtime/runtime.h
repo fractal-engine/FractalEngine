@@ -25,26 +25,27 @@ class Input;
 class WindowManager;
 class ProjectManager;
 
+class ShadowMap;
+class Model;
+
 namespace Runtime {
 
-/* ------------ Core functions ------------ */
+// CORE
 int START_LOOP();
 int TERMINATE();
 
-/* ------------ Resource functions ------------ */
+// Resource functions
 void UpdateGlobalResources();
-
-/* ------------ Global resources ------------ */
 GlobalResources BuildGlobalResources();
 
-/* ------------ Project ------------ */
+// Project
 ProjectManager& Project();
 
-/* ------------ Pipeline getters ------------ */
+// Pipeline getters
 SceneViewPipeline& GetSceneViewPipeline();
 FrameGraph& GetFrameGraph();
 
-/* ------------ Getters ------------ */
+// Getters
 EditorBase* Editor();
 RendererBase* Renderer();
 GameManager* Game();
@@ -52,6 +53,10 @@ Input* InputDevice();
 WindowManager* Window();
 ShaderManager* Shader();
 IMGizmo& SceneGizmos();
+
+// Shadow getter
+ShadowMap& MainShadowMap();
+
 
 }  // namespace Runtime
 

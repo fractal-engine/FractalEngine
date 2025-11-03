@@ -20,6 +20,7 @@ static float smoothStepRange(float edge0, float edge1, float x) {
 }
 
 void Create() {
+  // TODO: redo this! Uniforms should be created in GraphicsRenderer
   if (!bgfx::isValid(uSkyAmbient)) {
     uSkyAmbient = bgfx::createUniform("u_skyAmbient", bgfx::UniformType::Vec4);
   }

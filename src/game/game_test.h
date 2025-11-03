@@ -3,7 +3,9 @@
 
 #include <bgfx/bgfx.h>
 #include <vector>
-#include "editor/camera/camera_view.h" 
+
+#include "editor/camera/camera_view.h"
+#include "engine/generator/generator.h"
 #include "game_base.h"
 
 // ──────────────────────────────────────────────────────
@@ -37,12 +39,13 @@ public:
   static constexpr float TerrainExtent =
       ((TerrainSize - 1) * TerrainScale) * 0.5f;
 
-  // simple camera function call
-  // SceneCamera camera;
-  // CameraSystem cameraSystem;
+  // int canvasViewportW = 1600;  // TODO: remove this, should use
+  // engine_globals.h int canvasViewportH = 900;   // TODO: remove this, should
+  // use engine_globals.h
 
-  int canvasViewportW = 1600;  // TODO: remove this, should use engine_globals.h
-  int canvasViewportH = 900;   // TODO: remove this, should use engine_globals.h
+  // Generator functions
+  void GenerateTerrain(const Generator::Config& gen_config, uint16_t gridSize);
+  Generator::Generator& GetGenerator() { return generator_; }
 
 private:
   // ───── Terrain
@@ -139,6 +142,12 @@ private:
 
   // world transform for the terrain
   float world_matrix[16];
+
+  // ENTITIES
+  Entity terrain_entity_ = entt::null;
+  std::shared_ptr<Mesh> terrain_mesh_;
+
+  Generator::Generator generator_;
 };
 
 #endif  // GAME_TEST_H

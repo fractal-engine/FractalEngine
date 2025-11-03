@@ -9,9 +9,11 @@ void Mesh::EnsureLayout() {
   if (layout_.getStride() != 0)
     return;
 
+  // TODO: check if we should have Color0 set here
   layout_.begin()
       .add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float)
       .add(bgfx::Attrib::Normal, 3, bgfx::AttribType::Float)
+      .add(bgfx::Attrib::Color0, 4, bgfx::AttribType::Float)
       .end();
 }
 
@@ -20,17 +22,32 @@ Mesh::Mesh(const Resources3D::MeshData& src) {
 
   // interleave pos+normal (if no normals -> pad zeros)
   const bool has_normals = !src.normals_.empty();
+  const bool has_colors = !src.colors_.empty();
   const size_t v_count = src.positions_.size() / 3;
+
+  // 3 (pos) + 3 (normal) + 4 (color)
   std::vector<float> interleaved;
-  interleaved.reserve(v_count * 6);
+  interleaved.reserve(v_count * 10);
+
   for (size_t i = 0; i < v_count; ++i) {
+
+    // pos
     interleaved.insert(interleaved.end(), &src.positions_[i * 3],
                        &src.positions_[i * 3] + 3);
+
+    // normal or default up
     if (has_normals)
       interleaved.insert(interleaved.end(), &src.normals_[i * 3],
                          &src.normals_[i * 3] + 3);
     else
-      interleaved.insert(interleaved.end(), {0.f, 0.f, 1.f});
+      interleaved.insert(interleaved.end(), {0.f, 1.f, 0.f});
+
+    // color or white
+    if (has_colors)
+      interleaved.insert(interleaved.end(), &src.colors_[i * 4],
+                         &src.colors_[i * 4] + 4);
+    else
+      interleaved.insert(interleaved.end(), {1.f, 1.f, 1.f, 1.f});
   }
 
   const bgfx::Memory* vmem =

@@ -6,7 +6,7 @@
 #include "backends/imgui_impl_sdl2.h"
 
 #include "platform_utils.h"
-#include "engine/core/logger.h"
+#include "engine/core/logger.h" // ! remove engine dependency
 
 #if defined(__APPLE__)
 

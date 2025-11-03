@@ -69,6 +69,9 @@ bool GraphicsRenderer::InitBgfx() {
 
   // bgfx::setDebug(BGFX_DEBUG_TEXT | BGFX_DEBUG_STATS); // debug
 
+  // Create uniforms
+  viewPosUniform_ = bgfx::createUniform("u_viewPos", bgfx::UniformType::Vec4);
+
   ConfigureViews();
 
   auto backend = bgfx::getRendererType();
@@ -330,6 +333,10 @@ void GraphicsRenderer::Destroy() {
     reflection_color_tex_ = BGFX_INVALID_HANDLE;
   }
 
+  // Destroy uniforms
+  if (bgfx::isValid(viewPosUniform_))
+    bgfx::destroy(viewPosUniform_);
+
   // 3. Clear ImGui texture ID before shutdown
   scene_tex_id_ = 0;
 
@@ -387,4 +394,82 @@ void GraphicsRenderer::UpdateCanvasSize(uint16_t w, uint16_t h) {
     canvasViewportH = h;
     last_resize_frame_ = frame_count_;
   }
+}
+
+// UNIFORM METHODS
+bgfx::UniformHandle GraphicsRenderer::CreateUniform(
+    const std::string& name, bgfx::UniformType::Enum type) {
+
+  // Check if already exists
+  auto it = uniform_registry_.find(name);
+  if (it != uniform_registry_.end()) {
+    Logger::getInstance().Log(
+        LogLevel::Warning,
+        "Uniform '" + name + "' already exists, returning existing handle");
+    return it->second;
+  }
+
+  // Create uniform via BGFX
+  bgfx::UniformHandle handle = bgfx::createUniform(name.c_str(), type);
+
+  // Track uniform
+  if (bgfx::isValid(handle)) {
+    uniform_registry_[name] = handle;
+    Logger::getInstance().Log(
+        LogLevel::Debug, "Created uniform: " + name +
+                             " (handle: " + std::to_string(handle.idx) + ")");
+  } else {
+    Logger::getInstance().Log(LogLevel::Error,
+                              "Failed to create uniform: " + name);
+  }
+
+  return handle;
+}
+
+void GraphicsRenderer::DestroyUniform(bgfx::UniformHandle handle) {
+  if (!bgfx::isValid(handle)) {
+    Logger::getInstance().Log(LogLevel::Warning,
+                              "Attempted to destroy invalid uniform handle");
+    return;
+  }
+
+  // Remove from registry
+  for (auto it = uniform_registry_.begin(); it != uniform_registry_.end();
+       ++it) {
+    if (it->second.idx == handle.idx) {
+      Logger::getInstance().Log(LogLevel::Debug,
+                                "Destroying uniform: " + it->first);
+      uniform_registry_.erase(it);
+      break;
+    }
+  }
+
+  // Destroy via BGFX
+  bgfx::destroy(handle);
+}
+
+void GraphicsRenderer::ValidateUniforms() {
+  Logger::getInstance().Log(LogLevel::Info, "-- Uniform Validation --");
+  Logger::getInstance().Log(
+      LogLevel::Info,
+      "Total tracked uniforms: " + std::to_string(uniform_registry_.size()));
+
+  // Check for invalid handles
+  int invalid_count = 0;
+  for (const auto& [name, handle] : uniform_registry_) {
+    if (!bgfx::isValid(handle)) {
+      Logger::getInstance().Log(LogLevel::Warning, "Invalid uniform: " + name);
+      invalid_count++;
+    }
+  }
+
+  if (invalid_count > 0) {
+    Logger::getInstance().Log(
+        LogLevel::Warning,
+        "Found " + std::to_string(invalid_count) + " invalid uniforms!");
+  } else {
+    Logger::getInstance().Log(LogLevel::Info, "All uniforms valid");
+  }
+
+  Logger::getInstance().Log(LogLevel::Info, "-------------------------");
 }

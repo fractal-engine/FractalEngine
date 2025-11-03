@@ -8,7 +8,7 @@
 
 #include <functional>
 #include <vector>
-#include "engine/core/singleton.hpp"
+#include "engine/core/singleton.hpp" // ! remove engine dependency
 
 class WindowManager : public Singleton<WindowManager> {
 private:

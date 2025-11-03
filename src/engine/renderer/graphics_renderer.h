@@ -44,6 +44,12 @@ public:
   // Called when window resizes to update BGFX viewport
   void onResize(uint32_t width, uint32_t height);
 
+  // Handle uniforms (not used)
+  bgfx::UniformHandle CreateUniform(const std::string& name,
+                                    bgfx::UniformType::Enum type);
+  void DestroyUniform(bgfx::UniformHandle handle);
+  void ValidateUniforms();
+
   // Getters
   SDL_Window* GetWindow() const;
   SDL_Texture* GetGameTexture();
@@ -101,6 +107,9 @@ private:
   bgfx::UniformHandle sunDirUniform_;
   bgfx::UniformHandle sunLumUniform_;
   bgfx::UniformHandle viewPosUniform_;
+
+  // Track uniforms (not used)
+  std::unordered_map<std::string, bgfx::UniformHandle> uniform_registry_;
 
   ImTextureID scene_tex_id_{0};
 

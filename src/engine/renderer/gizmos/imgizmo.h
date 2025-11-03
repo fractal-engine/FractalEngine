@@ -39,6 +39,10 @@ public:
   void Line(const glm::vec3& start, const glm::vec3& end);
   void Box(const glm::vec3& position, const glm::vec3& scale = glm::vec3(1.0f),
            const glm::quat& rotation = glm::identity<glm::quat>());
+  void Plane(const glm::vec3& position,
+             const glm::vec3& scale = glm::vec3(1.0f, 1.0f, 1.0f),
+             const glm::quat& rotation = glm::identity<glm::quat>());
+
   void BoxWire(const glm::vec3& position,
                const glm::vec3& scale = glm::vec3(1.0f),
                const glm::quat& rotation = glm::identity<glm::quat>());
@@ -51,7 +55,12 @@ private:
   struct StaticData {
     bool loaded = false;
     bgfx::ProgramHandle line_shader = BGFX_INVALID_HANDLE;
+    bgfx::ProgramHandle fill_shader = BGFX_INVALID_HANDLE;
     bgfx::VertexLayout line_layout;
+
+    const Mesh* plane_mesh = nullptr;
+    const Mesh* sphere_mesh = nullptr;
+    const Mesh* box_mesh = nullptr;
   };
 
   struct RenderState {
@@ -60,7 +69,7 @@ private:
     bool foreground;
   };
 
-  enum class Shape { LINE, BOX, BOX_WIRE, ICON_3D };
+  enum class Shape { PLANE, BOX, SPHERE };
 
   // TODO: stub!
   struct ShapeRenderTarget {
@@ -71,10 +80,11 @@ private:
     RenderState state;
     bool wireframe;
 
-    ShapeRenderTarget(const glm::vec3& position, const glm::vec3& scale,
-                      const glm::quat& rotation, RenderState state,
-                      bool wireframe)
-        : position(position),
+    ShapeRenderTarget(Shape shape, const glm::vec3& position,
+                      const glm::vec3& scale, const glm::quat& rotation,
+                      RenderState state, bool wireframe)
+        : shape(shape),
+          position(position),
           scale(scale),
           rotation(rotation),
           state(state),
@@ -115,6 +125,11 @@ private:
   static StaticData static_data_;
 
   RenderState GetCurrentState();
+  const Mesh* QueryMesh(Shape shape);
+  glm::mat4 GetModelMatrix(glm::vec3 position, glm::quat rotation, glm::vec3 scale);
+  glm::mat4 GetModelMatrix(glm::vec3 position, glm::vec3 rotation, glm::vec3 scale);
+
+  const Mesh* CreatePlaneMesh(); 
 };
 
 #endif  // IMGIZMO_H

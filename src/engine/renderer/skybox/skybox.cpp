@@ -30,7 +30,8 @@ void Skybox::Create(ShaderManager* ShaderManager) {
   _skyProgram = ShaderManager->LoadProgram("skybox_proc", "vs_skybox.bin",
                                            "fs_skybox.bin");
 
-  // TODO: check that names are like in GameTest)
+  // TODO: check that names are like in GameTest
+  // Move 
   // Uniforms
   _sunDirUniform =
       bgfx::createUniform("u_sunDirection", bgfx::UniformType::Vec4);

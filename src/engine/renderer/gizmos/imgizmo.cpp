@@ -18,32 +18,38 @@ IMGizmo::IMGizmo()
       icon_render_stack_() {}
 
 void IMGizmo::Create() {
-  if (static_data_.loaded)
-    return;
+  if (static_data_.loaded) {
 
-  // TODO: Load shape meshes for component gizmos, include icons
-  // handle shaders
-  // auto [boxId, box] =
-  // EngineContext::resourceManager().Create<Model>("gizmo-box");
-  // box->Load("resources/primitives/box.fbx");
-  // static_data_.box_mesh = box->QueryMesh(0);
+    ResourceManager& resource = EngineContext::resourceManager();
 
-  // Initialize line vertex layout
-  static_data_.line_layout.begin()
-      .add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float)
-      .add(bgfx::Attrib::Color0, 4, bgfx::AttribType::Uint8, true)
-      .end();
+    // TODO: Load shape meshes for component gizmos, include icons
+    // handle shaders
+    // auto [boxId, box] =
+    // EngineContext::resourceManager().Create<Model>("gizmo-box");
+    // box->Load("resources/primitives/box.fbx");
+    // static_data_.box_mesh = box->QueryMesh(0);
 
-  // Load gizmo shaders
-  // TODO: use 'shader_pool' instead
-  static_data_.line_shader = EngineContext::Shader().LoadProgram(
-      "gizmo", "vs_grid_line.bin", "fs_grid_line.bin");
+    // Initialize line vertex layout
+    static_data_.line_layout.begin()
+        .add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float)
+        .add(bgfx::Attrib::Color0, 4, bgfx::AttribType::Uint8, true)
+        .end();
 
-  if (!bgfx::isValid(static_data_.line_shader)) {
-    Logger::getInstance().Log(LogLevel::Warning,
-                              "IMGizmo: Failed to load line shader, "
-                              "using fallback rendering");
+    // Load gizmo shaders
+    // TODO: use 'shader_pool' instead
+    static_data_.line_shader = EngineContext::Shader().LoadProgram(
+        "gizmo", "vs_grid_plane.bin", "fs_grid_plane.bin");
+
+    if (!bgfx::isValid(static_data_.line_shader)) {
+      Logger::getInstance().Log(LogLevel::Warning,
+                                "IMGizmo: Failed to load line shader, "
+                                "using fallback rendering");
+    }
+
+    // Create plane mesh
+    static_data_.plane_mesh = CreatePlaneMesh();
   }
+  return;
 
   static_data_.loaded = true;
   Logger::getInstance().Log(LogLevel::Debug, "IMGizmo: Initialized");
@@ -51,6 +57,8 @@ void IMGizmo::Create() {
 
 void IMGizmo::NewFrame(bgfx::ViewId view_id) {
   primitive_render_stack_.clear();
+  shape_render_stack_.clear();
+  // icon_render_stack_.clear();
   current_view_id_ = view_id;
 }
 
@@ -59,20 +67,9 @@ void IMGizmo::RenderAll(const glm::mat4& view_projection) {
     return;
 
   RenderPrimitives(view_projection);
-  // RenderShapes(view_projection);
+  RenderShapes(view_projection);
   // RenderIcons(view_projection);
 }
-
-// PRIMITIVES
-
-void IMGizmo::Line(const glm::vec3& start, const glm::vec3& end) {
-  PrimitiveRenderTarget primitive(start, end, GetCurrentState());
-  primitive_render_stack_.push_back(primitive);
-}
-
-// SHAPES
-
-// ICONS
 
 // RENDER
 void IMGizmo::RenderPrimitives(const glm::mat4& view_projection) {
@@ -153,6 +150,10 @@ void IMGizmo::RenderPrimitives(const glm::mat4& view_projection) {
 void IMGizmo::RenderShapes(const glm::mat4& view_projection) {
   if (!bgfx::isValid(static_data_.line_shader))
     return;
+
+    for (int32_t i = 0; i < shape_render_stack_.size(); i++) {
+      ShapeRenderTarget gizmo = shape_render_stack_[i];
+    }
 }
 
 void IMGizmo::RenderIcons(const glm::mat4& view_projection) {
@@ -160,10 +161,76 @@ void IMGizmo::RenderIcons(const glm::mat4& view_projection) {
     return;
 }
 
+// PRIMITIVES
+void IMGizmo::Line(const glm::vec3& start, const glm::vec3& end) {
+  PrimitiveRenderTarget primitive(start, end, GetCurrentState());
+  primitive_render_stack_.push_back(primitive);
+}
+
+// SHAPES
+void IMGizmo::Plane(const glm::vec3& position, const glm::vec3& scale,
+                    const glm::quat& rotation) {
+  /* ShapeRenderTarget gizmo(Shape::PLANE, position, rotation, scale, false,
+                          GetCurrentState());*/
+
+  // shape_render_stack_.push_back(gizmo);
+}
+
+// ICONS
+
 IMGizmo::RenderState IMGizmo::GetCurrentState() {
   RenderState state;
   state.color = color;
   state.opacity = opacity;
   state.foreground = foreground;
   return state;
+}
+
+const Mesh* IMGizmo::QueryMesh(Shape shape) {
+  switch (shape) {
+    case Shape::PLANE:
+      return static_data_.plane_mesh;
+    default:
+      return nullptr;
+  }
+}
+
+glm::mat4 IMGizmo::GetModelMatrix(glm::vec3 position, glm::quat rotation,
+                                  glm::vec3 scale) {
+  glm::mat4 model(1.0f);
+
+  // Position
+  glm::vec3 worldPos = Transformation::Swap(position);
+  model = glm::translate(model, worldPos);
+
+  // Rotation
+  glm::quat worldRot = Transformation::Swap(rotation);
+  model = model * glm::mat4_cast(glm::normalize(worldRot));
+
+  // Scale
+  model = glm::scale(model, scale);
+
+  return model;
+}
+
+const Mesh* IMGizmo::CreatePlaneMesh() {
+  // Create plane vertices (XZ plane at Y=0)
+  Resources3D::MeshData plane_data;
+
+  // Positions (4 corners)
+  plane_data.positions_ = {
+      -1.0f, 0.0f, -1.0f,  // 0
+      1.0f,  0.0f, -1.0f,  // 1
+      1.0f,  0.0f, 1.0f,   // 2
+      -1.0f, 0.0f, 1.0f    // 3
+  };
+
+  // Normals (all pointing up)
+  plane_data.normals_ = {0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f,
+                         0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f};
+
+  // Indices (two triangles)
+  plane_data.indices_ = {0, 1, 2, 0, 2, 3};
+
+  return new Mesh(plane_data);
 }

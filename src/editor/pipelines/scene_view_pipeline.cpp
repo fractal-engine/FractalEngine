@@ -15,6 +15,7 @@
 #include "engine/math/transformation.h"
 #include "engine/renderer/lighting/light.h"
 #include "engine/renderer/model/mesh.h"
+#include "engine/renderer/shadows/shadow_map.h"
 #include "engine/transform/transform.h"
 
 SceneViewPipeline::SceneViewPipeline()
@@ -34,7 +35,8 @@ SceneViewPipeline::SceneViewPipeline()
       transform_system_(),
       selected_entities_(),
       show_grid_(true),
-      selection_program_(BGFX_INVALID_HANDLE) {
+      selection_program_(BGFX_INVALID_HANDLE),
+      grid_mesh_(nullptr) {
   // TODO: Initialize other members e.g. profile, viewport, passes, etc.
   // Check reference project for details
 }
@@ -47,10 +49,13 @@ void SceneViewPipeline::Create() {
 
   // Load shared shaders
   default_program_ = Runtime::Shader()->LoadProgram(
-      "gltf_default", "vs_gltf.bin", "fs_gltf.bin");
+      "terrain", "vs_vertex_color.bin", "fs_vertex_color.bin");
   selection_program_ = Runtime::Shader()->LoadProgram(
       "selection", "vs_selection.bin", "fs_selection.bin");
+  debug_program_ = Runtime::Shader()->LoadProgram("debug", "vs_grid_plane.bin",
+                                                  "fs_grid_plane.bin");
 
+  BuildReferenceGrid(glm::mat4(1.0f));
   RegisterNodes();
 
   Logger::getInstance().Log(LogLevel::Info,
@@ -64,19 +69,23 @@ void SceneViewPipeline::RegisterNodes() {
   frame_graph.Clear();
 
   // --- ATTACHMENTS ---
-  // GraphicsRenderer should create these, but for now declare them logically
+  // TODO: GraphicsRenderer should create these
   frame_graph.AddAttachment(
-      AttachmentDesc{.name = "scene_color",
-                     .width = 0,  // 0 = use viewport dimensions
-                     .height = 0});
-
+      AttachmentDesc{.name = "shadow_map", .width = 4096, .height = 4096});
+  frame_graph.AddAttachment(
+      AttachmentDesc{.name = "scene_color", .width = 0, .height = 0});
   frame_graph.AddAttachment(
       AttachmentDesc{.name = "scene_depth", .width = 0, .height = 0});
-
   frame_graph.AddAttachment(
       AttachmentDesc{.name = "reflection", .width = 0, .height = 0});
 
   // --- NODES ---
+  // Node 0: Shadows
+  frame_graph.AddNode(Node{
+      .name = "shadows",
+      .execute = [this](const Node::Context& ctx) { RenderShadowNode(ctx); },
+      .reads = {},
+      .writes = {"shadow_map"}});
 
   // Node 1: Reflection rendering (for water)
   frame_graph.AddNode(Node{.name = "reflection",
@@ -92,7 +101,7 @@ void SceneViewPipeline::RegisterNodes() {
       .name = "forward_opaque",
       .execute =
           [this](const Node::Context& context) { RenderForwardNode(context); },
-      .reads = {"reflection"},  // Can sample reflection texture
+      .reads = {"reflection", "shadow_map"},
       .writes = {"scene_color", "scene_depth"}});
 
   // Node 3: Selection outline (reads depth from forward pass)
@@ -235,6 +244,9 @@ void SceneViewPipeline::RenderForwardNode(const Node::Context& context) {
   bgfx::setViewClear(ViewID::SCENE_FORWARD, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH,
                      wireframe_ ? 0xffffffff : 0x303030ff, 1.0f, 0);
 
+  // Get shadows
+  auto& shadow_map = Runtime::MainShadowMap();
+
   // Build view_projection matrix
   glm::mat4 view = glm::make_mat4(viewMatrix);
   glm::mat4 projection = glm::make_mat4(projMatrix);
@@ -277,6 +289,13 @@ void SceneViewPipeline::RenderForwardNode(const Node::Context& context) {
     }
     if (is_selected)
       continue;
+
+    // Set shadow uniforms
+    glm::mat4 light_space = shadow_map.GetLightSpaceMatrix();
+    bgfx::setUniform(shadow_map.GetLightMatrixUniform(),
+                     glm::value_ptr(light_space));
+    bgfx::setTexture(4, shadow_map.GetSamplerUniform(),
+                     shadow_map.GetTexture());
 
     // Submit mesh
     bgfx::setTransform(glm::value_ptr(transform.model_));
@@ -377,6 +396,76 @@ void SceneViewPipeline::RenderSelectionOutlineNode(
   }
 }
 
+void SceneViewPipeline::RenderShadowNode(const Node::Context& context) {
+  auto& world = ECS::Main();
+  auto& shadow_map = Runtime::MainShadowMap();
+
+  // Get directional light
+  glm::vec3 light_dir(0.0f, -1.0f, 0.0f);
+
+  auto light_view = world.View<DirectionalLightComponent, TransformComponent>();
+  for (auto [e, light, transform] : light_view.each()) {
+    if (!light.enabled_)
+      continue;
+    light_dir = glm::normalize(Transform::Forward(transform, Space::WORLD));
+    break;
+  }
+
+  // Calculate light space matrix
+  glm::vec3 light_pos = -light_dir * 100.0f;
+  glm::vec3 light_target(0.0f);
+
+  float ortho_size = 50.0f;
+
+  glm::mat4 light_view_matrix =
+      glm::lookAt(light_pos, light_target, glm::vec3(0.0f, 1.0f, 0.0f));
+  glm::mat4 light_proj_matrix = glm::ortho(-ortho_size, ortho_size, -ortho_size,
+                                           ortho_size, 0.1f, 200.0f);
+  glm::mat4 light_space = light_proj_matrix * light_view_matrix;
+
+  shadow_map.SetLightSpaceMatrix(light_space);
+
+  // Setup BGFX view
+  uint16_t resolution = shadow_map.GetResolution();
+  bgfx::setViewRect(ViewID::SHADOW_PASS, 0, 0, resolution, resolution);
+  bgfx::setViewFrameBuffer(ViewID::SHADOW_PASS, shadow_map.GetFramebuffer());
+  bgfx::setViewClear(ViewID::SHADOW_PASS, BGFX_CLEAR_DEPTH, 0, 1.0f, 0);
+
+  // Set view transform
+  float light_view_arr[16], light_proj_arr[16];
+  memcpy(light_view_arr, glm::value_ptr(light_view_matrix), 64);
+  memcpy(light_proj_arr, glm::value_ptr(light_proj_matrix), 64);
+  bgfx::setViewTransform(ViewID::SHADOW_PASS, light_view_arr, light_proj_arr);
+
+  // Load shadow shader
+  static bgfx::ProgramHandle shadow_program = BGFX_INVALID_HANDLE;
+  if (!bgfx::isValid(shadow_program)) {
+    shadow_program = Runtime::Shader()->LoadProgram("shadow", "vs_shadow.bin",
+                                                    "fs_shadow.bin");
+  }
+
+  if (!bgfx::isValid(shadow_program)) {
+    Logger::getInstance().Log(LogLevel::Error, "Shadow shader failed to load");
+    return;
+  }
+
+  // Render all meshes to shadow map
+  const auto& render_queue = world.GetRenderQueue();
+  for (const auto& [entity, transform, renderer_comp] : render_queue) {
+    if (!renderer_comp.enabled_ || !renderer_comp.mesh_)
+      continue;
+
+    bgfx::setTransform(glm::value_ptr(transform.model_));
+    renderer_comp.mesh_->Bind();
+
+    // Shadow pass state
+    // write depth, cull front faces
+    bgfx::setState(BGFX_STATE_WRITE_Z | BGFX_STATE_DEPTH_TEST_LESS |
+                   BGFX_STATE_CULL_CCW);
+    bgfx::submit(ViewID::SHADOW_PASS, shadow_program);
+  }
+}
+
 void SceneViewPipeline::RenderSelectedEntityOutline(
     EntityContainer* entity, const glm::mat4& view_projection) {
   // Render selected entity gizmos if needed
@@ -438,6 +527,18 @@ void SceneViewPipeline::RenderSelectedEntityOutline(
   // TODO: Reset BGFX blend and stencil state if needed
 }
 
+void SceneViewPipeline::BuildReferenceGrid(const glm::mat4& view_projection) {
+  float size = 10000.0f;
+
+  grid_data.positions_ = {-size, 0.0f, -size, size,  0.0f, -size,
+                          size,  0.0f, size,  -size, 0.0f, size};
+  grid_data.normals_ = {0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f,
+                        0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f};
+  grid_data.indices_ = {0, 1, 2, 0, 2, 3};
+
+  grid_mesh_ = new Mesh(grid_data);
+}
+
 // TODO: should be used for IMGizmo rendering
 void SceneViewPipeline::RenderGizmosNode(const Node::Context& context) {
   if (!show_gizmos_)
@@ -477,6 +578,28 @@ void SceneViewPipeline::RenderGizmosNode(const Node::Context& context) {
                                         projMatrix);
   }*/
 
+  // Show grid
+  if (show_grid_ && bgfx::isValid(debug_program_) && grid_mesh_) {
+    // Snap grid to camera XZ position (infinite grid effect)
+    glm::vec3 cam_pos = camera_transform.position_;
+    glm::vec3 grid_origin =
+        glm::vec3(floor(cam_pos.x / 10.0f) * 10.0f,  // Snap to 10-unit grid
+                  0.0f, floor(cam_pos.z / 10.0f) * 10.0f);
+
+    // Set grid origin transform
+    glm::mat4 grid_transform = glm::translate(glm::mat4(1.0f), grid_origin);
+    bgfx::setTransform(glm::value_ptr(grid_transform));
+
+    // Pass camera position to shader for fog/fade
+    glm::vec4 cam_pos_uniform(cam_pos.x, cam_pos.y, cam_pos.z, 0.0f);
+    bgfx::setUniform(renderer->GetViewPosUniform(), &cam_pos_uniform);
+
+    grid_mesh_->Bind();
+    bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A |
+                   BGFX_STATE_DEPTH_TEST_LESS | BGFX_STATE_BLEND_ALPHA);
+    bgfx::submit(ViewID::SCENE_FORWARD, debug_program_);
+  }
+
   gizmos.RenderAll(view_projection);
 }
 
@@ -488,7 +611,6 @@ void SceneViewPipeline::Render() {
   IMGizmo& gizmos = Runtime::SceneGizmos();
   gizmos.NewFrame(ViewID::SCENE_FORWARD);
   // ComponentGizmos::DrawSceneViewIcons(gizmos, CameraTransform);
-  ComponentGizmos::DrawReferenceGrid(gizmos, 100.0f, 1.0f);
 
   // Execute frame graph
   Runtime::GetFrameGraph().Render();
@@ -504,6 +626,14 @@ void SceneViewPipeline::Destroy() {
     bgfx::destroy(selection_program_);
     selection_program_ = BGFX_INVALID_HANDLE;
   }
+
+  if (bgfx::isValid(debug_program_)) {
+    bgfx::destroy(debug_program_);
+    debug_program_ = BGFX_INVALID_HANDLE;
+  }
+
+  delete grid_mesh_;
+  grid_mesh_ = nullptr;
 
   Logger::getInstance().Log(LogLevel::Debug,
                             "[Render] SceneViewPipeline: Destroyed");

@@ -1,0 +1,230 @@
+#ifndef TERRAIN_EDITOR_H
+#define TERRAIN_EDITOR_H
+
+#include <imgui.h>
+#include <functional>
+
+#include "engine/generator/constraints/biome_presets.h"
+#include "engine/generator/feature_descriptors.h"
+#include "engine/generator/generator.h"
+
+namespace Panels {
+
+inline void TerrainEditor() {
+  static Generator::Config config = []() {
+    Generator::Config cfg;
+    cfg.seed = 42;
+    cfg.frequency = 0.01f;
+    cfg.amplitude = 10.0f;
+    cfg.octaves = 4;
+    cfg.lacunarity = 2.0f;
+    cfg.gain = 0.5f;
+    cfg.sharpness = 0.3f;
+    Generator::BiomePresets::ApplyTemperateRules(cfg.constraints);
+    return cfg;
+  }();
+
+  // Get game instance
+  GameManager* manager = Runtime::Game();
+  if (!manager)
+    return;
+
+  GameBase* base = manager->GetGame();
+  GameTest* game = dynamic_cast<GameTest*>(base);
+  if (!game)
+    return;
+
+  auto& generator = game->GetGenerator();
+
+  static uint16_t gridSize = 512;  // Add grid size control
+  static bool regenerate_requested = false;
+
+  // Mesh Settings
+  if (ImGui::CollapsingHeader("Mesh Settings",
+                              ImGuiTreeNodeFlags_DefaultOpen)) {
+    int gridSize_int = gridSize;
+    if (ImGui::SliderInt("Grid Size", &gridSize_int, 64, 4096)) {
+      gridSize = (uint16_t)gridSize_int;
+      regenerate_requested = true;
+    }
+    ImGui::Text("Total Vertices: %d", gridSize * gridSize);
+    ImGui::Text("Total Triangles: %d", (gridSize - 1) * (gridSize - 1) * 2);
+  }
+
+  // Base Parameters
+  if (ImGui::CollapsingHeader("Base Parameters",
+                              ImGuiTreeNodeFlags_DefaultOpen)) {
+    bool changed = false;
+
+    changed |= ImGui::DragInt("Seed", (int*)&config.seed, 1.0f, 0, 999999);
+    changed |=
+        ImGui::DragFloat("Frequency", &config.frequency, 0.001f, 0.001f, 0.1f);
+    changed |=
+        ImGui::DragFloat("Amplitude", &config.amplitude, 1.0f, 1.0f, 100.0f);
+    changed |= ImGui::DragInt("Octaves", &config.octaves, 1, 1, 8);
+    changed |=
+        ImGui::DragFloat("Lacunarity", &config.lacunarity, 0.1f, 1.0f, 4.0f);
+    changed |= ImGui::DragFloat("Gain", &config.gain, 0.05f, 0.0f, 1.0f);
+    changed |=
+        ImGui::DragFloat("Sharpness", &config.sharpness, 0.05f, 0.0f, 1.0f);
+
+    if (changed) {
+      regenerate_requested = true;
+    }
+  }
+
+  // Erosion Parameters
+  if (ImGui::CollapsingHeader("Erosion")) {
+    bool changed = false;
+    changed |= ImGui::DragFloat("Altitude", &config.altitude_erosion, 0.05f,
+                                0.0f, 1.0f);
+    changed |=
+        ImGui::DragFloat("Ridge", &config.ridge_erosion, 0.05f, 0.0f, 1.0f);
+    changed |=
+        ImGui::DragFloat("Slope", &config.slope_erosion, 0.05f, 0.0f, 1.0f);
+
+    if (changed) {
+      regenerate_requested = true;
+    }
+  }
+
+  // Feature Descriptors
+  if (ImGui::CollapsingHeader("Features")) {
+    ImGui::Text("Add features at specific locations:");
+    ImGui::Spacing();
+
+    // Add feature
+    if (ImGui::Button("Add Mountain")) {
+      config.features.push_back(Generator::Descriptors::Mountains(
+          glm::vec2(gridSize / 2.0f, gridSize / 2.0f), 150.0f));
+      regenerate_requested = true;
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Add Plains")) {
+      config.features.push_back(Generator::Descriptors::Plains(
+          glm::vec2(gridSize / 2.0f, gridSize / 2.0f), 200.0f));
+      regenerate_requested = true;
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Add Valley")) {
+      config.features.push_back(Generator::Descriptors::Valleys(
+          glm::vec2(gridSize / 2.0f, gridSize / 2.0f), 180.0f));
+      regenerate_requested = true;
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Add Hills")) {
+      config.features.push_back(Generator::Descriptors::Hills(
+          glm::vec2(gridSize / 2.0f, gridSize / 2.0f), 250.0f));
+      regenerate_requested = true;
+    }
+
+    ImGui::Spacing();
+    ImGui::Separator();
+    ImGui::Spacing();
+
+    // Display current features
+    if (config.features.empty()) {
+      ImGui::TextDisabled("No features added yet");
+    } else {
+      ImGui::Text("Active Features (%zu):", config.features.size());
+
+      // Iterate through features
+      // TODO: need index for deletion
+      for (int i = 0; i < (int)config.features.size(); ++i) {
+        auto& feature = config.features[i];
+
+        ImGui::PushID(i);
+        bool changed = false;
+
+        // Feature header
+        if (ImGui::TreeNode("##feature", "Feature #%d", i + 1)) {
+          // Position
+          changed |= ImGui::DragFloat2("Center", &feature.center.x, 1.0f, 0.0f,
+                                       (float)gridSize);
+
+          // Influence
+          changed |=
+              ImGui::DragFloat("Radius", &feature.radius, 1.0f, 10.0f, 500.0f);
+          changed |= ImGui::DragFloat("Strength", &feature.strength, 0.05f,
+                                      0.0f, 1.0f);
+
+          // Noise params
+          changed |= ImGui::DragFloat("Frequency", &feature.frequency, 0.001f,
+                                      0.001f, 0.1f);
+          changed |= ImGui::DragFloat("Amplitude", &feature.amplitude, 1.0f,
+                                      -100.0f, 100.0f);
+          changed |= ImGui::DragInt("Octaves", &feature.octaves, 1, 1, 8);
+          changed |= ImGui::DragFloat("Sharpness", &feature.sharpness, 0.05f,
+                                      0.0f, 1.0f);
+
+          ImGui::Spacing();
+
+          // Delete
+          if (ImGui::Button("Delete Feature", ImVec2(-1, 0))) {
+            config.features.erase(config.features.begin() + i);
+            regenerate_requested = true;
+            ImGui::TreePop();
+            ImGui::PopID();
+            break;  // Exit loop
+          }
+
+          ImGui::TreePop();
+        }
+
+        if (changed) {
+          regenerate_requested = true;
+        }
+
+        ImGui::PopID();
+      }
+    }
+
+    // Clear all
+    if (!config.features.empty()) {
+      ImGui::Spacing();
+      if (ImGui::Button("Clear All Features")) {
+        config.features.clear();
+        regenerate_requested = true;
+      }
+    }
+  }
+
+  // Biomes
+  if (ImGui::CollapsingHeader("Biomes")) {
+    if (ImGui::Button("Temperate")) {
+      config.constraints = Generator::ConstraintSystem();
+      Generator::BiomePresets::ApplyTemperateRules(config.constraints);
+      regenerate_requested = true;
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Desert")) {
+      config.constraints = Generator::ConstraintSystem();
+      Generator::BiomePresets::ApplyDesertRules(config.constraints);
+      regenerate_requested = true;
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Arctic")) {
+      config.constraints = Generator::ConstraintSystem();
+      Generator::BiomePresets::ApplyArcticRules(config.constraints);
+      regenerate_requested = true;
+    }
+  }
+
+  // Generate button
+  ImGui::Spacing();
+  ImGui::Separator();
+  ImGui::Spacing();
+
+  if (ImGui::Button("Generate Terrain")) {
+    regenerate_requested = true;
+  }
+
+  if (regenerate_requested) {
+    game->GenerateTerrain(config, gridSize);
+    regenerate_requested = false;
+  }
+}
+
+}  // namespace Panels
+
+#endif  // TERRAIN_EDITOR_H

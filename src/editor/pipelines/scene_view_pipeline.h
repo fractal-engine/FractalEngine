@@ -67,13 +67,13 @@ private:
   void RenderForwardNode(const Node::Context& context);
   void RenderSelectionOutlineNode(const Node::Context& context);
   void RenderGizmosNode(const Node::Context& context);
+  void RenderShadowNode(const Node::Context& context);
 
   // Outline helper
   void RenderSelectedEntityOutline(EntityContainer* entity,
                                    const glm::mat4& view_projection);
 
-  void RenderGrid(bgfx::ViewId view_id, const float* view_mtx,
-                  const float* proj_mtx);
+  void BuildReferenceGrid(const glm::mat4& view_projection);
 
   // Camera
   TransformComponent god_camera_transform_;
@@ -99,6 +99,11 @@ private:
   // Shader handles (loaded once)
   bgfx::ProgramHandle default_program_;
   bgfx::ProgramHandle selection_program_;
+  bgfx::ProgramHandle debug_program_;
+
+  // Grid resources
+  const Mesh* grid_mesh_;
+  Resources3D::MeshData grid_data;
 };
 
 #endif  // SCENE_VIEW_PIPELINE_H
