@@ -39,7 +39,7 @@ private:
 
   RendererBase* renderer_ = nullptr;
   bool quit_ = false;
-  bool is_game_started_ = false;
+  bool is_game_started_ = true;
   bool game_canvas_hovered_ = false;
   bool game_canvas_focused_ = false;
   bool built_layout_ = false;  // guard for BuildDefaultLayout()

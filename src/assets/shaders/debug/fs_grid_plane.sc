@@ -10,8 +10,8 @@ void main()
     
     // Calculate distance from camera for fog
     float dist = length(worldPos.xz - u_viewPos.xz);
-    float fadeStart = 50.0;
-    float fadeEnd = 200.0;
+    float fadeStart = 200.0;
+    float fadeEnd = 500.0;
     float fade = 1.0 - smoothstep(fadeStart, fadeEnd, dist);
     
     // LOD: Fine grid (1 unit) and coarse grid (10 units)

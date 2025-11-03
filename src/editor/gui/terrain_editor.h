@@ -88,6 +88,108 @@ inline void TerrainEditor() {
     }
   }
 
+    if (ImGui::CollapsingHeader("Parameter Variation")) {
+    ImGui::Spacing();
+    
+    bool changed = false;
+    
+    // Sharpness variation
+    ImGui::PushID("vary_sharpness");
+    changed |= ImGui::Checkbox("Vary Sharpness", &config.vary_sharpness.enabled);
+    if (config.vary_sharpness.enabled) {
+      ImGui::Indent();
+      
+      if (ImGui::SliderFloat("Variation Speed", 
+                             &config.vary_sharpness.frequency, 
+                             0.001f, 0.1f, "%.4f")) {
+        changed = true;
+      }
+      if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("How quickly sharpness changes across terrain");
+      }
+      
+      if (ImGui::SliderFloat("Variation Amount", 
+                             &config.vary_sharpness.amplitude, 
+                             0.0f, 1.0f, "%.2f")) {
+        changed = true;
+      }
+      if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("How much sharpness varies (±amplitude)");
+      }
+      
+      ImGui::Unindent();
+    }
+    ImGui::PopID();
+    
+    ImGui::Spacing();
+    ImGui::Separator();
+    ImGui::Spacing();
+    
+    // Perturbation variation
+    ImGui::PushID("vary_perturb");
+    changed |= ImGui::Checkbox("Vary Domain Warp", &config.vary_perturb.enabled);
+    if (config.vary_perturb.enabled) {
+      ImGui::Indent();
+      
+      if (ImGui::SliderFloat("Variation Speed", 
+                             &config.vary_perturb.frequency, 
+                             0.001f, 0.1f, "%.4f")) {
+        changed = true;
+      }
+      if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("How quickly warp strength changes");
+      }
+      
+      if (ImGui::SliderFloat("Variation Amount", 
+                             &config.vary_perturb.amplitude, 
+                             0.0f, 1.0f, "%.2f")) {
+        changed = true;
+      }
+      if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("How much warp varies (±amplitude)");
+      }
+      
+      ImGui::Unindent();
+    }
+    ImGui::PopID();
+    
+    ImGui::Spacing();
+    ImGui::Separator();
+    ImGui::Spacing();
+    
+    // Feature amplification variation
+    ImGui::PushID("vary_amplify");
+    changed |= ImGui::Checkbox("Vary Feature Emphasis", &config.vary_amplify.enabled);
+    if (config.vary_amplify.enabled) {
+      ImGui::Indent();
+      
+      if (ImGui::SliderFloat("Variation Speed", 
+                             &config.vary_amplify.frequency, 
+                             0.001f, 0.1f, "%.4f")) {
+        changed = true;
+      }
+      if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("How quickly feature emphasis changes");
+      }
+      
+      if (ImGui::SliderFloat("Variation Amount", 
+                             &config.vary_amplify.amplitude, 
+                             0.0f, 1.0f, "%.2f")) {
+        changed = true;
+      }
+      if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("How much emphasis varies (±amplitude)");
+      }
+      
+      ImGui::Unindent();
+    }
+    ImGui::PopID();
+    
+    if (changed) {
+      regenerate_requested = true;
+    }
+  }
+
   // Feature Descriptors
   if (ImGui::CollapsingHeader("Features")) {
     ImGui::Text("Add features at specific locations:");

@@ -28,7 +28,7 @@
  ******************************************************************************/
 
 // Helper to make logging BGFX handles easier
-std::string handle_to_string(bgfx::ProgramHandle h) {
+/* std::string handle_to_string(bgfx::ProgramHandle h) {
   return h.idx == bgfx::kInvalidHandle ? "INVALID" : std::to_string(h.idx);
 }
 std::string handle_to_string(bgfx::VertexBufferHandle h) {
@@ -56,7 +56,7 @@ inline float local_clamp(float v, float m, float M) {
 inline float local_smoothStep(float e0, float e1, float x) {
   float t = local_clamp((x - e0) / (e1 - e0), 0.0f, 1.0f);
   return t * t * (3.0f - 2.0f * t);
-}
+} */
 
 // ──────────────────────────────────────────────────────
 //  Vertex layouts
@@ -391,7 +391,7 @@ Logger::getInstance().Log(
   } */
 
   // Create waterIndices using same grid method as terrain
-  const uint16_t gridSize = TerrainSize;
+  /* const uint16_t gridSize = TerrainSize;
   for (uint16_t y = 0; y < gridSize - 1; ++y) {
     for (uint16_t x = 0; x < gridSize - 1; ++x) {
       uint16_t i = y * gridSize + x;
@@ -404,7 +404,7 @@ Logger::getInstance().Log(
       waterIndices.push_back(i + gridSize + 1);
       waterIndices.push_back(i + gridSize);
     }
-  }
+  }*/
 
   // Generate terrain mesh (grid)
   /* terrainVertices.clear();

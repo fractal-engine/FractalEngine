@@ -23,7 +23,7 @@ target("engine")
     "resources/*.cpp", "resources/textures/*.cpp", "resources/3d/*.cpp",
 
     -- generator files
-    "generator/operators/erosion.cpp", "generator/operators/ridge.cpp", "generator/operators/fbm.cpp",
+    "generator/operators/ridge.cpp", "generator/operators/fbm.cpp",
             "generator/operators/remap.cpp", "generator/constraints/constraint_system.cpp",
             "generator/generator.cpp")
 
