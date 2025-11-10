@@ -21,6 +21,13 @@ static void ApplyTemperateRules(ConstraintSystem& system) {
   beach.priority = 2;
   system.AddRule(beach);
 
+  // Lowlands - Dark green
+  Rule lowlands;
+  lowlands.constraints = {{"height", 2.0f, 6.0f}, {"slope", 0.0f, 0.20f}};
+  lowlands.outputs["color"] = {0.15f, 0.35f, 0.12f, 1.0f};  // Dark swamp green
+  lowlands.priority = 15;
+  system.AddRule(lowlands);
+
   // Grassland
   Rule grassland;
   grassland.constraints = {{"height", 2.0f, 25.0f}, {"slope", 0.0f, 0.6f}};
@@ -35,12 +42,35 @@ static void ApplyTemperateRules(ConstraintSystem& system) {
   forest.priority = 4;
   system.AddRule(forest);
 
-  // Rocky slopes
-  Rule rocky;
-  rocky.constraints = {{"height", 15.0f, 45.0f}, {"slope", 0.8f, 999.0f}};
-  rocky.outputs["color"] = {0.5f, 0.5f, 0.5f, 1.0f};  // Gray
-  rocky.priority = 5;
-  system.AddRule(rocky);
+  // Rocky slopes - DARK BROWN ROCKS
+  Rule rocky_slopes;
+  rocky_slopes.constraints = {
+      {"height", 6.0f, 20.0f}, {"slope", 0.45f, 1.0f}
+      // Steep slopes = exposed rock
+  };
+  rocky_slopes.outputs["color"] = {0.35f, 0.25f, 0.15f, 1.0f};  // DARK BROWN
+  rocky_slopes.priority = 30;  // Higher priority than grass/forest
+  system.AddRule(rocky_slopes);
+
+  // Mountain ridges - ORANGE-BROWN ROCK
+  Rule mountain_ridges;
+  mountain_ridges.constraints = {
+      {"height", 15.0f, 30.0f}, {"slope", 0.40f, 1.0f}  // Steep ridges
+  };
+  mountain_ridges.outputs["color"] = {0.55f, 0.40f, 0.25f,
+                                      1.0f};  // Orange-brown
+  mountain_ridges.priority = 35;
+  system.AddRule(mountain_ridges);
+
+  // Cliff faces - GRAY ROCK
+  Rule cliffs;
+  cliffs.constraints = {
+      {"height", 25.0f, 40.0f}, {"slope", 0.60f, 1.0f}
+      // Very steep = sheer cliffs
+  };
+  cliffs.outputs["color"] = {0.45f, 0.45f, 0.45f, 1.0f};  // Gray stone
+  cliffs.priority = 45;
+  system.AddRule(cliffs);
 
   // Mountain peaks
   Rule mountain;
@@ -52,20 +82,27 @@ static void ApplyTemperateRules(ConstraintSystem& system) {
 
 // Desert climate biome set
 static void ApplyDesertRules(ConstraintSystem& system) {
+  // Sand dunes - Warm orange-brown sand
   Rule sand_dunes;
   sand_dunes.constraints = {{"height", 0.0f, 20.0f}, {"slope", 0.0f, 0.5f}};
-  sand_dunes.outputs["color"] = {0.9f, 0.75f, 0.5f, 1.0f};  // Sandy
+  sand_dunes.outputs["color"] = {0.85f, 0.65f, 0.40f, 1.0f};  // Orange sand
   sand_dunes.priority = 1;
   system.AddRule(sand_dunes);
 
+  // Rocky desert - Dark orange-brown rock
   Rule rocky_desert;
   rocky_desert.constraints = {{"height", 10.0f, 40.0f},
                               {"slope", 0.5f, 999.0f}};
-  rocky_desert.outputs["color"] = {0.7f, 0.5f, 0.3f, 1.0f};  // Brown rock
+  rocky_desert.outputs["color"] = {0.60f, 0.40f, 0.25f, 1.0f};  // orange-brown
   rocky_desert.priority = 2;
   system.AddRule(rocky_desert);
 
-  // TODO: add rules here
+  // Desert scrubland - Dry grass
+  Rule scrubland;
+  scrubland.constraints = {{"height", 0.0f, 15.0f}, {"slope", 0.0f, 0.3f}};
+  scrubland.outputs["color"] = {0.70f, 0.60f, 0.35f, 1.0f};  // yellow-brown
+  scrubland.priority = 3;
+  system.AddRule(scrubland);
 }
 
 // Arctic climate

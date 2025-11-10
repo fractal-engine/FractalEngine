@@ -2,6 +2,7 @@
 
 #include "constraints/biome_presets.h"
 #include "engine/resources/3d/mesh_data.h"
+#include "noise/OpenSimplex2S.hpp"
 
 #include <algorithm>
 #include <fstream>
@@ -28,7 +29,7 @@ Generator::Generator(const Config& config) : config_(config) {
   // UBER NOISE PIPELINE (Node Graph)
   // ============================================
 
-  // OUTER LAYER: Domain Warp
+  // OUTER LAYER: Domain Warp only
   // Step 1: Base noise source (Simplex/OpenSimplex2)
   auto simplex = FastNoise::New<FastNoise::OpenSimplex2>();
 
@@ -65,8 +66,12 @@ Generator::Generator(const Config& config) : config_(config) {
   // Store final pipeline
   noise_pipeline_ = domain_warp_fractal;
 
+  // Create OpenSimplex2 with derivatives
+  simplex_deriv_ = std::make_unique<OpenSimplex2S>(config.seed);
+
   // fBm evaluator
-  uber_fbm_ = std::make_unique<UberFBM>(domain_warp_fractal);
+  uber_fbm_ =
+      std::make_unique<UberFBM>(domain_warp_fractal, simplex_deriv_.get());
 }
 
 void Generator::UpdateConfig(const Config& config) {
@@ -133,13 +138,46 @@ Sample Generator::Eval(float x, float y) const {
   // ============================================
   // EVALUATE UBER NOISE PIPELINE
   // ============================================
+  // If debug active: use staged evaluation
+  if (config_.debug_stage != PipelineStage::Complete) {
+    return EvalStaged(x, y, config_.debug_stage);
+  }
+
   // Evaluate Uber FBM (includes domain warp, per-octave erosion, etc)
   UberFBMResult uber_result = uber_fbm_->Eval(
       x * config_.frequency, y * config_.frequency, config_.seed, uber_params);
 
   float value = uber_result.value;
   glm::vec2 gradient = uber_result.derivative;
-  float slope = glm::length(gradient);
+
+  // Step 1: Scale by frequency to get dNoise/d(worldSpace)
+  glm::vec2 world_gradient = gradient * config_.frequency;
+
+  // Step 2: Scale by amplitude to get dHeight/d(worldSpace)
+  world_gradient *= config_.amplitude;
+
+  // Step 3: Compute slope from world-space gradient
+  float gradient_magnitude = glm::length(world_gradient);
+
+  // Slope angle in radians (0 = flat, π/2 = vertical)
+  float slope_angle = std::atan(gradient_magnitude);
+
+  // Normalize to [0, 1]
+  float slope = slope_angle / (3.14159f * 0.5f);
+
+  // Clamp to [0, 1]
+  slope = std::clamp(slope, 0.0f, 1.0f);
+
+  // After computing slope, add debug:
+  static int debug_count = 0;
+  if (debug_count < 5) {
+    float slope_degrees = slope * 90.0f;
+    std::cout << "DEBUG: noise_deriv=" << glm::length(uber_result.derivative)
+              << ", world_grad=" << glm::length(world_gradient)
+              << ", slope=" << slope << " (" << slope_degrees << "°)"
+              << std::endl;
+    debug_count++;
+  }
 
   // Scale by amplitude
   result.height = value * config_.amplitude;
@@ -223,14 +261,36 @@ Resources3D::MeshData Generator::GenerateMesh(const MeshOutput& params) const {
   for (uint16_t y = 0; y < size; ++y) {
     for (uint16_t x = 0; x < size; ++x) {
       Sample s = Eval((float)x, (float)y);
+
+      // DEBUG: Print first 20 samples
+      static int debug_count = 0;
+      if (debug_count < 20) {
+        std::cout << "Sample " << debug_count << ": h=" << std::fixed
+                  << std::setprecision(2) << s.height << ", s=" << s.slope
+                  << ", rule=" << (s.matched_rule ? "YES" : "NO");
+
+        if (s.matched_rule) {
+          // Print which rule matched
+          auto color_it = s.matched_rule->outputs.find("color");
+          if (color_it != s.matched_rule->outputs.end() &&
+              color_it->second.size() >= 3) {
+            std::cout << ", RGB=[" << color_it->second[0] << ","
+                      << color_it->second[1] << "," << color_it->second[2]
+                      << "]";
+          }
+        }
+        std::cout << std::endl;
+        debug_count++;
+      }
+
       height_grid[y * size + x] = s.height;
 
       positions_temp[y * size + x] = glm::vec3((float)x, s.height, (float)y);
 
       // Position
-      mesh.positions_.push_back((float)x);  // X = grid column
-      mesh.positions_.push_back(s.height);  // Y = height (up axis)
-      mesh.positions_.push_back((float)y);  // Z = grid row
+      mesh.positions_.push_back((float)x);   // X = grid column
+      mesh.positions_.push_back(-s.height);  // Y = height (up axis)
+      mesh.positions_.push_back((float)y);   // Z = grid row
 
       // UV
       if (params.with_uvs) {
@@ -244,37 +304,41 @@ Resources3D::MeshData Generator::GenerateMesh(const MeshOutput& params) const {
 
       // Color from rule output
       if (params.with_colors) {
+        float h = s.height;
+        float slope = s.slope;
+
+        glm::vec3 color;
+
         if (s.matched_rule) {
-          // Use rule-based color
           auto it = s.matched_rule->outputs.find("color");
           if (it != s.matched_rule->outputs.end() && it->second.size() >= 3) {
-
-            // Pass biome color in RGB
-            mesh.colors_.push_back(it->second[0]);
-            mesh.colors_.push_back(it->second[1]);
-            mesh.colors_.push_back(it->second[2]);
-
-            // Encode height in Alpha channel
-            float normalized_height =
-                (s.height + 50.0f) / 100.0f;  // Map to [0, 1]
-            mesh.colors_.push_back(std::clamp(normalized_height, 0.0f, 1.0f));
+            color = glm::vec3(it->second[0], it->second[1], it->second[2]);
           } else {
-            mesh.colors_.insert(mesh.colors_.end(), {1.f, 1.f, 1.f, 1.f});
+            // Fallback: height-based gradient
+            float t = glm::clamp((h + 10.0f) / 70.0f, 0.0f, 1.0f);
+            color = glm::mix(glm::vec3(0.3f, 0.2f, 0.1f),   // Brown lowlands
+                             glm::vec3(0.9f, 0.9f, 0.95f),  // White peaks
+                             t);
           }
         } else {
-          // If no rule: use height-based biome coloring
-          float t = glm::clamp((s.height + 10.0f) / 20.0f, 0.0f, 1.0f);
-          glm::vec3 color =
-              glm::mix(glm::vec3(0.2f, 0.5f, 0.2f),  // Low = green
-                       glm::vec3(0.7f, 0.7f, 0.6f),  // High = tan/gray
-                       t);
-          mesh.colors_.push_back(color.r);
-          mesh.colors_.push_back(color.g);
-          mesh.colors_.push_back(color.b);
-
-          float normalized_height = (s.height + 50.0f) / 100.0f;
-          mesh.colors_.push_back(std::clamp(normalized_height, 0.0f, 1.0f));
+          // No rule matched: simple height gradient
+          float t = glm::clamp((h + 10.0f) / 70.0f, 0.0f, 1.0f);
+          color = glm::mix(glm::vec3(0.3f, 0.2f, 0.1f),   // Brown lowlands
+                           glm::vec3(0.9f, 0.9f, 0.95f),  // White peaks
+                           t);
         }
+
+        // Slope-based darkening (shadows)
+        float slopeDarken = 1.0f - glm::clamp(slope * 0.12f, 0.0f, 0.25f);
+        color *= slopeDarken;
+
+        mesh.colors_.push_back(color.r);
+        mesh.colors_.push_back(color.g);
+        mesh.colors_.push_back(color.b);
+
+        // Encode height in alpha
+        float normalized_height = glm::clamp((h + 50.0f) / 100.0f, 0.0f, 1.0f);
+        mesh.colors_.push_back(normalized_height);
       }
     }
   }
@@ -374,6 +438,123 @@ float Generator::ApplyPipeline(float x, float y,
   Sample s = Eval(x, y);
   out_gradient = s.gradient;
   return s.height;
+}
+
+Sample Generator::EvalStaged(float x, float y, PipelineStage stage) const {
+  Sample result;
+  result.curvature = 0.0f;
+
+  float freq_x = x * config_.frequency;
+  float freq_y = y * config_.frequency;
+
+  // Build params with selective disabling based on stage
+  UberFBMParams uber_params;
+  uber_params.octaves = config_.octaves;
+  uber_params.lacunarity = config_.lacunarity;
+  uber_params.gain = config_.gain;
+  uber_params.sharpness = 0.0f;  // Default off
+  uber_params.amplify_features = config_.amplify;
+  uber_params.altitude_erosion = 0.0f;  // Default off
+  uber_params.ridge_erosion = 0.0f;     // Default off
+  uber_params.slope_erosion = 0.0f;     // Default off
+  uber_params.perturb = 0.0f;           // Default off
+
+  float value = 0.0f;
+  glm::vec2 gradient(0.0f);
+
+  switch (stage) {
+    case PipelineStage::BaseNoiseOnly: {
+      // Raw OpenSimplex2 - single octave, no operators
+      double noise_val, dx, dy;
+      simplex_deriv_->noise2_deriv(freq_x, freq_y, noise_val, dx, dy);
+      value = static_cast<float>(noise_val);
+      gradient = glm::vec2(static_cast<float>(dx), static_cast<float>(dy));
+      break;
+    }
+
+    case PipelineStage::WithDomainWarp: {
+      // Domain warp is baked into uber_fbm_ via noise_pipeline_
+      // Just disable all other operators to isolate warp effect
+      UberFBMResult uber_result =
+          uber_fbm_->Eval(freq_x, freq_y, config_.seed, uber_params);
+      value = uber_result.value;
+      gradient = uber_result.derivative;
+      break;
+    }
+
+    case PipelineStage::WithSharpness: {
+      // Enable sharpness only
+      uber_params.sharpness = config_.sharpness;
+      UberFBMResult uber_result =
+          uber_fbm_->Eval(freq_x, freq_y, config_.seed, uber_params);
+      value = uber_result.value;
+      gradient = uber_result.derivative;
+      break;
+    }
+
+    case PipelineStage::WithSlopeErosion: {
+      // Enable sharpness + slope erosion
+      uber_params.sharpness = config_.sharpness;
+      uber_params.slope_erosion = config_.slope_erosion;
+      UberFBMResult uber_result =
+          uber_fbm_->Eval(freq_x, freq_y, config_.seed, uber_params);
+      value = uber_result.value;
+      gradient = uber_result.derivative;
+      break;
+    }
+
+    case PipelineStage::WithRidgeErosion: {
+      // Enable sharpness + slope + ridge erosion
+      uber_params.sharpness = config_.sharpness;
+      uber_params.slope_erosion = config_.slope_erosion;
+      uber_params.ridge_erosion = config_.ridge_erosion;
+      UberFBMResult uber_result =
+          uber_fbm_->Eval(freq_x, freq_y, config_.seed, uber_params);
+      value = uber_result.value;
+      gradient = uber_result.derivative;
+      break;
+    }
+
+    case PipelineStage::WithAltitudeErosion: {
+      // Enable sharpness + all erosion
+      uber_params.sharpness = config_.sharpness;
+      uber_params.slope_erosion = config_.slope_erosion;
+      uber_params.ridge_erosion = config_.ridge_erosion;
+      uber_params.altitude_erosion = config_.altitude_erosion;
+      UberFBMResult uber_result =
+          uber_fbm_->Eval(freq_x, freq_y, config_.seed, uber_params);
+      value = uber_result.value;
+      gradient = uber_result.derivative;
+      break;
+    }
+
+    case PipelineStage::Complete:
+    default: {
+      // Full pipeline - call normal Eval
+      return Eval(x, y);
+    }
+  }
+
+  // Compute slope from gradient
+  glm::vec2 world_gradient = gradient * config_.frequency * config_.amplitude;
+  float gradient_magnitude = glm::length(world_gradient);
+  float slope_angle = std::atan(gradient_magnitude);
+  float slope = std::clamp(slope_angle / (3.14159f * 0.5f), 0.0f, 1.0f);
+
+  // Fill result
+  result.height = value * config_.amplitude;
+  result.slope = slope;
+  result.gradient = gradient;
+
+  // Build properties for constraint matching
+  result.properties.values["height"] = result.height;
+  result.properties.values["slope"] = slope;
+  result.properties.values["x"] = x;
+  result.properties.values["y"] = y;
+
+  result.matched_rule = config_.constraints.Match(result.properties);
+
+  return result;
 }
 
 }  // namespace Generator

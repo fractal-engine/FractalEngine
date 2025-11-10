@@ -207,7 +207,6 @@ void GameTest::Init() {
       std::string("_terrainPBR valid = ") +
           (bgfx::isValid(_terrainProgramHeight) ? "true" : "false"));*/
 
-
   Logger::getInstance().Log(
       LogLevel::Debug, std::string("_Skybox valid = ") +
                            (bgfx::isValid(_skyProgram) ? "true" : "false"));
@@ -218,7 +217,7 @@ void GameTest::Init() {
       std::string("_terrainShadowProgram valid = ") +
           (bgfx::isValid(_terrainShadowProgram) ? "true" : "false"));
 
-Logger::getInstance().Log(
+  Logger::getInstance().Log(
       LogLevel::Info,
       "GameTest::Init: Loading water shaders: vs_water.bin, fs_water.bin");
   _waterProgram =
@@ -513,6 +512,9 @@ void GameTest::GenerateTerrain(const Generator::Config& gen_config,
   mesh_params.with_normals = true;  // ENABLE NORMALS
   mesh_params.with_colors = true;
 
+  std::cout << "GenerateTerrain called with "
+            << gen_config.constraints.GetRuleCount() << " rules" << std::endl;
+
   auto mesh_data = gen.GenerateMesh(mesh_params);
   terrain_mesh_ = std::make_shared<Mesh>(mesh_data);
 
@@ -558,8 +560,8 @@ void GameTest::Update() {
 // Renders the game scene
 void GameTest::Render() {
   // Ensure essential shader programs are valid before attempting to render
-  /* if (!bgfx::isValid(_terrainProgramHeight) || !bgfx::isValid(_waterProgram) ||
-      !bgfx::isValid(_terrainShadowProgram)) {
+  /* if (!bgfx::isValid(_terrainProgramHeight) || !bgfx::isValid(_waterProgram)
+  || !bgfx::isValid(_terrainShadowProgram)) {
     Logger::getInstance().Log(LogLevel::Error,
                               "GameTest::Render: One or more game programs "
                               "invalid. Aborting Render.");

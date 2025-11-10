@@ -16,19 +16,29 @@ struct MeshData;
 
 namespace Generator {
 
+enum class PipelineStage {
+  BaseNoiseOnly,        // Raw OpenSimplex2
+  WithDomainWarp,       // + FastNoise2 domain warp
+  WithSharpness,        // + Ridge/Billow blending
+  WithSlopeErosion,     // + Slope erosion
+  WithRidgeErosion,     // + Ridge erosion
+  WithAltitudeErosion,  // + Altitude erosion
+  Complete              // Final output
+};
+
 struct Config {
   uint32_t seed = 12347;
-  float frequency = 0.01f;
-  float amplitude = 100.0f;
+  float frequency = 0.05f;
+  float amplitude = 60.0f;
 
   // Operator params
   int octaves = 6;                // liOctaves
-  float perturb = 0.5f;           // lfPerturbFeatures
-  float sharpness = 0.0f;         // lfSharpness
+  float perturb = 0.7f;           // lfPerturbFeatures
+  float sharpness = -0.5f;        // lfSharpness
   float amplify = 1.0f;           // lfAmplifyFeatures
-  float altitude_erosion = 0.0f;  // lfAltitudeErosion
-  float ridge_erosion = 0.0f;     // lfRidgeErosion
-  float slope_erosion = 0.0f;     // lfSlopeErosion
+  float altitude_erosion = 0.2f;  // lfAltitudeErosion
+  float ridge_erosion = 0.6f;     // lfRidgeErosion
+  float slope_erosion = 0.4f;     // lfSlopeErosion
   float lacunarity = 2.0f;        // lfLacunarity
   float gain = 0.5f;              // lfGain
 
@@ -50,6 +60,9 @@ struct Config {
   // Remap
   TerracingParams terracing = {5, 0.0f};
   PlateauParams plateau = {0.6f, 0.1f};
+
+  // Debug
+  PipelineStage debug_stage = PipelineStage::Complete;
 };
 
 // Single point sample result
@@ -68,6 +81,9 @@ public:
 
   // Generate single sample
   Sample Eval(float x, float y) const;
+
+  // Debug: stage evaluation
+  Sample EvalStaged(float x, float y, PipelineStage stage) const;
 
   // Generate heightmap data
   struct HeightmapOutput {
@@ -99,6 +115,8 @@ private:
 
   FastNoise::SmartNode<> noise_pipeline_;
   std::unique_ptr<UberFBM> uber_fbm_;
+
+  std::unique_ptr<OpenSimplex2S> simplex_deriv_;
 
   float ApplyPipeline(float x, float y, glm::vec2& out_gradient) const;
 };

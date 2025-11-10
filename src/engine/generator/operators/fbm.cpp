@@ -33,55 +33,108 @@ UberFBMResult UberFBM::Eval(float x, float y, int seed,
   float frequency = 1.0f;
   float amplitude = 1.0f;
 
+  // Warped base coordinates
+  float base_x = x;
+  float base_y = y;
+
   // Per-octave accumulators
   glm::vec2 perturb_offset(0.0f);
   glm::vec2 slope_erosion_deriv_sum(0.0f);
   glm::vec2 ridge_erosion_deriv_sum(0.0f);
+  glm::vec2 ridge_sharpness_accum(0.0f);
+
+  // Second domain warp
+  if (params.enable_second_warp) {
+    /**
+     * ? Uses custom OpenSimplex2S instead of FastNoise2 to avoid grid artifacts
+     */
+
+    // Sample noise at two different offsets (q vector)
+    double q_x_val, q_x_dx, q_x_dy;
+    simplex_deriv_->noise2_deriv(x, y, q_x_val, q_x_dx, q_x_dy);
+
+    double q_y_val, q_y_dx, q_y_dy;
+    simplex_deriv_->noise2_deriv(x + 5.2, y + 1.3, q_y_val, q_y_dx, q_y_dy);
+
+    float q_x = (float)q_x_val;
+    float q_y = (float)q_y_val;
+
+    // Apply first warp to get r vector
+    double r_x_val, r_x_dx, r_x_dy;
+    simplex_deriv_->noise2_deriv((x + 4.0 * q_x) + 1.7, (y + 4.0 * q_y) + 9.2,
+                                 r_x_val, r_x_dx, r_x_dy);
+
+    double r_y_val, r_y_dx, r_y_dy;
+    simplex_deriv_->noise2_deriv((x + 4.0 * q_x) + 8.3, (y + 4.0 * q_y) + 2.8,
+                                 r_y_val, r_y_dx, r_y_dy);
+
+    float r_x = (float)r_x_val;
+    float r_y = (float)r_y_val;
+
+    // Apply warp to base coordinates
+    base_x += r_x * params.second_warp_strength * 0.2f;
+    base_y += r_y * params.second_warp_strength * 0.2f;
+  }
 
   for (int i = 0; i < params.octaves; ++i) {
     // Apply accumulated domain perturbation
-    float perturbed_x = x + perturb_offset.x;
-    float perturbed_y = y + perturb_offset.y;
+    float perturbed_x = base_x + perturb_offset.x;
+    float perturbed_y = base_y + perturb_offset.y;
 
-    // Sample noise at perturbed position
-    float octave_value = noise_source_->GenSingle2D(
-        perturbed_x * frequency, perturbed_y * frequency, seed);
+    // ANALYTICAL DERIVATIVES
+    double noise_value, noise_dx, noise_dy;
+    simplex_deriv_->noise2_deriv(perturbed_x * frequency,
+                                 perturbed_y * frequency,
+                                 noise_value,  // output
+                                 noise_dx,     // output
+                                 noise_dy);    // output
 
-    // Central difference with frequency-scaled step
-    const float h =
-        0.001f / frequency;  // Scale step size inversely with frequency
-
-    // Central difference: (f(x+h) - f(x-h)) / 2h
-    float x_plus = noise_source_->GenSingle2D((perturbed_x + h) * frequency,
-                                              perturbed_y * frequency, seed);
-    float x_minus = noise_source_->GenSingle2D((perturbed_x - h) * frequency,
-                                               perturbed_y * frequency, seed);
-
-    float y_plus = noise_source_->GenSingle2D(
-        perturbed_x * frequency, (perturbed_y + h) * frequency, seed);
-    float y_minus = noise_source_->GenSingle2D(
-        perturbed_x * frequency, (perturbed_y - h) * frequency, seed);
-
-    glm::vec2 octave_deriv((x_plus - x_minus) / (2.0f * h),
-                           (y_plus - y_minus) / (2.0f * h));
+    float octave_value = (float)noise_value;
+    glm::vec2 octave_deriv((float)noise_dx * frequency,  // Scale by frequency
+                           (float)noise_dy * frequency);
 
     // Apply sharpness
     octave_value = ApplySharpness(octave_value, params.sharpness);
 
-    // Ridge erosion sharpening
-    if (params.ridge_erosion > 0.0f) {
-      float ridge_magnitude = glm::length(ridge_erosion_deriv_sum);
-      ridge_magnitude = std::clamp(ridge_magnitude, 0.0f, 3.0f);
-      float ridge_sharpness = params.ridge_erosion * ridge_magnitude * 0.1f;
+    // Apply plateau per-octave
+    if (params.plateau_threshold > 0.0f) {
+      if (octave_value > params.plateau_threshold) {
+        float overshoot = octave_value - params.plateau_threshold;
+        float dampened = overshoot * params.plateau_smoothness;
+        octave_value = params.plateau_threshold + dampened;
+      }
+    }
 
-      // Blend toward ridged noise based on accumulated derivative
+    // Apply terrace per-octave
+    if (params.terrace_frequency > 0.0f) {
+      float step_size = 1.0f / params.terrace_frequency;
+      float stepped = std::floor(octave_value / step_size) * step_size;
+
+      if (params.terrace_smoothness > 0.0f) {
+        float blend = std::fmod(octave_value, step_size) / step_size;
+        blend = blend * blend * (3.0f - 2.0f * blend);  // Smoothstep
+        octave_value =
+            stepped + (step_size * blend * params.terrace_smoothness);
+      } else {
+        octave_value = stepped;
+      }
+    }
+
+    // Cumulative ridge sharpening
+    ridge_sharpness_accum += octave_deriv * params.ridge_erosion * 0.02f;
+
+    // Ridge sharpening
+    if (params.ridge_erosion > 0.0f && i > 0) {
+      float ridge_strength = glm::length(ridge_sharpness_accum);
+      ridge_strength = std::clamp(ridge_strength, 0.0f, 1.0f);
+
       float ridged = 1.0f - std::abs(octave_value);
-      octave_value = std::lerp(octave_value, ridged, ridge_sharpness);
+      octave_value = std::lerp(octave_value, ridged, ridge_strength);
     }
 
     // Domain perturbation (only first 3 octaves)
     if (params.perturb > 0.0f && i < 3) {
-      float perturb_scale = params.perturb * 0.01f / (1.0f + i * 0.5f);
+      float perturb_scale = params.perturb * 0.05f / (1.0f + i * 0.5f);
       perturb_offset += octave_deriv * perturb_scale;
 
       perturb_offset.x = std::clamp(perturb_offset.x, -2.0f, 2.0f);
@@ -107,15 +160,11 @@ UberFBMResult UberFBM::Eval(float x, float y, int seed,
       attenuation = 1.0f / (1.0f + slope_magnitude * 0.1f);
     }
 
-    // Per-octave gain modulation
-    float octave_weight = 1.0f;
-    if (i == 0) {
-      // First octave: significantly reduce
-      octave_weight = 0.3f;
-    } else if (i >= 1 && i <= 3) {
-      // Middle octaves: amplify
-      octave_weight = 1.0f + params.amplify_features * 0.5f;
-    }
+    // Apply per-octave weight
+    float octave_weight = (i < 8) ? params.octave_weights[i] : 1.0f;
+
+    // Global amplification modulates the weight curve
+    octave_weight *= (1.0f + params.amplify_features * 0.5f);
 
     // Accumulate value and derivative
     float final_amplitude = damped_amplitude * octave_weight;

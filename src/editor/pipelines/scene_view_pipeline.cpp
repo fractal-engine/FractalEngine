@@ -461,7 +461,7 @@ void SceneViewPipeline::RenderShadowNode(const Node::Context& context) {
     // Shadow pass state
     // write depth, cull front faces
     bgfx::setState(BGFX_STATE_WRITE_Z | BGFX_STATE_DEPTH_TEST_LESS |
-                   BGFX_STATE_CULL_CCW);
+                   BGFX_STATE_CULL_CW);
     bgfx::submit(ViewID::SHADOW_PASS, shadow_program);
   }
 }

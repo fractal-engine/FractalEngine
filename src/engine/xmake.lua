@@ -25,7 +25,7 @@ target("engine")
     -- generator files
     "generator/operators/ridge.cpp", "generator/operators/fbm.cpp",
             "generator/operators/remap.cpp", "generator/constraints/constraint_system.cpp",
-            "generator/generator.cpp")
+            "generator/generator.cpp", "generator/noise/OpenSimplex2S.cpp")
 
     -- HEADER FILES -------
     add_headerfiles("core/*.h", "audio/*.h", "scene/*.h", "context/*.h", "formats/*.h",

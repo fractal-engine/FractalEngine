@@ -33,6 +33,8 @@ public:
   void AddRule(const Rule& rule) { rules_.push_back(rule); }
   const Rule* Match(const Properties&) const;
 
+  size_t GetRuleCount() const { return rules_.size(); }
+
 private:
   std::vector<Rule> rules_;
 };
