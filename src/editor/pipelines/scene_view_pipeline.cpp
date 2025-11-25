@@ -175,7 +175,7 @@ void SceneViewPipeline::RenderReflectionNode(const Node::Context& context) {
   // Build reflected view (Y-plane mirror)
   float reflect[16];
   bx::mtxIdentity(reflect);
-  reflect[5] = -1.0f;  // flip Y
+  reflect[5] = 1.0f;
 
   float reflectedView[16];
   bx::mtxMul(reflectedView, viewMatrix, reflect);
@@ -417,12 +417,24 @@ void SceneViewPipeline::RenderShadowNode(const Node::Context& context) {
 
   float ortho_size = 50.0f;
 
-  glm::mat4 light_view_matrix =
-      glm::lookAt(light_pos, light_target, glm::vec3(0.0f, 1.0f, 0.0f));
-  glm::mat4 light_proj_matrix = glm::ortho(-ortho_size, ortho_size, -ortho_size,
-                                           ortho_size, 0.1f, 200.0f);
-  glm::mat4 light_space = light_proj_matrix * light_view_matrix;
+  float light_view_arr[16];
+  float light_proj_arr[16];
 
+  bx::mtxLookAt(light_view_arr, bx::Vec3(light_pos.x, light_pos.y, light_pos.z),
+                bx::Vec3(light_target.x, light_target.y, light_target.z),
+                bx::Vec3(0.0f, 1.0f, 0.0f), bx::Handedness::Left);
+
+  bx::mtxOrtho(light_proj_arr, -ortho_size, ortho_size,  // left, right
+               -ortho_size, ortho_size,                  // bottom, top
+               0.1f, 200.0f,                             // near, far
+               0.0f,                                     // offset
+               bgfx::getCaps()->homogeneousDepth, bx::Handedness::Left);
+
+  // Build light space matrix
+  float light_space_arr[16];
+  bx::mtxMul(light_space_arr, light_view_arr, light_proj_arr);
+
+  glm::mat4 light_space = glm::make_mat4(light_space_arr);
   shadow_map.SetLightSpaceMatrix(light_space);
 
   // Setup BGFX view
@@ -430,11 +442,6 @@ void SceneViewPipeline::RenderShadowNode(const Node::Context& context) {
   bgfx::setViewRect(ViewID::SHADOW_PASS, 0, 0, resolution, resolution);
   bgfx::setViewFrameBuffer(ViewID::SHADOW_PASS, shadow_map.GetFramebuffer());
   bgfx::setViewClear(ViewID::SHADOW_PASS, BGFX_CLEAR_DEPTH, 0, 1.0f, 0);
-
-  // Set view transform
-  float light_view_arr[16], light_proj_arr[16];
-  memcpy(light_view_arr, glm::value_ptr(light_view_matrix), 64);
-  memcpy(light_proj_arr, glm::value_ptr(light_proj_matrix), 64);
   bgfx::setViewTransform(ViewID::SHADOW_PASS, light_view_arr, light_proj_arr);
 
   // Load shadow shader
@@ -495,7 +502,7 @@ void SceneViewPipeline::RenderSelectedEntityOutline(
       glm::scale(glm::mat4(1.0f), outline_transform.scale_);
 
   // Get camera transform
-  // TODO: TransformComponent& cameraTransform = std::get<0>(camera);
+  TransformComponent& cameraTransform = std::get<0>(god_camera_);
 
   // Render the selected entity and write to stencil
   // TODO: Set BGFX stencil state for outline rendering

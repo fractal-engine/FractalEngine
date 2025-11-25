@@ -25,6 +25,13 @@ void Evaluate(TransformComponent& transform) {
   transform.model_ = Transformation::Model(
       transform.position_, transform.rotation_, transform.scale_);
   transform.normal_ = Transformation::Normal(transform.model_);
+
+  // DEBUG: Log model matrix Z-axis (forward direction in backend space)
+  Logger::getInstance().Log(LogLevel::Debug,
+                            "Model Z-axis: (" +
+                                std::to_string(transform.model_[2][0]) + ", " +
+                                std::to_string(transform.model_[2][1]) + ", " +
+                                std::to_string(transform.model_[2][2]) + ")");
 }
 
 void Evaluate(TransformComponent& transform, TransformComponent& parent) {
@@ -32,6 +39,13 @@ void Evaluate(TransformComponent& transform, TransformComponent& parent) {
                                                            transform.rotation_,
                                                            transform.scale_);
   transform.normal_ = Transformation::Normal(transform.model_);
+
+  // DEBUG: Log model matrix Z-axis (forward direction in backend space)
+  Logger::getInstance().Log(LogLevel::Debug,
+                            "Model Z-axis (child): (" +
+                                std::to_string(transform.model_[2][0]) + ", " +
+                                std::to_string(transform.model_[2][1]) + ", " +
+                                std::to_string(transform.model_[2][2]) + ")");
 }
 
 void UpdateMVP(TransformComponent& transform, const glm::mat4& viewProjection) {
@@ -60,10 +74,10 @@ void SetPosition(TransformComponent& transform, const glm::vec3& position,
     // World space with parent
     TransformComponent& parent = GetParent(transform);
     _TmpUpdateModel(parent);
-    glm::vec4 localBackendPos = glm::vec4(Transformation::Swap(position), 1.0f);
+    glm::vec4 localBackendPos = glm::vec4(position, 1.0f);
     glm::vec3 worldBackendPos =
         glm::vec3(glm::inverse(parent.model_) * localBackendPos);
-    transform.position_ = Transformation::Swap(worldBackendPos);
+    transform.position_ = worldBackendPos;
   }
   transform.modified_ = true;
 }
@@ -133,7 +147,7 @@ glm::vec3 GetPosition(TransformComponent& transform, Space space) {
   } else {
 
     // World space with parent
-    return Transformation::Swap(glm::vec3(transform.model_[3]));
+    return glm::vec3(transform.model_[3]);
   }
 }
 
@@ -152,7 +166,7 @@ glm::quat GetRotation(TransformComponent& transform, Space space) {
     rotationMatrix[0] = col0;
     rotationMatrix[1] = col1;
     rotationMatrix[2] = col2;
-    return Transformation::Swap(glm::quat_cast(rotationMatrix));
+    return glm::quat_cast(rotationMatrix);
   }
 }
 
@@ -231,29 +245,29 @@ glm::vec3 _Direction(const glm::vec3& base, TransformComponent& transform,
   }
 }
 
-// Describe coordinate system
+// Describe convention: Y-up, Z-forward, X-right (left-handed)
 glm::vec3 Forward(TransformComponent& transform, Space space) {
-  return _Direction(glm::vec3(0.0f, 0.0f, 1.0f), transform, space);
+  return _Direction(glm::vec3(0.0f, 0.0f, 1.0f), transform, space);  // +Z
 }
 glm::vec3 Backward(TransformComponent& transform, Space space) {
-  return _Direction(glm::vec3(0.0f, 0.0f, -1.0f), transform, space);
+  return _Direction(glm::vec3(0.0f, 0.0f, -1.0f), transform, space);  // -Z
 }
 glm::vec3 Right(TransformComponent& transform, Space space) {
-  return _Direction(glm::vec3(1.0f, 0.0f, 0.0f), transform, space);
+  return _Direction(glm::vec3(1.0f, 0.0f, 0.0f), transform, space);  // +X
 }
 glm::vec3 Left(TransformComponent& transform, Space space) {
-  return _Direction(glm::vec3(-1.0f, 0.0f, 0.0f), transform, space);
+  return _Direction(glm::vec3(-1.0f, 0.0f, 0.0f), transform, space);  // -X
 }
 glm::vec3 Up(TransformComponent& transform, Space space) {
-  return _Direction(glm::vec3(0.0f, 1.0f, 0.0f), transform, space);
+  return _Direction(glm::vec3(0.0f, 1.0f, 0.0f), transform, space);  // +Y
 }
 glm::vec3 Down(TransformComponent& transform, Space space) {
-  return _Direction(glm::vec3(0.0f, -1.0f, 0.0f), transform, space);
+  return _Direction(glm::vec3(0.0f, -1.0f, 0.0f), transform, space);  // -Y
 }
 
 glm::quat LookAt(const glm::vec3& position, const glm::vec3& target) {
   glm::vec3 direction = glm::normalize(target - position);
-  return glm::rotation(glm::vec3(0, 0, 1), direction);  // local +Z forward
+  return glm::rotation(glm::vec3(0, 0, 1), direction);  // +Z is forward
 }
 
 glm::quat ToQuat(const glm::vec3& eulerAngles) {

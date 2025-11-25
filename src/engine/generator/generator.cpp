@@ -288,9 +288,9 @@ Resources3D::MeshData Generator::GenerateMesh(const MeshOutput& params) const {
       positions_temp[y * size + x] = glm::vec3((float)x, s.height, (float)y);
 
       // Position
-      mesh.positions_.push_back((float)x);   // X = grid column
-      mesh.positions_.push_back(-s.height);  // Y = height (up axis)
-      mesh.positions_.push_back((float)y);   // Z = grid row
+      mesh.positions_.push_back((float)x);  // X = grid column
+      mesh.positions_.push_back(s.height);  // Y = height (up axis)
+      mesh.positions_.push_back((float)y);  // Z = grid row
 
       // UV
       if (params.with_uvs) {

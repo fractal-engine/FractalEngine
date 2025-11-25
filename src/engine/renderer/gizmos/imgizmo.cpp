@@ -114,8 +114,8 @@ void IMGizmo::RenderPrimitives(const glm::mat4& view_projection) {
 
   for (const auto& primitive : primitive_render_stack_) {
     // Swap coordinates
-    glm::vec3 start = Transformation::Swap(primitive.start);
-    glm::vec3 end = Transformation::Swap(primitive.end);
+    glm::vec3 start = primitive.start;
+    glm::vec3 end = primitive.end;
 
     // Pack color (ABGR format)
     uint8_t r = static_cast<uint8_t>(primitive.state.color.r * 255.0f);
@@ -151,9 +151,9 @@ void IMGizmo::RenderShapes(const glm::mat4& view_projection) {
   if (!bgfx::isValid(static_data_.line_shader))
     return;
 
-    for (int32_t i = 0; i < shape_render_stack_.size(); i++) {
-      ShapeRenderTarget gizmo = shape_render_stack_[i];
-    }
+  for (int32_t i = 0; i < shape_render_stack_.size(); i++) {
+    ShapeRenderTarget gizmo = shape_render_stack_[i];
+  }
 }
 
 void IMGizmo::RenderIcons(const glm::mat4& view_projection) {
@@ -200,11 +200,11 @@ glm::mat4 IMGizmo::GetModelMatrix(glm::vec3 position, glm::quat rotation,
   glm::mat4 model(1.0f);
 
   // Position
-  glm::vec3 worldPos = Transformation::Swap(position);
+  glm::vec3 worldPos = position;
   model = glm::translate(model, worldPos);
 
   // Rotation
-  glm::quat worldRot = Transformation::Swap(rotation);
+  glm::quat worldRot = rotation;
   model = model * glm::mat4_cast(glm::normalize(worldRot));
 
   // Scale

@@ -31,7 +31,7 @@ void Skybox::Create(ShaderManager* ShaderManager) {
                                            "fs_skybox.bin");
 
   // TODO: check that names are like in GameTest
-  // Move 
+  // Move
   // Uniforms
   _sunDirUniform =
       bgfx::createUniform("u_sunDirection", bgfx::UniformType::Vec4);
@@ -131,7 +131,7 @@ std::string Skybox::GetTimeString() const {
   float normalized = GetTimeOfDay();
   int hours = static_cast<int>(normalized * 24.0f) % 24;
   int minutes = static_cast<int>((normalized * 24.0f - hours) * 60.0f);
-  
+
   char buffer[16];
   snprintf(buffer, sizeof(buffer), "%02d:%02d", hours, minutes);
   return std::string(buffer);
@@ -247,10 +247,10 @@ void Skybox::CreateFullscreenQuad() {
   ScreenPosVertex::initLayout();
 
   static const ScreenPosVertex quadVertices[] = {
-      {-1.0f, 1.0f},
-      {1.0f, 1.0f},
       {-1.0f, -1.0f},
       {1.0f, -1.0f},
+      {-1.0f, 1.0f},
+      {1.0f, 1.0f},
   };
 
   static const uint16_t quadIndices[] = {0, 2, 1, 1, 2, 3};

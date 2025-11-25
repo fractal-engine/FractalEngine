@@ -25,11 +25,8 @@ void GodCameraUpdateMovement(GodCameraState& state,
   const float t = glm::clamp(state.axis_smoothing * dt, 0.0f, 1.0f);
   state.smoothed_axis = glm::mix(state.smoothed_axis, desired, t);
 
+  /* static bool moving = false;
 
-
-
-  
-  static bool moving = false;
   const bool now = (std::fabs(state.smoothed_axis.x) > 1e-3f) ||
                    (std::fabs(state.smoothed_axis.y) > 1e-3f);
   if (now != moving) {
@@ -38,12 +35,19 @@ void GodCameraUpdateMovement(GodCameraState& state,
     moving = now;
   }
 
-
-
+  Logger::getInstance().Log(LogLevel::Debug, "Camera Forward: (" +
+                                                 std::to_string(F.x) + ", " +
+                                                 std::to_string(F.y) + ", " +
+                                                 std::to_string(F.z) + ")");
+  Logger::getInstance().Log(
+      LogLevel::Debug, "Position: (" + std::to_string(transform.position_.x) +
+                           ", " + std::to_string(transform.position_.y) + ", " +
+                           std::to_string(transform.position_.z) + ")");*/
 
   // Translate: dir = F * x + R * y
   const glm::vec3 move_dir =
       F * state.smoothed_axis.x + R * state.smoothed_axis.y;
+
   const glm::vec3 pos_world = Transform::GetPosition(transform, Space::WORLD);
   Transform::SetPosition(transform, pos_world + move_dir * current_speed * dt,
                          Space::WORLD);
@@ -51,10 +55,34 @@ void GodCameraUpdateMovement(GodCameraState& state,
   // Keyboard look: Arrow keys to rotate camera
   if (input.look_axis.x != 0.0f || input.look_axis.y != 0.0f) {
     glm::vec3 eulerDeg = Transform::GetEulerAngles(transform, Space::WORLD);
+
+    // ! Check for another way that doesn't invert Y axis
     eulerDeg += glm::vec3(-input.look_axis.y, input.look_axis.x, 0.0f) *
                 state.keyboard_look_speed * dt;
     Transform::SetEulerAngles(transform, eulerDeg, Space::WORLD);
   }
+
+  /* if (input.look_axis.x != 0.0f || input.look_axis.y != 0.0f) {
+    glm::vec3 eulerDeg = Transform::GetEulerAngles(transform, Space::WORLD);
+
+    Logger::getInstance().Log(
+        LogLevel::Debug,
+        "LOOK INPUT: axis=(" + std::to_string(input.look_axis.x) + ", " +
+            std::to_string(input.look_axis.y) + "), euler_before=(" +
+            std::to_string(eulerDeg.x) + ", " + std::to_string(eulerDeg.y) +
+            ", " + std::to_string(eulerDeg.z) + ")");
+
+    eulerDeg += glm::vec3(input.look_axis.y, input.look_axis.x, 0.0f) *
+                state.keyboard_look_speed * dt;
+
+    Logger::getInstance().Log(LogLevel::Debug,
+                              "LOOK OUTPUT: euler_after=(" +
+                                  std::to_string(eulerDeg.x) + ", " +
+                                  std::to_string(eulerDeg.y) + ", " +
+                                  std::to_string(eulerDeg.z) + ")");
+
+    Transform::SetEulerAngles(transform, eulerDeg, Space::WORLD);
+  }*/
 
   // RMB: scroll to change speed, mouse to look
   if (input.right_mouse) {
@@ -66,7 +94,7 @@ void GodCameraUpdateMovement(GodCameraState& state,
 
     // eulerDeg += (-dy, +dx, 0) * sensitivity
     glm::vec3 eulerDeg = Transform::GetEulerAngles(transform, Space::WORLD);
-    eulerDeg += glm::vec3(-input.mouse_delta.y, input.mouse_delta.x, 0.0f) *
+    eulerDeg += glm::vec3(input.mouse_delta.y, input.mouse_delta.x, 0.0f) *
                 state.mouse_sensitivity;
     Transform::SetEulerAngles(transform, eulerDeg, Space::WORLD);
   }

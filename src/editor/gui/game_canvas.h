@@ -159,11 +159,9 @@ inline void GameCanvas(bool isGameRunning, bool& hovered, bool& focused) {
             glm::decompose(modelMatrix, scale, rotation, position, skew,
                            perspective);
 
-            Transform::SetPosition(transform, Transformation::Swap(position),
+            Transform::SetPosition(transform, position, Space::WORLD);
+            Transform::SetRotation(transform, glm::normalize(rotation),
                                    Space::WORLD);
-            Transform::SetRotation(
-                transform, Transformation::Swap(glm::normalize(rotation)),
-                Space::WORLD);
 
             // Apply constraints for scale
             if (gizmo_state.operation == ImGuizmo::SCALE) {
