@@ -24,7 +24,7 @@ void main()
     
     // Sky-based ambient (brighter on upward faces)
     float skyFactor = normal.y * 0.5 + 0.5;
-    vec3 ambient = mix(vec3(0.3), vec3(0.5), skyFactor);
+    vec3 ambient = mix(vec3_splat(0.3), vec3_splat(0.5), skyFactor);
     
     // Diffuse lighting
     vec3 diffuse = ndotl * u_sunLuminance.rgb * 0.6;
@@ -35,8 +35,8 @@ void main()
     // ============================================
     // Tone mapping & gamma correction
     // ============================================
-    lit_color = lit_color / (lit_color + vec3(1.0));  // Reinhard
-    lit_color = pow(lit_color, vec3(1.0 / 2.2));      // Gamma
+    lit_color = lit_color / (lit_color + vec3_splat(1.0));  // Reinhard
+    lit_color = pow(lit_color, vec3_splat(1.0 / 2.2));      // Gamma
     
     gl_FragColor = vec4(lit_color, 1.0);
 }

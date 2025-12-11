@@ -9,13 +9,13 @@
 #include "gui/asset_browser.h"
 #include "gui/camera_controls.h"
 #include "gui/console_panel.h"
-#include "gui/terrain_editor.h"
 #include "gui/file_explorer.h"
 #include "gui/game_canvas.h"
 #include "gui/hierarchy_panel.h"
 #include "gui/inspector_panel.h"
 #include "gui/menu_bar.h"
 #include "gui/status_bar.h"
+#include "gui/terrain_editor.h"
 #include "gui/toolbar.h"
 #include "gui/world_settings.h"
 #include "imgui.h"
@@ -301,7 +301,7 @@ void EditorUI::RenderUI() {
     ImGui::DockBuilderDockWindow("Hierarchy", left);
     ImGui::DockBuilderDockWindow("Inspector", right);
     ImGui::DockBuilderDockWindow("World", right);
-     ImGui::DockBuilderDockWindow("Terrain Editor", right);
+    ImGui::DockBuilderDockWindow("Terrain Editor", right);
     ImGui::DockBuilderDockWindow("Scene", dock_id_);
     ImGui::DockBuilderDockWindow("Console", bottom);
     // ImGui::DockBuilderDockWindow(Panels::kDlgWinName, bottom);
@@ -348,7 +348,8 @@ void EditorUI::RenderUI() {
   // The rendering pipeline now handles the gizmo, so this panel is just a
   // simple canvas.
   ImGui::Begin("Scene", nullptr);
-  Panels::GameCanvas(is_game_started_, game_canvas_hovered_, game_canvas_focused_);
+  Panels::GameCanvas(is_game_started_, game_canvas_hovered_,
+                     game_canvas_focused_);
   UpdateMovement();
   ImGui::End();
 
@@ -361,6 +362,8 @@ void EditorUI::RenderUI() {
 
     // 2. Call the newly designed Inspector panel with the live component.
     Panels::Inspector(transform);
+    Panels::InspectVolume(selectedEntity);
+
   } else {
     ImGui::TextDisabled("Select an entity to inspect its components.");
   }
@@ -371,7 +374,7 @@ void EditorUI::RenderUI() {
   Panels::WorldSettings();
   ImGui::End();
 
-    // -------- RIGHT : TERRAIN EDITOR --------
+  // -------- RIGHT : TERRAIN EDITOR --------
   ImGui::Begin("Terrain Editor", nullptr);
   Panels::TerrainEditor();
   ImGui::End();

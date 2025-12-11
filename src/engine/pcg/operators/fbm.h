@@ -3,12 +3,13 @@
 
 #include <FastNoise/FastNoise.h>
 #include <glm/glm.hpp>
+#include <array>
 
 #include "../noise/OpenSimplex2S.hpp"
 
 class OpenSimplex2S;
 
-namespace Generator {
+namespace PCG {
 struct UberFBMParams {
   int octaves = 6;
   float lacunarity = 2.0f;
@@ -64,6 +65,6 @@ private:
   float ApplySharpness(float value, float sharpness) const;
 };
 
-}  // namespace Generator
+}  // namespace PCG
 
 #endif  // FBM_H

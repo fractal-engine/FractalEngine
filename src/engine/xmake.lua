@@ -12,7 +12,7 @@ target("engine")
     -- IMPLEMENTATION FILES -------
     add_files("core/*.cpp", "audio/*.cpp", "misc/*.cpp", "scene/*.cpp", "context/*.cpp",
             "formats/*.cpp", "ecs/*.cpp", "memory/*.cpp", "transform/*.cpp", "time/*.cpp",
-            "math/*.cpp", "generator/*.cpp",
+            "math/*.cpp", "pcg/*.cpp",
 
     -- renderer files
     "renderer/*.cpp", "renderer/lighting/*.cpp", "renderer/shaders/*.cpp",
@@ -22,14 +22,15 @@ target("engine")
     -- resources files
     "resources/*.cpp", "resources/textures/*.cpp", "resources/3d/*.cpp",
 
-    -- generator files
-    "generator/operators/ridge.cpp", "generator/operators/fbm.cpp",
-            "generator/operators/remap.cpp", "generator/constraints/constraint_system.cpp",
-            "generator/generator.cpp", "generator/noise/OpenSimplex2S.cpp")
+    -- PCG files
+    "pcg/operators/ridge.cpp", "pcg/operators/fbm.cpp",
+            "pcg/operators/remap.cpp", "pcg/constraints/constraint_system.cpp",
+            "pcg/terrain/terrain_generator.cpp", "pcg/noise/OpenSimplex2S.cpp", "pcg/graph/program_graph.cpp",
+            "pcg/graph/graph_serializer.cpp")
 
     -- HEADER FILES -------
     add_headerfiles("core/*.h", "audio/*.h", "scene/*.h", "context/*.h", "formats/*.h",
-            "ecs/*.h", "memory/*.h", "transform/*.h", "time/*.h", "math/*.h", "generator/*.h",
+            "ecs/*.h", "memory/*.h", "transform/*.h", "time/*.h", "math/*.h", "pcg/*.h",
 
     -- renderer files
     "renderer/*.h", "renderer/lighting/*.h", "renderer/shaders/*.h",
@@ -46,10 +47,10 @@ target("engine")
     add_packages("boost", "libsdl2", "bgfx", "glm", "imgui", "libsdl2_ttf", "portaudio", "tinygltf", "nlohmann_json", "entt")
 
     if is_mode("debug") then
-    add_links("bimg_decodeDebug", "bimg_encodeDebug")
+        add_links("bimg_decodeDebug", "bimg_encodeDebug")
     else
         add_links("bimg_decodeRelease", "bimg_encodeRelease")
-    end
+     end
     add_defines("BGFX_STATIC_LIB")
 
      -- macOS specific frameworks that BGFX needs

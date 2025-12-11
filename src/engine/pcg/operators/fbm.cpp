@@ -2,7 +2,7 @@
 
 #include <algorithm>
 
-namespace Generator {
+namespace PCG {
 
 float UberFBM::ApplySharpness(float value, float sharpness) const {
   // Sharpness blending
@@ -191,4 +191,4 @@ UberFBMResult UberFBM::Eval(float x, float y, int seed,
 
   return result;
 }
-}  // namespace Generator
+}  // namespace PCG

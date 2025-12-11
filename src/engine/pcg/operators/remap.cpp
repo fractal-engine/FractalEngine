@@ -2,7 +2,7 @@
 
 #include <cmath>
 
-namespace Generator {
+namespace PCG {
 float Terrace(float value, const TerracingParams& params) {
   float step_size = 1.0f / params.steps;
   float stepped = std::floor(value / step_size) * step_size;
@@ -36,4 +36,4 @@ float Plateau(float value, const PlateauParams& params) {
   t = t * t * (3.0f - 2.0f * t);  // Smoothstep
   return std::lerp(value, params.threshold, t);
 }
-}  // namespace Generator
+}  // namespace PCG

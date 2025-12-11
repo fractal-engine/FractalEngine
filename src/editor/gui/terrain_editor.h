@@ -4,15 +4,15 @@
 #include <imgui.h>
 #include <functional>
 
-#include "engine/generator/constraints/biome_presets.h"
-#include "engine/generator/feature_descriptors.h"
-#include "engine/generator/generator.h"
+#include "engine/pcg/constraints/biome_presets.h"
+#include "engine/pcg/core/feature_descriptors.h"
+#include "engine/pcg/terrain/terrain_generator.h"
 
 namespace Panels {
 
 inline void TerrainEditor() {
-  static Generator::Config config = []() {
-    Generator::Config cfg;
+  static PCG::Config config = []() {
+    PCG::Config cfg;
     cfg.seed = 42;
     cfg.frequency = 0.01f;
     cfg.amplitude = 10.0f;
@@ -20,7 +20,7 @@ inline void TerrainEditor() {
     cfg.lacunarity = 2.0f;
     cfg.gain = 0.5f;
     cfg.sharpness = 0.3f;
-    Generator::BiomePresets::ApplyTemperateRules(cfg.constraints);
+    PCG::BiomePresets::ApplyTemperateRules(cfg.constraints);
     return cfg;
   }();
 
@@ -196,25 +196,25 @@ inline void TerrainEditor() {
 
     // Add feature
     if (ImGui::Button("Add Mountain")) {
-      config.features.push_back(Generator::Descriptors::Mountains(
+      config.features.push_back(PCG::Descriptors::Mountains(
           glm::vec2(gridSize / 2.0f, gridSize / 2.0f), 150.0f));
       regenerate_requested = true;
     }
     ImGui::SameLine();
     if (ImGui::Button("Add Plains")) {
-      config.features.push_back(Generator::Descriptors::Plains(
+      config.features.push_back(PCG::Descriptors::Plains(
           glm::vec2(gridSize / 2.0f, gridSize / 2.0f), 200.0f));
       regenerate_requested = true;
     }
     ImGui::SameLine();
     if (ImGui::Button("Add Valley")) {
-      config.features.push_back(Generator::Descriptors::Valleys(
+      config.features.push_back(PCG::Descriptors::Valleys(
           glm::vec2(gridSize / 2.0f, gridSize / 2.0f), 180.0f));
       regenerate_requested = true;
     }
     ImGui::SameLine();
     if (ImGui::Button("Add Hills")) {
-      config.features.push_back(Generator::Descriptors::Hills(
+      config.features.push_back(PCG::Descriptors::Hills(
           glm::vec2(gridSize / 2.0f, gridSize / 2.0f), 250.0f));
       regenerate_requested = true;
     }
@@ -293,20 +293,20 @@ inline void TerrainEditor() {
   // Biomes
   if (ImGui::CollapsingHeader("Biomes")) {
     if (ImGui::Button("Temperate")) {
-      config.constraints = Generator::ConstraintSystem();
-      Generator::BiomePresets::ApplyTemperateRules(config.constraints);
+      config.constraints = PCG::ConstraintSystem();
+      PCG::BiomePresets::ApplyTemperateRules(config.constraints);
       regenerate_requested = true;
     }
     ImGui::SameLine();
     if (ImGui::Button("Desert")) {
-      config.constraints = Generator::ConstraintSystem();
-      Generator::BiomePresets::ApplyDesertRules(config.constraints);
+      config.constraints = PCG::ConstraintSystem();
+      PCG::BiomePresets::ApplyDesertRules(config.constraints);
       regenerate_requested = true;
     }
     ImGui::SameLine();
     if (ImGui::Button("Arctic")) {
-      config.constraints = Generator::ConstraintSystem();
-      Generator::BiomePresets::ApplyArcticRules(config.constraints);
+      config.constraints = PCG::ConstraintSystem();
+      PCG::BiomePresets::ApplyArcticRules(config.constraints);
       regenerate_requested = true;
     }
   }
@@ -322,7 +322,7 @@ inline void TerrainEditor() {
 
     int current_stage = static_cast<int>(config.debug_stage);
     if (ImGui::Combo("Active Stage", &current_stage, stage_names, 7)) {
-      config.debug_stage = static_cast<Generator::PipelineStage>(current_stage);
+      config.debug_stage = static_cast<PCG::PipelineStage>(current_stage);
       changed = true;
     }
 

@@ -1,6 +1,6 @@
 #include "constraint_system.h"
 
-namespace Generator {
+namespace PCG {
 const Rule* ConstraintSystem::Match(const Properties& props) const {
 
   const Rule* best_match = nullptr;
@@ -33,4 +33,4 @@ const Rule* ConstraintSystem::Match(const Properties& props) const {
   return best_match;
 }
 
-}  // namespace Generator
+}  // namespace PCG

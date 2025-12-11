@@ -1,20 +1,23 @@
-#ifndef GENERATOR_H
-#define GENERATOR_H
+#ifndef TERRAIN_GENERATOR_H
+#define TERRAIN_GENERATOR_H
 
 #include <FastNoise/FastNoise.h>
+#include <memory>
+#include <iomanip> 
 
-#include "constraints/constraint_system.h"
-#include "feature_descriptors.h"
-#include "operators/fbm.h"
-#include "operators/remap.h"
-#include "operators/ridge.h"
+#include "../constraints/constraint_system.h"
+#include "../core/feature_descriptors.h"
+#include "../core/sample.h"
+#include "../operators/fbm.h"
+#include "../operators/remap.h"
+#include "../operators/ridge.h"
 
 // Forward declare MeshData
 namespace Resources3D {
 struct MeshData;
 }
 
-namespace Generator {
+namespace PCG {
 
 enum class PipelineStage {
   BaseNoiseOnly,        // Raw OpenSimplex2
@@ -65,16 +68,6 @@ struct Config {
   PipelineStage debug_stage = PipelineStage::Complete;
 };
 
-// Single point sample result
-struct Sample {
-  float height;
-  float slope;
-  float curvature;
-  glm::vec2 gradient;
-  Properties properties;
-  const Rule* matched_rule = nullptr;
-};
-
 class Generator {
 public:
   Generator(const Config& config);
@@ -120,6 +113,6 @@ private:
 
   float ApplyPipeline(float x, float y, glm::vec2& out_gradient) const;
 };
-}  // namespace Generator
+}  // namespace PCG
 
-#endif  // GENERATOR_H
+#endif  // TERRAIN_GENERATOR_H

@@ -1,10 +1,17 @@
-#include "engine/generator/generator.h"
-#include "engine/generator/noise/OpenSimplex2S.hpp"
+#define _USE_MATH_DEFINES
+#include "engine/pcg/noise/OpenSimplex2S.hpp"
+#include "engine/pcg/terrain/terrain_generator.h"
 
 #include <cassert>
 #include <cmath>
 #include <iomanip>
 #include <iostream>
+#include <chrono> 
+#include <algorithm>
+#include <array>
+#include <limits> 
+#include <memory>     
+#include <vector> 
 
 #define RESET "\033[0m"
 #define BLACK "\033[30m"              /* Black */
@@ -122,13 +129,13 @@ void TestDerivativeScaling() {
 void TestGeneratorDerivatives() {
   std::cout << "=== Test 3: Generator Integration ===" << std::endl;
 
-  Generator::Config config;
+  PCG::Config config;
   config.seed = 999;
   config.frequency = 0.01f;
   config.octaves = 4;
   config.amplitude = 50.0f;
 
-  Generator::Generator gen(config);
+  PCG::Generator gen(config);
 
   // Sample terrain at multiple points
   float test_x[] = {0.0f, 10.0f, 50.0f, 100.0f};
@@ -138,7 +145,7 @@ void TestGeneratorDerivatives() {
 
   for (float x : test_x) {
     for (float y : test_y) {
-      Generator::Sample sample = gen.Eval(x, y);
+      PCG::Sample sample = gen.Eval(x, y);
 
       // Check that we got valid results
       bool valid = !std::isnan(sample.height) && !std::isinf(sample.height) &&
@@ -277,7 +284,7 @@ void TestEdgeCases() {
 void TestExpressiveRange() {
   std::cout << "=== Test 6: Expressive Range Analysis ===" << std::endl;
 
-  Generator::Config config;
+  PCG::Config config;
   config.seed = 42;
   config.frequency = 0.05f;
   config.amplitude = 60.0f;
@@ -285,7 +292,7 @@ void TestExpressiveRange() {
   config.ridge_erosion = 0.6f;
   config.slope_erosion = 0.4f;
 
-  Generator::Generator gen(config);
+  PCG::Generator gen(config);
 
   // Generate small heightmap for analysis
   const int SIZE = 512;
@@ -301,7 +308,7 @@ void TestExpressiveRange() {
 
   for (int y = 0; y < SIZE; ++y) {
     for (int x = 0; x < SIZE; ++x) {
-      Generator::Sample s = gen.Eval((float)x, (float)y);
+      PCG::Sample s = gen.Eval((float)x, (float)y);
       heights.push_back(s.height);
 
       min_h = std::min(min_h, s.height);
@@ -381,20 +388,20 @@ void TestExpressiveRange() {
 void TestSpectralAnalysis() {
   std::cout << "=== Test 7: Spectral Analysis ===" << std::endl;
 
-  Generator::Config config;
+  PCG::Config config;
   config.seed = 42;
   config.frequency = 0.05f;
   config.amplitude = 60.0f;
   config.octaves = 6;
 
-  Generator::Generator gen(config);
+  PCG::Generator gen(config);
 
   // Generate 1D slice for spectral analysis
   const int SIZE = 256;
   std::vector<double> signal(SIZE);
 
   for (int i = 0; i < SIZE; ++i) {
-    Generator::Sample s = gen.Eval((float)i, 0.0f);
+    PCG::Sample s = gen.Eval((float)i, 0.0f);
     signal[i] = s.height;
   }
 

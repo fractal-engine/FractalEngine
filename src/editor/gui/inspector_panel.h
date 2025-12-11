@@ -2,6 +2,14 @@
 #define INSPECTOR_PANEL_H
 
 #include "engine/ecs/components/transform_component.h"
+#include "engine/ecs/components/volume_component.h"
+
+#include "engine/pcg/generator_base.h"
+#include "engine/pcg/generator_resource.h"
+#include "engine/pcg/pcg_engine.h"
+
+#include "engine/context/engine_context.h"
+#include "engine/ecs/world.h"
 
 #include <imgui.h>
 #include <glm/gtc/type_ptr.hpp>  // Required for glm::value_ptr
@@ -53,6 +61,59 @@ inline void Inspector(TransformComponent& transform) {
 
   // TODO: Add inspectors for other components on the entity here.
   // For example: if (ecs.Has<MeshRendererComponent>(entity)) { ... }
+}
+
+inline void InspectVolume(Entity entity) {
+  auto& world = ECS::Main();
+
+  if (!world.Has<VolumeComponent>(entity))
+    return;
+
+  auto& volume = world.Get<VolumeComponent>(entity);
+
+  if (!ImGui::CollapsingHeader("Volume", ImGuiTreeNodeFlags_DefaultOpen))
+    return;
+
+  bool changed = false;
+
+  // Resolution
+  int res = volume.resolution;
+  if (ImGui::SliderInt("Resolution", &res, 64, 4096)) {
+    volume.resolution = static_cast<uint16_t>(res);
+    changed = true;
+  }
+
+  // Generator selection (resource picker)
+  // TODO: Resource picker widget
+  ImGui::Text("Generator: %u", volume.generator_id);
+
+  // If generator is Graph type, show edit button
+  if (volume.generator_id != 0) {
+    auto generator_res =
+        EngineContext::resourceManager().GetResourceAs<PCG::GeneratorResource>(
+            volume.generator_id);
+
+    if (generator_res) {
+      PCG::GeneratorBase* generator = generator_res->Get();
+      if (generator && generator->GetType() == PCG::GeneratorType::Graph) {
+        PCGEngine& pcg = EngineContext::Generator();
+
+        if (pcg.active_graph == generator->GetGraph()) {
+          if (ImGui::Button("Close Graph Editor")) {
+            pcg.CloseGraphEditor();
+          }
+        } else {
+          if (ImGui::Button("Edit Graph")) {
+            pcg.SetActiveGraph(generator->GetGraph());
+          }
+        }
+      }
+    }
+  }
+
+  if (changed) {
+    volume.dirty = true;
+  }
 }
 
 }  // namespace Panels

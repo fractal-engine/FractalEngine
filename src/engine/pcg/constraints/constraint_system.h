@@ -5,7 +5,7 @@
 #include <unordered_map>
 #include <vector>
 
-namespace Generator {
+namespace PCG {
 
 // constraint: condition that must be met
 struct Constraint {
@@ -39,6 +39,6 @@ private:
   std::vector<Rule> rules_;
 };
 
-}  // namespace Generator
+}  // namespace PCG
 
 #endif  // CONSTRAINT_SYSTEM_H

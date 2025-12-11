@@ -3,7 +3,7 @@
 
 #include "constraint_system.h"
 
-namespace Generator {
+namespace PCG {
 
 namespace BiomePresets {
 // Temperate climate biome set
@@ -115,6 +115,6 @@ static void ApplyArcticRules(ConstraintSystem& system) {
 }
 }  // namespace BiomePresets
 
-}  // namespace Generator
+}  // namespace PCG
 
 #endif  // BIOME_PRESETS_H

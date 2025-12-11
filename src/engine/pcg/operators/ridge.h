@@ -1,7 +1,7 @@
 #ifndef RIDGE_H
 #define RIDGE_H
 
-namespace Generator {
+namespace PCG {
 
 class Ridge {
 public:
@@ -9,6 +9,6 @@ public:
   static float Blend(float value, float sharpness);
 };
 
-}  // namespace Generator
+}  // namespace PCG
 
 #endif  // RIDGE_H

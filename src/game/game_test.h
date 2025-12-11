@@ -5,7 +5,7 @@
 #include <vector>
 
 #include "editor/camera/camera_view.h"
-#include "engine/generator/generator.h"
+#include "engine/pcg/terrain/terrain_generator.h"
 #include "game_base.h"
 
 // ──────────────────────────────────────────────────────
@@ -44,8 +44,8 @@ public:
   // use engine_globals.h
 
   // Generator functions
-  void GenerateTerrain(const Generator::Config& gen_config, uint16_t gridSize);
-  Generator::Generator& GetGenerator() { return generator_; }
+  void GenerateTerrain(const PCG::Config& gen_config, uint16_t gridSize);
+  PCG::Generator& GetGenerator() { return generator_; }
 
 private:
   // ───── Terrain
@@ -147,7 +147,7 @@ private:
   Entity terrain_entity_ = entt::null;
   std::shared_ptr<Mesh> terrain_mesh_;
 
-  Generator::Generator generator_;
+  PCG::Generator generator_;
 };
 
 #endif  // GAME_TEST_H

@@ -3,7 +3,7 @@
 
 #include <glm/glm.hpp>
 
-namespace Generator {
+namespace PCG {
 
 struct Feature {
   glm::vec2 center;  // world position
@@ -71,6 +71,6 @@ inline Feature Hills(glm::vec2 pos, float radius = 200.0f) {
 }
 
 }  // namespace Descriptors
-}  // namespace Generator
+}  // namespace PCG
 
 #endif  // FEATURE_DESCRIPTORS_H

@@ -81,52 +81,48 @@ void SceneViewPipeline::RegisterNodes() {
 
   // --- NODES ---
   // Node 0: Shadows
-  frame_graph.AddNode(Node{
-      .name = "shadows",
-      .execute = [this](const Node::Context& ctx) { RenderShadowNode(ctx); },
-      .reads = {},
-      .writes = {"shadow_map"}});
+  frame_graph.AddNode(Node{.name = "shadows",
+                           .reads = {},
+                           .writes = {"shadow_map"},
+                           .execute = [this](const Node::Context& ctx) {
+                             RenderShadowNode(ctx);
+                           }});
 
   // Node 1: Reflection rendering (for water)
   frame_graph.AddNode(Node{.name = "reflection",
-                           .execute =
-                               [this](const Node::Context& context) {
-                                 RenderReflectionNode(context);
-                               },
                            .reads = {},
-                           .writes = {"reflection"}});
+                           .writes = {"reflection"},
+                           .execute = [this](const Node::Context& context) {
+                             RenderReflectionNode(context);
+                           }});
 
   // Node 2: Forward opaque rendering
-  frame_graph.AddNode(Node{
-      .name = "forward_opaque",
-      .execute =
-          [this](const Node::Context& context) { RenderForwardNode(context); },
-      .reads = {"reflection", "shadow_map"},
-      .writes = {"scene_color", "scene_depth"}});
+  frame_graph.AddNode(Node{.name = "forward_opaque",
+                           .reads = {"reflection", "shadow_map"},
+                           .writes = {"scene_color", "scene_depth"},
+                           .execute = [this](const Node::Context& context) {
+                             RenderForwardNode(context);
+                           }});
 
   // Node 3: Selection outline (reads depth from forward pass)
-  frame_graph.AddNode(Node{
-      .name = "selection_outline",
-      .execute =
-          [this](const Node::Context& context) {
-            if (show_gizmos_ && !selected_entities_.empty()) {
-              RenderSelectionOutlineNode(context);
-            }
-          },
-      .reads = {"scene_depth"},
-      .writes = {"scene_color"}  // Modifies color, preserves depth
-  });
+  frame_graph.AddNode(Node{.name = "selection_outline",
+                           .reads = {"scene_depth"},
+                           .writes = {"scene_color"},
+                           .execute = [this](const Node::Context& context) {
+                             if (show_gizmos_ && !selected_entities_.empty()) {
+                               RenderSelectionOutlineNode(context);
+                             }
+                           }});
 
   // Node 4: Gizmos (transform handles, etc.)
   frame_graph.AddNode(Node{.name = "gizmos",
-                           .execute =
-                               [this](const Node::Context& context) {
-                                 if (show_gizmos_) {
-                                   RenderGizmosNode(context);
-                                 }
-                               },
                            .reads = {"scene_depth"},
-                           .writes = {"scene_color"}});
+                           .writes = {"scene_color"},
+                           .execute = [this](const Node::Context& context) {
+                             if (show_gizmos_) {
+                               RenderGizmosNode(context);
+                             }
+                           }});
 
   // Bake the graph
   frame_graph.Bake();

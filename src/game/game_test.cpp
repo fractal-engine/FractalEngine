@@ -12,9 +12,9 @@
 #include "engine/core/logger.h"
 #include "engine/core/view_ids.h"
 #include "engine/ecs/ecs_collection.h"
-#include "engine/generator/constraints/biome_presets.h"
-#include "engine/generator/feature_descriptors.h"
-#include "engine/generator/generator.h"
+#include "engine/pcg/constraints/biome_presets.h"
+#include "engine/pcg/core/feature_descriptors.h"
+#include "engine/pcg/terrain/terrain_generator.h"
 #include "engine/renderer/graphics_renderer.h"
 #include "engine/renderer/lighting/light.h"
 #include "engine/resources/shader_utils.h"
@@ -151,7 +151,7 @@ GameTest::GameTest()
       _s_grassORMUniform(BGFX_INVALID_HANDLE),
       _s_grassNormalUniform(BGFX_INVALID_HANDLE),
       _u_slopeBlendParamsUniform(BGFX_INVALID_HANDLE),
-      generator_(Generator::Config{}) {
+      generator_(PCG::Config{}) {
   bx::mtxIdentity(world_matrix);  // Initialize world matrix to identity
 }
 
@@ -502,12 +502,12 @@ void GameTest::Init() {
 // ═══════════════════════════════════════════════════════════════
 // CREATE TERRAIN ENTITY
 // ═══════════════════════════════════════════════════════════════
-void GameTest::GenerateTerrain(const Generator::Config& gen_config,
+void GameTest::GenerateTerrain(const PCG::Config& gen_config,
                                uint16_t gridSize) {
 
   // Generate mesh
-  Generator::Generator gen(gen_config);
-  Generator::Generator::MeshOutput mesh_params;
+  PCG::Generator gen(gen_config);
+  PCG::Generator::MeshOutput mesh_params;
   mesh_params.size = gridSize;      // GRID SIZE
   mesh_params.with_normals = true;  // ENABLE NORMALS
   mesh_params.with_colors = true;

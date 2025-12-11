@@ -1,7 +1,7 @@
 #ifndef REMAP_H
 #define REMAP_H
 
-namespace Generator {
+namespace PCG {
 
 struct TerracingParams {
   int steps = 5;
@@ -19,6 +19,6 @@ public:
   static float Plateau(float value, const PlateauParams&) { return value; }
 };
 
-}  // namespace Generator
+}  // namespace PCG
 
 #endif  // REMAP_H

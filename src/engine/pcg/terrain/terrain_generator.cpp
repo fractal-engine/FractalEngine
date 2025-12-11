@@ -1,8 +1,8 @@
-#include "generator.h"
+#include "terrain_generator.h"
 
-#include "constraints/biome_presets.h"
+#include "../constraints/biome_presets.h"
+#include "../noise/OpenSimplex2S.hpp"
 #include "engine/resources/3d/mesh_data.h"
-#include "noise/OpenSimplex2S.hpp"
 
 #include <algorithm>
 #include <fstream>
@@ -20,7 +20,7 @@ float ComputeFalloff(float distance, float radius) {
 }
 }  // namespace
 
-namespace Generator {
+namespace PCG {
 
 // Constructor
 Generator::Generator(const Config& config) : config_(config) {
@@ -557,4 +557,4 @@ Sample Generator::EvalStaged(float x, float y, PipelineStage stage) const {
   return result;
 }
 
-}  // namespace Generator
+}  // namespace PCG

@@ -1,7 +1,7 @@
 #include "ridge.h"
 #include <cmath>
 
-namespace Generator {
+namespace PCG {
 
 float Ridge::Blend(float value, float sharpness) {
   float billow = std::abs(value);
@@ -16,4 +16,4 @@ float Ridge::Blend(float value, float sharpness) {
   }
 }
 
-}  // namespace Generator
+}  // namespace PCG

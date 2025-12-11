@@ -7,7 +7,7 @@ set_languages("c++20")
 if is_plat("windows") then
     add_cxxflags("/Zc:__cplusplus", "/Zc:preprocessor")
     -- use static CRT
-    set_runtimes("MT")
+    set_runtimes(is_mode("debug") and "MTd" or "MT")
 end
 
 -- set path globally

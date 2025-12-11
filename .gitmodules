@@ -7,3 +7,6 @@
 [submodule "thirdparty/FastNoise2"]
 	path = thirdparty/FastNoise2
 	url = https://github.com/Auburn/FastNoise2.git
+[submodule "src/editor/vendor/imgui-node-editor"]
+	path = src/editor/vendor/imgui-node-editor
+	url = https://github.com/thedmd/imgui-node-editor
