@@ -29,9 +29,10 @@ public:
     return true;
   }
   
-  void TickAll(double dt) {
+  // TODO: use Time.h instead!
+  void TickAll(double delta_time) {
     for (auto& subsystem : subsystems_)
-      subsystem->Tick(dt);
+      subsystem->Tick(delta_time);
   }
   
   void ShutdownAll() {

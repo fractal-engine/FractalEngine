@@ -1,20 +1,20 @@
 #include "scene_view_forward_pass.h"
 
-#include <bx/math.h>
+/* #include <bx/math.h>
 #include <glm/gtc/type_ptr.hpp>
 
+#include "editor/gizmos/component_gizmos.h"
 #include "editor/runtime/runtime.h"  // TODO: remove this once pipeline is done
 #include "engine/core/engine_globals.h"
 #include "engine/core/logger.h"
-#include "engine/ecs/entity_container.h"
+#include "engine/renderer/graphics_renderer.h"
 #include "engine/renderer/model/mesh.h"
-#include "engine/renderer/renderer_graphics.h"
 
 SceneViewForwardPass::SceneViewForwardPass()
     : framebuffer_(BGFX_INVALID_HANDLE),
       color_texture_(BGFX_INVALID_HANDLE),
       depth_texture_(BGFX_INVALID_HANDLE),
-      view_id_(ViewID::SCENE_MESH),
+      view_id_(ViewID::SCENE_FORWARD),
       wireframe_(false),
       selection_material_(BGFX_INVALID_HANDLE) {}
 
@@ -113,7 +113,8 @@ void SceneViewForwardPass::Destroy() {
 bgfx::TextureHandle SceneViewForwardPass::Render(
     const glm::mat4& view, const glm::mat4& projection,
     const glm::mat4& view_projection, const Camera& camera,
-    const std::vector<EntityContainer*>& selected_entities) {
+    const std::vector<EntityContainer*>& selected_entities,
+    Entity selectedEntity) {
 
   if (!bgfx::isValid(framebuffer_)) {
     Logger::getInstance().Log(
@@ -155,6 +156,11 @@ bgfx::TextureHandle SceneViewForwardPass::Render(
       RenderSelectedEntity(entity, view_projection, camera);
     }
   }
+
+  // --- New for Gizmo ---
+  // After all meshes are drawn, draw the gizmo on top
+  ComponentGizmos::DrawTransformGizmo(selectedEntity, glm::value_ptr(view),
+                                      glm::value_ptr(projection));
 
   // Return the color texture for display
   return color_texture_;
@@ -218,11 +224,11 @@ void SceneViewForwardPass::RenderMeshes(
        new_bound_materials++;
      } */
 
-    RenderMesh(transform, renderer);
+    /* RenderMesh(transform, renderer);
   }
-}
+} */
 
-void SceneViewForwardPass::RenderSelectedEntity(
+/* void SceneViewForwardPass::RenderSelectedEntity(
     EntityContainer* entity, const glm::mat4& view_projection,
     const Camera& camera) {
   // Render selected entity gizmos if needed
@@ -283,4 +289,5 @@ void SceneViewForwardPass::RenderSelectedEntity(
   bgfx::submit(view_id_, selection_material_);
 
   // TODO: Reset BGFX blend and stencil state if needed
-}
+} 
+*/

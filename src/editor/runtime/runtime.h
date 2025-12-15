@@ -9,6 +9,7 @@
 #include "editor/pipelines/scene_view_pipeline.h"
 #include "editor/project/project_manager.h"
 #include "engine/core/singleton.hpp"
+#include "engine/renderer/frame_graph.h"
 #include "engine/renderer/renderer_base.h"
 #include "engine/renderer/shaders/shader_manager.h"
 #include "game/game_manager.h"
@@ -24,25 +25,38 @@ class Input;
 class WindowManager;
 class ProjectManager;
 
+class ShadowMap;
+class Model;
+
 namespace Runtime {
 
-/* ------------ Core functions ------------ */
+// CORE
 int START_LOOP();
 int TERMINATE();
 
-/* ------------ Project ------------ */
+// Resource functions
+void UpdateGlobalResources();
+GlobalResources BuildGlobalResources();
+
+// Project
 ProjectManager& Project();
 
-/* ------------ Pipeline getters ------------ */
-SceneViewPipeline& sceneViewPipeline();
+// Pipeline getters
+SceneViewPipeline& GetSceneViewPipeline();
+FrameGraph& GetFrameGraph();
 
-/* ------------ Getters ------------ */
+// Getters
 EditorBase* Editor();
 RendererBase* Renderer();
 GameManager* Game();
-Input* InputSystem();
+Input* InputDevice();
 WindowManager* Window();
 ShaderManager* Shader();
+IMGizmo& SceneGizmos();
+
+// Shadow getter
+ShadowMap& MainShadowMap();
+
 
 }  // namespace Runtime
 

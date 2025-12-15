@@ -6,7 +6,7 @@
 #include "backends/imgui_impl_sdl2.h"
 
 #include "platform_utils.h"
-#include "engine/core/logger.h"
+#include "engine/core/logger.h" // ! remove engine dependency
 
 #if defined(__APPLE__)
 
@@ -112,6 +112,18 @@ void LockMinSize(SDL_Window* w, int minW, int minH)
 void RestoreMinSize(SDL_Window* w)
 {
     SDL_SetWindowMinimumSize(w, 0, 0);        // remove lower bound
+}
+
+void DisableTextInput() {
+    SDL_StopTextInput();
+}
+
+void EnableTextInput() {
+    SDL_StartTextInput();
+}
+
+bool IsTextInputActive() {
+    return SDL_IsTextInputActive() == SDL_TRUE;
 }
 
 }  // namespace platform

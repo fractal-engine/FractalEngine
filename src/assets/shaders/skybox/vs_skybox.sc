@@ -22,7 +22,8 @@ void main() {
     float3 viewDir_viewSpace = normalize(viewPos);
 
     // --- Transform View Direction to World Space ---
-    v_viewDir = normalize(mul(u_viewInv, vec4(viewDir_viewSpace, 0.0)).xyz);
+    float3 viewDir_world = normalize(mul(u_viewInv, vec4(viewDir_viewSpace, 0.0)).xyz);
+    v_viewDir = viewDir_world;
 
     // --- Output final clip-space position ---
     // Z=1.0 to render at far plane, W=1.0 for rasterizer

@@ -13,7 +13,7 @@
 #include <vector>
 
 class Renderable;
-class Light;
+// class Light;
 
 class Scene {
 public:

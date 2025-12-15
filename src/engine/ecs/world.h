@@ -6,10 +6,12 @@
 #include <string>
 #include <tuple>
 #include <vector>
+#include <algorithm> 
 
-#include "engine/ecs/components/camera.h"
-#include "engine/ecs/components/mesh_renderer.h"
-#include "engine/ecs/components/transform.h"
+#include "engine/ecs/components/camera_component.h"
+#include "engine/ecs/components/mesh_renderer_component.h"
+#include "engine/ecs/components/transform_component.h"
+#include "engine/ecs/components/light_component.h"
 
 using Entity = entt::entity;
 using Registry = entt::registry;

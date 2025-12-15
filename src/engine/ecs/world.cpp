@@ -117,6 +117,7 @@ void ECS::SetParent(Entity entity, Entity parent) {
         LogLevel::Warning, "[ECS]: Tried to modify parent of invalid entity");
     return;
   }
+
   if (!Has<TransformComponent>(parent)) {
     Logger::getInstance().Log(LogLevel::Warning,
                               "[ECS]: Tried to make invalid entity a parent");
@@ -156,7 +157,7 @@ void ECS::RemoveParent(Entity entity) {
   /* if (!Transform::HasParent(transform))
     return;
 
-  auto& children = Transform::FetchParent(transform).children_;
+  auto& children = Transform::GetParent(transform).children_;
   auto it = std::find(children.begin(), children.end(), entity);
 
   if (it != children.end()) {
@@ -175,14 +176,15 @@ std::optional<Camera> ECS::GetActiveCamera() {
   for (auto entity : group) {
     auto [transform, camera] =
         group.get<TransformComponent, CameraComponent>(entity);
-    if (camera.enabled)
+    if (camera.enabled_)
       return Camera(transform, camera);
   }
   return std::nullopt;
 }
 
 /* ---------- per-frame transform evaluation ---------- */
-void ECS::UpdateTransforms() {
+// TODO: check if we need to directly use TransformSystem here
+/* void ECS::UpdateTransforms() {
   registry_.view<TransformComponent>().each([](auto& t) {
     if (!t.modified_)
       return;
@@ -192,4 +194,20 @@ void ECS::UpdateTransforms() {
     t.normal_ = glm::transpose(glm::inverse(glm::mat3(t.model_)));
     t.modified_ = false;
   });
+} */
+
+/* ---------- helpers ---------- */
+// Sets an entire subtree dirty and fixes depth values bottom-up.
+static void _SetSubtreeDirtyAndFixDepth(ECS& ecs, Entity root, uint32_t depth) {
+  if (!ecs.Has<TransformComponent>(root)) return;
+
+  auto& t = ecs.Get<TransformComponent>(root);
+  t.depth_    = depth;
+  t.modified_ = true;
+
+  for (Entity c : t.children_) {
+    if (ecs.Has<TransformComponent>(c)) {
+      _SetSubtreeDirtyAndFixDepth(ecs, c, depth + 1);
+    }
+  }
 }

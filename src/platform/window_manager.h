@@ -2,13 +2,10 @@
 #define SDL_PLATFORM_H
 
 #include <SDL.h>
-#include <SDL_hints.h>
-#include <SDL_syswm.h>
-#include <bgfx/bgfx.h>
 
 #include <functional>
 #include <vector>
-#include "engine/core/singleton.hpp"
+#include "engine/core/singleton.hpp"  // ! remove engine dependency
 
 class WindowManager : public Singleton<WindowManager> {
 private:
@@ -18,7 +15,7 @@ private:
   float dpiScale_;  // retina scale factor
   std::vector<std::function<void(int, int)>> resizeCallbacks_;
 
-  void initialize();
+  // void Initialize();
   bool SetFullscreen(bool enable);
 
 public:

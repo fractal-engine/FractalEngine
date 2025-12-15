@@ -1,6 +1,10 @@
+#include <SDL_hints.h>
+#include <SDL_syswm.h>
+
 #include <bgfx/bgfx.h>
 #include <bgfx/platform.h>
-#include "engine/core/logger.h"
+
+#include "engine/core/logger.h"  // ! remove engine dependency
 #include "imgui.h"
 
 #include "platform/platform_utils.h"
@@ -44,6 +48,8 @@ bool WindowManager::Initialize(const char* title, int width, int height) {
   //  Get display scale factor for Retina support
   // ------------------------------------------------
   instance.dpiScale_ = platform::GetDPIScale(instance.window_);
+
+  platform::DisableTextInput();
 
   Logger::getInstance().Log(
       LogLevel::Info, "WindowManager initialized with size: " +

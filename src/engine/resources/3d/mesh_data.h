@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <string>
 #include <vector>
+#include <unordered_map>
 
 namespace Resources3D {
 
@@ -11,6 +12,8 @@ struct MeshData {
   std::vector<float> positions_;
   std::vector<float> normals_;
   std::vector<uint32_t> indices_;  // 32-bit
+  std::vector<float> tex_coords_;
+  std::vector<float> colors_;
   std::string material_name_ = "default";
 };
 

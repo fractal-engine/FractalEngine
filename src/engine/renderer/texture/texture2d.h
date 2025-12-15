@@ -7,11 +7,11 @@
 #include <mutex>
 #include <string>
 #include <unordered_map>
+#include <array>
 
 // --------------------------------------------------------------------------
 //  2D texture wrapper
 //  -------------------------------------------------------------------------
-namespace Gfx {
 
 // Define texture types
 enum class TextureType {
@@ -74,7 +74,5 @@ private:
   std::mutex mtx_;
   std::unordered_map<std::string, std::shared_ptr<Texture>> map_;
 };
-
-}  // namespace Gfx
 
 #endif  // TEXTURE2D_H

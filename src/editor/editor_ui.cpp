@@ -1,9 +1,11 @@
 #include "editor/editor_ui.h"
 #include "editor/resources/theme/dark_theme.hpp"
 #include "editor/runtime/runtime.h"
+#include "engine/context/engine_context.h"
 #include "engine/core/engine_globals.h"
 #include "engine/core/logger.h"
 #include "engine/core/view_ids.h"
+#include "engine/ecs/world.h"
 #include "gui/asset_browser.h"
 #include "gui/camera_controls.h"
 #include "gui/console_panel.h"
@@ -13,7 +15,9 @@
 #include "gui/inspector_panel.h"
 #include "gui/menu_bar.h"
 #include "gui/status_bar.h"
+#include "gui/terrain_editor.h"
 #include "gui/toolbar.h"
+#include "gui/world_settings.h"
 #include "imgui.h"
 #include "imgui_internal.h"
 #include "imgui_utils.h"
@@ -25,8 +29,6 @@
 #include "editor/vendor/imgui/imgui_impl_bgfx.h"
 
 #include <SDL.h>
-#include <chrono>
-#include <thread>
 
 EditorUI* EditorUI::s_instance_ = nullptr;
 
@@ -69,8 +71,9 @@ void EditorUI::Initialize() {
       ImVec2(WindowManager::GetDPIScale(), WindowManager::GetDPIScale());
 }
 
-// TODO: refactor loop, should be split into EditorUI::NewFrame() / EditorUI::Render()
-// Renamed to NextFrame()??
+// TODO: refactor loop, should be split into EditorUI::NewFrame() /
+// EditorUI::Render() Renamed to NextFrame()??
+// Also create a window_viewport for SDL stuff in the loop
 void EditorUI::Run() {
   Logger::getInstance().Log(LogLevel::Info, "EditorUI main loop start");
 
@@ -78,6 +81,9 @@ void EditorUI::Run() {
 
   SDL_Event event;
   while (!quit_) {
+
+    // TODO: move this out of the loop later
+    EngineContext::NextFrame();
 
     // ── 0. SDL EVENTS ───────────────────────────────────────────
     while (SDL_PollEvent(&event)) {
@@ -143,14 +149,24 @@ void EditorUI::Run() {
 
     /* 2 - Build ImGui UI structure */
     BeginImGuiFrame(WindowManager::GetWindow());
-    RenderUI();
 
-    /* 3 - Finalize ImGui frame definition */
-    ImGui::Render();  // prepre imgui draw data (no rendering yet)
-
-    /* 4 - Prepare rendering target */
+    /* 3 - Prepare rendering target */
     auto* graphics = static_cast<GraphicsRenderer*>(renderer_);
     graphics->PrepareFrame();  // set up scene framebuffer view
+
+    // Update global resources and set them in frame graph
+    // TODO: check if this should be called here
+    Runtime::UpdateGlobalResources();
+
+    Runtime::GetFrameGraph().SetGlobalResources(
+        Runtime::BuildGlobalResources());
+
+    Runtime::GetSceneViewPipeline().Render();
+
+    RenderUI();
+
+    /* 4 - Finalize ImGui frame definition */
+    ImGui::Render();  // prepare imgui draw data (no rendering yet)
 
     /* 5 - Render game content to framebuffer */
     if (is_game_started_) {
@@ -212,8 +228,8 @@ void EditorUI::HandleInput(Key key) {
   if (auto* gm = Runtime::Game()) {
     input_event.pressed_frame_ = gm->GetFrameCount();
   }
-  Runtime::InputSystem()->FowardInputEvent(input_event,
-                                           input_event.pressed_frame_);
+  Runtime::InputDevice()->ForwardInputEvent(input_event,
+                                            input_event.pressed_frame_);
 }
 
 void EditorUI::DockSpace() {
@@ -284,6 +300,8 @@ void EditorUI::RenderUI() {
     ImGui::DockBuilderDockWindow("Toolbar", top);
     ImGui::DockBuilderDockWindow("Hierarchy", left);
     ImGui::DockBuilderDockWindow("Inspector", right);
+    ImGui::DockBuilderDockWindow("World", right);
+    ImGui::DockBuilderDockWindow("Terrain Editor", right);
     ImGui::DockBuilderDockWindow("Scene", dock_id_);
     ImGui::DockBuilderDockWindow("Console", bottom);
     // ImGui::DockBuilderDockWindow(Panels::kDlgWinName, bottom);
@@ -318,22 +336,47 @@ void EditorUI::RenderUI() {
   Panels::Toolbar(cb);
   ImGui::End();
 
-  // -------- LEFT : hierarchy + assets -------------------------------------
-  static std::vector<std::string> demo_names = {"Camera", "Terrain", "Sun",
-                                                "Player"};
+  // Get the ECS instance once for this frame
+  auto& ecs = ECS::Main();
+
+  // -------- LEFT : HIERARCHY (Now reads live data from ECS) --------
   ImGui::Begin("Hierarchy", nullptr);
-  Panels::HierarchyPanel(demo_names, "assets");
+  Panels::HierarchyPanel();  // We will also update this panel to be data-driven
   ImGui::End();
 
-  // -------- MIDDLE : game view --------------------------------------------
+  // -------- MIDDLE : SCENE --------
+  // The rendering pipeline now handles the gizmo, so this panel is just a
+  // simple canvas.
   ImGui::Begin("Scene", nullptr);
-  Panels::GameCanvas(is_game_started_, game_canvas_hovered_);
+  Panels::GameCanvas(is_game_started_, game_canvas_hovered_,
+                     game_canvas_focused_);
+  UpdateMovement();
   ImGui::End();
 
-  // -------- RIGHT : inspector ---------------------------------------------
-  static std::vector<Panels::Transform> demo_transform(demo_names.size());
+  // -------- RIGHT : INSPECTOR -----------------
   ImGui::Begin("Inspector", nullptr);
-  Panels::Inspector(demo_transform);
+  Entity selectedEntity = GetSelectedEntity();
+  if (selectedEntity != entt::null && ecs.Reg().valid(selectedEntity)) {
+    // 1. Get the TransformComponent from the selected entity.
+    auto& transform = ecs.Get<TransformComponent>(selectedEntity);
+
+    // 2. Call the newly designed Inspector panel with the live component.
+    Panels::Inspector(transform);
+    Panels::InspectVolume(selectedEntity);
+
+  } else {
+    ImGui::TextDisabled("Select an entity to inspect its components.");
+  }
+  ImGui::End();
+
+  // -------- RIGHT : WORLD SETTINGS --------
+  ImGui::Begin("World", nullptr);
+  Panels::WorldSettings();
+  ImGui::End();
+
+  // -------- RIGHT : TERRAIN EDITOR --------
+  ImGui::Begin("Terrain Editor", nullptr);
+  Panels::TerrainEditor();
   ImGui::End();
 
   //--------------------------- Panels ------------------------------
@@ -381,6 +424,7 @@ void EditorUI::LoadIcons() {
   tab_icons_.insert({"Console", ICON_FA_TERMINAL});
   tab_icons_.insert({"Camera", ICON_FA_VIDEO});
   tab_icons_.insert({"Assets", ICON_FA_FOLDER_OPEN});
+  tab_icons_.insert({"World", ICON_FA_GLOBE});
   // tab_icons_.insert({"File Explorer", ICON_FA_FOLDER});
 }
 
@@ -388,6 +432,7 @@ void EditorUI::BeginImGuiFrame(SDL_Window* window) {
   ImGui_ImplSDL2_NewFrame();  // platform backend
   ImGui_Implbgfx_NewFrame();  // renderer backend
   ImGui::NewFrame();          // ImGui begins
+  ImGuizmo::BeginFrame();     // ImGuizmo begins
 
   // ---- decorators start here ----
   // drop shadow effect
@@ -396,15 +441,74 @@ void EditorUI::BeginImGuiFrame(SDL_Window* window) {
 }
 
 // ── Selection API ─────────────────────────────────────────────────────────
-void EditorUI::SetSelectedEntity(int id) {
-  selected_entity_ = id;
-  last_selected_entity_ = selected_entity_;
+void EditorUI::SetSelectedEntity(Entity entity) {
+  selected_entity_ = entity;
+  last_selected_entity_ = entity;
 }
 
-int EditorUI::GetSelectedEntity() const {
+Entity EditorUI::GetSelectedEntity() const {
   return selected_entity_;
 }
 
-int EditorUI::GetLastSelectedEntity() const {
+Entity EditorUI::GetLastSelectedEntity() const {
   return last_selected_entity_;
+}
+
+// TODO: move this to viewport
+void EditorUI::UpdateMovement() {
+  // Build per-frame input
+  GodCameraFrameInput input{};
+  input.scene_hovered = game_canvas_hovered_;
+
+  // Enable/disable text input
+  if (input.scene_hovered) {
+    platform::DisableTextInput();
+  } else {
+    platform::EnableTextInput();
+  }
+
+  input.right_mouse =
+      input.scene_hovered && ImGui::IsMouseDown(ImGuiMouseButton_Right);
+  input.middle_mouse =
+      input.scene_hovered && ImGui::IsMouseDown(ImGuiMouseButton_Middle);
+
+  ImGuiIO& io = ImGui::GetIO();
+  input.mouse_delta = (input.right_mouse || input.middle_mouse)
+                          ? glm::vec2(io.MouseDelta.x, io.MouseDelta.y)
+                          : glm::vec2(0.0f);
+  input.mouse_wheel = io.MouseWheel;
+
+  // WASD axis
+  if (input.scene_hovered) {
+    const float fwd = (ImGui::IsKeyDown(ImGuiKey_W) ? 1.0f : 0.0f) -
+                      (ImGui::IsKeyDown(ImGuiKey_S) ? 1.0f : 0.0f);
+    const float sid = (ImGui::IsKeyDown(ImGuiKey_D) ? 1.0f : 0.0f) -
+                      (ImGui::IsKeyDown(ImGuiKey_A) ? 1.0f : 0.0f);
+    input.move_axis = glm::vec2(fwd, sid);
+
+    // Arrow keys for camera rotation
+    const float look_y = (ImGui::IsKeyDown(ImGuiKey_UpArrow) ? 1.0f : 0.0f) -
+                         (ImGui::IsKeyDown(ImGuiKey_DownArrow) ? 1.0f : 0.0f);
+    const float look_x = (ImGui::IsKeyDown(ImGuiKey_RightArrow) ? 1.0f : 0.0f) -
+                         (ImGui::IsKeyDown(ImGuiKey_LeftArrow) ? 1.0f : 0.0f);
+    input.look_axis = glm::vec2(look_x, look_y);
+
+    // Speed boost with SHIFT
+    input.hold_shift = ImGui::IsKeyDown(ImGuiKey_LeftShift) ||
+                       ImGui::IsKeyDown(ImGuiKey_RightShift);
+  } else {
+    input.move_axis = glm::vec2(0.0f);
+    input.look_axis = glm::vec2(0.0f);
+    input.hold_shift = false;
+  }
+
+  // Get the ECS transform
+  auto& pipeline = Runtime::GetSceneViewPipeline();
+  TransformComponent& CameraTransform = std::get<0>(pipeline.GetGodCamera());
+
+  // Run update
+  GodCameraUpdateMovement(god_state_, CameraTransform, input);
+
+  // Rebuild model matrix
+  Transform::Evaluate(CameraTransform);
 }

@@ -1,13 +1,54 @@
+/**************************************************************************
+ * Runtime
+ * -------
+ * Central orchestrator for engine-wide systems
+ * Initializes entire engine and runs the main loop
+ *
+ * Owns / lifetime-managed:
+ *  - EditorBase (g_editor)
+ *  - GameManager (g_game_manager)
+ *  - ProjectManager (g_project_manager)
+ *  - Rendering pipelines (g_scene_view_pipeline)
+ *  - Global resources (skybox, scene gizmos, shadowMap, etc)
+ *
+ * Initializes / coordinates:
+ *  - EngineContext subsystems (renderer, shaders, input)
+ *  - Asset and component registries
+ *  - Game execution thread
+ *  - Signal connections between subsystems
+ *
+ * Lifecycle:
+ *  - START_LOOP(): Creates context, loads assets, launches editor and game
+ *  - _NextFrame(): Renders scene, processes UI events (incomplete)
+ *  - TERMINATE(): Shuts down game thread, editor, pipelines, and context
+ *
+ * Accessors:
+ *  - Editor(), Renderer(), Game(): Access to major subsystems
+ *  - InputDevice(), Window(), Shader(): Convenience wrappers to EngineContext
+ *  - Project(): Access to project management
+ *  - sceneViewPipeline(): Access to editor view rendering
+ *
+ * TODO:
+ *  - Implement scene gizmos
+ *  - Create default assets and settings
+ *  - Complete _NextFrame() and main loop implementation
+ *  - Proper audio context (currently using SoundManager directly)
+ **************************************************************************/
+
 #include "runtime.h"
 
 #include "editor/registry/asset_registry.h"
 #include "editor/registry/component_registry.h"
 #include "engine/audio/sound_manager.h"  // TODO: remove later
 #include "engine/context/engine_context.h"
+#include "engine/core/engine_globals.h"
 #include "engine/core/logger.h"
-#include "engine/renderer/icons/icon_loader.h"
-#include "game/game_test.h"
 #include "engine/ecs/ecs_collection.h"
+#include "engine/renderer/icons/icon_loader.h"
+#include "engine/renderer/shadows/shadow_map.h"
+#include "engine/renderer/skybox/skybox.h"
+#include "engine/time/time.h"
+#include "game/game_test.h"
 
 // ------------------ single-instance state (internal linkage) -----------------
 namespace Runtime {
@@ -17,6 +58,8 @@ static std::thread g_game_thread;
 
 std::unique_ptr<EditorBase> g_editor;
 std::unique_ptr<GameManager> g_game_manager;
+
+std::unique_ptr<FrameGraph> g_frame_graph;
 
 RendererBase* g_renderer = nullptr;
 ShaderManager* g_shader_manager = nullptr;
@@ -29,16 +72,22 @@ ProjectManager g_project_manager;
 // Pipelines
 SceneViewPipeline g_scene_view_pipeline;
 
-// TODO: scene gizmos
+// Scene gizmos
+IMGizmo g_scene_gizmos;
 
-// TODO: default assets
+// default assets
+Skybox g_default_skybox;
+
+// shadow
+ShadowMap g_main_shadow_map;
 
 // TODO: default settings
 
-// TODO: global game state
+// TODO: global game state?
 
 static void _LoadDependencies() {
   // TODO: resource manager
+  ResourceManager& resource = EngineContext::resourceManager();
 
   // TODO: load shaders
   // ShaderPool::loadAllSync("./shaders/materials");
@@ -56,8 +105,7 @@ static void _LoadDependencies() {
   IconLoader::LoadIconsAsync("./resources/icons/scene");
 
   // Create default skybox
-
-  // Create default cubemap
+  g_default_skybox.Create(g_shader_manager);
 
   // Create default texture
 }
@@ -66,8 +114,17 @@ static void _CreateResources() {
 
   // TODO: create pipelines here
   g_scene_view_pipeline.Create();
+  // g_game_view_pipeline.Create();
+  // g_preview_pipeline.Create();
 
-  // TODO: setup scene gizmos here
+  // Initialize FrameGraph with current viewport dimensions
+  g_frame_graph->Rebuild(canvasViewportW, canvasViewportH);
+
+  // setup scene gizmos
+  g_scene_gizmos.Create();
+
+  // Setup shadows
+  g_main_shadow_map.Create();
 
   // TODO: Create main shadow disk and main shadow map here ?
 }
@@ -82,12 +139,20 @@ static void _CreateEngineContext() {
   g_window_manager = &EngineContext::Window();
   g_renderer = &EngineContext::Renderer();
   g_shader_manager = &EngineContext::Shader();
-  g_input = &EngineContext::Input();
+  g_input = &EngineContext::InputDevice();
+
+  g_frame_graph = std::make_unique<FrameGraph>(*g_renderer);
+
+  // Register for window resize notifications
+  WindowManager::RegisterResizeCallback([](int width, int height) {
+    // Rebuild frame graph when window size changes
+    g_frame_graph->Rebuild(width, height);
+  });
 
   // Set audio
   // TODO: remove once we have a proper audio context
-  SoundManager::Instance().setAmbientVolume(0.7f);
-  SoundManager::Instance().startAmbient();
+  // SoundManager::Instance().setAmbientVolume(0.7f);
+  // SoundManager::Instance().startAmbient();
 }
 
 static void _LaunchEditor() {
@@ -121,10 +186,22 @@ static void _LaunchEditor() {
 
 static void _NextFrame() {
 
-  // TODO: Start EngineContext::_NextFrame(); ???
+  // Start engine context frame
+  EngineContext::NextFrame();
 
-  // Render next frame
-  g_scene_view_pipeline.Render();
+  // Update resources
+  UpdateGlobalResources();
+
+  // Set global resources in frame graph
+  g_frame_graph->SetGlobalResources(BuildGlobalResources());
+
+  // Execute all passes from all pipelines
+  g_frame_graph->Render();
+
+  // Render next frame (not needed anymore)
+  // g_scene_view_pipeline.Render();
+  // g_preview_pipeline.Render();
+  // g_game_view_pipeline.Render();
 
   // Render editor
   g_project_manager.PollEvents();
@@ -142,10 +219,26 @@ static void _ConnectSignals() {
   g_editor->editor_exit_pressed.connect([&] { g_game_manager->Terminate(); });
 
   g_editor->game_inputed.connect([&](InputEvent event) {
-    g_input->FowardInputEvent(event, g_game_manager->GetFrameCount());
+    g_input->ForwardInputEvent(event, g_game_manager->GetFrameCount());
   });
 
   g_renderer->redrawn.connect([&] { g_editor->RequestUpdate(); });
+}
+
+void UpdateGlobalResources() {
+
+  // Get delta time from time
+  float dt = Time::Deltaf();
+
+  g_default_skybox.Update(dt);
+  // TODO: g_terrain.Update(dt); g_water.Update(dt);
+}
+
+GlobalResources BuildGlobalResources() {
+  GlobalResources r;
+  r.skybox = &g_default_skybox;
+  // TODO: r.terrain = &g_terrain; r.water = &g_water;
+  return r;
 }
 
 int START_LOOP() {
@@ -170,19 +263,19 @@ int START_LOOP() {
                             "Game initialized in its own thread");
 
   // Run the editor
-  g_editor->Run();
+  g_editor->Run();  // TODO: this blocks global resources, needs fix!
   Logger::getInstance().Log(LogLevel::Info, "Editor initialized and running");
 
   // TODO: remove once _NextFrame() is used
-  g_scene_view_pipeline.Render();
+  // g_scene_view_pipeline.Render();
 
   // Main loop
-  // TODO: uncomment once EditorUI::Run() is refactored
-  /* while (EngineContext::Running())
-    _NextFrame(); */
+  // TODO: EditorUI::Run() needs refactoring
+  while (EngineContext::Running())
+    _NextFrame();
 
   // TODO: remove once _NextFrame() is used
-  g_project_manager.PollEvents();
+  // g_project_manager.PollEvents();
 
   return TERMINATE();
 }
@@ -214,6 +307,10 @@ int TERMINATE() {
   // Stop pipelines
   g_scene_view_pipeline.Destroy();
 
+  g_frame_graph.reset();
+
+  g_main_shadow_map.Destroy();
+
   EngineContext::Destroy();
 
   Logger::getInstance().Log(LogLevel::Info, "Runtime::Terminate");
@@ -232,7 +329,7 @@ RendererBase* Renderer() {
 GameManager* Game() {
   return g_game_manager.get();
 }
-Input* InputSystem() {
+Input* InputDevice() {
   return g_input;
 }
 WindowManager* Window() {
@@ -245,8 +342,20 @@ ProjectManager& Project() {
   return g_project_manager;
 }
 
-SceneViewPipeline& sceneViewPipeline() {
+IMGizmo& SceneGizmos() {
+  return g_scene_gizmos;
+}
+
+ShadowMap& MainShadowMap() {
+  return g_main_shadow_map;
+}
+
+SceneViewPipeline& GetSceneViewPipeline() {
   return g_scene_view_pipeline;
+}
+
+FrameGraph& GetFrameGraph() {
+  return *g_frame_graph;
 }
 
 }  // namespace Runtime

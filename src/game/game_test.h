@@ -3,8 +3,9 @@
 
 #include <bgfx/bgfx.h>
 #include <vector>
-#include "editor/gui/orbit_camera.h"
-#include "editor/systems/camera_system.h"
+
+#include "editor/camera/camera_view.h"
+#include "engine/pcg/terrain/terrain_generator.h"
 #include "game_base.h"
 
 // ──────────────────────────────────────────────────────
@@ -38,12 +39,13 @@ public:
   static constexpr float TerrainExtent =
       ((TerrainSize - 1) * TerrainScale) * 0.5f;
 
-  // simple camera function call
-  OrbitCamera camera;
-  CameraSystem cameraSystem;
+  // int canvasViewportW = 1600;  // TODO: remove this, should use
+  // engine_globals.h int canvasViewportH = 900;   // TODO: remove this, should
+  // use engine_globals.h
 
-  int canvasViewportW = 1600;  // TODO: remove this, should use engine_globals.h
-  int canvasViewportH = 900;   // TODO: remove this, should use engine_globals.h
+  // Generator functions
+  void GenerateTerrain(const PCG::Config& gen_config, uint16_t gridSize);
+  PCG::Generator& GetGenerator() { return generator_; }
 
 private:
   // ───── Terrain
@@ -131,7 +133,7 @@ private:
   // colour / param arrays passed to both sky & sun shaders
   float _sunColorArray[4] = {5.0f, 5.0f, 5.0f, 0.0f};
   float _parametersArray[4] = {1.0f, 1.0f, 1.0f, 0.0f};
-  float _cycleTime = 0.0f;    // day-night timerm keep it at 0
+  // float _cycleTime = 0.0f;    // day-night timerm keep it at 0
   float _skyAmbientArray[4];  // Holds current ambient sky light
   float _waterTime = 0.0f;    // water time, used to animate water
 
@@ -140,6 +142,12 @@ private:
 
   // world transform for the terrain
   float world_matrix[16];
+
+  // ENTITIES
+  Entity terrain_entity_ = entt::null;
+  std::shared_ptr<Mesh> terrain_mesh_;
+
+  PCG::Generator generator_;
 };
 
 #endif  // GAME_TEST_H
