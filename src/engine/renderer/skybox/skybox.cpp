@@ -49,23 +49,27 @@ void Skybox::Create(ShaderManager* ShaderManager) {
   CreateFullscreenQuad();
 
   // Initialize constant scattering totals
-  params_.totalBetaR[0] = k_betaR_per_meter[0] * H_R;
-  params_.totalBetaR[1] = k_betaR_per_meter[1] * H_R;
-  params_.totalBetaR[2] = k_betaR_per_meter[2] * H_R;
+  params_.totalBetaR[0] = k_betaR_per_meter[0];
+  params_.totalBetaR[1] = k_betaR_per_meter[1];
+  params_.totalBetaR[2] = k_betaR_per_meter[2];
   params_.totalBetaR[3] = 0.0f;
 
-  params_.totalBetaM[0] = MieBaseDensity * MieColoration[0] * H_M * 5.0f;
-  params_.totalBetaM[1] = MieBaseDensity * MieColoration[1] * H_M * 5.0f;
-  params_.totalBetaM[2] = MieBaseDensity * MieColoration[2] * H_M * 5.0f;
+  float mieFactor = 1.0f;
+
+  params_.totalBetaM[0] = MieBaseDensity * MieColoration[0] * mieFactor;
+  params_.totalBetaM[1] = MieBaseDensity * MieColoration[1] * mieFactor;
+  params_.totalBetaM[2] = MieBaseDensity * MieColoration[2] * mieFactor;
   params_.totalBetaM[3] = 0.0f;
 
+  // Scattering Parameters
   params_.scatterParams[0] = 0.85f;
   params_.scatterParams[1] = 0.0f;
   params_.scatterParams[2] = 0.0f;
   params_.scatterParams[3] = 0.0f;
 
   // Default UI parameters, time is kept in params_._cycleTime
-  SetParams(/*sunAngularRadius*/ 0.00465f, /*bloom*/ 1.0f, /*exposure*/ 0.25f);
+  SetParams(/*sunAngularRadius*/ 0.0465f, /*bloom*/ 1.0f, /*exposure*/ 0.25f,
+            /*mie*/ 0.76f);
 
   // Initialize ambient to a dark color
   params_._skyAmbientArray[0] = 0.1f;
@@ -141,11 +145,16 @@ std::string Skybox::GetTimeString() const {
 // SetParams
 // ---------------------------------------------------------------
 void Skybox::SetParams(float sunAngularRadius, float proceduralBloom,
-                       float exposure) {
+                       float exposure, float mieAnisotropy) {
+  // 1. Sun & Exposure Params
   params_._parametersArray[0] = sunAngularRadius;
   params_._parametersArray[1] = proceduralBloom;
   params_._parametersArray[2] = exposure;
-  // .w (index 3) is time; filled from _cycleTime in ComputeSun()
+  // .w (time) is updated in ComputeSun(), so not changing
+
+  // 2. Atmosphere Params
+  // This maps to u_scatterParams.x in the shader
+  params_.scatterParams[0] = mieAnisotropy;
 }
 
 // ---------------------------------------------------------------
@@ -164,18 +173,20 @@ void Skybox::ComputeSun() {
   params_.sunDirShader[2] = sunDirectionVec.z;
   params_.sunDirShader[3] = 0.0f;
 
+  
   float sunElevationFactor = local_smoothStep(-0.15f, 0.2f, sunDirectionVec.y);
 
-  const float baseSunLuminance = 10.0f;
-  const float sunIntensity = 5.0f;
+  // const float baseSunLuminance = 10.0f;
+  // we don't need this for Nishita Model
 
-  params_._sunColorArray[0] =
-      bx::lerp(0.8f, 1.0f, sunElevationFactor) * baseSunLuminance;
-  params_._sunColorArray[1] =
-      bx::lerp(0.6f, 0.95f, sunElevationFactor) * baseSunLuminance;
-  params_._sunColorArray[2] =
-      bx::lerp(0.4f, 0.9f, sunElevationFactor) * baseSunLuminance;
-  params_._sunColorArray[3] = sunIntensity;
+  const float sunIntensity = 125.0f;
+
+  float dayNightMask = local_smoothStep(-0.2f, 0.0f, sunDirectionVec.y);
+
+  params_._sunColorArray[0] = 1.0f * sunIntensity * dayNightMask;  // Red
+  params_._sunColorArray[1] = 1.0f * sunIntensity * dayNightMask;  // Green
+  params_._sunColorArray[2] = 1.0f * sunIntensity * dayNightMask;  // Blue
+  params_._sunColorArray[3] = 1.0f;
 
   // parameters.w holds time
   params_._parametersArray[3] = params_._cycleTime;
