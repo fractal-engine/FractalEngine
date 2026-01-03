@@ -8,7 +8,6 @@ target("FastNoise2")
 
     on_load(function (target)
         target:add("defines", "FASTNOISE2_NOISETOOL=OFF", "FASTNOISE2_FETCH_IMGUI=OFF")
-        target:add("defines", "FASTNOISE_STATIC_LIB", {public = true}) -- prevent DLL linkage (linker error)
     end)
     
     add_includedirs("FastNoise2/include", {public = true})

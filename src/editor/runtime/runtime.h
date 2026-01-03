@@ -42,8 +42,8 @@ GlobalResources BuildGlobalResources();
 ProjectManager& Project();
 
 // Pipeline getters
-SceneViewPipeline& GetSceneViewPipeline();
-FrameGraph& GetFrameGraph();
+SceneViewPipeline& GetSceneViewPipeline();  // ! rename it
+FrameGraph& GetFrameGraph();                // ! rename it
 
 // Getters
 EditorBase* Editor();

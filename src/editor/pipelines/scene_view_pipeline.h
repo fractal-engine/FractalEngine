@@ -103,7 +103,7 @@ private:
 
   // Grid resources
   const Mesh* grid_mesh_;
-  Resources3D::MeshData grid_data;
+  Geometry::MeshData grid_data;
 };
 
 #endif  // SCENE_VIEW_PIPELINE_H

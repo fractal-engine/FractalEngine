@@ -11,7 +11,7 @@ target("engine")
 
     -- IMPLEMENTATION FILES -------
     add_files("core/*.cpp", "audio/*.cpp", "misc/*.cpp", "scene/*.cpp", "context/*.cpp",
-            "formats/*.cpp", "ecs/*.cpp", "memory/*.cpp", "transform/*.cpp", "time/*.cpp",
+            "ecs/*.cpp", "memory/*.cpp", "transform/*.cpp", "time/*.cpp",
             "math/*.cpp", "pcg/*.cpp",
 
     -- renderer files
@@ -19,8 +19,11 @@ target("engine")
             "renderer/icons/*.cpp", "renderer/texture/*.cpp", "renderer/model/*.cpp",
             "renderer/skybox/*.cpp", "renderer/gizmos/*.cpp", "renderer/shadows/*.cpp",
 
+    -- content files
+    "content/cache/*.cpp", "content/loaders/*.cpp",
+
     -- resources files
-    "resources/*.cpp", "resources/textures/*.cpp", "resources/3d/*.cpp",
+    "resources/*.cpp", "resources/textures/*.cpp",
 
     -- PCG files
     "pcg/operators/ridge.cpp", "pcg/operators/fbm.cpp",
@@ -29,22 +32,28 @@ target("engine")
             "pcg/graph/graph_serializer.cpp")
 
     -- HEADER FILES -------
-    add_headerfiles("core/*.h", "audio/*.h", "scene/*.h", "context/*.h", "formats/*.h",
-            "ecs/*.h", "memory/*.h", "transform/*.h", "time/*.h", "math/*.h", "pcg/*.h",
+    add_headerfiles("core/*.h", "audio/*.h", "scene/*.h", "context/*.h","ecs/*.h",
+            "memory/*.h", "transform/*.h", "time/*.h", "math/*.h", "pcg/*.h",
 
     -- renderer files
     "renderer/*.h", "renderer/lighting/*.h", "renderer/shaders/*.h",
             "renderer/icons/*.h", "renderer/texture/*.h", "renderer/model/*.h",
             "renderer/skybox/*.h", "renderer/gizmos/*.h", "renderer/shadows/*.h",
 
+    -- geometry files
+    "geometry/meshing/*.h", "geometry/projection/*.h",
+
+    -- content files
+    "content/cache/*.cpp", "content/loaders/*.cpp",
+
     -- resource files
-    "resources/*.h", "resources/textures/*.h", "resources/3d/*.h")
+    "resources/*.h", "resources/textures/*.h")
 
     add_rules("shaderc.build")
     add_files("$(projectdir)/src/assets/shaders/**.sc")
     remove_files("$(projectdir)/src/assets/shaders/varying*.sc")
 
-    add_packages("boost", "libsdl2", "bgfx", "glm", "imgui", "libsdl2_ttf", "portaudio", "tinygltf", "nlohmann_json", "entt")
+    add_packages("boost", "libsdl2", "bgfx", "glm", "imgui", "libsdl2_ttf", "portaudio", "tinygltf", "nlohmann_json", "entt", "assimp")
 
     if is_mode("debug") then
         add_links("bimg_decodeDebug", "bimg_encodeDebug")

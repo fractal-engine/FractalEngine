@@ -11,10 +11,10 @@ struct CameraComponent {
   float fov_ = 70.0f;
 
   // Near clipping
-  float near_clip_ = 0.3f;
+  float near_plane_ = 0.3f;
 
   // Far clipping
-  float far_clip_ = 1000.0f;
+  float far_plane_ = 1000.0f;
 };
 
 #endif  // CAMERA_COMPONENT_H

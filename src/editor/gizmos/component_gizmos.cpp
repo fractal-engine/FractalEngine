@@ -3,7 +3,7 @@
 #include <glm/gtc/type_ptr.hpp>
 
 namespace ComponentGizmos {
-// TODO: Implement IMGizmo debug drawing
+// TODO: Depends on IMGizmo debug drawing
 // This will render 3D debug shapes (wireframes, icons) for various components
 
 /*  void DrawReferenceGrid(IMGizmo& gizmos, float gridSize, float gridSpacing) {

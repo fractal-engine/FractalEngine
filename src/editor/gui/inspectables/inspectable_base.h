@@ -1,14 +1,14 @@
-#ifndef INSPECTABLE_H
-#define INSPECTABLE_H
+#ifndef INSPECTABLE_BASE_H
+#define INSPECTABLE_BASE_H
 
 #include <imgui.h>
-#include <string>
 
-class Inspectable {
+class InspectableBase {
 
 public:
+  virtual ~InspectableBase() = default;
   virtual void RenderStaticContent(ImDrawList& draw_list) = 0;
   virtual void RenderDynamicContent(ImDrawList& draw_list) = 0;
 };
 
-#endif  // INSPECTABLE_H
+#endif  // INSPECTABLE_BASE_H

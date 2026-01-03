@@ -2,9 +2,9 @@
 #define ASSET_INSPECTABLE_H
 
 #include "editor/systems/editor_asset.h"
-#include "inspectable.h"
+#include "inspectable_base.h"
 
-class AssetInspectable : public Inspectable {
+class AssetInspectable : public InspectableBase {
 public:
   AssetInspectable(AssetSID asset_id);
 

@@ -1,48 +1,97 @@
-#pragma once
-#include "../../vendor/IconFontCppHeaders/IconsFontAwesome6.h"
+#include "editor_styles.h"
 
-#include "imgui.h"
+namespace EditorStyles {
 
-namespace Theme {
-inline ImFont* console_font = nullptr;  // Global font for console
+static const ImWchar icon_ranges[] = {ICON_MIN_FA, ICON_MAX_FA, 0};
 
-inline void LoadFonts(ImGuiIO& io) {
-  static const ImWchar icon_ranges[] = {ICON_MIN_FA, ICON_MAX_FA, 0};
+// Font internals
+Fonts g_fonts;
 
-  // main font config
-  ImFontConfig main_font_config;
-  main_font_config.MergeMode = false;
-  main_font_config.PixelSnapH = true;
-  main_font_config.SizePixels = 16.0f;
-  main_font_config.OversampleH = 3;
-  main_font_config.OversampleV = 2;
+// Access fonts
+const Fonts& GetFonts() {
+  return g_fonts;
+}
 
-  io.Fonts->AddFontFromFileTTF("resources/fonts/NotoSansMono_Regular.ttf",
-                               16.0f, &main_font_config);
+void _MergeIcons(ImGuiIO& io, float icon_size) {
+  float icons_font_size = icon_size * 2.0f / 3.0f;
 
-  // icons font config
   ImFontConfig icons_config;
   icons_config.MergeMode = true;
   icons_config.PixelSnapH = true;
-  icons_config.GlyphMinAdvanceX = 16.0f;
+  icons_config.GlyphMinAdvanceX = icons_font_size;
 
-  io.Fonts->AddFontFromFileTTF("resources/fonts/fa-solid-900.ttf", 16.0f,
-                               &icons_config, icon_ranges);
+  g_fonts.icons = io.Fonts->AddFontFromFileTTF(
+      EditorFontPath::icons, icons_font_size, &icons_config, icon_ranges);
+}
+
+void LoadFonts(ImGuiIO& io) {
+
+  // Global font config
+  ImFontConfig main_config;
+  main_config.MergeMode = false;
+  main_config.PixelSnapH = true;
+  main_config.OversampleH = 3;
+  main_config.OversampleV = 2;
+
+  // p (paragraph)
+  g_fonts.p = io.Fonts->AddFontFromFileTTF(
+      EditorFontPath::regular, EditorSizes::p_font_size, &main_config);
+  _MergeIcons(io, EditorSizes::p_icon_size);
+  g_fonts.p_bold = io.Fonts->AddFontFromFileTTF(
+      EditorFontPath::bold, EditorSizes::p_font_size, &main_config);
+  _MergeIcons(io, EditorSizes::p_bold_icon_size);
+
+  // h1
+  g_fonts.h1 = io.Fonts->AddFontFromFileTTF(
+      EditorFontPath::regular, EditorSizes::h1_font_size, &main_config);
+  g_fonts.h1_bold = io.Fonts->AddFontFromFileTTF(
+      EditorFontPath::bold, EditorSizes::h1_font_size, &main_config);
+
+  // h2
+  g_fonts.h2 = io.Fonts->AddFontFromFileTTF(
+      EditorFontPath::regular, EditorSizes::h2_font_size, &main_config);
+  _MergeIcons(io, EditorSizes::h2_icon_size);
+  g_fonts.h2_bold = io.Fonts->AddFontFromFileTTF(
+      EditorFontPath::bold, EditorSizes::h2_font_size, &main_config);
+  _MergeIcons(io, EditorSizes::h2_bold_icon_size);
+
+  // h3
+  g_fonts.h3 = io.Fonts->AddFontFromFileTTF(
+      EditorFontPath::regular, EditorSizes::h3_font_size, &main_config);
+  _MergeIcons(io, EditorSizes::h2_icon_size);
+  g_fonts.h3_bold = io.Fonts->AddFontFromFileTTF(
+      EditorFontPath::bold, EditorSizes::h3_font_size, &main_config);
+  _MergeIcons(io, EditorSizes::h2_icon_size);
+
+  // h4
+  g_fonts.h4 = io.Fonts->AddFontFromFileTTF(
+      EditorFontPath::regular, EditorSizes::h4_font_size, &main_config);
+  _MergeIcons(io, EditorSizes::p_bold_icon_size);
+  g_fonts.h4_bold = io.Fonts->AddFontFromFileTTF(
+      EditorFontPath::bold, EditorSizes::h4_font_size, &main_config);
+  _MergeIcons(io, EditorSizes::p_bold_icon_size);
+
+  // s (small)
+  g_fonts.s = io.Fonts->AddFontFromFileTTF(
+      EditorFontPath::regular, EditorSizes::s_font_size, &main_config);
+  _MergeIcons(io, EditorSizes::s_icon_size);
+  g_fonts.s_bold = io.Fonts->AddFontFromFileTTF(
+      EditorFontPath::bold, EditorSizes::s_font_size, &main_config);
+  _MergeIcons(io, EditorSizes::s_bold_icon_size);
 
   // console font config
   ImFontConfig console_config;
-  console_config.SizePixels = 12.0f;
   console_config.OversampleH = 1;
   console_config.OversampleV = 1;
   console_config.PixelSnapH = true;
   console_config.RasterizerMultiply = 1.0f;
 
   // load font for console
-  console_font = io.Fonts->AddFontFromFileTTF(
-      "resources/fonts/TerminusTTF-4.49.3.ttf", 12.0f, &console_config);
+  g_fonts.console = io.Fonts->AddFontFromFileTTF(
+      EditorFontPath::console, EditorSizes::console_font_size, &console_config);
 }
 
-void ApplyStyle() {
+void SetupStyle() {
   ImGuiStyle& style = ImGui::GetStyle();
   ImVec4* colors = style.Colors;
 
@@ -163,12 +212,11 @@ void ApplyStyle() {
   style.TabRounding = 4.0f;
 }
 
-inline void Initialize() {
+void Initialize() {
   ImGuiIO& io = ImGui::GetIO();
   LoadFonts(io);
-  ApplyStyle();
+  SetupStyle();
 
-  // Set global font scale
   io.FontGlobalScale = 0.9f;
 
 #ifdef IMGUI_HAS_DOCK
@@ -180,4 +228,5 @@ inline void Initialize() {
   style.TabBarOverlineSize = 0.0f;
 #endif
 }
-}  // namespace Theme
+
+}  // namespace EditorStyles

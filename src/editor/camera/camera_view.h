@@ -21,7 +21,7 @@ public:
   static void GetProjectionMatrix(const CameraComponent& camera, float* out,
                                   float aspect) {
     glm::mat4 projection = Transformation::Projection(
-        camera.fov_, aspect, camera.near_clip_, camera.far_clip_);
+        camera.fov_, aspect, camera.near_plane_, camera.far_plane_);
     memcpy(out, glm::value_ptr(projection), 16 * sizeof(float));
   }
 };

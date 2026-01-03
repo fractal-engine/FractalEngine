@@ -6,6 +6,7 @@
 
 #include "editor/camera/camera_view.h"
 #include "engine/pcg/terrain/terrain_generator.h"
+
 #include "game_base.h"
 
 // ──────────────────────────────────────────────────────
@@ -94,7 +95,6 @@ private:
   bgfx::UniformHandle _s_normalUniform = BGFX_INVALID_HANDLE;
 
   // Grass Uniforms
-
   bgfx::TextureHandle grassDiffuse;
   bgfx::TextureHandle grassORM;
   bgfx::TextureHandle grassNormal;

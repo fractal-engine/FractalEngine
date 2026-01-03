@@ -5,7 +5,7 @@
 #include <string>
 #include <vector>
 
-#include "editor/resources/theme/dark_theme.hpp"
+#include "editor/gui/styles/editor_styles.h"
 #include "engine/core/logger.h"
 
 namespace Panels {
@@ -21,7 +21,7 @@ inline void ConsolePanel() {
   ImGui::BeginChild("LogScrollingRegion", ImVec2(0, 0), false,
                     ImGuiWindowFlags_HorizontalScrollbar);
 
-  ImGui::PushFont(Theme::console_font);  // Set console font
+  ImGui::PushFont(EditorStyles::GetFonts().console);  // Set console font
 
   // Display log
   const auto& log_entries = Logger::getInstance().GetLogEntries();
