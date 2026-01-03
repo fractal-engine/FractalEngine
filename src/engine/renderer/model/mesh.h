@@ -4,13 +4,15 @@
 #include <bgfx/bgfx.h>
 #include <vector>
 
-#include "engine/formats/gltf_translator.h"
-#include "engine/resources/3d/mesh_data.h"
+#include "engine/core/types/geometry_data.h"
 
 class Mesh {
 public:
-  explicit Mesh(const Resources3D::MeshData& src);
+  explicit Mesh(const Geometry::MeshData& src);
   ~Mesh();
+
+  Mesh(const Mesh&) = delete;
+  Mesh& operator=(const Mesh&) = delete;
 
   // bind VBO/IBO
   void Bind() const;
