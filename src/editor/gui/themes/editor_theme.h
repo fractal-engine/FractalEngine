@@ -1,9 +1,11 @@
-#pragma once
+#ifndef EDITOR_THEME_H
+#define EDITOR_THEME_H
+
 #include "../../vendor/IconFontCppHeaders/IconsFontAwesome6.h"
 
 #include "imgui.h"
 
-namespace Theme {
+namespace EditorTheme {
 inline ImFont* console_font = nullptr;  // Global font for console
 
 inline void LoadFonts(ImGuiIO& io) {
@@ -181,3 +183,5 @@ inline void Initialize() {
 #endif
 }
 }  // namespace Theme
+
+#endif  // EDITOR_THEME_H

@@ -12,7 +12,7 @@
 #include "engine/ecs/world.h"
 
 #include <imgui.h>
-#include <glm/gtc/type_ptr.hpp>  // Required for glm::value_ptr
+#include <glm/gtc/type_ptr.hpp>
 
 namespace Panels {
 

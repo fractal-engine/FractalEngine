@@ -533,11 +533,11 @@ void SceneViewPipeline::RenderSelectedEntityOutline(
 void SceneViewPipeline::BuildReferenceGrid(const glm::mat4& view_projection) {
   float size = 10000.0f;
 
-  grid_data.positions_ = {-size, 0.0f, -size, size,  0.0f, -size,
-                          size,  0.0f, size,  -size, 0.0f, size};
-  grid_data.normals_ = {0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f,
-                        0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f};
-  grid_data.indices_ = {0, 1, 2, 0, 2, 3};
+  grid_data.positions = {-size, 0.0f, -size, size,  0.0f, -size,
+                         size,  0.0f, size,  -size, 0.0f, size};
+  grid_data.normals = {0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f,
+                       0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f};
+  grid_data.indices = {0, 1, 2, 0, 2, 3};
 
   grid_mesh_ = new Mesh(grid_data);
 }

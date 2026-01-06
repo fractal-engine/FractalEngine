@@ -1,5 +1,5 @@
 #include "editor/editor_ui.h"
-#include "editor/resources/theme/dark_theme.hpp"
+#include "editor/gui/themes/editor_theme.h"
 #include "editor/runtime/runtime.h"
 #include "engine/context/engine_context.h"
 #include "engine/core/engine_globals.h"
@@ -47,7 +47,7 @@ EditorUI* EditorUI::Get() {
 void EditorUI::Initialize() {
   IMGUI_CHECKVERSION();
   ImGui::CreateContext();
-  Theme::Initialize();
+  EditorTheme::Initialize();
   LoadIcons();
 
   ImGuiIO& io = ImGui::GetIO();
