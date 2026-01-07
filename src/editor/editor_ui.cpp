@@ -31,6 +31,7 @@
 #include <SDL.h>
 
 EditorUI* EditorUI::s_instance_ = nullptr;
+uint32_t EditorUI::g_id_counter_ = 0;
 
 EditorUI::EditorUI(RendererBase* renderer) : renderer_(renderer) {
   s_instance_ = this;
@@ -429,6 +430,10 @@ void EditorUI::LoadIcons() {
 }
 
 void EditorUI::BeginImGuiFrame(SDL_Window* window) {
+
+  // Reset ID counter for new frame
+  g_id_counter_ = 0;
+
   ImGui_ImplSDL2_NewFrame();  // platform backend
   ImGui_Implbgfx_NewFrame();  // renderer backend
   ImGui::NewFrame();          // ImGui begins
@@ -462,9 +467,9 @@ void EditorUI::UpdateMovement() {
 
   // Enable/disable text input
   if (input.scene_hovered) {
-    platform::DisableTextInput();
+    Platform::DisableTextInput();
   } else {
-    platform::EnableTextInput();
+    Platform::EnableTextInput();
   }
 
   input.right_mouse =
@@ -511,4 +516,12 @@ void EditorUI::UpdateMovement() {
 
   // Rebuild model matrix
   Transform::Evaluate(CameraTransform);
+}
+
+ImGuiID EditorUI::GenerateId() {
+  return ++g_id_counter_;
+}
+
+std::string EditorUI::GenerateIdString() {
+  return "##" + std::to_string(++g_id_counter_);
 }

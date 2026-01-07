@@ -56,7 +56,7 @@ GraphicsRenderer::~GraphicsRenderer() {
 // Initialize BGFX with platform data
 bool GraphicsRenderer::InitBgfx() {
   bgfx::Init init;
-  platform::SetupBGFXPlatformData(init, window_);
+  Platform::SetupBGFXPlatformData(init, window_);
 
   init.type = bgfx::RendererType::Count;  // Auto-select backend
   init.debug = true;
@@ -91,7 +91,7 @@ std::string GraphicsRenderer::GetCurrentGameContent() {
 void GraphicsRenderer::ConfigureViews() {
   // 1. Called once on init and in WindowManager::OnWindowResize()
   int fbw, fbh;
-  platform::GetDrawableSize(window_, &fbw, &fbh);
+  Platform::GetDrawableSize(window_, &fbw, &fbh);
 
   // Create/resize off-screen FBO only
   if (fbw != last_framebuffer_width_ || fbh != last_framebuffer_height_)

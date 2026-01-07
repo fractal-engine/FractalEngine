@@ -542,10 +542,10 @@ void GameTest::GenerateTerrain(const PCG::Config& gen_config,
     renderer.mesh_ = terrain_mesh_.get();
     Logger::getInstance().Log(LogLevel::Info, "Terrain mesh updated.");
   }
-  Logger::getInstance().Log(
-      LogLevel::Info, "Terrain entity created: " +
-                          std::to_string(mesh_data.positions_.size() / 3) +
-                          " verts");
+  Logger::getInstance().Log(LogLevel::Info,
+                            "Terrain entity created: " +
+                                std::to_string(mesh_data.positions.size() / 3) +
+                                " verts");
 }
 
 // Updates game state per frame

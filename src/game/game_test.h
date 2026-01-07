@@ -94,7 +94,6 @@ private:
   bgfx::UniformHandle _s_normalUniform = BGFX_INVALID_HANDLE;
 
   // Grass Uniforms
-
   bgfx::TextureHandle grassDiffuse;
   bgfx::TextureHandle grassORM;
   bgfx::TextureHandle grassNormal;

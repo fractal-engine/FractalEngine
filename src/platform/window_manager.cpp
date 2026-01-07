@@ -42,14 +42,14 @@ bool WindowManager::Initialize(const char* title, int width, int height) {
 
   SDL_RaiseWindow(instance.window_);
   // platform::LockWindowSize(instance.window_, width, height);
-  platform::LockMinSize(instance.window_, width, height);
+  Platform::LockMinSize(instance.window_, width, height);
 
   // ------------------------------------------------
   //  Get display scale factor for Retina support
   // ------------------------------------------------
-  instance.dpiScale_ = platform::GetDPIScale(instance.window_);
+  instance.dpiScale_ = Platform::GetDPIScale(instance.window_);
 
-  platform::DisableTextInput();
+  Platform::DisableTextInput();
 
   Logger::getInstance().Log(
       LogLevel::Info, "WindowManager initialized with size: " +
@@ -103,12 +103,12 @@ void WindowManager::OnWindowResize(int width, int height) {
   if (fullscreen_ || minimized)  // ignore resize on fullscreen or minimized
     return;
 
-  if (!platform::InFullscreenSpace(instance.window_))
-    platform::LockMinSize(instance.window_, instance.width_, instance.height_);
+  if (!Platform::InFullscreenSpace(instance.window_))
+    Platform::LockMinSize(instance.window_, instance.width_, instance.height_);
   else
-    platform::RestoreMinSize(instance.window_);
+    Platform::RestoreMinSize(instance.window_);
 
-  platform::RefreshFramebufferSize(instance.window_);  // rebuild swap-chain
+  Platform::RefreshFramebufferSize(instance.window_);  // rebuild swap-chain
 
   Logger::getInstance().Log(
       LogLevel::Debug, "Window resized to: " + std::to_string(width) + "x" +
@@ -133,10 +133,10 @@ bool WindowManager::SetFullscreen(bool enable) {
 bool WindowManager::SetBorderlessFullscreen(bool enable) {
   WindowManager& instance = getInstance();
 
-  if (enable == platform::IsBorderlessFullscreen(instance.window_))
+  if (enable == Platform::IsBorderlessFullscreen(instance.window_))
     return true;
 
-  platform::ToggleBorderlessFullscreen(instance.window_, enable);
+  Platform::ToggleBorderlessFullscreen(instance.window_, enable);
   fullscreen_ = enable;
   return true;
 }
@@ -166,7 +166,7 @@ void WindowManager::ToggleFullscreen() {
   for (auto& cb : inst.resizeCallbacks_)
     cb(logicalW, logicalH);
 
-  platform::RefreshFramebufferSize(inst.window_);
+  Platform::RefreshFramebufferSize(inst.window_);
 }
 
 bool WindowManager::IsFullscreen() {
@@ -174,5 +174,5 @@ bool WindowManager::IsFullscreen() {
 }
 
 void WindowManager::InitBGFXPlatformData(bgfx::Init& init) {
-  platform::SetupBGFXPlatformData(init, getInstance().window_);
+  Platform::SetupBGFXPlatformData(init, getInstance().window_);
 }

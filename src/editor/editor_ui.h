@@ -19,6 +19,12 @@ public:
 
   static EditorUI* Get();  // Singleton access
 
+  // Generate unique ImGui ID string
+  std::string GenerateIdString();
+
+  // Generaye unique ImGui ID
+  ImguiID GenerateId();
+
   void Initialize();
   void Run() override;
   void RequestUpdate() override;
@@ -43,6 +49,9 @@ private:
   bool game_canvas_hovered_ = false;
   bool game_canvas_focused_ = false;
   bool built_layout_ = false;  // guard for BuildDefaultLayout()
+
+  // Id counter
+  uint32_t g_id_counter_;
 
   // back-store for selection
   // entt::null is the type-safe way to say "nothing is selected"

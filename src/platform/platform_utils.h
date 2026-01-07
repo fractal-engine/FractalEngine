@@ -3,7 +3,7 @@
 #include <SDL.h>
 #include <bgfx/bgfx.h>
 
-namespace platform {
+namespace Platform {
 
 /**
  * Returns the pixel size of the drawable area (HiDPI aware) */
@@ -36,4 +36,4 @@ void DisableTextInput();
 void EnableTextInput();
 bool IsTextInputActive();
 
-}  // namespace platform
+}  // namespace Platform
