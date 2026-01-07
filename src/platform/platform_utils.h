@@ -2,6 +2,7 @@
 
 #include <SDL.h>
 #include <bgfx/bgfx.h>
+#include <glm/glm.hpp>
 
 namespace Platform {
 
@@ -35,5 +36,12 @@ void RestoreMinSize(SDL_Window* w);
 void DisableTextInput();
 void EnableTextInput();
 bool IsTextInputActive();
+
+// Cursor utilities
+// TODO: move to /input/cursor
+glm::vec2 GetCursorPosition();
+void SetCursorPosition(SDL_Window* window, const glm::vec2& pos);
+glm::vec2 GetGlobalCursorPosition();
+void SetGlobalCursorPosition(const glm::vec2& pos);
 
 }  // namespace Platform

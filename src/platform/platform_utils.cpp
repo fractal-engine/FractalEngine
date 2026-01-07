@@ -109,6 +109,28 @@ bool IsTextInputActive() {
   return SDL_IsTextInputActive() == SDL_TRUE;
 }
 
+// TODO: move to /input/cursor
+glm::vec2 GetCursorPosition() {
+  int x, y;
+  SDL_GetMouseState(&x, &y);
+  return glm::vec2(static_cast<float>(x), static_cast<float>(y));
+}
+
+void SetCursorPosition(SDL_Window* window, const glm::vec2& pos) {
+  SDL_WarpMouseInWindow(window, static_cast<int>(pos.x),
+                        static_cast<int>(pos.y));
+}
+
+glm::vec2 GetGlobalCursorPosition() {
+  int x, y;
+  SDL_GetGlobalMouseState(&x, &y);
+  return glm::vec2(static_cast<float>(x), static_cast<float>(y));
+}
+
+void SetGlobalCursorPosition(const glm::vec2& pos) {
+  SDL_WarpMouseGlobal(static_cast<int>(pos.x), static_cast<int>(pos.y));
+}
+
 }  // namespace platform
 
 #endif
