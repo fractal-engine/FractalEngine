@@ -3,13 +3,24 @@
 
 #include <entt/entt.hpp>
 #include <memory>
+
+#define IMGUI_DEFINE_MATH_OPERATORS  // ! move to editor_window
+#include "imgui.h"
+
 #include "editor/camera/god_camera.h"
 #include "editor/gizmos/component_gizmos.h"
+#include "editor/gui/components/im_components.h"  // ! move to editor_window
+#include "editor/gui/popup_menu/popup_menu.h"     // ! move to editor_window
+#include "editor/gui/search/search_popup.h"
+#include "editor/gui/utils/gui_utils.h"  // ! move to editor_window
+#include "editor/runtime/runtime.h"      // ! move to editor_window
 #include "editor_base.h"
+
 #include "engine/renderer/graphics_renderer.h"
+#include "engine/time/time.h"  // ! move to editor_window
+
 #include "game/game_test.h"
-#include "imgui.h"
-#include "imgui_internal.h"
+
 #include "platform/input/key_map_sdl.h"
 
 class EditorUI : public EditorBase {
@@ -23,7 +34,7 @@ public:
   std::string GenerateIdString();
 
   // Generaye unique ImGui ID
-  ImguiID GenerateId();
+  ImGuiID GenerateId();
 
   void Initialize();
   void Run() override;

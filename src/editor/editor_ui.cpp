@@ -1,11 +1,14 @@
-#include "editor/editor_ui.h"
-#include "editor/gui/themes/editor_theme.h"
+#include "editor_ui.h"
+
+#include "editor/gui/styles/editor_styles.h"
 #include "editor/runtime/runtime.h"
+
 #include "engine/context/engine_context.h"
 #include "engine/core/engine_globals.h"
 #include "engine/core/logger.h"
 #include "engine/core/view_ids.h"
 #include "engine/ecs/world.h"
+
 #include "gui/asset_browser.h"
 #include "gui/camera_controls.h"
 #include "gui/console_panel.h"
@@ -14,24 +17,27 @@
 #include "gui/hierarchy_panel.h"
 #include "gui/inspector_panel.h"
 #include "gui/menu_bar.h"
+#include "gui/search/search_popup.h"
 #include "gui/status_bar.h"
+#include "gui/styles/editor_styles.h"
 #include "gui/terrain_editor.h"
 #include "gui/toolbar.h"
 #include "gui/world_settings.h"
-#include "imgui.h"
-#include "imgui_internal.h"
-#include "imgui_utils.h"
+
 #include "platform/platform_utils.h"
 #include "platform/window_manager.h"
+
 #include "resources/decorators/drop_shadows.h"
 
 #include <backends/imgui_impl_sdl2.h>
 #include "editor/vendor/imgui/imgui_impl_bgfx.h"
+#include "imgui_internal.h"
+#include "imgui_utils.h"
 
 #include <SDL.h>
 
 EditorUI* EditorUI::s_instance_ = nullptr;
-uint32_t EditorUI::g_id_counter_ = 0;
+// uint32_t EditorUI::g_id_counter_ = 0;
 
 EditorUI::EditorUI(RendererBase* renderer) : renderer_(renderer) {
   s_instance_ = this;
@@ -48,7 +54,7 @@ EditorUI* EditorUI::Get() {
 void EditorUI::Initialize() {
   IMGUI_CHECKVERSION();
   ImGui::CreateContext();
-  EditorTheme::Initialize();
+  EditorStyles::Initialize();
   LoadIcons();
 
   ImGuiIO& io = ImGui::GetIO();
@@ -338,7 +344,7 @@ void EditorUI::RenderUI() {
   ImGui::End();
 
   // Get the ECS instance once for this frame
-  auto& ecs = ECS::Main();
+  auto& world = ECS::Main();
 
   // -------- LEFT : HIERARCHY (Now reads live data from ECS) --------
   ImGui::Begin("Hierarchy", nullptr);
@@ -357,9 +363,9 @@ void EditorUI::RenderUI() {
   // -------- RIGHT : INSPECTOR -----------------
   ImGui::Begin("Inspector", nullptr);
   Entity selectedEntity = GetSelectedEntity();
-  if (selectedEntity != entt::null && ecs.Reg().valid(selectedEntity)) {
+  if (selectedEntity != entt::null && world.Reg().valid(selectedEntity)) {
     // 1. Get the TransformComponent from the selected entity.
-    auto& transform = ecs.Get<TransformComponent>(selectedEntity);
+    auto& transform = world.Get<TransformComponent>(selectedEntity);
 
     // 2. Call the newly designed Inspector panel with the live component.
     Panels::Inspector(transform);
@@ -395,6 +401,9 @@ void EditorUI::RenderUI() {
   ImGui::Begin("Camera", nullptr);
   Panels::CameraControls();
   ImGui::End();
+
+  //------------------------- SEARCH POPUP --------------------------
+  SearchPopup::Render();
 
   //------------------------- IMGUI DEBUG ---------------------------
   if (debug_show_metrics_) {
