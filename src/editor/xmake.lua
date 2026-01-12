@@ -5,7 +5,7 @@ target("fractal")
 set_kind("binary")
 set_default(true)
 
-add_deps("engine", "platform", "sample_game", "FastNoise2")
+add_deps("engine", "platform", "sample_game", "FastNoise2", "implot")
 
 add_includedirs("..", "vendor", "systems")
 
@@ -15,6 +15,11 @@ add_files(
 	"runtime/*.cpp",
 	"gui/*.cpp",
 	"gui/inspectables/*.cpp",
+	"gui/search/*.cpp",
+	"gui/utils/*.cpp",
+	"gui/popup_menu/*.cpp",
+	"gui/components/*.cpp",
+	"gui/styles/*.cpp",
 	"systems/*.cpp",
 	"project/*.cpp",
 	"registry/*.cpp",
@@ -28,7 +33,12 @@ add_files("vendor/imgui/imgui_impl_bgfx.cpp", "vendor/ImGuiFileDialog/ImGuiFileD
 add_headerfiles(
 	"runtime/*.h",
 	"gui/*.h",
-	"gui/inspectables/*.cpp",
+	"gui/inspectables/*.h",
+	"gui/utils/*.h",
+	"gui/search/*.h",
+	"gui/popup_menu/*.h",
+	"gui/components/*.h",
+	"gui/styles/*.h",
 	"systems/*.h",
 	"project/*.h",
 	"registry/*.h",

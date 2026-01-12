@@ -44,7 +44,7 @@ target("engine")
     "geometry/meshing/*.h", "geometry/projection/*.h",
 
     -- content files
-    "content/cache/*.h", "content/loaders/*.h",
+    "content/cache/*.cpp", "content/loaders/*.cpp",
 
     -- resource files
     "resources/*.h", "resources/textures/*.h")
