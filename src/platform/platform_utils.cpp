@@ -6,7 +6,7 @@
 
 #if defined(_WIN32) || defined(__linux__)
 
-namespace platform {
+namespace Platform {
 
 void GetDrawableSize(SDL_Window* window, int* out_w, int* out_h) {
   // use SDL_Renderer
@@ -131,6 +131,6 @@ void SetGlobalCursorPosition(const glm::vec2& pos) {
   SDL_WarpMouseGlobal(static_cast<int>(pos.x), static_cast<int>(pos.y));
 }
 
-}  // namespace platform
+}  // namespace Platform
 
 #endif

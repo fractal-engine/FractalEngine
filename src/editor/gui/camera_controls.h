@@ -24,18 +24,18 @@ inline void CameraControls() {
     if (ImGui::SliderFloat("FOV", &camera.fov_, 30.0f, 120.0f))
       transform.modified_ = true;
 
-    if (ImGui::SliderFloat("Near", &camera.near_clip_, 0.1f, 10.0f))
+    if (ImGui::SliderFloat("Near", &camera.near_plane_, 0.1f, 10.0f))
       transform.modified_ = true;
 
-    if (ImGui::SliderFloat("Far", &camera.far_clip_, 100.0f, 10000.0f))
+    if (ImGui::SliderFloat("Far", &camera.far_plane_, 100.0f, 10000.0f))
       transform.modified_ = true;
 
     ImGui::Checkbox("Enabled", &camera.enabled_);
 
     if (ImGui::Button("Reset Camera")) {
       camera.fov_ = 60.0f;
-      camera.near_clip_ = 0.1f;
-      camera.far_clip_ = 1000.0f;
+      camera.near_plane_ = 0.1f;
+      camera.far_plane_ = 1000.0f;
     }
   } else {
     ImGui::TextDisabled("Select a camera entity to edit");
