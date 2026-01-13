@@ -1,5 +1,7 @@
 #include "gui_utils.h"
 
+#include "editor/editor_ui.h"
+
 #include "platform/platform_utils.h"
 #include "platform/window_manager.h"
 

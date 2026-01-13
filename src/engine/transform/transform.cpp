@@ -27,7 +27,7 @@ void Evaluate(TransformComponent& transform) {
   transform.normal_ = Transformation::Normal(transform.model_);
 
   // DEBUG: Log model matrix Z-axis (forward direction in backend space)
-  /*Logger::getInstance().Log(LogLevel::Debug,
+  /* Logger::getInstance().Log(LogLevel::Debug,
                             "Model Z-axis: (" +
                                 std::to_string(transform.model_[2][0]) + ", " +
                                 std::to_string(transform.model_[2][1]) + ", " +

@@ -1,6 +1,5 @@
 #include "asset_browser.h"
 
-#include <imgui.h>
 #include <algorithm>
 #include <vector>
 
