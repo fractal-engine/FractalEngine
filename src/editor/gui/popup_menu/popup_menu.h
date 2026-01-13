@@ -15,13 +15,13 @@ void End();
 void Pop();
 
 // Create new item with icon
-bool Item(const char* icon, const std::string& title);
+bool Item(const char* icon, std::string title);
 
 // Create new item without icon
-bool ItemLight(const std::string& title);
+bool ItemLight(std::string title);
 
 // Create new menu within popup
-bool Menu(const char* icon, const std::string& title);
+bool Menu(const char* icon, std::string title);
 
 // End current menu
 void EndMenu();
