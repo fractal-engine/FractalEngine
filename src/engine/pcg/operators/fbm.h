@@ -2,8 +2,8 @@
 #define FBM_H
 
 #include <FastNoise/FastNoise.h>
-#include <glm/glm.hpp>
 #include <array>
+#include <glm/glm.hpp>
 
 #include "../noise/OpenSimplex2S.hpp"
 
@@ -52,7 +52,7 @@ struct UberFBMResult {
 class UberFBM {
 public:
   UberFBM(FastNoise::SmartNode<> noise_source, OpenSimplex2S* simplex_deriv)
-      : noise_source_(noise_source), simplex_deriv_(simplex_deriv) {}
+      : noise_source_(noise_source), simplex_deriv_(simplex_deriv) {};
 
   UberFBMResult Eval(float x, float y, int seed,
                      const UberFBMParams& params) const;
