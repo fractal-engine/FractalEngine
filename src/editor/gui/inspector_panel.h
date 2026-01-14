@@ -4,9 +4,9 @@
 #include "engine/ecs/components/transform_component.h"
 #include "engine/ecs/components/volume_component.h"
 
-#include "engine/pcg/generator_base.h"
-#include "engine/pcg/generator_resource.h"
 #include "engine/pcg/pcg_engine.h"
+#include "engine/pcg/terrain/terrain_generator_base.h"
+#include "engine/pcg/terrain/terrain_generator_resource.h"
 
 #include "engine/context/engine_context.h"
 #include "engine/ecs/world.h"

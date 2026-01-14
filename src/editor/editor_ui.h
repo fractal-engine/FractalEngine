@@ -4,20 +4,16 @@
 #include <entt/entt.hpp>
 #include <memory>
 
-#define IMGUI_DEFINE_MATH_OPERATORS  // ! move to editor_window
+#define IMGUI_DEFINE_MATH_OPERATORS  // ! remove once viewport is done
 #include "imgui.h"
 
 #include "editor/camera/god_camera.h"
 #include "editor/gizmos/component_gizmos.h"
-#include "editor/gui/components/im_components.h"  // ! move to editor_window
-#include "editor/gui/popup_menu/popup_menu.h"     // ! move to editor_window
 #include "editor/gui/search/search_popup.h"
-#include "editor/gui/utils/gui_utils.h"  // ! move to editor_window
-#include "editor/runtime/runtime.h"      // ! move to editor_window
+#include "editor/gui/window_base.h"  // ! remove once we make viewport_window
 #include "editor_base.h"
 
 #include "engine/renderer/graphics_renderer.h"
-#include "engine/time/time.h"  // ! move to editor_window
 
 #include "game/game_test.h"
 
@@ -53,6 +49,9 @@ private:
   void DockSpace();
   void LoadIcons();
   void UpdateMovement();
+
+  template <typename T, typename... Args>
+  void _AddWindow(Args&&... args);
 
   RendererBase* renderer_ = nullptr;
   bool quit_ = false;

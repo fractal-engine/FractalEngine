@@ -1,0 +1,4 @@
+#ifndef DYNAMIC_CONTENT_H
+#define DYNAMIC_CONTENT_H
+
+#endif  // DYNAMIC_CONTENT_H

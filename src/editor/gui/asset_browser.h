@@ -8,7 +8,6 @@
 
 #include "editor/project/project_observer.h"
 #include "editor/systems/editor_asset.h"
-#include "editor/vendor/IconFontCppHeaders/IconsFontAwesome6.h"  // TODO: remove include once we have editor_window.h
 
 namespace Panels {
 

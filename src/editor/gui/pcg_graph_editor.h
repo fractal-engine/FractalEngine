@@ -1,8 +1,12 @@
 #ifndef PCG_GRAPH_EDITOR_H
 #define PCG_GRAPH_EDITOR_H
 
+#include <editor/vendor/imgui-node-editor/imgui_node_editor.h>
+
+#define IMGUI_DEFINE_MATH_OPERATORS
 #include <imgui.h>
-#include <imgui_node_editor.h>
+
+#include <algorithm>
 #include <functional>
 #include <glm/glm.hpp>
 #include <memory>
@@ -10,7 +14,11 @@
 #include <unordered_map>
 #include <vector>
 
+#include "engine/pcg/graph/node_types.h"     // ? improve includes
+#include "engine/pcg/graph/program_graph.h"  // ? improve includes
+
 // Forward declarations
+// ! CHANGE THIS
 namespace PCG {
 class ProgramGraph;
 class NodeTypeDB;
@@ -71,7 +79,7 @@ struct NodePreview {
 
   // Preview transform (pan/zoom via Ctrl+drag/wheel)
   glm::vec2 offset = {0.0f, 0.0f};
-  float scale = 1. 0f;
+  float scale = 1.0f;
 
   NodePreview() : pixels(kPreviewSize * kPreviewSize) {}
 
@@ -104,13 +112,13 @@ struct PCGGraphEditorPanel {
   // Preview settings (like Zylann's _node_preview_mode)
   enum class PreviewMode { SliceXY, SliceXZ };
   PreviewMode preview_mode_ = PreviewMode::SliceXZ;
-  float preview_update_timer_ = 0. 0f;
+  float preview_update_timer_ = 0.0f;
   bool live_update_enabled_ = true;
 
   // Styling
-  ImColor color_input_pin_ = ImColor(0.4f, 0. 4f, 1.0f);
-  ImColor color_output_pin_ = ImColor(0. 4f, 1.0f, 0.4f);
-  ImColor color_link_ = ImColor(0.6f, 0. 6f, 0.8f);
+  ImColor color_input_pin_ = ImColor(0.4f, 0.4f, 1.0f);
+  ImColor color_output_pin_ = ImColor(0.4f, 1.0f, 0.4f);
+  ImColor color_link_ = ImColor(0.6f, 0.6f, 0.8f);
 
   // Callbacks
   std::function<void()> on_graph_changed_;
@@ -236,7 +244,7 @@ private:
 
       // ─── Title bar ───
       ImGui::PushStyleColor(ImGuiCol_Text,
-                            GetCategoryColor(node_type.category));
+                            (ImU32)GetCategoryColor(node_type.category));
       ImGui::TextUnformatted(node_type.name.c_str());
       ImGui::PopStyleColor();
 
@@ -259,21 +267,21 @@ private:
         // Input pin
         if (has_input) {
           ed::BeginPin(PinID::Encode(node.id, row, true), ed::PinKind::Input);
-          ImGui::TextColored(ImVec4(0.5f, 0. 5f, 0.5f, 1.0f), ">");
+          ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f), ">");
           ImGui::SameLine();
           ImGui::TextUnformatted(node_type.inputs[row].name.c_str());
 
           // Show default value hint if not connected
           if (node.inputs[row].connections.empty()) {
             ImGui::SameLine();
-            ImGui::TextDisabled(": %. 2f", node.default_inputs[row]);
+            ImGui::TextDisabled(": %.2f", node.default_inputs[row]);
           }
           ed::EndPin();
         }
 
         // Spacer between input and output
         if (has_input && has_output) {
-          ImGui::SameLine(150. 0f);  // Fixed width for alignment
+          ImGui::SameLine(150.0f);  // Fixed width for alignment
         } else if (has_output && !has_input) {
           ImGui::Dummy(ImVec2(150.0f, 0));
           ImGui::SameLine();
@@ -284,7 +292,7 @@ private:
           ed::BeginPin(PinID::Encode(node.id, row, false), ed::PinKind::Output);
           ImGui::TextUnformatted(node_type.outputs[row].name.c_str());
           ImGui::SameLine();
-          ImGui::TextColored(ImVec4(0.5f, 0. 5f, 0.5f, 1.0f), ">");
+          ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f), ">");
           ed::EndPin();
         }
       }
@@ -437,7 +445,7 @@ private:
                 OnGraphChanged();
               }
             } else {
-              ed::RejectNewItem(ImColor(1.0f, 0.2f, 0. 2f), 2.0f);
+              ed::RejectNewItem(ImColor(1.0f, 0.2f, 0.2f), 2.0f);
             }
           }
         }
@@ -608,7 +616,7 @@ private:
     // Draw preview image
     if (preview.texture_id != 0) {
       ImGui::Image(
-          reinterpret_cast<ImTextureID>(preview.texture_id),
+          (ImTextureID)(uintptr_t)preview.texture_id,
           ImVec2(NodePreview::kPreviewSize, NodePreview::kPreviewSize));
 
       // Handle Ctrl+drag to pan preview
@@ -621,7 +629,7 @@ private:
         }
         // Handle Ctrl+wheel to zoom
         if (io.KeyCtrl && io.MouseWheel != 0) {
-          float zoom_factor = io.MouseWheel > 0 ? 0.9f : 1. 1f;
+          float zoom_factor = io.MouseWheel > 0 ? 0.9f : 1.1f;
           preview.scale *= zoom_factor;
           preview.MarkDirty();
         }
@@ -653,7 +661,7 @@ private:
 
         // Map [-1, 1] to [0, 255]
         uint8_t pixel = static_cast<uint8_t>(
-            std::clamp((value * 0.5f + 0.5f) * 255.0f, 0. 0f, 255.0f));
+            std::clamp((value * 0.5f + 0.5f) * 255.0f, 0.0f, 255.0f));
         preview.pixels[y * NodePreview::kPreviewSize + x] = pixel;
       }
     }
@@ -670,7 +678,7 @@ private:
   }
 
   void ProcessPreviewTimer(float dt) {
-    if (preview_update_timer_ > 0. 0f) {
+    if (preview_update_timer_ > 0.0f) {
       preview_update_timer_ -= dt;
       if (preview_update_timer_ <= 0.0f) {
         UpdatePreviews();
@@ -780,19 +788,19 @@ private:
   ImColor GetCategoryColor(PCG::Category cat) const {
     switch (cat) {
       case PCG::Category::Input:
-        return ImColor(0.4f, 0. 8f, 0. 4f);
+        return ImColor(0.4f, 0.8f, 0.4f);
       case PCG::Category::Output:
-        return ImColor(0. 8f, 0.4f, 0.4f);
+        return ImColor(0.8f, 0.4f, 0.4f);
       case PCG::Category::Math:
-        return ImColor(0.6f, 0. 6f, 0.9f);
+        return ImColor(0.6f, 0.6f, 0.9f);
       case PCG::Category::Noise:
-        return ImColor(0.9f, 0. 7f, 0. 3f);
+        return ImColor(0.9f, 0.7f, 0.3f);
       case PCG::Category::Filter:
-        return ImColor(0.7f, 0.5f, 0. 8f);
+        return ImColor(0.7f, 0.5f, 0.8f);
       case PCG::Category::Erosion:
-        return ImColor(0.5f, 0. 7f, 0. 7f);
+        return ImColor(0.5f, 0.7f, 0.7f);
       default:
-        return ImColor(0.7f, 0. 7f, 0. 7f);
+        return ImColor(0.7f, 0.7f, 0.7f);
     }
   }
 
