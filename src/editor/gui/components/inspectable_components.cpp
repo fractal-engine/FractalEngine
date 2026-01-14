@@ -9,11 +9,11 @@
 #include <unordered_map>
 
 #include "editor/editor_ui.h"
+#include "editor/gui/styles/editor_styles.h"
 #include "editor/vendor/IconFontCppHeaders/IconsFontAwesome6.h"
-#include "engine/ecs/world.h"
-#include "engine/transform/transform.h"
+#include "im_components.h"
 
-// TODO: #include "editor/ui/components/im_components.h"
+#include "engine/transform/transform.h"
 // TODO: #include "rendering/icons/icon_pool.h"
 
 namespace InspectableComponents {
@@ -43,9 +43,9 @@ void _EcsRemove(Entity entity) {
 /**
  *
  * Draw a component header, return true if expanded
- * Set enabledPtr to nullptr if component can't be disabled
- * Set removedPtr to nullptr if component can't be removed
- * Set alwaysOpened to true for components that can't be collapsed
+ * - Set enabledPtr to nullptr if component can't be disabled
+ * - Set removedPtr to nullptr if component can't be removed
+ * - Set alwaysOpened to true for components that can't be collapsed
  *
  */
 bool _BeginComponent(const std::string& identifier,
@@ -57,8 +57,7 @@ bool _BeginComponent(const std::string& identifier,
   ImVec2 content_avail = ImGui::GetContentRegionAvail();
   ImVec2 cursor_pos = ImGui::GetCursorScreenPos();
 
-  // TODO: Use EditorSizing constants
-  float title_height = 16.0f;
+  float title_height = EditorSizes::h4_font_size;
   ImVec2 title_padding = ImVec2(10.0f, 10.0f);
 
   float height = title_height + title_padding.y * 2;
@@ -87,10 +86,12 @@ bool _BeginComponent(const std::string& identifier,
 
   // Draw expansion caret
   if (always_opened) {
-    draw_list.AddText(cursor, IM_COL32(255, 255, 255, 255), ICON_FA_CARET_DOWN);
+    draw_list.AddText(EditorStyles::GetFonts().h4_bold,
+                      EditorSizes::h4_font_size, cursor, EditorColor::text,
+                      ICON_FA_CARET_DOWN);
   } else {
-    const char* caret = *opened_ptr ? ICON_FA_CARET_DOWN : ICON_FA_CARET_RIGHT;
-    draw_list.AddText(cursor, IM_COL32(200, 200, 200, 255), caret);
+    IMComponents::Caret(*opened_ptr, draw_list, cursor, ImVec2(-1.0f, 2.0f),
+                        IM_COL32(0, 0, 0, 0), EditorColor::element);
   }
   cursor.x += 22.0f;
 
@@ -107,8 +108,8 @@ bool _BeginComponent(const std::string& identifier,
 
     ImVec2 internal_cursor = ImGui::GetCursorScreenPos();
     ImGui::SetCursorScreenPos(cursor + ImVec2(0.0f, -2.0f));
-    std::string checkbox_id = "##enabled_" + identifier;
-    ImGui::Checkbox(checkbox_id.c_str(), enabled_ptr);
+    std::string id = EditorUI::Get()->GenerateIdString();
+    ImGui::Checkbox(id.c_str(), enabled_ptr);
     ImGui::SetCursorScreenPos(internal_cursor);
     cursor.x += 28.0f;
 
@@ -116,27 +117,22 @@ bool _BeginComponent(const std::string& identifier,
   }
 
   // Draw component name
-  draw_list.AddText(cursor, IM_COL32(255, 255, 255, 255), identifier.c_str());
+  draw_list.AddText(EditorStyles::GetFonts().h4_bold, EditorSizes::h4_font_size,
+                    cursor, EditorColor::text, identifier.c_str());
 
   // Draw remove button
   if (removed_ptr) {
     float button_size = 20.0f;
-    ImVec2 button_pos =
-        ImVec2(p1.x - button_size - title_padding.x, cursor.y - 2.0f);
+    cursor.x = p1.x - button_size - title_padding.x;
 
-    ImGui::SetCursorScreenPos(button_pos);
-    std::string remove_id = "##remove_" + identifier;
-    ImGui::PushStyleColor(ImGuiCol_Button, IM_COL32(0, 0, 0, 0));
-    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, IM_COL32(255, 65, 65, 90));
-    ImGui::PushStyleColor(ImGuiCol_ButtonActive, IM_COL32(255, 65, 65, 150));
-    if (ImGui::Button((std::string(ICON_FA_XMARK) + remove_id).c_str(),
-                      ImVec2(button_size, button_size))) {
+    if (IMComponents::IconButton(ICON_FA_XMARK, draw_list, cursor,
+                                 ImVec2(-1.0f, 2.0f), IM_COL32(0, 0, 0, 0),
+                                 IM_COL32(255, 65, 65, 90))) {
       *removed_ptr = true;
     }
-    ImGui::PopStyleColor(3);
   }
 
-  // Advance cursor for content
+  // Advance cursor and draw content
   bool currently_opened = always_opened ? true : *opened_ptr;
 
   if (currently_opened) {
@@ -156,8 +152,7 @@ void _EndComponent() {
 // HELPER WIDGETS
 //=============================================================================
 void _Headline(const std::string& label) {
-  // TODO: Use IMComponents::label with bold font
-  ImGui::TextUnformatted(label.c_str());
+  IMComponents::Label(label, EditorStyles::GetFonts().h4_bold);
   ImGui::Dummy(ImVec2(0.0f, 1.0f));
 }
 
@@ -169,85 +164,53 @@ void _SpacingM() {
   ImGui::Dummy(ImVec2(0.0f, 10.0f));
 }
 
-// TODO: Replace with IMComponents::input variants
-void _InputFloat3(const char* label, glm::vec3& value) {
-  ImGui::DragFloat3(label, glm::value_ptr(value), 0.1f);
-}
-
-void _InputFloat(const char* label, float& value) {
-  ImGui::DragFloat(label, &value, 0.1f);
-}
-
-void _InputInt(const char* label, int& value) {
-  ImGui::DragInt(label, &value);
-}
-
-void _InputBool(const char* label, bool& value) {
-  ImGui::Checkbox(label, &value);
-}
-
-void _InputColor3(const char* label, glm::vec3& value) {
-  ImGui::ColorEdit3(label, glm::value_ptr(value));
-}
-
-void _Label(const std::string& text) {
-  ImGui::TextUnformatted(text.c_str());
-}
-
-void _VectorLabel(const std::string& label, const glm::vec3& value) {
-  ImGui::Text("%s: (%.2f, %.2f, %.2f)", label.c_str(), value.x, value.y,
-              value.z);
-}
-
 //=============================================================================
 // COMPONENT INSPECTABLES
 //=============================================================================
 void DrawTransform(Entity entity, TransformComponent& transform) {
+  // TODO: Use IconPool here, IconPool::get("transform")
   if (_BeginComponent("Transform", 0, nullptr, nullptr, true)) {
     _Headline("Properties");
 
-    // TODO: Use IMComponents::input
-    _InputFloat3("Position", transform.local_position_);
-
-    glm::vec3 euler = glm::degrees(transform.euler_angles_);
-    if (ImGui::DragFloat3("Rotation", glm::value_ptr(euler), 1.0f)) {
-      transform.euler_angles_ = glm::radians(euler);
-      Transform::SetEulerAngles(transform, transform.euler_angles_,
-                                Space::LOCAL);
-    }
-
-    _InputFloat3("Scale", transform.local_scale_);
+    IMComponents::Input("Position", transform.position_);
+    IMComponents::Input("Rotation", transform.euler_angles_);
+    IMComponents::Input("Scale", transform.scale_);
 
     if (Transform::HasParent(transform)) {
       auto& parent = Transform::GetParent(transform);
-      _Label("Parent: " + parent.name_);
+      IMComponents::Label("Parent: " + parent.name_);
     }
 
-    _Label("ID: " + std::to_string(transform.id_));
-    _Label("Depth: " + std::to_string(transform.depth_));
+    IMComponents::Label("ID: " + std::to_string(transform.id_));
+    IMComponents::Label("Depth: " + std::to_string(transform.depth_));
 
     if (Transform::HasParent(transform)) {
-      _VectorLabel("World Position",
-                   Transform::GetPosition(transform, Space::WORLD));
-      _VectorLabel("World Scale", Transform::GetScale(transform, Space::WORLD));
+      IMComponents::VectorLabel(
+          "World Position", Transform::GetPosition(transform, Space::WORLD));
+      IMComponents::VectorLabel("World Scale",
+                                Transform::GetScale(transform, Space::WORLD));
     }
 
     // Apply changes
-    Transform::SetPosition(transform, transform.local_position_, Space::LOCAL);
-    Transform::SetScale(transform, transform.local_scale_, Space::LOCAL);
+    Transform::SetPosition(transform, transform.position_);
+    Transform::SetEulerAngles(transform, transform.euler_angles_);
+    Transform::SetScale(transform, transform.scale_);
 
     _EndComponent();
   }
 }
 
-void DrawMeshRenderer(Entity entity, MeshRendererComponent& renderer) {
+void DrawMeshRenderer(Entity entity, MeshRendererComponent& mesh_renderer) {
   bool removed = false;
 
-  if (_BeginComponent("Mesh Renderer", 0, &renderer.visible_, &removed)) {
+  // TODO: Use IconPool here, IconPool::Get("mesh_renderer")
+  if (_BeginComponent("Mesh Renderer", 0, &mesh_renderer.enabled_, &removed)) {
     _Headline("General");
 
-    if (renderer.mesh_) {
-      _Label("Index Count: " + std::to_string(renderer.mesh_->IndexCount()));
+    // TODO: meshRenderer.mesh->vao() instead of IndexCount
+    if (mesh_renderer.mesh_) {
+      IMComponents::Label("Index Count: " +
+                          std::to_string(mesh_renderer.mesh_->IndexCount()));
     } else {
       ImGui::TextDisabled("No mesh assigned");
     }
@@ -256,8 +219,6 @@ void DrawMeshRenderer(Entity entity, MeshRendererComponent& renderer) {
     // if (renderer.material_) {
     //   _Label("Material ID: " + std::to_string(renderer.material_->GetId()));
     // }
-
-    _InputBool("Cast Shadows", renderer.cast_shadows_);
 
     _EndComponent();
   }
@@ -269,12 +230,13 @@ void DrawMeshRenderer(Entity entity, MeshRendererComponent& renderer) {
 void DrawCamera(Entity entity, CameraComponent& camera) {
   bool removed = false;
 
-  if (_BeginComponent("Camera", 0, &camera.enabled, &removed)) {
+  // TODO: Do IconPool::Get("camera")
+  if (_BeginComponent("Camera", 0, &camera.enabled_, &removed)) {
     _Headline("General");
 
-    _InputFloat("FOV", camera.fov);
-    _InputFloat("Near", camera.near_plane);
-    _InputFloat("Far", camera.far_plane);
+    IMComponents::Input("FOV", camera.fov_);
+    IMComponents::Input("Near", camera.near_plane_);
+    IMComponents::Input("Far", camera.far_plane_);
 
     _EndComponent();
   }
@@ -283,15 +245,17 @@ void DrawCamera(Entity entity, CameraComponent& camera) {
     _EcsRemove<CameraComponent>(entity);
 }
 
-void DrawDirectionalLightComponent(Entity entity,
-                                   DirectionalLightComponent& light) {
+void DrawDirectionalLightComponent(
+    Entity entity, DirectionalLightComponent& directional_light) {
   bool removed = false;
 
-  if (_BeginComponent("Directional Light", 0, &light.enabled, &removed)) {
+  // TODO: Use IconPool here, IconPool::Get("directional_light")
+  if (_BeginComponent("Directional Light", 0, &directional_light.enabled_,
+                      &removed)) {
     _Headline("Properties");
 
-    _InputFloat("Intensity", light.intensity);
-    _InputColor3("Color", light.color);
+    IMComponents::Input("Intensity", directional_light.intensity_);
+    IMComponents::ColorPicker("Color", directional_light.color_);
 
     _SpacingS();
     _Headline("Shadows");
@@ -299,16 +263,13 @@ void DrawDirectionalLightComponent(Entity entity,
     // TODO: Shadow settings
     bool tmp_cast = true;
     bool tmp_soft = true;
-    _InputBool("Cast Shadows", tmp_cast);
-    _InputBool("Soft Shadows", tmp_soft);
+    IMComponents::Input("Cast Shadows", tmp_cast);
+    IMComponents::Input("Soft Shadows", tmp_soft);
 
-    ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 255, 0, 135));
-
-    // TODO: update message here
-    ImGui::TextWrapped(
+    IMComponents::Label(
         ICON_FA_TRIANGLE_EXCLAMATION
-        " In-editor shadows aren't dynamic yet and can't be changed currently");
-    ImGui::PopStyleColor();
+        " In-editor shadows aren't dynamic yet and can't be changed currently",
+        EditorStyles::GetFonts().p, IM_COL32(255, 255, 0, 135));
 
     _EndComponent();
   }
@@ -317,32 +278,30 @@ void DrawDirectionalLightComponent(Entity entity,
     _EcsRemove<DirectionalLightComponent>(entity);
 }
 
-void DrawPointLightComponent(Entity entity, PointLightComponent& light) {
+void DrawPointLightComponent(Entity entity, PointLightComponent& point_light) {
   bool removed = false;
 
-  if (_BeginComponent("Point Light", 0, &light.enabled, &removed)) {
+  // TODO: Replace ICON_FA_LIGHTBULB with IconPool::Get("point_light")
+  if (_BeginComponent("Point Light", 0, &point_light.enabled_, &removed)) {
     _Headline("Properties");
 
-    _InputFloat("Intensity", light.intensity);
-    _InputColor3("Color", light.color);
-    _InputFloat("Range", light.range);
-    _InputFloat("Falloff", light.falloff);
+    IMComponents::Input("Intensity", point_light.intensity_);
+    IMComponents::ColorPicker("Color", point_light.color_);
+    IMComponents::Input("Range", point_light.range_);
+    IMComponents::Input("Falloff", point_light.falloff_);
 
     _SpacingS();
     _Headline("Shadows");
 
     bool tmp_cast = false;
     bool tmp_soft = false;
-    _InputBool("Cast Shadows", tmp_cast);
-    _InputBool("Soft Shadows", tmp_soft);
+    IMComponents::Input("Cast Shadows", tmp_cast);
+    IMComponents::Input("Soft Shadows", tmp_soft);
 
-    ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 255, 0, 135));
-
-    // TODO: update message here
-    ImGui::TextWrapped(
+    IMComponents::Label(
         ICON_FA_TRIANGLE_EXCLAMATION
-        " In-editor shadows aren't dynamic yet and can't be changed currently");
-    ImGui::PopStyleColor();
+        " In-editor shadows aren't dynamic yet and can't be changed currently",
+        EditorStyles::GetFonts().p, IM_COL32(255, 255, 0, 135));
 
     _EndComponent();
   }
@@ -354,31 +313,29 @@ void DrawPointLightComponent(Entity entity, PointLightComponent& light) {
 void DrawSpotlightComponent(Entity entity, SpotlightComponent& spotlight) {
   bool removed = false;
 
-  if (_BeginComponent("Spotlight", 0, &spotlight.enabled, &removed)) {
+  // TODO: Use IconPool::Get("spotlight")
+  if (_BeginComponent("Spotlight", 0, &spotlight.enabled_, &removed)) {
     _Headline("Properties");
 
-    _InputFloat("Intensity", spotlight.intensity);
-    _InputColor3("Color", spotlight.color);
-    _InputFloat("Range", spotlight.range);
-    _InputFloat("Falloff", spotlight.falloff);
-    _InputFloat("Inner Angle", spotlight.inner_angle);
-    _InputFloat("Outer Angle", spotlight.outer_angle);
+    IMComponents::Input("Intensity", spotlight.intensity_);
+    IMComponents::ColorPicker("Color", spotlight.color_);
+    IMComponents::Input("Range", spotlight.range_);
+    IMComponents::Input("Falloff", spotlight.falloff_);
+    IMComponents::Input("Inner Angle", spotlight.inner_angle_);
+    IMComponents::Input("Outer Angle", spotlight.outer_angle_);
 
     _SpacingS();
     _Headline("Shadows");
 
     bool tmp_cast = true;
     bool tmp_soft = true;
-    _InputBool("Cast Shadows", tmp_cast);
-    _InputBool("Soft Shadows", tmp_soft);
+    IMComponents::Input("Cast Shadows", tmp_cast);
+    IMComponents::Input("Soft Shadows", tmp_soft);
 
-    ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 255, 0, 135));
-
-    // TODO: update message here
-    ImGui::TextWrapped(
+    IMComponents::Label(
         ICON_FA_TRIANGLE_EXCLAMATION
-        " In-editor shadows aren't dynamic yet and can't be changed currently");
-    ImGui::PopStyleColor();
+        " In-editor shadows aren't dynamic yet and can't be changed currently",
+        EditorStyles::GetFonts().p, IM_COL32(255, 255, 0, 135));
 
     _EndComponent();
   }
