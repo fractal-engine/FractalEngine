@@ -1,6 +1,7 @@
 #ifndef INSPECTABLE_BASE_H
 #define INSPECTABLE_BASE_H
 
+#define IMGUI_DEFINE_MATH_OPERATORS
 #include <imgui.h>
 
 class InspectableBase {

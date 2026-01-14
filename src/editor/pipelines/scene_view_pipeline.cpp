@@ -214,7 +214,7 @@ void SceneViewPipeline::RenderForwardNode(const Node::Context& context) {
                                camera_transform.rotation_);
   projection_ = Transformation::Projection(
       camera_component.fov_, float(canvasViewportW) / float(canvasViewportH),
-      camera_component.near_clip_, camera_component.far_clip_);
+      camera_component.near_plane_, camera_component.far_plane_);
 
   float viewMatrix[16];
   float projMatrix[16];

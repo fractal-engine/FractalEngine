@@ -1,6 +1,7 @@
 #ifndef INSPECTABLE_COMPONENTS_H
 #define INSPECTABLE_COMPONENTS_H
 
+#include "editor/registry/component_registry.h"
 #include "engine/ecs/ecs_collection.h"
 
 namespace InspectableComponents {
