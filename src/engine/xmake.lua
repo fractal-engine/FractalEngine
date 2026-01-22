@@ -14,6 +14,9 @@ target("engine")
             "ecs/*.cpp", "memory/*.cpp", "transform/*.cpp", "time/*.cpp",
             "math/*.cpp", "pcg/*.cpp",
 
+    -- GEOMETRY FILES -------
+    "geometry/meshing/*.cpp", "geometry/projection/*.cpp",
+
     -- renderer files
     "renderer/*.cpp", "renderer/lighting/*.cpp", "renderer/shaders/*.cpp",
             "renderer/icons/*.cpp", "renderer/texture/*.cpp", "renderer/model/*.cpp",
