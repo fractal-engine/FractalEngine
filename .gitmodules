@@ -10,3 +10,6 @@
 [submodule "src/editor/vendor/imgui-node-editor"]
 	path = src/editor/vendor/imgui-node-editor
 	url = https://github.com/thedmd/imgui-node-editor
+[submodule "thirdparty/implot"]
+	path = thirdparty/implot
+	url = https://github.com/epezent/implot

@@ -123,6 +123,7 @@ rule("shaderc.build")
             gltf    = "varying_gltf.def.sc",
             default = "varying_default.def.sc",
             debug   = "varying_debug.def.sc",
+            materials   = "varying_materials.def.sc",
         }
 
         -- pick first key matching anywhere in relative path

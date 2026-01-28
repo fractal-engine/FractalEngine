@@ -18,9 +18,8 @@ class Renderable;
 class Scene {
 public:
   virtual ~Scene() = default;
-  virtual void Init() = 0;
+  virtual void Create() = 0;
   virtual void Update(float dt) = 0;
-  virtual void Render() = 0;
 };
 
 #endif  // SCENE_H

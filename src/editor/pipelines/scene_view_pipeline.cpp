@@ -48,8 +48,8 @@ void SceneViewPipeline::Create() {
   std::get<1>(god_camera_).fov_ = 90.0f;
 
   // Load shared shaders
-  default_program_ = Runtime::Shader()->LoadProgram(
-      "terrain", "vs_vertex_color.bin", "fs_vertex_color.bin");
+  default_program_ =
+      Runtime::Shader()->LoadProgram("materials", "vs_lit.bin", "fs_lit.bin");
   selection_program_ = Runtime::Shader()->LoadProgram(
       "selection", "vs_selection.bin", "fs_selection.bin");
   debug_program_ = Runtime::Shader()->LoadProgram("debug", "vs_grid_plane.bin",
@@ -257,17 +257,84 @@ void SceneViewPipeline::RenderForwardNode(const Node::Context& context) {
     Transform::UpdateMVP(transform, view_projection);
   }
 
-  // Set directional lights uniforms
-  auto light_view = world.View<DirectionalLightComponent, TransformComponent>();
-  for (auto [e, light, transform] : light_view.each()) {
+  // Collect ambient from sky lights
+  glm::vec3 total_ambient(0.0f);
+  auto sky_light_view = world.View<SkyLightComponent>();
+  for (auto [e, sky_light] : sky_light_view.each()) {
+    if (!sky_light.enabled_)
+      continue;
+
+    glm::vec3 color = sky_light.color_;
+    if (sky_light.real_time_capture_ && context.globals.skybox) {
+      const auto& params = context.globals.skybox->GetParams();
+      color = glm::vec3(params._skyAmbientArray[0], params._skyAmbientArray[1],
+                        params._skyAmbientArray[2]);
+    }
+    // DEBUG: Check what skybox is providing
+    Logger::getInstance().Log(
+        LogLevel::Debug,
+        "SkyLight ambient from skybox: " + std::to_string(color.r) + ", " +
+            std::to_string(color.g) + ", " + std::to_string(color.b));
+
+    total_ambient += color * sky_light.intensity_;
+  }
+  Light::SetAmbient(total_ambient);
+
+  // Collect directional lights
+  int dir_count = 0;
+  auto dir_view = world.View<DirectionalLightComponent, TransformComponent>();
+  for (auto [e, light, transform] : dir_view.each()) {
     if (!light.enabled_)
       continue;
 
-    glm::vec3 direction =
-        glm::normalize(Transform::Forward(transform, Space::WORLD));
-    Light::SetDirectionalLight(direction, light.color_, light.intensity_);
-    break;
+    glm::vec3 dir = glm::normalize(Transform::Forward(transform, Space::WORLD));
+    glm::vec3 amb = light.color_ * 0.1f;
+    glm::vec3 diff = light.color_ * light.intensity_;
+    glm::vec3 spec = glm::vec3(1.0f) * light.intensity_;
+
+    Light::SetDirectionalLight(dir_count++, dir, amb, diff, spec);
   }
+
+  // Collect point lights
+  int point_count = 0;
+  auto point_view = world.View<PointLightComponent, TransformComponent>();
+  for (auto [e, light, transform] : point_view.each()) {
+    if (!light.enabled_)
+      continue;
+
+    glm::vec3 amb = light.color_ * 0.1f;
+    glm::vec3 diff = light.color_ * light.intensity_;
+    glm::vec3 spec = glm::vec3(1.0f) * light.intensity_;
+    float constant = 1.0f;
+    float linear = 4.5f / light.range_;
+    float quadratic = 75.0f / (light.range_ * light.range_);
+
+    Light::SetPointLight(point_count++, transform.position_, amb, diff, spec,
+                         constant, linear, quadratic);
+  }
+
+  // Collect spot lights
+  int spot_count = 0;
+  auto spot_view = world.View<SpotlightComponent, TransformComponent>();
+  for (auto [e, light, transform] : spot_view.each()) {
+    if (!light.enabled_)
+      continue;
+
+    glm::vec3 dir = glm::normalize(Transform::Forward(transform, Space::WORLD));
+    glm::vec3 amb = light.color_ * 0.1f;
+    glm::vec3 diff = light.color_ * light.intensity_;
+    glm::vec3 spec = glm::vec3(1.0f) * light.intensity_;
+    float inner = glm::cos(glm::radians(light.inner_angle_));
+    float outer = glm::cos(glm::radians(light.outer_angle_));
+    float constant = 1.0f;
+    float linear = 4.5f / light.range_;
+    float quadratic = 75.0f / (light.range_ * light.range_);
+
+    Light::SetSpotLight(spot_count++, transform.position_, dir, amb, diff, spec,
+                        inner, outer, constant, linear, quadratic);
+  }
+
+  Light::SetLightCounts(dir_count, point_count, spot_count);
   Light::ApplyUniforms();
 
   // Render all scene meshes

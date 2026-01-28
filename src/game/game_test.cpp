@@ -553,8 +553,8 @@ void GameTest::Update() {
   // Update camera from keyboard input
   // cameraSystem.UpdateFromKeyboard();
 
-  float dt = bx::kPi * 0.002f;  // water time step
-  _waterTime += dt;
+  // float dt = bx::kPi * 0.002f;  // water time step
+  // _waterTime += dt;
 }
 
 // Renders the game scene

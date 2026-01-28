@@ -33,6 +33,7 @@
  *  - Create default assets and settings
  *  - Complete _NextFrame() and main loop implementation
  *  - Proper audio context (currently using SoundManager directly)
+ *  - Remove lighting from runtime after materials is implemented
  **************************************************************************/
 
 #include "runtime.h"
@@ -45,12 +46,15 @@
 #include "engine/core/logger.h"
 #include "engine/ecs/ecs_collection.h"
 #include "engine/renderer/icons/icon_loader.h"
+#include "engine/renderer/lighting/light.h"
 #include "engine/renderer/shadows/shadow_map.h"
 #include "engine/renderer/skybox/skybox.h"
+#include "engine/scene/scene_manager.h"
+#include "engine/scene/scene_template.h"
 #include "engine/time/time.h"
 #include "game/game_test.h"
 
-// ------------------ single-instance state (internal linkage) -----------------
+// ------------------ single-instance state -----------------
 namespace Runtime {
 
 // ---------- globals ----------
@@ -80,6 +84,9 @@ Skybox g_default_skybox;
 
 // shadow
 ShadowMap g_main_shadow_map;
+
+// scene manager
+SceneManager g_scene_manager;
 
 // TODO: default settings
 
@@ -123,10 +130,15 @@ static void _CreateResources() {
   // setup scene gizmos
   g_scene_gizmos.Create();
 
+  // Init lighting
+  // Uniform creation should be moved to GraphicsRenderer or ShaderManager!
+  Light::Create();  // ! remove once material system is done
+
   // Setup shadows
   g_main_shadow_map.Create();
 
   // TODO: Create main shadow disk and main shadow map here ?
+  // TODO: load global shadows here?
 }
 
 static void _CreateEngineContext() {
@@ -180,6 +192,9 @@ static void _LaunchEditor() {
       std::filesystem::current_path() / "examples" / "example-project";
   std::filesystem::create_directories(project_path);
   g_project_manager.Load(project_path);
+
+  // Load default scene
+  g_scene_manager.LoadScene(std::make_unique<SceneTemplate>());
 
   // TODO: show welcome panel here
 }
@@ -311,6 +326,8 @@ int TERMINATE() {
 
   g_main_shadow_map.Destroy();
 
+  Light::Destroy();
+
   EngineContext::Destroy();
 
   Logger::getInstance().Log(LogLevel::Info, "Runtime::Terminate");
@@ -356,6 +373,10 @@ SceneViewPipeline& GetSceneViewPipeline() {
 
 FrameGraph& GetFrameGraph() {
   return *g_frame_graph;
+}
+
+SceneManager& Scene() {
+  return g_scene_manager;
 }
 
 }  // namespace Runtime

@@ -6,13 +6,29 @@
 #include <glm/glm.hpp>
 
 namespace Light {
+
 void Create();
 void Destroy();
 
-void SetDirectionalLight(const glm::vec3& direction, const glm::vec3& color,
-                         float intensity);
+// Set light data at specific array index
+void SetDirectionalLight(int index, const glm::vec3& direction,
+                         const glm::vec3& ambient, const glm::vec3& diffuse,
+                         const glm::vec3& specular);
 
-void UpdateSkyAmbient(const bx::Vec3& sunDir, float time);
+void SetPointLight(int index, const glm::vec3& position,
+                   const glm::vec3& ambient, const glm::vec3& diffuse,
+                   const glm::vec3& specular, float constant, float linear,
+                   float quadratic);
+
+void SetSpotLight(int index, const glm::vec3& position,
+                  const glm::vec3& direction, const glm::vec3& ambient,
+                  const glm::vec3& diffuse, const glm::vec3& specular,
+                  float innerCutoff, float outerCutoff, float constant,
+                  float linear, float quadratic);
+
+// Set counts and ambient
+void SetLightCounts(int dirCount, int pointCount, int spotCount);
+void SetAmbient(const glm::vec3& color);
 
 void ApplyUniforms();
 
@@ -20,6 +36,8 @@ void ApplyUniforms();
 bgfx::UniformHandle GetAmbientUniform();
 bgfx::UniformHandle GetSunDirectionUniform();
 bgfx::UniformHandle GetSunLuminanceUniform();
+bgfx::UniformHandle GetColorsUniform();
+bgfx::UniformHandle GetCountsUniform();
 }  // namespace Light
 
 #endif  // LIGHT_H

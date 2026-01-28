@@ -9,16 +9,11 @@
 void SceneManager::LoadScene(std::unique_ptr<Scene> scene) {
   current_scene_ = std::move(scene);
   if (current_scene_) {
-    current_scene_->Init();
+    current_scene_->Create();
   }
 }
 
 void SceneManager::Update(float dt) {
   if (current_scene_)
     current_scene_->Update(dt);
-}
-
-void SceneManager::Render() {
-  if (current_scene_)
-    current_scene_->Render();
 }

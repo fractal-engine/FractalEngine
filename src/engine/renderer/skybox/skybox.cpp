@@ -173,7 +173,6 @@ void Skybox::ComputeSun() {
   params_.sunDirShader[2] = sunDirectionVec.z;
   params_.sunDirShader[3] = 0.0f;
 
-  
   float sunElevationFactor = local_smoothStep(-0.15f, 0.2f, sunDirectionVec.y);
 
   // const float baseSunLuminance = 10.0f;
@@ -197,9 +196,9 @@ void Skybox::ComputeSun() {
   params_._skyAmbientArray[2] = bx::lerp(0.05f, 0.55f, sunElevationFactor);
   params_._skyAmbientArray[3] = 0.0f;
 
-  const float ambientBoost = 0.005f;
+  /* const float ambientBoost = 0.005f;
   for (int i = 0; i < 3; ++i)
-    params_._skyAmbientArray[i] *= ambientBoost;
+    params_._skyAmbientArray[i] *= ambientBoost;*/
 }
 
 // ---------------------------------------------------------------

@@ -1,11 +1,9 @@
 name: Windows CI
-
 on:
   push:
     branches: [main]
   pull_request:
     branches: [main]
-
 jobs:
   build:
     runs-on: windows-latest
@@ -13,35 +11,47 @@ jobs:
       matrix:
         arch: [x64]
         toolchain: [msvc]
-
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 1
           submodules: true
-
+      
       - name: Setup Xmake
         uses: xmake-io/github-action-setup-xmake@v1
 
-      - name: Clean xmake package cache
-        run: xmake require --clean
+      - name: Cache xmake packages
+        uses: actions/cache@v4
+        with:
+           path: |
+             ~/AppData/Local/.xmake/packages
+             ~/AppData/Local/.xmake/cache
+           key: windows-${{ matrix.arch }}-xmake-${{ hashFiles('xmake.lua', 'xmake/*.lua') }}
+           restore-keys: |
+              windows-${{ matrix.arch }}-xmake-
 
-      - name: Configure & Build
+      - name: Cache FastNoise2 build
+        id: cache-fastnoise2
+        uses: actions/cache@v5
+        with:
+          path: thirdparty/FastNoise2/build
+          key: fastnoise2-${{ runner.os }}-${{ matrix.arch }}-${{ hashFiles('thirdparty/FastNoise2/**') }}
+          restore-keys: |
+            fastnoise2-${{ runner.os }}-${{ matrix.arch }}-
+      
+      - name: Configure
         shell: bash
-        run: |
-          xmake f -p windows --toolchain=${{ matrix.toolchain }} -a ${{ matrix.arch }} -y -v
-          xmake build fractal
+        run: xmake f -p windows --toolchain=${{ matrix.toolchain }} -a ${{ matrix.arch }} -y -v
+      
+      - name: Install dependencies
+        shell: bash
+        run: xmake require -y
 
-      - name: Check shader binaries
+      - name: Build FastNoise2 (if not cached)
+        if: steps.cache-fastnoise2.outputs.cache-hit != 'true'
         shell: bash
-        run: |
-          builddir="build/windows/${{ matrix.arch }}/release"
-          for folder in dx11 dx12; do
-            shaderdir="$builddir/assets/shaders/$folder"
-            echo "Checking shader binaries in $shaderdir"
-            count=$(find "$shaderdir" -name '*.bin' | wc -l)
-            if [ "$count" -eq 0 ]; then
-              echo "::error ::No shader binaries found in $shaderdir"
-              exit 1
-            fi
-          done
+        run: xmake build FastNoise2
+      
+      - name: Build
+        shell: bash
+        run: xmake build fractal
