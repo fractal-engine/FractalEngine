@@ -31,7 +31,7 @@ struct PointLightComponent {
   bool enabled_ = true;
   glm::vec3 color_ = glm::vec3(1.0f);
   float intensity_ = 1.0f;
-  float range_ = 10.0f;   // meters
+  float range_ = 10.0f;  // meters
   float falloff_ = 5.0f;
 
   bool cast_shadows_ = false;
@@ -54,6 +54,17 @@ struct SpotlightComponent {
   float shadow_bias_ = 0.0005f;
   ShadowResolution shadow_resolution_ = ShadowResolution::LOW;
   float shadow_softness_ = 1.0f;
+};
+
+struct SkyLightComponent {
+  bool enabled_ = true;
+  glm::vec3 color_ = glm::vec3(0.15f, 0.18f, 0.25f);
+  float intensity_ = 1.0f;  // ambient radiance scale
+
+  bool cast_shadows_ = true;
+  bool real_time_capture_ = false;
+  // TODO: source type, cubemap res, cubemap angle, affects world, volumetric..
+  // scattering intensity
 };
 
 #endif  // LIGHT_COMPONENT_H

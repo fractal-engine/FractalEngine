@@ -57,7 +57,6 @@ IMGizmo& SceneGizmos();
 // Shadow getter
 ShadowMap& MainShadowMap();
 
-
 }  // namespace Runtime
 
 #endif  // RUNTIME_H

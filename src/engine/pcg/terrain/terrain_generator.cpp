@@ -31,7 +31,7 @@ Generator::Generator(const Config& config) : config_(config) {
 
   // OUTER LAYER: Domain Warp only
   // Step 1: Base noise source (Simplex/OpenSimplex2)
-  auto simplex = FastNoise::New<FastNoise::OpenSimplex2>();
+  auto simplex = FastNoise::New<FastNoise::Simplex>();
 
   // Step 2: FBM (multi-octave fractal)
   /* auto fbm = FastNoise::New<FastNoise::FractalFBm>();
@@ -51,7 +51,7 @@ Generator::Generator(const Config& config) : config_(config) {
   auto warp_gradient = FastNoise::New<FastNoise::DomainWarpGradient>();
   warp_gradient->SetSource(simplex);
   warp_gradient->SetWarpAmplitude(config.perturb);
-  warp_gradient->SetWarpFrequency(config.frequency * 0.5f);
+  // warp_gradient->SetWarpFrequency(config.frequency * 0.5f);
 
   // Step 3: Wrap in DomainWarpFractalProgressive for multi-octave warp
   auto domain_warp_fractal =

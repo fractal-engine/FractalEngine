@@ -118,7 +118,7 @@ void GameManager::Render() {
   } else if (scene_manager_) {
     // Logger::getInstance().Log(LogLevel::Debug,
     // "[GameManager] Calling scene->Render()");
-    scene_manager_->Render();
+    // scene_manager_->Render();
   }
 }
 

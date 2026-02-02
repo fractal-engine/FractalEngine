@@ -14,7 +14,6 @@ class SceneManager {
 public:
   void LoadScene(std::unique_ptr<Scene> scene);
   void Update(float dt);
-  void Render();
 
 private:
   std::unique_ptr<Scene> current_scene_;

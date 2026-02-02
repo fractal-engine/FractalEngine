@@ -29,7 +29,8 @@ public:
   void Update(float dt);  // Advance time + sun/ambient
 
   // Tweak skybox params
-  void SetParams(float sunAngularRadius, float proceduralBloom, float exposure);
+  void SetParams(float sunAngularRadius, float proceduralBloom, float exposure,
+      float mieAnisotropy = 0.76f);  // TODO: expose mieAnisotropy to UI?
 
   // Recompute sun direction, luminance, ambient, and scattering
   void ComputeSun();

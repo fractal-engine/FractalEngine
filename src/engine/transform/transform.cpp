@@ -27,11 +27,12 @@ void Evaluate(TransformComponent& transform) {
   transform.normal_ = Transformation::Normal(transform.model_);
 
   // DEBUG: Log model matrix Z-axis (forward direction in backend space)
-  Logger::getInstance().Log(LogLevel::Debug,
+  /*Logger::getInstance().Log(LogLevel::Debug,
                             "Model Z-axis: (" +
                                 std::to_string(transform.model_[2][0]) + ", " +
                                 std::to_string(transform.model_[2][1]) + ", " +
                                 std::to_string(transform.model_[2][2]) + ")");
+   */
 }
 
 void Evaluate(TransformComponent& transform, TransformComponent& parent) {
@@ -41,11 +42,11 @@ void Evaluate(TransformComponent& transform, TransformComponent& parent) {
   transform.normal_ = Transformation::Normal(transform.model_);
 
   // DEBUG: Log model matrix Z-axis (forward direction in backend space)
-  Logger::getInstance().Log(LogLevel::Debug,
+  /* Logger::getInstance().Log(LogLevel::Debug,
                             "Model Z-axis (child): (" +
                                 std::to_string(transform.model_[2][0]) + ", " +
                                 std::to_string(transform.model_[2][1]) + ", " +
-                                std::to_string(transform.model_[2][2]) + ")");
+                                std::to_string(transform.model_[2][2]) + ")");*/
 }
 
 void UpdateMVP(TransformComponent& transform, const glm::mat4& viewProjection) {

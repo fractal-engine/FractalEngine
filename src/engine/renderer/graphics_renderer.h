@@ -79,7 +79,7 @@ public:
 
   bgfx::UniformHandle GetSunDirectionUniform() const { return sunDirUniform_; }
   bgfx::UniformHandle GetSunLuminanceUniform() const { return sunLumUniform_; }
-  bgfx::UniformHandle GetViewPosUniform() const { return viewPosUniform_; }
+  bgfx::UniformHandle GetViewPosUniform() const { return u_viewPos; }
 
 private:
   SDL_Window* window_;
@@ -106,7 +106,7 @@ private:
   // Uniform handles
   bgfx::UniformHandle sunDirUniform_;
   bgfx::UniformHandle sunLumUniform_;
-  bgfx::UniformHandle viewPosUniform_;
+  bgfx::UniformHandle u_viewPos;
 
   // Track uniforms (not used)
   std::unordered_map<std::string, bgfx::UniformHandle> uniform_registry_;

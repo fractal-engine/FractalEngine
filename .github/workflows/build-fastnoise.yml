@@ -1,0 +1,32 @@
+name: Build FastNoise2 Dependencies
+
+on:
+  workflow_dispatch:  # Manual trigger
+  push:
+    paths:
+      - 'external/FastNoise2/**'
+
+jobs:
+  build-fastnoise:
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            artifact: fastnoise-linux
+          - os: windows-latest
+            artifact: fastnoise-windows
+          - os: macos-latest
+            artifact: fastnoise-macos
+
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      # FastSIMD build steps here:
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: external/FastNoise2/build/
+          retention-days: 90
