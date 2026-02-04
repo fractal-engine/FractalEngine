@@ -2,11 +2,10 @@
 
 #include <algorithm>
 
-#include "editor/gui/inspectables/entity_inspectable.h"
-
 #include "engine/transform/transform.h"
 
-namespace Panels {
+#include "editor/gui/inspectables/entity_inspectable.h"
+#include "editor/gui/inspector_panel.h"
 
 enum DropType { NO_DROP, DROP_ITEM, MOVE_ITEM_UP, MOVE_ITEM_DOWN };
 
@@ -574,5 +573,3 @@ void HierarchyPanel::PerformAutoScroll() {
     ImGui::SetScrollY(ImGui::GetScrollY() + scroll_speed);
   }
 }
-
-}  // namespace Panels

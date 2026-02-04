@@ -36,6 +36,9 @@
 
 #include <SDL.h>
 
+// Window base class
+std::vector<WindowBase*> g_windows_;
+
 EditorUI* EditorUI::s_instance_ = nullptr;
 // uint32_t EditorUI::g_id_counter_ = 0;
 
@@ -76,6 +79,14 @@ void EditorUI::Initialize() {
                           (float)WindowManager::GetHeight());
   io.DisplayFramebufferScale =
       ImVec2(WindowManager::GetDPIScale(), WindowManager::GetDPIScale());
+
+  // ADD DEFAULT EDITOR WINDOWS
+  _AddWindow<HierarchyPanel>();
+
+  // TODO: Refactor these panels to EditorBase:
+  // _AddWindow<InspectorPanel>();
+  // _AddWindow<ConsolePanel>();
+  // _AddWindow<AssetBrowserPanel>();
 }
 
 // TODO: refactor loop, should be split into EditorUI::NewFrame() /
@@ -346,11 +357,7 @@ void EditorUI::RenderUI() {
   // Get the ECS instance once for this frame
   auto& world = ECS::Main();
 
-  // -------- LEFT : HIERARCHY (Now reads live data from ECS) --------
-  ImGui::Begin("Hierarchy", nullptr);
-  Panels::HierarchyPanel();  // We will also update this panel to be data-driven
-  ImGui::End();
-
+  // TODO: CHANGE ALL PANELS TO DERIVE FROM WINDOWBASE
   // -------- MIDDLE : SCENE --------
   // The rendering pipeline now handles the gizmo, so this panel is just a
   // simple canvas.
@@ -423,6 +430,11 @@ void EditorUI::RenderUI() {
   if (debug_activate_picker_) {
     ImGui::DebugStartItemPicker();
     debug_activate_picker_ = false;  // reset
+  }
+
+  // -------- Render all registered windows --------
+  for (auto* window : g_windows_) {
+    window->Render();
   }
 }
 
@@ -533,4 +545,11 @@ ImGuiID EditorUI::GenerateId() {
 
 std::string EditorUI::GenerateIdString() {
   return "##" + std::to_string(++g_id_counter_);
+}
+
+template <typename T, typename... Args>
+void EditorUI::_AddWindow(Args&&... args) {
+  static_assert(std::is_base_of<WindowBase, T>::value,
+                "Only classes deriving from WindowBase can be added!");
+  g_windows_.emplace_back(new T(std::forward<Args>(args)...));
 }

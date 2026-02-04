@@ -6,11 +6,11 @@
 #include <unordered_map>
 #include <vector>
 
-#include "editor/editor_ui.h"
+#include "editor/gui/window_base.h"
+
 #include "editor/gui/styles/editor_styles.h"
 #include "engine/ecs/ecs_collection.h"
 
-namespace Panels {
 //---------------------------------------------------------------------------
 // TODO:
 // - search/filter function
@@ -18,7 +18,7 @@ namespace Panels {
 // - camera movement integration
 // - rename EditorColor to actual theme usage
 // - replace direct imgui code for drawing with dynamic drawing impl
-// - fg,
+// - fg
 //---------------------------------------------------------------------------
 struct HierarchyItem {
   explicit HierarchyItem(EntityContainer entity,
@@ -38,11 +38,11 @@ struct HierarchyItem {
 // HIERARCHY PANEL
 // - Includes scene graph view with tree, drag-drop reparenting, multi-selection
 //---------------------------------------------------------------------------
-class HierarchyPanel {
+class HierarchyPanel : public WindowBase {
 public:
   HierarchyPanel();
 
-  void Render();
+  void Render() override;
   void Invalidate();
 
 private:
@@ -82,7 +82,5 @@ private:
   float camera_movement_time;
   TransformComponent* camera_target;
 };
-
-}  // namespace Panels
 
 #endif  // HIERARCHY_PANEL_H
