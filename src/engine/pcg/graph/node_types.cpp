@@ -2,10 +2,10 @@
 
 #include <FastNoise/FastNoise.h>
 
-#include "noise/OpenSimplex2S.hpp"
-#include "operators/fbm.h"
-#include "operators/remap.h"
-#include "operators/ridge.h"
+#include "../noise/OpenSimplex2S.hpp"  // ! check if it should use hpp or cpp
+#include "../operators/fbm.h"
+#include "../operators/remap.h"
+#include "../operators/ridge.h"
 
 namespace PCG {
 
@@ -33,6 +33,15 @@ void NodeTypeDB::RegisterAllNodes() {
   RegisterFilterNodes();
   RegisterErosionNodes();
   RegisterUtilityNodes();
+}
+
+void NodeTypeDB::ForEachType(
+    const std::function<void(uint32_t, const NodeType&)>& func) const {
+  for (size_t i = 0; i < _types.size(); ++i) {
+    if (!_types[i].name.empty()) {
+      func(static_cast<uint32_t>(i), _types[i]);
+    }
+  }
 }
 
 //=============================================================================
@@ -78,7 +87,7 @@ void NodeTypeDB::RegisterNoiseNodes() {
     NodeType& t = _types[static_cast<size_t>(NodeTypeID::OpenSimplex2_Deriv)];
     t.name = "OpenSimplex2 (Derivatives)";
     t.category = Category::Noise;
-    t.inputs = {{"x", 0. 0f}, {"y", 0.0f}};
+    t.inputs = {{"x", 0.0f}, {"y", 0.0f}};
     t.outputs = {{"value"}, {"dx"}, {"dy"}};
     t.params = {
         {"seed", NodeType::Param::Type::Int, 12345},
@@ -113,16 +122,16 @@ void NodeTypeDB::RegisterNoiseNodes() {
         {"frequency", NodeType::Param::Type::Float, 0.01f, 0.001f, 1.0f, true},
         {"lacunarity", NodeType::Param::Type::Float, 2.0f, 1.0f, 4.0f, true},
         {"gain", NodeType::Param::Type::Float, 0.5f, 0.0f, 1.0f, true},
-        {"sharpness", NodeType::Param::Type::Float, 0. 0f, -1.0f, 1. 0f, true},
-        {"slope_erosion", NodeType::Param::Type::Float, 0.0f, 0.0f, 1. 0f,
-         true},
+        {"sharpness", NodeType::Param::Type::Float, 0.0f, -1.0f, 1.0f, true},
+        {"slope_erosion", NodeType::Param::Type::Float, 0.0f, 0.0f, 1.0f, true},
         {"ridge_erosion", NodeType::Param::Type::Float, 0.0f, 0.0f, 1.0f, true},
         {"altitude_erosion", NodeType::Param::Type::Float, 0.0f, 0.0f, 1.0f,
          true},
         {"perturb", NodeType::Param::Type::Float, 0.0f, 0.0f, 2.0f, true}};
     t.process_func = [](ProcessContext& ctx) {
       // Get or create UberFBM instance
-      auto* uber = ctx.get_or_create_resource<PCG::UberFBM>("uber_fbm");
+      int seed = ctx.get_param<int>(0);
+      auto* uber = ctx.get_or_create_resource<PCG::UberFBM>("uber_fbm", seed);
 
       PCG::UberFBMParams params;
       params.octaves = ctx.get_param<int>(1);
@@ -157,16 +166,19 @@ void NodeTypeDB::RegisterNoiseNodes() {
         {"seed", NodeType::Param::Type::Int, 12345},
         {"frequency", NodeType::Param::Type::Float, 0.01f, 0.001f, 1.0f, true}};
     t.process_func = [](ProcessContext& ctx) {
-      // Lazy-create FastNoise2 node
-      auto* fn =
-          ctx.get_or_create_resource<FastNoise::SmartNode<FastNoise::Simplex>>(
-              "fn2_simplex");
+      // Get or create the generator
+      struct SimplexHolder {
+        FastNoise::SmartNode<FastNoise::Simplex> node =
+            FastNoise::New<FastNoise::Simplex>();
+      };
+      auto* holder = ctx.get_or_create_resource<SimplexHolder>("fn2_simplex");
 
       float freq = ctx.get_param<float>(1);
       float x = ctx.get_input(0) * freq;
       float y = ctx.get_input(1) * freq;
 
-      ctx.set_output(0, fn->GenSingle2D(x, y, ctx.get_param<int>(0)));
+      // GenSingle2D(x, y, seed) - call through the SmartNode
+      ctx.set_output(0, holder->node->GenSingle2D(x, y, ctx.get_param<int>(0)));
     };
   }
 }
@@ -183,7 +195,7 @@ void NodeTypeDB::RegisterFilterNodes() {
     t.inputs = {{"value", 0.0f}};
     t.outputs = {{"out"}};
     t.params = {
-        {"sharpness", NodeType::Param::Type::Float, 0. 0f, -1.0f, 1.0f, true}};
+        {"sharpness", NodeType::Param::Type::Float, 0.0f, -1.0f, 1.0f, true}};
     t.process_func = [](ProcessContext& ctx) {
       float value = ctx.get_input(0);
       float sharpness = ctx.get_param<float>(0);
