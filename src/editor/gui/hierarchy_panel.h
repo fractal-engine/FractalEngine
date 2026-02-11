@@ -65,6 +65,8 @@ private:
   // Auto-scroll when dragging
   void PerformAutoScroll();
 
+  void OnEntityChanged(entt::registry&, entt::entity);
+
   // Data
   char search_buffer[256];
   bool popup_menu_used;
@@ -81,6 +83,13 @@ private:
   bool camera_moving;
   float camera_movement_time;
   TransformComponent* camera_target;
+
+  // Handle cache
+  bool hierarchy_dirty_ = true;
+
+  // EnTT handles
+  entt::scoped_connection on_create_connection_;
+  entt::scoped_connection on_destroy_connection_;
 };
 
 #endif  // HIERARCHY_PANEL_H

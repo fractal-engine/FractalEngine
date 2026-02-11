@@ -1,8 +1,8 @@
-#ifndef GENERATOR_RESOURCE_H
-#define GENERATOR_RESOURCE_H
+#ifndef TERRAIN_GENERATOR_RESOURCE_H
+#define TERRAIN_GENERATOR_RESOURCE_H
 
 #include "engine/memory/resource.h"
-#include "engine/pcg/generator_base.h"
+#include "engine/pcg/terrain/terrain_generator_base.h"
 
 namespace PCG {
 
@@ -29,4 +29,4 @@ private:
 
 }  // namespace PCG
 
-#endif  // GENERATOR_RESOURCE_H
+#endif  // TERRAIN_GENERATOR_RESOURCE_H

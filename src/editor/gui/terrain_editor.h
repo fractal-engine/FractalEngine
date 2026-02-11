@@ -345,7 +345,7 @@ inline void TerrainEditor() {
   }
 
   if (regenerate_requested) {
-    game->GenerateTerrain(config, gridSize);
+    // game->GenerateTerrain(config, gridSize);
     regenerate_requested = false;
   }
 }

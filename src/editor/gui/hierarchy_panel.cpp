@@ -23,7 +23,19 @@ HierarchyPanel::HierarchyPanel()
       dragging_hierarchy(false),
       camera_moving(false),
       camera_movement_time(0.0f),
-      camera_target(nullptr) { /* TODO: setup drag rect here */ }
+      camera_target(nullptr),
+      hierarchy_dirty_(true) {
+
+  /* TODO: setup drag rect here */
+
+  // Subscribe to transform creation/destruction
+  auto& reg = ECS::Main().Reg();
+
+  on_create_connection_ = reg.on_construct<TransformComponent>()
+                              .connect<&HierarchyPanel::OnEntityChanged>(this);
+  on_destroy_connection_ = reg.on_destroy<TransformComponent>()
+                               .connect<&HierarchyPanel::OnEntityChanged>(this);
+}
 
 void HierarchyPanel::Render() {
   ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(20.0f, 20.0f));
@@ -68,11 +80,10 @@ void HierarchyPanel::RenderSearch(ImDrawList& draw_list) {
 
 void HierarchyPanel::RenderHierarchy(ImDrawList& draw_list) {
 
-  static bool built_hierarchy = false;
   // Rebuild hierarchy if dirty
-  if (!built_hierarchy) {
+  if (hierarchy_dirty_) {
     BuildSceneHierarchy();
-    built_hierarchy = true;
+    hierarchy_dirty_ = false;
   }
 
   // Push font
@@ -572,4 +583,8 @@ void HierarchyPanel::PerformAutoScroll() {
     float scroll_speed = max_scroll_speed * range_factor(mouse_y, down_range);
     ImGui::SetScrollY(ImGui::GetScrollY() + scroll_speed);
   }
+}
+
+void HierarchyPanel::OnEntityChanged(entt::registry&, entt::entity) {
+  hierarchy_dirty_ = true;
 }

@@ -2,6 +2,7 @@
 
 #include <imgui.h>
 
+#include "editor/editor_ui.h"
 #include "editor/gui/components/im_components.h"
 #include "editor/gui/components/inspectable_components.h"
 #include "editor/gui/hierarchy_panel.h"
@@ -13,8 +14,7 @@
 // Dynamic inspector for entities
 //---------------------------------------------------------------------------
 
-EntityInspectable::EntityInspectable(Panels::HierarchyItem& item)
-    : item(item) {}
+EntityInspectable::EntityInspectable(HierarchyItem& item) : item(item) {}
 
 void EntityInspectable::RenderStaticContent(ImDrawList& draw_list) {
 

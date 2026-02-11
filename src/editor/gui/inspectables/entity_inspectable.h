@@ -8,13 +8,13 @@
 
 class EntityInspectable : public InspectableBase {
 public:
-  EntityInspectable(Panels::HierarchyItem& item);
+  EntityInspectable(HierarchyItem& item);
 
   void RenderStaticContent(ImDrawList& draw_list) override;
   void RenderDynamicContent(ImDrawList& draw_list) override;
 
 private:
-  Panels::HierarchyItem& item;
+  HierarchyItem& item;
 };
 
 #endif  // ENTITY_INSPECTABLE_H

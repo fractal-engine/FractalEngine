@@ -1,11 +1,11 @@
-#ifndef GENERATOR_BASE_H
-#define GENERATOR_BASE_H
+#ifndef TERRAIN_GENERATOR_BASE_H
+#define TERRAIN_GENERATOR_BASE_H
 
 #include <glm/glm.hpp>
 #include <memory>
 #include <string>
 
-#include "core/sample.h"
+#include "../core/sample.h"
 
 namespace PCG {
 
@@ -59,4 +59,4 @@ std::unique_ptr<GeneratorBase> CreateGenerator(GeneratorType type);
 
 }  // namespace PCG
 
-#endif  // GENERATOR_BASE_H
+#endif  // TERRAIN_GENERATOR_BASE_H

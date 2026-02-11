@@ -1,9 +1,8 @@
 #ifndef TERRAIN_GENERATOR_H
 #define TERRAIN_GENERATOR_H
 
-#include <FastNoise/FastNoise.h>
+#include <iomanip>
 #include <memory>
-#include <iomanip> 
 
 #include "../constraints/constraint_system.h"
 #include "../core/feature_descriptors.h"
@@ -13,9 +12,9 @@
 #include "../operators/ridge.h"
 
 // Forward declare MeshData
-namespace Resources3D {
+/* namespace Geometry {
 struct MeshData;
-}
+} */
 
 namespace PCG {
 
@@ -78,25 +77,27 @@ public:
   // Debug: stage evaluation
   Sample EvalStaged(float x, float y, PipelineStage stage) const;
 
+  // ! commented out to be removed, now replaced by geometry/meshing
   // Generate heightmap data
-  struct HeightmapOutput {
+  /* struct HeightmapOutput {
     std::vector<float> heights;
     std::vector<uint32_t> rgba_encoded;
     uint16_t size;
     float min_height;
     float max_height;
-  };
+  }; */
 
-  HeightmapOutput GenerateHeightmap(uint16_t size) const;
+  // HeightmapOutput GenerateHeightmap(uint16_t size) const;
 
   // Generate mesh data
-  struct MeshOutput {
+  /* struct MeshOutput {
     uint16_t size;
     bool with_normals = true;
     bool with_colors = true;
     bool with_uvs = true;
-  };
-  Resources3D::MeshData GenerateMesh(const MeshOutput& params) const;
+  };*/
+
+  // Geometry::MeshData GenerateMesh(const MeshOutput& params) const;
 
   void ExportNodeGraph(const std::string& filename) const;
 

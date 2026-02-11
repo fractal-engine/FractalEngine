@@ -1,8 +1,10 @@
 #include "terrain_generator.h"
 
+#include <FastNoise/FastNoise.h>
+
 #include "../constraints/biome_presets.h"
 #include "../noise/OpenSimplex2S.hpp"
-#include "engine/resources/3d/mesh_data.h"
+#include "engine/core/types/geometry_data.h"
 
 #include <algorithm>
 #include <fstream>
@@ -10,6 +12,15 @@
 #include <iostream>
 #include <limits>
 #include <string>
+
+/*******************************************************************************
+ * TERRAIN GENERATOR
+ * TODO:
+ * - split code by moving (noise, FBM/UberFBM node graph, RNG, node primitives)
+ * inside /pcg
+ * - move the rest (Terrain Generator + biome presets / constraints) to
+ * /game/content
+ ******************************************************************************/
 
 namespace {
 float ComputeFalloff(float distance, float radius) {
@@ -31,7 +42,7 @@ Generator::Generator(const Config& config) : config_(config) {
 
   // OUTER LAYER: Domain Warp only
   // Step 1: Base noise source (Simplex/OpenSimplex2)
-  auto simplex = FastNoise::New<FastNoise::OpenSimplex2>();
+  auto simplex = FastNoise::New<FastNoise::Simplex>();
 
   // Step 2: FBM (multi-octave fractal)
   /* auto fbm = FastNoise::New<FastNoise::FractalFBm>();
@@ -51,7 +62,8 @@ Generator::Generator(const Config& config) : config_(config) {
   auto warp_gradient = FastNoise::New<FastNoise::DomainWarpGradient>();
   warp_gradient->SetSource(simplex);
   warp_gradient->SetWarpAmplitude(config.perturb);
-  warp_gradient->SetWarpFrequency(config.frequency * 0.5f);
+  warp_gradient->SetScale(2.0f /
+                          config.frequency);  // ? replaces SetWarpFrequency
 
   // Step 3: Wrap in DomainWarpFractalProgressive for multi-octave warp
   auto domain_warp_fractal =
@@ -238,19 +250,19 @@ Sample Generator::Eval(float x, float y) const {
   return result;
 }
 
-Resources3D::MeshData Generator::GenerateMesh(const MeshOutput& params) const {
-  Resources3D::MeshData mesh;
+/* Geometry::MeshData Generator::GenerateMesh(const MeshOutput& params) const {
+  Geometry::MeshData mesh;
 
   const uint16_t size = params.size;
   const size_t vcount = size * size;
 
-  mesh.positions_.reserve(vcount * 3);
+  mesh.positions.reserve(vcount * 3);
   if (params.with_normals)
-    mesh.normals_.reserve(vcount * 3);
+    mesh.normals.reserve(vcount * 3);
   if (params.with_colors)
-    mesh.colors_.reserve(vcount * 4);
+    mesh.colors.reserve(vcount * 4);
   if (params.with_uvs)
-    mesh.tex_coords_.reserve(vcount * 2);
+    mesh.tex_coords.reserve(vcount * 2);
 
   std::vector<float> height_grid(vcount);
 
@@ -288,18 +300,18 @@ Resources3D::MeshData Generator::GenerateMesh(const MeshOutput& params) const {
       positions_temp[y * size + x] = glm::vec3((float)x, s.height, (float)y);
 
       // Position
-      mesh.positions_.push_back((float)x);  // X = grid column
-      mesh.positions_.push_back(s.height);  // Y = height (up axis)
-      mesh.positions_.push_back((float)y);  // Z = grid row
+      mesh.positions.push_back((float)x);  // X = grid column
+      mesh.positions.push_back(s.height);  // Y = height (up axis)
+      mesh.positions.push_back((float)y);  // Z = grid row
 
       // UV
       if (params.with_uvs) {
         // U = normalized X position
-        mesh.tex_coords_.push_back(x / float(size - 1));
+        mesh.tex_coords.push_back(x / float(size - 1));
 
         // V = slope (biome blending)
         float normalized_slope = std::clamp(s.slope, 0.0f, 1.0f);
-        mesh.tex_coords_.push_back(normalized_slope);
+        mesh.tex_coords.push_back(normalized_slope);
       }
 
       // Color from rule output
@@ -332,27 +344,27 @@ Resources3D::MeshData Generator::GenerateMesh(const MeshOutput& params) const {
         float slopeDarken = 1.0f - glm::clamp(slope * 0.12f, 0.0f, 0.25f);
         color *= slopeDarken;
 
-        mesh.colors_.push_back(color.r);
-        mesh.colors_.push_back(color.g);
-        mesh.colors_.push_back(color.b);
+        mesh.colors.push_back(color.r);
+        mesh.colors.push_back(color.g);
+        mesh.colors.push_back(color.b);
 
         // Encode height in alpha
         float normalized_height = glm::clamp((h + 50.0f) / 100.0f, 0.0f, 1.0f);
-        mesh.colors_.push_back(normalized_height);
+        mesh.colors.push_back(normalized_height);
       }
     }
   }
 
   // Generate triangle indices; Expected counter-clockwise
-  mesh.indices_.reserve((size - 1) * (size - 1) * 6);
+  mesh.indices.reserve((size - 1) * (size - 1) * 6);
   for (uint16_t y = 0; y < size - 1; ++y) {
     for (uint16_t x = 0; x < size - 1; ++x) {
       uint32_t i = y * size + x;
 
       // First triangle
-      mesh.indices_.push_back(i);
-      mesh.indices_.push_back(i + size);
-      mesh.indices_.push_back(i + 1);
+      mesh.indices.push_back(i);
+      mesh.indices.push_back(i + size);
+      mesh.indices.push_back(i + 1);
 
       // Compute normal for first triangle
       if (params.with_normals) {
@@ -367,9 +379,9 @@ Resources3D::MeshData Generator::GenerateMesh(const MeshOutput& params) const {
       }
 
       // Second triangle
-      mesh.indices_.push_back(i + 1);
-      mesh.indices_.push_back(i + size);
-      mesh.indices_.push_back(i + size + 1);
+      mesh.indices.push_back(i + 1);
+      mesh.indices.push_back(i + size);
+      mesh.indices.push_back(i + size + 1);
 
       // Compute normal for second triangle
       if (params.with_normals) {
@@ -389,9 +401,9 @@ Resources3D::MeshData Generator::GenerateMesh(const MeshOutput& params) const {
   if (params.with_normals) {
     for (const auto& n : normals_temp) {
       glm::vec3 norm = glm::normalize(n);
-      mesh.normals_.push_back(norm.x);
-      mesh.normals_.push_back(norm.y);
-      mesh.normals_.push_back(norm.z);
+      mesh.normals.push_back(norm.x);
+      mesh.normals.push_back(norm.y);
+      mesh.normals.push_back(norm.z);
     }
   }
 
@@ -431,7 +443,7 @@ Generator::HeightmapOutput Generator::GenerateHeightmap(uint16_t size) const {
   }
 
   return output;
-}
+}*/
 
 float Generator::ApplyPipeline(float x, float y,
                                glm::vec2& out_gradient) const {
