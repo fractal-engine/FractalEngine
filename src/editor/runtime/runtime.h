@@ -6,6 +6,7 @@
 
 #include "editor/editor_base.h"
 #include "editor/editor_ui.h"
+#include "editor/pipelines/preview_pipeline.h"
 #include "editor/pipelines/scene_view_pipeline.h"
 #include "editor/project/project_manager.h"
 #include "editor/state.h"
@@ -46,8 +47,10 @@ GlobalResources BuildGlobalResources();
 ProjectManager& Project();
 
 // Pipeline getters
-SceneViewPipeline& GetSceneViewPipeline();  // ! rename it
-FrameGraph& GetFrameGraph();                // ! rename it
+SceneViewPipeline& GetSceneViewPipeline();
+PreviewPipeline& GetPreviewPipeline();
+
+FrameGraph& GetFrameGraph();
 
 // Getters
 EditorBase* Editor();
