@@ -687,21 +687,6 @@ void SceneViewPipeline::Render() {
 }
 
 void SceneViewPipeline::Destroy() {
-  if (bgfx::isValid(default_program_)) {
-    bgfx::destroy(default_program_);
-    default_program_ = BGFX_INVALID_HANDLE;
-  }
-
-  if (bgfx::isValid(selection_program_)) {
-    bgfx::destroy(selection_program_);
-    selection_program_ = BGFX_INVALID_HANDLE;
-  }
-
-  if (bgfx::isValid(debug_program_)) {
-    bgfx::destroy(debug_program_);
-    debug_program_ = BGFX_INVALID_HANDLE;
-  }
-
   delete grid_mesh_;
   grid_mesh_ = nullptr;
 

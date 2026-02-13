@@ -195,20 +195,23 @@ inline void GameCanvas(bool isGameRunning, bool& hovered, bool& focused) {
           } else {
             Logger::getInstance().Log(
                 LogLevel::Info, "Importing glTF model: " + abs_path.string());
+            auto& rm = EngineContext::resourceManager();
+            auto [id, model] = rm.Create<Model>(abs_path.filename().string());
+            model->SetSource(abs_path.string());
 
-            // Load meshes
-            std::shared_ptr<Model> model = Model::Load(abs_path.string());
+            // Sync load
+            bool loaded = rm.ExecuteSync(model->Create());
 
-            // debug
             Logger::getInstance().Log(
                 LogLevel::Debug,
                 "[GameCanvas] Model loaded, mesh count: " +
-                    std::to_string(model ? model->NLoadedMeshes() : 0));
+                    std::to_string(loaded ? model->NLoadedMeshes() : 0));
 
-            if (!model) {
+            if (!loaded || model->NLoadedMeshes() == 0) {
               Logger::getInstance().Log(
                   LogLevel::Error,
                   "Import failed: no meshes in " + abs_path.string());
+              rm.Release(id);
             } else {
               // Create ECS entity
               auto& world = ECS::Main();
@@ -232,10 +235,6 @@ inline void GameCanvas(bool isGameRunning, bool& hovered, bool& focused) {
                 mr.mesh_ = mesh;
                 mr.enabled_ = true;
               }
-
-              // Keep model alive for the lifetime of the scene
-              static std::vector<std::shared_ptr<Model>> asset_cache;
-              asset_cache.emplace_back(std::move(model));
             }
           }
         }
