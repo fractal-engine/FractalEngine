@@ -118,6 +118,22 @@ inline void GameCanvas(bool isGameRunning, bool& hovered, bool& focused) {
       ImGuizmo::SetDrawlist();
       ImGuizmo::SetRect(pos.x, pos.y, size.x, size.y);
 
+      // Build projection matrix for ImGuizmo
+      float gizmoAspect = size.x / size.y;
+
+      // Rebuild projection
+      float tanHalfFov = glm::tan(glm::radians(camera_component.fov_) * 0.5f);
+      glm::mat4 gizmoProjection(0.0f);
+      gizmoProjection[0][0] = 1.0f / (gizmoAspect * tanHalfFov);
+      gizmoProjection[1][1] = -1.0f / tanHalfFov;  // Y-flip for ImGuizmo
+      gizmoProjection[2][2] =
+          camera_component.far_clip_ /
+          (camera_component.far_clip_ - camera_component.near_clip_);
+      gizmoProjection[2][3] = 1.0f;
+      gizmoProjection[3][2] =
+          -(camera_component.near_clip_ * camera_component.far_clip_) /
+          (camera_component.far_clip_ - camera_component.near_clip_);
+
       // Only show gizmos if: pipeline enabled, entity selected, not interacting
       bool show_gizmos = pipeline.show_gizmos_ && selected != entt::null;
       bool right_click = ImGui::IsMouseDown(ImGuiMouseButton_Right);
@@ -136,16 +152,16 @@ inline void GameCanvas(bool isGameRunning, bool& hovered, bool& focused) {
           auto& transform = world.Get<TransformComponent>(selected);
           glm::mat4 modelMatrix = transform.model_;
 
-          // Snapping (hold Ctrl)
+          // Snapping
           bool snapping = ImGui::IsKeyDown(ImGuiKey_LeftCtrl) ||
                           ImGui::IsKeyDown(ImGuiKey_RightCtrl);
           float snapValue =
               (gizmo_state.operation == ImGuizmo::ROTATE) ? 45.0f : 0.5f;
           float snapValues[3] = {snapValue, snapValue, snapValue};
 
-          // Manipulate
+          // Manipulate (fixed projection)
           bool manipulated = ImGuizmo::Manipulate(
-              glm::value_ptr(view), glm::value_ptr(projection),
+              glm::value_ptr(view), glm::value_ptr(gizmoProjection),
               gizmo_state.operation, gizmo_state.mode,
               glm::value_ptr(modelMatrix),
               nullptr,  // delta
