@@ -125,7 +125,7 @@ inline void GameCanvas(bool isGameRunning, bool& hovered, bool& focused) {
       float tanHalfFov = glm::tan(glm::radians(camera_component.fov_) * 0.5f);
       glm::mat4 gizmoProjection(0.0f);
       gizmoProjection[0][0] = 1.0f / (gizmoAspect * tanHalfFov);
-      gizmoProjection[1][1] = -1.0f / tanHalfFov;  // Y-flip for ImGuizmo
+      gizmoProjection[1][1] = 1.0f / tanHalfFov;  // Y-flip for ImGuizmo
       gizmoProjection[2][2] =
           camera_component.far_clip_ /
           (camera_component.far_clip_ - camera_component.near_clip_);
