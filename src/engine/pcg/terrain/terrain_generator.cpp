@@ -2,7 +2,7 @@
 
 #include "../constraints/biome_presets.h"
 #include "../noise/OpenSimplex2S.hpp"
-#include "engine/resources/3d/mesh_data.h"
+#include "engine/core/types/geometry_data.h"  // ! should be removed
 
 #include <algorithm>
 #include <fstream>
@@ -10,6 +10,14 @@
 #include <iostream>
 #include <limits>
 #include <string>
+
+//
+// TODO:
+// - TerrainGenerator should not know about mesh generation specifics
+// - should instead use a builder interface using mesh loader to translate it
+// outputs raw data: heights, densities, etc from inside heightmap_mesher
+// and converts that into MeshData
+//
 
 namespace {
 float ComputeFalloff(float distance, float radius) {
@@ -31,7 +39,7 @@ Generator::Generator(const Config& config) : config_(config) {
 
   // OUTER LAYER: Domain Warp only
   // Step 1: Base noise source (Simplex/OpenSimplex2)
-  auto simplex = FastNoise::New<FastNoise::OpenSimplex2>();
+  // auto simplex = FastNoise::New<FastNoise::OpenSimplex2>();
 
   // Step 2: FBM (multi-octave fractal)
   /* auto fbm = FastNoise::New<FastNoise::FractalFBm>();
@@ -49,9 +57,9 @@ Generator::Generator(const Config& config) : config_(config) {
                                   0.5f);  // Lower freq for warp*/
 
   auto warp_gradient = FastNoise::New<FastNoise::DomainWarpGradient>();
-  warp_gradient->SetSource(simplex);
+  // warp_gradient->SetSource(simplex);
   warp_gradient->SetWarpAmplitude(config.perturb);
-  warp_gradient->SetWarpFrequency(config.frequency * 0.5f);
+  // warp_gradient->SetWarpFrequency(config.frequency * 0.5f);
 
   // Step 3: Wrap in DomainWarpFractalProgressive for multi-octave warp
   auto domain_warp_fractal =
@@ -238,8 +246,8 @@ Sample Generator::Eval(float x, float y) const {
   return result;
 }
 
-Resources3D::MeshData Generator::GenerateMesh(const MeshOutput& params) const {
-  Resources3D::MeshData mesh;
+/* Resources3D::MeshData Generator::GenerateMesh(const MeshOutput& params) const
+{ Resources3D::MeshData mesh;
 
   const uint16_t size = params.size;
   const size_t vcount = size * size;
@@ -396,7 +404,7 @@ Resources3D::MeshData Generator::GenerateMesh(const MeshOutput& params) const {
   }
 
   return mesh;
-}
+} */
 
 Generator::HeightmapOutput Generator::GenerateHeightmap(uint16_t size) const {
   HeightmapOutput output;

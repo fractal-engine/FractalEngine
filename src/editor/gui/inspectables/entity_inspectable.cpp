@@ -13,7 +13,7 @@
 // Dynamic inspector for entities
 //---------------------------------------------------------------------------
 
-EntityInspectable::EntityInspectable(Panels::HierarchyItem& item)
+EntityInspectable::EntityInspectable(HierarchyItem& item)
     : item(item) {}
 
 void EntityInspectable::RenderStaticContent(ImDrawList& draw_list) {

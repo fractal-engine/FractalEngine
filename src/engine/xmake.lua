@@ -15,7 +15,7 @@ target("engine")
             "math/*.cpp", "pcg/*.cpp",
 
     -- GEOMETRY FILES -------
-    "geometry/meshing/*.cpp", "geometry/projection/*.cpp",
+    -- "geometry/meshing/*.cpp", "geometry/projection/*.cpp",
 
     -- renderer files
     "renderer/*.cpp", "renderer/lighting/*.cpp", "renderer/shaders/*.cpp",

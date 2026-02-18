@@ -504,7 +504,7 @@ void GameTest::Init() {
 // ═══════════════════════════════════════════════════════════════
 void GameTest::GenerateTerrain(const PCG::Config& gen_config,
                                uint16_t gridSize) {
-
+/*
   // Generate mesh
   PCG::Generator gen(gen_config);
   PCG::Generator::MeshOutput mesh_params;
@@ -515,8 +515,8 @@ void GameTest::GenerateTerrain(const PCG::Config& gen_config,
   std::cout << "GenerateTerrain called with "
             << gen_config.constraints.GetRuleCount() << " rules" << std::endl;
 
-  auto mesh_data = gen.GenerateMesh(mesh_params);
-  terrain_mesh_ = std::make_shared<Mesh>(mesh_data);
+  // auto mesh_data = gen.GenerateMesh(mesh_params);
+  // terrain_mesh_ = std::make_shared<Mesh>(mesh_data);
 
   // Create ECS entity
   auto& world = ECS::Main();
@@ -545,7 +545,7 @@ void GameTest::GenerateTerrain(const PCG::Config& gen_config,
   Logger::getInstance().Log(LogLevel::Info,
                             "Terrain entity created: " +
                                 std::to_string(mesh_data.positions.size() / 3) +
-                                " verts");
+                                " verts");*/
 }
 
 // Updates game state per frame

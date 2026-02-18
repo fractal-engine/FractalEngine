@@ -6,6 +6,9 @@
 
 namespace Geometry {
 
+// ! Rename file to mesh_data.h
+// ! move file to engine/geometry
+
 // Vertex - index data
 struct MeshData {
   std::vector<float> positions;   // xyz
