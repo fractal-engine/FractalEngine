@@ -28,13 +28,7 @@ add_files(
 	"camera/*.cpp"
 )
 
-add_files("vendor/imgui/imgui_impl_bgfx.cpp", "vendor/ImGuiFileDialog/ImGuiFileDialog.cpp", "vendor/imguizmo/*.cpp",
-
-	-- node editor files
-    "vendor/imgui-node-editor/imgui_node_editor.cpp",
-    "vendor/imgui-node-editor/imgui_node_editor_api.cpp",
-    "vendor/imgui-node-editor/crude_json.cpp",
-    "vendor/imgui-node-editor/imgui_canvas.cpp")
+add_files("vendor/imgui/imgui_impl_bgfx.cpp", "vendor/ImGuiFileDialog/ImGuiFileDialog.cpp", "vendor/imguizmo/*.cpp")
 
 add_headerfiles(
 	"runtime/*.h",
