@@ -70,7 +70,7 @@ public:
   bool CanConnect(PortLocation src, PortLocation dst) const;
   bool IsValidConnection(PortLocation src, PortLocation dst) const;
   void Connect(PortLocation src, PortLocation dst);
-  bool Disconnet(PortLocation src, PortLocation dst);
+  bool Disconnect(PortLocation src, PortLocation dst);
 
   bool HasPath(uint32_t src_node_id,
                uint32_t dst_node_id) const;  // Cycle detection

@@ -7,10 +7,11 @@
 #include <variant>
 #include <vector>
 
+#include "process_context.h"
+
 namespace PCG {
 
 // Forward declarations
-struct ProcessContext;
 struct RangeAnalysisContext;
 
 //=============================================================================
@@ -23,7 +24,8 @@ enum class Category {
   Noise,
   Filter,   // operators
   Erosion,  // Altitude/Slope/Ridge erosion
-  Utility
+  Utility,
+  COUNT  // ! check if this should be here
 };
 
 struct NodeType {
@@ -126,7 +128,11 @@ public:
   const NodeType& Get(uint32_t id) const;
 
   // Lookup by name (for serialization)
-  bool TryGetId(const std::string& name, NodeTypeID& out_id) const;
+  bool TryGetId(const std::string& name,
+                NodeTypeID& out_id) const;  // Not used in cpp yet
+
+  void ForEachType(
+      const std::function<void(uint32_t, const NodeType&)>& func) const;
 
 private:
   NodeTypeDB();

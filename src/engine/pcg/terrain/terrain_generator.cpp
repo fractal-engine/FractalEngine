@@ -4,7 +4,7 @@
 
 #include "../constraints/biome_presets.h"
 #include "../noise/OpenSimplex2S.hpp"
-#include "engine/core/types/geometry_data.h"
+#include "engine/core/types/geometry_data.h"  // ! should be removed
 
 #include <algorithm>
 #include <fstream>
@@ -12,6 +12,14 @@
 #include <iostream>
 #include <limits>
 #include <string>
+
+//
+// TODO:
+// - TerrainGenerator should not know about mesh generation specifics
+// - should instead use a builder interface using mesh loader to translate it
+// outputs raw data: heights, densities, etc from inside heightmap_mesher
+// and converts that into MeshData
+//
 
 /*******************************************************************************
  * TERRAIN GENERATOR
@@ -60,7 +68,7 @@ Generator::Generator(const Config& config) : config_(config) {
                                   0.5f);  // Lower freq for warp*/
 
   auto warp_gradient = FastNoise::New<FastNoise::DomainWarpGradient>();
-  warp_gradient->SetSource(simplex);
+  // warp_gradient->SetSource(simplex);
   warp_gradient->SetWarpAmplitude(config.perturb);
   warp_gradient->SetScale(2.0f /
                           config.frequency);  // ? replaces SetWarpFrequency
@@ -408,7 +416,7 @@ Sample Generator::Eval(float x, float y) const {
   }
 
   return mesh;
-}
+} */
 
 Generator::HeightmapOutput Generator::GenerateHeightmap(uint16_t size) const {
   HeightmapOutput output;
@@ -443,10 +451,11 @@ Generator::HeightmapOutput Generator::GenerateHeightmap(uint16_t size) const {
   }
 
   return output;
-}*/
+}
+*/
 
-float Generator::ApplyPipeline(float x, float y,
-                               glm::vec2& out_gradient) const {
+    float Generator::ApplyPipeline(float x, float y,
+                                   glm::vec2& out_gradient) const {
   Sample s = Eval(x, y);
   out_gradient = s.gradient;
   return s.height;
