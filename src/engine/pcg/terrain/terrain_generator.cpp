@@ -418,11 +418,9 @@ Sample Generator::Eval(float x, float y) const {
   return mesh;
 } */
 
-Generator::HeightmapOutput Generator::GenerateHeightmap(uint16_t size) const {
-  HeightmapOutput output;
-  output.size = size;
-  output.heights.resize(size * size);
-  output.rgba_encoded.resize(size * size);
+/* Generator::HeightmapOutput Generator::GenerateHeightmap(uint16_t size) const
+{ HeightmapOutput output; output.size = size; output.heights.resize(size *
+size); output.rgba_encoded.resize(size * size);
 
   output.min_height = std::numeric_limits<float>::max();
   output.max_height = std::numeric_limits<float>::lowest();
@@ -454,8 +452,8 @@ Generator::HeightmapOutput Generator::GenerateHeightmap(uint16_t size) const {
 }
 */
 
-    float Generator::ApplyPipeline(float x, float y,
-                                   glm::vec2& out_gradient) const {
+float Generator::ApplyPipeline(float x, float y,
+                               glm::vec2& out_gradient) const {
   Sample s = Eval(x, y);
   out_gradient = s.gradient;
   return s.height;
