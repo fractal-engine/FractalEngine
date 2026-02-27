@@ -95,121 +95,130 @@ void SetupStyle() {
   ImGuiStyle& style = ImGui::GetStyle();
   ImVec4* colors = style.Colors;
 
-  // === Core Layout ===
-  colors[ImGuiCol_WindowBg] = ImVec4(0.14f, 0.16f, 0.18f, 1.00f);    // #25292e
-  colors[ImGuiCol_ChildBg] = ImVec4(0.14f, 0.16f, 0.18f, 1.00f);     // #25292e
-  colors[ImGuiCol_PopupBg] = ImVec4(0.098f, 0.102f, 0.110f, 0.95f);  // #191a1c
-  colors[ImGuiCol_MenuBarBg] =
-      ImVec4(0.098f, 0.102f, 0.110f, 1.00f);  // #191a1c
+  // === Core Layout (Deep Black Theme) ===
+  colors[ImGuiCol_WindowBg] =
+      ImVec4(0.08f, 0.08f, 0.08f, 1.00f);  // #141414 (Main Background)
+  colors[ImGuiCol_ChildBg] = ImVec4(0.10f, 0.10f, 0.10f, 1.00f);    // #1A1A1A
+  colors[ImGuiCol_PopupBg] = ImVec4(0.12f, 0.12f, 0.12f, 0.96f);    // #1F1F1F
+  colors[ImGuiCol_MenuBarBg] = ImVec4(0.08f, 0.08f, 0.08f, 1.00f);  // #141414
 
   // === Text & Icons ===
-  colors[ImGuiCol_Text] = ImVec4(0.95f, 0.95f, 0.95f, 1.00f);  // #F2F2F2
+  colors[ImGuiCol_Text] = ImVec4(0.90f, 0.90f, 0.90f,
+                                 1.00f);  // #E6E6E6 (Off-white for readability)
   colors[ImGuiCol_TextDisabled] =
-      ImVec4(0.50f, 0.50f, 0.50f, 1.00f);  // #808080
-  // colors[ImGuiCol_Text] = ImVec4(0.70f, 0.70f, 0.70f, 1.00f);  // #b3b3b3
+      ImVec4(0.40f, 0.40f, 0.40f, 1.00f);  // #666666
 
-  // === Arrows / Expanders ===
-  colors[ImGuiCol_Header] = ImVec4(0.12f, 0.13f, 0.14f, 0.00f);  // #1F212300
+  // === Borders (Lighter grey for high contrast against black) ===
+  colors[ImGuiCol_Border] = ImVec4(0.25f, 0.25f, 0.25f, 1.00f);  // #404040
+  colors[ImGuiCol_BorderShadow] =
+      ImVec4(0.00f, 0.00f, 0.00f, 0.00f);  // #00000000
+
+  // === Arrows / Expanders / Headers ===
+  colors[ImGuiCol_Header] = ImVec4(0.18f, 0.18f, 0.18f, 1.00f);  // #2E2E2E
   colors[ImGuiCol_HeaderHovered] =
-      ImVec4(0.12f, 0.13f, 0.14f, 0.10f);  //  #1F212319
+      ImVec4(0.25f, 0.25f, 0.25f, 1.00f);  // #404040
   colors[ImGuiCol_HeaderActive] =
-      ImVec4(0.12f, 0.13f, 0.14f, 0.15f);  // #1F212326
+      ImVec4(0.16f, 0.40f, 0.75f, 1.00f);  // #2966C0 (Vibrant Blue Accent)
 
   // === Frames / Inputs / Buttons ===
-  colors[ImGuiCol_FrameBg] = ImVec4(0.12f, 0.13f, 0.14f, 1.00f);  // #1F2123FF
+  colors[ImGuiCol_FrameBg] = ImVec4(0.15f, 0.15f, 0.15f, 1.00f);  // #262626
   colors[ImGuiCol_FrameBgHovered] =
-      ImVec4(0.20f, 0.22f, 0.25f, 1.00f);  // #33393FFF
+      ImVec4(0.22f, 0.22f, 0.22f, 1.00f);  // #383838
   colors[ImGuiCol_FrameBgActive] =
-      ImVec4(0.25f, 0.27f, 0.30f, 1.00f);                        // #40454DFF
-  colors[ImGuiCol_Button] = ImVec4(0.18f, 0.20f, 0.22f, 1.00f);  // #2E3338FF
+      ImVec4(0.16f, 0.40f, 0.75f, 1.00f);                        // #2966C0
+  colors[ImGuiCol_Button] = ImVec4(0.18f, 0.18f, 0.18f, 1.00f);  // #2E2E2E
   colors[ImGuiCol_ButtonHovered] =
-      ImVec4(0.24f, 0.26f, 0.28f, 1.00f);  // #3D4247FF
+      ImVec4(0.25f, 0.25f, 0.25f, 1.00f);  // #404040
   colors[ImGuiCol_ButtonActive] =
-      ImVec4(0.28f, 0.30f, 0.32f, 1.00f);  // #474C52FF
+      ImVec4(0.16f, 0.40f, 0.75f, 1.00f);  // #2966C0
 
   // === Tabs ===
-  colors[ImGuiCol_Tab] = ImVec4(0.14f, 0.16f, 0.18f, 1.00f);  // #25292e
-  colors[ImGuiCol_TabHovered] =
-      ImVec4(0.216f, 0.518f, 0.886f, 1.0f);                         // #3784e2
-  colors[ImGuiCol_TabActive] = ImVec4(0.14f, 0.16f, 0.18f, 1.00f);  // #25292e
+  colors[ImGuiCol_Tab] = ImVec4(0.12f, 0.12f, 0.12f, 1.00f);         // #1F1F1F
+  colors[ImGuiCol_TabHovered] = ImVec4(0.25f, 0.25f, 0.25f, 1.00f);  // #404040
+  colors[ImGuiCol_TabActive] = ImVec4(0.18f, 0.18f, 0.18f, 1.00f);   // #2E2E2E
   colors[ImGuiCol_TabUnfocused] =
-      ImVec4(0.14f, 0.16f, 0.18f, 1.00f);  // #25292e
+      ImVec4(0.10f, 0.10f, 0.10f, 1.00f);  // #1A1A1A
   colors[ImGuiCol_TabUnfocusedActive] =
-      ImVec4(0.14f, 0.16f, 0.18f, 1.00f);  // #25292e
-  colors[ImGuiCol_TabSelected] =
-      ImVec4(0.102f, 0.451f, 0.910f, 1.0f);  // #1a73e8
-  style.Colors[ImGuiCol_TabSelectedOverline] = ImVec4(0, 0, 0, 0);
+      ImVec4(0.15f, 0.15f, 0.15f, 1.00f);  // #262626
+  style.Colors[ImGuiCol_TabSelectedOverline] =
+      ImVec4(0.16f, 0.40f, 0.75f, 1.00f);  // #2966C0
 
   // === Title ===
-  colors[ImGuiCol_TitleBg] = ImVec4(0.098f, 0.102f, 0.110f, 1.00f);  // #191a1c
+  colors[ImGuiCol_TitleBg] = ImVec4(0.07f, 0.07f, 0.07f, 1.00f);  // #111111
   colors[ImGuiCol_TitleBgActive] =
-      ImVec4(0.098f, 0.102f, 0.110f, 1.00f);  // #191a1c
+      ImVec4(0.07f, 0.07f, 0.07f, 1.00f);  // #111111
   colors[ImGuiCol_TitleBgCollapsed] =
-      ImVec4(0.098f, 0.102f, 0.110f, 1.00f);  // #191a1c
+      ImVec4(0.07f, 0.07f, 0.07f, 1.00f);  // #111111
 
   // === Separator ===
-  colors[ImGuiCol_Separator] =
-      ImVec4(0.098f, 0.102f, 0.110f, 1.00f);  // #191a1c
-  colors[ImGuiCol_SeparatorHovered] = ImVec4(0.26f, 0.26f, 0.26f, 1.00f);
-  colors[ImGuiCol_SeparatorActive] = ImVec4(0.30f, 0.30f, 0.30f, 1.00f);
+  colors[ImGuiCol_Separator] = ImVec4(0.25f, 0.25f, 0.25f, 1.00f);  // #404040
+  colors[ImGuiCol_SeparatorHovered] =
+      ImVec4(0.16f, 0.40f, 0.75f, 1.00f);  // #2966C0
+  colors[ImGuiCol_SeparatorActive] =
+      ImVec4(0.16f, 0.40f, 0.75f, 1.00f);  // #2966C0
 
   // === Scroller ===
-  colors[ImGuiCol_ScrollbarBg] =
-      ImVec4(0.10f, 0.10f, 0.10f, 0.60f);  // #19191900
+  colors[ImGuiCol_ScrollbarBg] = ImVec4(0.10f, 0.10f, 0.10f, 1.00f);  // #1A1A1A
   colors[ImGuiCol_ScrollbarGrab] =
-      ImVec4(0.30f, 0.30f, 0.30f, 0.60f);  // #4C4C4C99
+      ImVec4(0.25f, 0.25f, 0.25f, 1.00f);  // #404040
   colors[ImGuiCol_ScrollbarGrabHovered] =
-      ImVec4(0.45f, 0.45f, 0.45f, 0.80f);  // #737373CC
+      ImVec4(0.35f, 0.35f, 0.35f, 1.00f);  // #595959
   colors[ImGuiCol_ScrollbarGrabActive] =
-      ImVec4(0.60f, 0.60f, 0.60f, 1.00f);  // #999999FF
+      ImVec4(0.45f, 0.45f, 0.45f, 1.00f);  // #737373
 
-  // === Border ===
-  colors[ImGuiCol_Border] = ImVec4(0.098f, 0.102f, 0.110f, 1.00f);  // #191a1c
-  colors[ImGuiCol_BorderShadow] =
-      ImVec4(0.098f, 0.102f, 0.110f, 1.00f);                        // #00000000
-  colors[ImGuiCol_PlotLines] = ImVec4(0.61f, 0.61f, 0.61f, 1.00f);  // blue
+  // === Plot Lines (Used for sliders/curves) ===
+  colors[ImGuiCol_PlotLines] = ImVec4(0.16f, 0.40f, 0.75f, 1.00f);  // #2966C0
 
   // === Slider ===
-  colors[ImGuiCol_SliderGrab] =
-      ImVec4(0.102f, 0.451f, 0.910f, 1.0f);  // #1a73e8
+  colors[ImGuiCol_SliderGrab] = ImVec4(0.25f, 0.25f, 0.25f, 1.00f);  // #404040
+  colors[ImGuiCol_SliderGrabActive] =
+      ImVec4(0.16f, 0.40f, 0.75f, 1.00f);  // #2966C0
 
   // === Nav ===
   colors[ImGuiCol_NavWindowingHighlight] =
-      ImVec4(0.102f, 0.451f, 0.910f, 1.0f);  // #1a73e8
+      ImVec4(0.16f, 0.40f, 0.75f, 1.00f);  // #2966C0
   colors[ImGuiCol_NavHighlight] =
-      ImVec4(0.102f, 0.451f, 0.910f, 1.0f);  // #1a73e8
-
-  // === Table ===
-  // colors[ImGuiCol_TableBorderStrong] = ImVec4(0.27f, 0.23f, 0.29f, 1.00f);
+      ImVec4(0.16f, 0.40f, 0.75f, 1.00f);  // #2966C0
 
   // === Grip ===
+  colors[ImGuiCol_ResizeGrip] =
+      ImVec4(0.15f, 0.15f, 0.15f, 0.00f);  // Transparent
   colors[ImGuiCol_ResizeGripHovered] =
-      ImVec4(0.102f, 0.451f, 0.910f, 1.0f);  // #1a73e8
+      ImVec4(0.16f, 0.40f, 0.75f, 1.00f);  // #2966C0
   colors[ImGuiCol_ResizeGripActive] =
-      ImVec4(0.102f, 0.451f, 0.910f, 1.0f);  // #1a73e8
+      ImVec4(0.16f, 0.40f, 0.75f, 1.00f);  // #2966C0
 
   // === Docking ===
   colors[ImGuiCol_DockingPreview] =
-      ImVec4(0.251f, 0.541f, 0.894f, 0.60f);  // #408ae4
+      ImVec4(0.16f, 0.40f, 0.75f, 0.60f);  // #2966C099
   colors[ImGuiCol_DockingEmptyBg] =
-      ImVec4(0.14f, 0.16f, 0.18f, 1.00f);  // #25292e
+      ImVec4(0.08f, 0.08f, 0.08f, 1.00f);  // #141414
 
   // === Style Tuning ===
-  style.FrameBorderSize = 0.0f;
+  style.FrameBorderSize = 1.0f;  // Essential for borders to show up
   style.WindowBorderSize = 1.0f;
   style.PopupBorderSize = 1.0f;
-  style.TabBorderSize = 0.0f;
-  style.ChildBorderSize = 0.0f;
-  style.WindowRounding = 4.0f;
-  style.FrameRounding = 3.0f;
-  style.FramePadding.x = 15.0f;
-  style.FramePadding.y = 4.0f;  // Vertical padding inside menu items
-  style.ItemSpacing.x = 7.0f;
-  style.ItemSpacing.y = 4.0f;
-  style.ScrollbarRounding = 4.0f;
+  style.TabBorderSize =
+      1.0f;  // Giving tabs a subtle border outlines them against the black
+  style.ChildBorderSize = 1.0f;  // Defines nested regions (Hierarchy)
+
+  style.WindowRounding = 0.0f;
+  style.FrameRounding = 3.0f;  // Keeps buttons friendly
+  style.ScrollbarRounding = 0.0f;
+  style.TabRounding = 2.0f;  // Slight rounding on tabs
   style.GrabRounding = 2.0f;
-  style.GrabMinSize = 7.5f;
-  style.TabRounding = 4.0f;
+
+  // Padding Improvements
+  style.WindowPadding = ImVec2(10.0f, 10.0f);  // Spacing from window edges
+  style.FramePadding = ImVec2(
+      16.0f,
+      6.0f);  // (x:16, y:6) Makes buttons notably wider and taller around text
+  style.CellPadding =
+      ImVec2(8.0f, 4.0f);  // Protects text inside Inspector tables
+  style.ItemSpacing = ImVec2(8.0f, 6.0f);  // Space between adjacent UI elements
+  style.ItemInnerSpacing = ImVec2(6.0f, 4.0f);
+
+  style.GrabMinSize = 10.0f;
 }
 
 void Initialize() {
@@ -225,7 +234,8 @@ void Initialize() {
   ImGuiStyle& style = ImGui::GetStyle();
   style.TabRounding = 0.0f;
   style.TabBorderSize = 0.0f;
-  style.TabBarOverlineSize = 0.0f;
+  style.TabBarOverlineSize =
+      2.0f;  // Highlights the selected tab with the Unity Blue Accent
 #endif
 }
 

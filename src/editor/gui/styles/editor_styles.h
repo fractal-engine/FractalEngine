@@ -42,62 +42,78 @@ void Initialize();
 
 // FONT PATHS
 struct EditorFontPath {
-  static constexpr const char* regular =
-      "resources/fonts/NotoSansMono_Condensed-Regular.ttf";
-  static constexpr const char* bold =
-      "resources/fonts/NotoSansMono_Condensed-SemiBold.ttf";
+  // Switch from Monospace to a clean Sans-Serif font (Inter)
+  static constexpr const char* regular = "resources/fonts/Inter-Regular.ttf";
+  static constexpr const char* bold = "resources/fonts/Inter-SemiBold.ttf";
   static constexpr const char* icons = "resources/fonts/fa-solid-900.ttf";
-  static constexpr const char* console =
-      "resources/fonts/TerminusTTF-4.49.3.ttf";
+
+  // Console font changed to FiraCode for better readability
+  static constexpr const char* console = "resources/fonts/FiraCode-Regular.ttf";
 };
 
 // DRAW LIST COLOR CONSTANTS
 struct EditorColor {
-  static constexpr ImU32 background = IM_COL32(16, 16, 16, 255);
+  // #141414 - Main window background (Deep Black)
+  static constexpr ImU32 background = IM_COL32(20, 20, 20, 255);
 
-  static constexpr ImU32 text = IM_COL32(255, 255, 255, 255);
-  static constexpr ImU32 text_transparent = IM_COL32(255, 255, 255, 210);
+  // #E6E6E6 - Standard text
+  static constexpr ImU32 text = IM_COL32(230, 230, 230, 255);
+  // #E6E6E6B4 - Transparent text
+  static constexpr ImU32 text_transparent = IM_COL32(230, 230, 230, 180);
 
-  static constexpr ImU32 element_transparent = IM_COL32(80, 80, 80, 130);
+  // #2E2E2E82 - Transparent elements
+  static constexpr ImU32 element_transparent = IM_COL32(46, 46, 46, 130);
   static constexpr ImU32 element_hovered_transparent_overlay =
       IM_COL32(255, 255, 255, 10);
   static constexpr ImU32 element_active_transparent_overlay =
       IM_COL32(255, 255, 255, 35);
 
-  static constexpr ImU32 selection = IM_COL32(85, 125, 255, 255);
-  static constexpr ImU32 selection_inactive = IM_COL32(100, 100, 100, 255);
+  // #2966C0 - Vibrant blue highlight against black
+  static constexpr ImU32 selection = IM_COL32(41, 102, 192, 255);
+  // #333333 - Inactive selection grey
+  static constexpr ImU32 selection_inactive = IM_COL32(51, 51, 51, 255);
 
-  static constexpr ImU32 element = IM_COL32(51, 51, 51, 255);
+  // #2E2E2E - Base custom element (buttons/headers)
+  static constexpr ImU32 element = IM_COL32(46, 46, 46, 255);
+  // #404040 - Hovered custom element
   static constexpr ImU32 element_hovered = IM_COL32(64, 64, 64, 255);
-  static constexpr ImU32 element_active = IM_COL32(77, 77, 77, 255);
-  static constexpr ImU32 element_component = IM_COL32(178, 178, 178, 255);
+  // #2966C0 - Active custom element
+  static constexpr ImU32 element_active = IM_COL32(41, 102, 192, 255);
+  // #262626 - Component header
+  static constexpr ImU32 element_component = IM_COL32(38, 38, 38, 255);
 
-  static constexpr ImU32 border_color = IM_COL32(0, 0, 0, 255);
-  static constexpr ImU32 tab_color = IM_COL32(38, 38, 38, 255);
+  // #404040 - Standard border (Lightened for contrast)
+  static constexpr ImU32 border_color = IM_COL32(64, 64, 64, 255);
+  // #1F1F1F - Tab background
+  static constexpr ImU32 tab_color = IM_COL32(31, 31, 31, 255);
 };
 
 // SIZING CONSTANTS
 struct EditorSizes {
   // Font sizes
-  static constexpr float p_font_size = 14.0f;
-  static constexpr float h1_font_size = 26.0f;
-  static constexpr float h2_font_size = 22.0f;
+  static constexpr float p_font_size =
+      15.0f;  // Bumped to 15 for better readability
+  static constexpr float h1_font_size =
+      24.0f;  // Smoothed out heading hierarchy
+  static constexpr float h2_font_size = 20.0f;
   static constexpr float h3_font_size = 17.0f;
   static constexpr float h4_font_size = 15.0f;
   static constexpr float s_font_size = 13.0f;
-  static constexpr float console_font_size = 12.0f;
+  static constexpr float console_font_size = 13.0f;  // Bumped slightly
 
-  // Icon sizes
-  static constexpr float p_icon_size = 22.0f;
-  static constexpr float p_bold_icon_size = 25.0f;
-  static constexpr float h2_icon_size = 30.0f;
-  static constexpr float h2_bold_icon_size = 30.0f;
-  static constexpr float s_icon_size = 16.0f;
-  static constexpr float s_bold_icon_size = 16.0f;
+  // Icon sizes (Scaled to match the new text baseline, prevents UI stretching)
+  static constexpr float p_icon_size =
+      16.0f;  // Reduced from 22 to align with 15px text
+  static constexpr float p_bold_icon_size = 16.0f;
+  static constexpr float h2_icon_size = 22.0f;
+  static constexpr float h2_bold_icon_size = 22.0f;
+  static constexpr float s_icon_size = 14.0f;
+  static constexpr float s_bold_icon_size = 14.0f;
 
   // Layout
-  static constexpr float window_padding = 30.0f;
-  static constexpr float frame_padding = 3.0f;
+  static constexpr float window_padding =
+      8.0f;  // Reduced from 30.0f
+  static constexpr float frame_padding = 4.0f;
 };
 
 #endif  // EDITOR_STYLES_H
