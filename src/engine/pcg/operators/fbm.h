@@ -4,6 +4,7 @@
 #include <FastNoise/FastNoise.h>
 #include <array>
 #include <glm/glm.hpp>
+#include <memory>
 
 #include "../noise/OpenSimplex2S.hpp"
 

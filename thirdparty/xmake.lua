@@ -6,14 +6,17 @@
 target("FastNoise2")
     set_kind("phony")
 
-    on_load(function (target)
-        target:add("defines", "FASTNOISE2_NOISETOOL=OFF", "FASTNOISE2_FETCH_IMGUI=OFF")
-    end)
+    add_defines("FASTNOISE_STATIC_LIB", {public = true})
     
     add_includedirs("FastNoise2/include", {public = true})
     add_includedirs("FastNoise2/build/_deps/fastsimd-src/include", {public = true})
+    add_linkdirs("FastNoise2/build/Release/lib", {public = true})
+    add_links("FastNoise", {public = true})
     
     on_build(function (target)
+        local lib = path.join("$(projectdir)", "thirdparty/FastNoise2/build/Release/lib/FastNoise.lib")
+        if os.isfile(lib) then return end
+
         import("lib.detect.find_tool")
         import("core.project.config")
         
@@ -31,22 +34,14 @@ target("FastNoise2")
             -- Check platform inside build function
             if os.host() == "windows" then
                 -- ! MT runtime via compiler flags (required for Windows compilation!)
-                table.insert(cmake_args, "-DCMAKE_BUILD_TYPE=Release")
-                table.insert(cmake_args, "-DCMAKE_CXX_FLAGS_RELEASE=/MT /O2 /Ob2 /DNDEBUG")
-                table.insert(cmake_args, "-DCMAKE_C_FLAGS_RELEASE=/MT /O2 /Ob2 /DNDEBUG")
                 table.insert(cmake_args, "-DCMAKE_POLICY_DEFAULT_CMP0091=NEW")
                 table.insert(cmake_args, "-DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded")
-            else
-                table.insert(cmake_args, "-DCMAKE_BUILD_TYPE=Release")
             end
             
             os.execv(cmake.program, cmake_args)
             os.execv(cmake.program, {"--build", "build", "--config", "Release"})
         end
     end)
-
-    add_linkdirs("FastNoise2/build/Release/lib", {public = true})
-    add_links("FastNoise", {public = true})
 target_end()
 
 target("implot")

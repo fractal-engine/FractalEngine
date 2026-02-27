@@ -29,10 +29,9 @@ target("engine")
     "resources/*.cpp", "resources/textures/*.cpp",
 
     -- PCG files
-    "pcg/operators/ridge.cpp", "pcg/operators/fbm.cpp",
-            "pcg/operators/remap.cpp", "pcg/constraints/constraint_system.cpp",
-            "pcg/terrain/terrain_generator.cpp", "pcg/noise/OpenSimplex2S.cpp", "pcg/graph/program_graph.cpp",
-            "pcg/graph/graph_serializer.cpp", "pcg/graph/node_types.cpp")
+    "pcg/operators/*.cpp", "pcg/constraints/constraint_system.cpp",
+            "pcg/terrain/*.cpp", "pcg/noise/OpenSimplex2S.cpp",
+            "pcg/graph/*.cpp")
 
     -- HEADER FILES -------
     add_headerfiles("core/*.h", "audio/*.h", "scene/*.h", "context/*.h","ecs/*.h",
