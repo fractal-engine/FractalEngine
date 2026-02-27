@@ -4,6 +4,7 @@
 #include <bgfx/bgfx.h>
 #include <memory>
 #include <vector>
+#include <string>
 
 #include "engine/renderer/model/mesh.h"
 
