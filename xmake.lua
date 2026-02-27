@@ -3,12 +3,19 @@
 ----------------------------------------------------------------
 set_languages("c++20")
 
--- default compiler flags (MSVC only)
+-- MSVC-specific compiler flags 
 if is_plat("windows") then
     add_cxxflags("/Zc:__cplusplus", "/Zc:preprocessor")
+    add_defines("NOMINMAX")
+    add_defines("_CRT_SECURE_NO_WARNINGS")
+
     -- use static CRT
     set_runtimes(is_mode("debug") and "MTd" or "MT")
 end
+
+-- compiler flags
+add_cxflags("-fno-strict-aliasing", {tools = {"gcc", "clang"}})
+add_cxflags("/permissive-", {tools = "cl"}) 
 
 -- set path globally
 add_includedirs("thirdparty")
