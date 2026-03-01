@@ -53,39 +53,39 @@ struct EditorFontPath {
 
 // DRAW LIST COLOR CONSTANTS
 struct EditorColor {
-  // #383838 - Main window background
-  static constexpr ImU32 background = IM_COL32(56, 56, 56, 255);
+  // #141414 - Main window background (Deep Black)
+  static constexpr ImU32 background = IM_COL32(20, 20, 20, 255);
 
-  // #D2D2D2 - Standard text
-  static constexpr ImU32 text = IM_COL32(210, 210, 210, 255);
-  // #D2D2D2D2 - Transparent text
-  static constexpr ImU32 text_transparent = IM_COL32(210, 210, 210, 210);
+  // #E6E6E6 - Standard text
+  static constexpr ImU32 text = IM_COL32(230, 230, 230, 255);
+  // #E6E6E6B4 - Transparent text
+  static constexpr ImU32 text_transparent = IM_COL32(230, 230, 230, 180);
 
-  // #45454582 - Transparent elements
-  static constexpr ImU32 element_transparent = IM_COL32(69, 69, 69, 130);
+  // #2E2E2E82 - Transparent elements
+  static constexpr ImU32 element_transparent = IM_COL32(46, 46, 46, 130);
   static constexpr ImU32 element_hovered_transparent_overlay =
       IM_COL32(255, 255, 255, 10);
   static constexpr ImU32 element_active_transparent_overlay =
       IM_COL32(255, 255, 255, 35);
 
-  // #2C5D87 - Unity highlight blue
-  static constexpr ImU32 selection = IM_COL32(44, 93, 135, 255);
-  // #4D4D4D - Inactive selection grey
-  static constexpr ImU32 selection_inactive = IM_COL32(77, 77, 77, 255);
+  // #2966C0 - Vibrant blue highlight against black
+  static constexpr ImU32 selection = IM_COL32(41, 102, 192, 255);
+  // #333333 - Inactive selection grey
+  static constexpr ImU32 selection_inactive = IM_COL32(51, 51, 51, 255);
 
-  // #454545 - Base custom element (buttons/headers)
-  static constexpr ImU32 element = IM_COL32(69, 69, 69, 255);
-  // #595959 - Hovered custom element
-  static constexpr ImU32 element_hovered = IM_COL32(89, 89, 89, 255);
-  // #2C5D87 - Active custom element (Unity Blue)
-  static constexpr ImU32 element_active = IM_COL32(44, 93, 135, 255);
-  // #3E3E3E - Component header
-  static constexpr ImU32 element_component = IM_COL32(62, 62, 62, 255);
+  // #2E2E2E - Base custom element (buttons/headers)
+  static constexpr ImU32 element = IM_COL32(46, 46, 46, 255);
+  // #404040 - Hovered custom element
+  static constexpr ImU32 element_hovered = IM_COL32(64, 64, 64, 255);
+  // #2966C0 - Active custom element
+  static constexpr ImU32 element_active = IM_COL32(41, 102, 192, 255);
+  // #262626 - Component header
+  static constexpr ImU32 element_component = IM_COL32(38, 38, 38, 255);
 
-  // #1A1A1A - Standard border
-  static constexpr ImU32 border_color = IM_COL32(26, 26, 26, 255);
-  // #282828 - Tab background
-  static constexpr ImU32 tab_color = IM_COL32(40, 40, 40, 255);
+  // #404040 - Standard border (Lightened for contrast)
+  static constexpr ImU32 border_color = IM_COL32(64, 64, 64, 255);
+  // #1F1F1F - Tab background
+  static constexpr ImU32 tab_color = IM_COL32(31, 31, 31, 255);
 };
 
 // SIZING CONSTANTS
