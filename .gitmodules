@@ -1,15 +1,15 @@
-[submodule "src/editor/vendor/ImGuiFileDialog"]
-	path = src/editor/vendor/ImGuiFileDialog
-	url = https://github.com/aiekick/ImGuiFileDialog
 [submodule "thirdparty/stb"]
 	path = thirdparty/stb
 	url = https://github.com/nothings/stb
 [submodule "thirdparty/FastNoise2"]
 	path = thirdparty/FastNoise2
 	url = https://github.com/Auburn/FastNoise2.git
-[submodule "src/editor/vendor/imgui-node-editor"]
-	path = src/editor/vendor/imgui-node-editor
-	url = https://github.com/thedmd/imgui-node-editor
 [submodule "thirdparty/implot"]
 	path = thirdparty/implot
 	url = https://github.com/epezent/implot
+[submodule "thirdparty/imgui-node-editor"]
+	path = thirdparty/imgui-node-editor
+	url = https://github.com/thedmd/imgui-node-editor
+[submodule "thirdparty/ImGuiFileDialog"]
+	path = thirdparty/ImGuiFileDialog
+	url = https://github.com/aiekick/ImGuiFileDialog

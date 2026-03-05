@@ -16,19 +16,20 @@ struct ProcessContext {
   glm::vec2 position_;
 
   // Input/output buffers
-  std::vector<float> inputs_;
-  std::vector<float> outputs_;
+  std::vector<float*> inputs_;
+  std::vector<float*> outputs_;
 
   // Node parameters
   const std::vector<std::variant<float, int, bool, std::string>>* params_;
 
   // Resource cache (for noise instances, etc.)
+  // ! MOVE TO GRAPH GENERATOR
   std::unordered_map<std::string, std::shared_ptr<void>>* resources_;
 
   // Accessors used by process_func
   glm::vec2 position() const { return position_; }
-  float get_input(size_t i) const { return inputs_[i]; }
-  void set_output(size_t i, float v) { outputs_[i] = v; }
+  float get_input(size_t i) const { return *inputs_[i]; }
+  void set_output(size_t i, float v) { *outputs_[i] = v; }
 
   template <typename T>
   T get_param(size_t i) const {

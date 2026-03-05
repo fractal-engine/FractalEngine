@@ -10,11 +10,11 @@ target("FastNoise2")
     
     add_includedirs("FastNoise2/include", {public = true})
     add_includedirs("FastNoise2/build/_deps/fastsimd-src/include", {public = true})
-    add_linkdirs("FastNoise2/build/Release/lib", {public = true})
+    add_linkdirs("FastNoise2/build/src", {public = true})
     add_links("FastNoise", {public = true})
     
     on_build(function (target)
-        local lib = path.join("$(projectdir)", "thirdparty/FastNoise2/build/Release/lib/FastNoise.lib")
+        local lib = path.join("$(projectdir)", "thirdparty/FastNoise2/build/src/libFastNoise.a")
         if os.isfile(lib) then return end
 
         import("lib.detect.find_tool")
@@ -26,9 +26,11 @@ target("FastNoise2")
             
             local cmake_args = {
                 "-B", "build",
-                "-DFASTNOISE2_NOISETOOL=OFF",
-                "-DFASTNOISE2_FETCH_IMGUI=OFF",
-                "-DBUILD_SHARED_LIBS=OFF",  -- prevent DLL linkage (linker error)
+                "-DFASTNOISE2_TOOLS=OFF",
+                "-DFASTNOISE2_TESTS=OFF",
+                "-DFASTNOISE2_UTILITY=OFF",
+                "-DBUILD_SHARED_LIBS=OFF",
+                "-DCMAKE_BUILD_TYPE=Release",
             }
             
             -- Check platform inside build function
@@ -51,5 +53,31 @@ target("implot")
     add_headerfiles("implot/*.h")
     add_includedirs("implot", {public = true})
     
+    add_packages("imgui")
+target_end()
+
+target("imgui-node-editor")
+    set_kind("static")
+
+    add_files("imgui-node-editor/*.cpp")
+    add_headerfiles("imgui-node-editor/*.h")
+    add_includedirs("imgui-node-editor", {public = true})
+
+    add_packages("imgui")
+
+        on_config(function(target)
+        -- ! Wrapper required due to ImGui::GetKeyIndex() being used
+        -- ! in imgui-node-editor but removed in ImGui 1.87
+        target:add("cxxflags", "-include", path.join(os.scriptdir(), "imgui_compat.h"), {force = true})
+    end)
+target_end()
+
+target("ImGuiFileDialog")
+    set_kind("static")
+
+    add_files("ImGuiFileDialog/*.cpp")
+    add_headerfiles("ImGuiFileDialog/*.h")
+    add_includedirs("ImGuiFileDialog", {public = true})
+
     add_packages("imgui")
 target_end()

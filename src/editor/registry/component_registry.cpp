@@ -122,6 +122,9 @@ void Create() {
       std::nullopt,  // TODO: ComponentGizmos::DrawDirectionalLight
       true);
 
+  RegisterComponent<VolumeComponent>(
+      "Volume", InspectableComponents::DrawVolumeComponent, std::nullopt, true);
+
   // TODO: velocity blur component, box collider, sphere collider, rigidbody,
   // audio listener, audio source
 }

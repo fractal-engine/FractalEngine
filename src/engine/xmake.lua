@@ -83,7 +83,7 @@ rule("shaderc.build")
     if not exe then
         import("lib.detect.find_program")
 
-        print("Searching for shaderc in system PATH...")
+        -- print("Searching for shaderc in system PATH...")
         exe =  find_program("shaderc")
             or find_program("shadercRelease")
             or find_program("shadercDebug")

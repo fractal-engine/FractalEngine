@@ -213,6 +213,13 @@ CompilationResult EvaluateSingleNode(const ProgramGraph::Node& node,
     return CompilationResult::MakeSuccess();
   }
 
+  // Skip nodes that require compile_func (they have params that need baking)
+  // These cannot be evaluated at compile time without param serialization
+  if (node_type.compile_func != nullptr) {
+    return CompilationResult::MakeError(
+        "Cannot fold node with compile-time params", node.id);
+  }
+
   if (node_type.process_buffer_func == nullptr) {
     return CompilationResult::MakeError(
         "Node has no buffer processing function", node.id);
@@ -251,9 +258,9 @@ CompilationResult EvaluateSingleNode(const ProgramGraph::Node& node,
 
   // Execute node
   std::unordered_map<std::string, std::shared_ptr<void>> resources;
+  std::span<const uint8_t> empty_params;
   GraphRuntime::ProcessContext ctx(input_addresses, output_addresses,
-                                   &node.params, glm::vec2(0.0f), buffers,
-                                   resources);
+                                   empty_params, buffers, resources);
   node_type.process_buffer_func(ctx);
 
   // Extract outputs

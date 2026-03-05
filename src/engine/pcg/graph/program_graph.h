@@ -63,8 +63,10 @@ public:
   Node* CreateNode(uint32_t type_id, uint32_t id = NULL_ID);
   Node& GetNode(uint32_t id) const;
   Node* TryGetNode(uint32_t id) const;
+
   void RemoveNode(uint32_t id);
   void Clear();
+  void CopyFrom(const ProgramGraph& other);
 
   bool IsConnected(PortLocation src, PortLocation dst) const;
   bool CanConnect(PortLocation src, PortLocation dst) const;
