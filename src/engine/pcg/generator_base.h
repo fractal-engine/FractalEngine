@@ -1,23 +1,19 @@
-#ifndef TERRAIN_GENERATOR_BASE_H
-#define TERRAIN_GENERATOR_BASE_H
+#ifndef GENERATOR_BASE_H
+#define GENERATOR_BASE_H
 
 #include <glm/glm.hpp>
 #include <memory>
 #include <string>
 
-#include "../core/sample.h"
+#include "./core/sample.h"
 
 namespace PCG {
 
-// Forward declaration
 class ProgramGraph;
 
-//=============================================================================
-// GENERATOR TYPE
-//=============================================================================
 enum class GeneratorType {
   Preset,  // PCG::Generator with Config
-  Graph,   // Node graph (uses ProgramGraph)
+  Graph,   // Node graph
 };
 
 inline const char* GetGeneratorTypeName(GeneratorType type) {
@@ -31,9 +27,9 @@ inline const char* GetGeneratorTypeName(GeneratorType type) {
   }
 }
 
-//=============================================================================
-// GENERATOR BASE - Interface
-//=============================================================================
+//
+// GeneratorBase Interface
+//
 class GeneratorBase {
 public:
   virtual ~GeneratorBase() = default;
@@ -44,19 +40,19 @@ public:
   // Point evaluation
   virtual Sample Eval(float x, float y) = 0;
 
-  // Graph access (Graph type only)
+  // Graph access
   virtual ProgramGraph* GetGraph() { return nullptr; }
   virtual const ProgramGraph* GetGraph() const { return nullptr; }
 
   // Clone for copy operations
-  virtual std::unique_ptr<GeneratorBase> Clone() = 0;
+  virtual std::unique_ptr<GeneratorBase> Clone() const;
 };
 
-//=============================================================================
-// FACTORY
-//=============================================================================
+//
+// Factory
+//
 std::unique_ptr<GeneratorBase> CreateGenerator(GeneratorType type);
 
 }  // namespace PCG
 
-#endif  // TERRAIN_GENERATOR_BASE_H
+#endif  // GENERATOR_BASE_H

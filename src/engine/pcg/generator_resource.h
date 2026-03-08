@@ -1,11 +1,10 @@
-#ifndef TERRAIN_GENERATOR_RESOURCE_H
-#define TERRAIN_GENERATOR_RESOURCE_H
+#ifndef GENERATOR_RESOURCE_H
+#define GENERATOR_RESOURCE_H
 
 #include "engine/memory/resource.h"
-#include "engine/pcg/terrain/terrain_generator_base.h"
+#include "engine/pcg/generator_base.h"
 
 namespace PCG {
-
 class GeneratorResource : public Resource {
 public:
   GeneratorResource() = default;
@@ -29,4 +28,4 @@ private:
 
 }  // namespace PCG
 
-#endif  // TERRAIN_GENERATOR_RESOURCE_H
+#endif  // GENERATOR_RESOURCE_H

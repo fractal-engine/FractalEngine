@@ -52,6 +52,7 @@ public:
     std::vector<float> default_inputs;
     bool autoconnect_default_inputs = false;
 
+    // ! not implemented
     uint32_t FindInputConnection(PortLocation src,
                                  uint32_t input_port_index) const;
     uint32_t FindOutputConnection(uint32_t output_port_index,
@@ -70,7 +71,8 @@ public:
 
   bool IsConnected(PortLocation src, PortLocation dst) const;
   bool CanConnect(PortLocation src, PortLocation dst) const;
-  bool IsValidConnection(PortLocation src, PortLocation dst) const;
+  bool IsValidConnection(PortLocation src,
+                         PortLocation dst) const;  // ! not implemented
   void Connect(PortLocation src, PortLocation dst);
   bool Disconnect(PortLocation src, PortLocation dst);
 

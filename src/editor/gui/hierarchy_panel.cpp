@@ -72,6 +72,11 @@ void HierarchyPanel::RenderSearch(ImDrawList& draw_list) {
                                                       filtering */
   }
 
+  // TODO: adjust button position and make it work
+  if (ImGui::Button(ICON_FA_PLUS)) {
+    // TODO: button should display RenderPopupMenu when clicked
+  }
+
   ImGui::PopFont();
   ImGui::PopItemWidth();
   ImGui::PopStyleVar();
@@ -453,6 +458,27 @@ void HierarchyPanel::RenderPopupMenu() {
 
     if (PopupMenu::Menu(ICON_FA_VOLUME_HIGH, "Audio")) {
       if (PopupMenu::ItemLight("Audio Source")) { /* TODO */
+      }
+
+      PopupMenu::EndMenu();
+    }
+
+    if (PopupMenu::Menu(ICON_FA_DIAGRAM_PROJECT, "PCG")) {
+      if (PopupMenu::ItemLight("PCG Graph")) {
+        auto& world = ECS::Main();
+        auto [entity, transform] = world.CreateEntity("PCG Graph");
+
+        auto& res_mgr = EngineContext::resourceManager();
+        auto [id, resource] =
+            res_mgr.Create<PCG::GeneratorResource>("PCG Graph");
+        resource->SetGenerator(PCG::CreateGenerator(PCG::GeneratorType::Graph));
+
+        auto& volume = world.Add<VolumeComponent>(entity);
+        volume.generator_id = id;
+        volume.resolution = 256;
+
+        world.Add<MeshRendererComponent>(entity);
+        EditorUI::Get()->SetSelectedEntity(entity);
       }
 
       PopupMenu::EndMenu();

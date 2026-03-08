@@ -8,7 +8,8 @@
 
 #include <glm/glm.hpp>
 
-#include "engine/pcg/core/sample.h"
+#include "../core/sample.h"
+#include "../generator_base.h"
 #include "graph_runtime.h"
 #include "program_graph.h"
 
@@ -24,33 +25,50 @@ namespace PCG {
 
 class NodeTypeDB;
 
-class GeneratorGraph {
+class GeneratorGraph : public GeneratorBase {
 public:
   GeneratorGraph();
   ~GeneratorGraph();
 
   // Graph editing
   void Clear();
-  ProgramGraph& GetGraph() { return graph_; }
-  const ProgramGraph& GetGraph() const { return graph_; }
 
+  //
+  // Graph access
+  //
+  ProgramGraph* GetGraph() override { return &graph_; }
+  const ProgramGraph* GetGraph() const override { return &graph_; }
+
+  //
   // Compilation
+  //
   CompilationResult Compile();
   bool IsCompiled() const;
 
-  // Generation - single point query
+  //
+  // Generation
+  //
+
+  // Single point query
   Sample GenerateSingle(glm::vec2 position) const;
 
-  // Generation - batch query (better for multiple points)
+  // Batch query
   void GenerateSeries(const std::vector<glm::vec2>& positions,
                       std::vector<Sample>& out_samples) const;
 
-  // Generation - grid query for heightmap generation
+  // Grid query for heightmap generation
   void GenerateGrid(glm::vec2 origin, glm::vec2 size, glm::ivec2 resolution,
                     std::vector<Sample>& out_samples) const;
 
+  //
+  // GeneratorBase Interface
+  //
+  GeneratorType GetType() override { return GeneratorType::Graph; }
+  std::string GetDisplayName() override { return "Generator Graph"; }
+  Sample Eval(float x, float y) override;
+
   // Clone for thread-local usage
-  std::unique_ptr<GeneratorGraph> Clone() const;
+  std::unique_ptr<GeneratorBase> Clone() const override;
 
 private:
   // Cache for runtime state
@@ -59,7 +77,7 @@ private:
   };
   static Cache& GetTLSCache();
 
-  // Wrapper around GraphRuntime for metada
+  // Wrapper around GraphRuntime for metadata
   struct Runtime {
     GraphRuntime runtime;
 

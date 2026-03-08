@@ -1,6 +1,19 @@
 #include "program_graph.h"
 
+#include <algorithm>
+
 namespace PCG {
+
+ProgramGraph::~ProgramGraph() {
+  Clear();
+}
+
+void ProgramGraph::Clear() {
+  for (auto& [id, node] : _nodes)
+    delete node;
+  _nodes.clear();
+  _next_node_id = 1;
+}
 
 ProgramGraph::Node* ProgramGraph::CreateNode(uint32_t type_id, uint32_t id) {
   if (id == NULL_ID) {
@@ -18,7 +31,38 @@ ProgramGraph::Node* ProgramGraph::CreateNode(uint32_t type_id, uint32_t id) {
   return node;
 }
 
-// TODO: RemoveNode,
+void ProgramGraph::RemoveNode(uint32_t id) {
+  Node* node = TryGetNode(id);
+  if (!node)
+    return;
+
+  // Disconnect all inputs
+  for (size_t i = 0; i < node->inputs.size(); ++i) {
+    for (const PortLocation& src : node->inputs[i].connections) {
+      Node& src_node = GetNode(src.node_id);
+      auto& conns = src_node.outputs[src.port_index].connections;
+      conns.erase(std::remove_if(
+                      conns.begin(), conns.end(),
+                      [&](const PortLocation& p) { return p.node_id == id; }),
+                  conns.end());
+    }
+  }
+
+  // Disconnect all outputs
+  for (size_t i = 0; i < node->outputs.size(); ++i) {
+    for (const PortLocation& dst : node->outputs[i].connections) {
+      Node& dst_node = GetNode(dst.node_id);
+      auto& conns = dst_node.inputs[dst.port_index].connections;
+      conns.erase(std::remove_if(
+                      conns.begin(), conns.end(),
+                      [&](const PortLocation& p) { return p.node_id == id; }),
+                  conns.end());
+    }
+  }
+
+  delete node;
+  _nodes.erase(id);
+}
 
 ProgramGraph::Node& ProgramGraph::GetNode(uint32_t id) const {
   auto it = _nodes.find(id);
@@ -46,6 +90,61 @@ void ProgramGraph::Connect(PortLocation src, PortLocation dst) {
   dst_node.inputs[dst.port_index].connections.push_back(src);
 }
 
+unsigned int ProgramGraph::GetNodesCount() const {
+  return static_cast<unsigned int>(_nodes.size());
+}
+
+uint32_t ProgramGraph::GenerateNodeId() {
+  return _next_node_id++;
+}
+
+bool ProgramGraph::IsConnected(PortLocation src, PortLocation dst) const {
+  const Node* src_node = TryGetNode(src.node_id);
+  if (!src_node)
+    return false;
+
+  const auto& conns = src_node->outputs[src.port_index].connections;
+  return std::find(conns.begin(), conns.end(), dst) != conns.end();
+}
+
+bool ProgramGraph::CanConnect(PortLocation src, PortLocation dst) const {
+  if (src.node_id == dst.node_id)
+    return false;
+  if (IsConnected(src, dst))
+    return false;
+  if (HasPath(dst.node_id, src.node_id))
+    return false;
+
+  const Node* dst_node = TryGetNode(dst.node_id);
+  if (!dst_node)
+    return false;
+
+  // Input port must be empty (single connection per input)
+  return dst_node->inputs[dst.port_index].connections.empty();
+}
+
+bool ProgramGraph::Disconnect(PortLocation src, PortLocation dst) {
+  Node* src_node = TryGetNode(src.node_id);
+  Node* dst_node = TryGetNode(dst.node_id);
+  if (!src_node || !dst_node)
+    return false;
+
+  auto& out_conns = src_node->outputs[src.port_index].connections;
+  auto it = std::remove_if(out_conns.begin(), out_conns.end(),
+                           [&](const PortLocation& p) { return p == dst; });
+  if (it == out_conns.end())
+    return false;
+  out_conns.erase(it, out_conns.end());
+
+  auto& in_conns = dst_node->inputs[dst.port_index].connections;
+  in_conns.erase(
+      std::remove_if(in_conns.begin(), in_conns.end(),
+                     [&](const PortLocation& p) { return p == src; }),
+      in_conns.end());
+
+  return true;
+}
+
 bool ProgramGraph::HasPath(uint32_t src_node_id, uint32_t dst_node_id) const {
   // BFS/DFS to detect if connecting creates a cycle
   std::vector<uint32_t> to_process;
@@ -70,6 +169,13 @@ bool ProgramGraph::HasPath(uint32_t src_node_id, uint32_t dst_node_id) const {
     }
   }
   return false;
+}
+
+void ProgramGraph::GetNodeIds(std::vector<uint32_t>& out) const {
+  out.clear();
+  out.reserve(_nodes.size());
+  for (const auto& [id, _] : _nodes)
+    out.push_back(id);
 }
 
 void ProgramGraph::CopyFrom(const ProgramGraph& other) {

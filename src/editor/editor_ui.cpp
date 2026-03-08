@@ -8,6 +8,7 @@
 #include "engine/core/logger.h"
 #include "engine/core/view_ids.h"
 #include "engine/ecs/world.h"
+#include "engine/pcg/pcg_engine.h"
 
 #include "gui/asset_browser.h"
 #include "gui/camera_controls.h"
@@ -17,6 +18,7 @@
 #include "gui/hierarchy_panel.h"
 #include "gui/inspector_panel.h"
 #include "gui/menu_bar.h"
+#include "gui/pcg_graph_editor.h"
 #include "gui/search/search_popup.h"
 #include "gui/status_bar.h"
 #include "gui/styles/editor_styles.h"
@@ -325,6 +327,7 @@ void EditorUI::RenderUI() {
     // ImGui::DockBuilderDockWindow(Panels::kDlgWinName, bottom);
     ImGui::DockBuilderDockWindow("Asset Browser", bottom);
     ImGui::DockBuilderDockWindow("Camera", right);
+    ImGui::DockBuilderDockWindow("PCG Graph Editor", bottom);
 
     ImGui::DockBuilderFinish(dock_id_);
     built_layout_ = true;
@@ -403,6 +406,29 @@ void EditorUI::RenderUI() {
   ImGui::Begin("Asset Browser", nullptr);
   Panels::AssetBrowser();
   ImGui::End();
+
+  //------------------------- PCG GRAPH EDITOR --------------------------
+  PCGEngine& pcg = EngineContext::Generator();
+  if (pcg.show_graph_editor && pcg.active_graph) {
+    ImGui::Begin("PCG Graph Editor", &pcg.show_graph_editor,
+                 ImGuiWindowFlags_MenuBar);
+
+    static Panels::PCGGraphEditorPanel graph_panel;
+    static bool graph_panel_initialized = false;
+
+    if (!graph_panel_initialized) {
+      graph_panel.Initialize();
+      graph_panel_initialized = true;
+    }
+
+    // Update graph reference if changed
+    if (graph_panel.graph_ != pcg.active_graph) {
+      graph_panel.SetGraph(pcg.active_graph);
+    }
+
+    graph_panel.Draw(ImGui::GetIO().DeltaTime);
+    ImGui::End();
+  }
 
   // Camera Controls
   ImGui::Begin("Camera", nullptr);

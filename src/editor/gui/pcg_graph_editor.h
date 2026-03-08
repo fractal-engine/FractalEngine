@@ -1,7 +1,7 @@
 #ifndef PCG_GRAPH_EDITOR_H
 #define PCG_GRAPH_EDITOR_H
 
-#include <editor/vendor/imgui-node-editor/imgui_node_editor.h>
+#include <imgui-node-editor/imgui_node_editor.h>
 
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include <imgui.h>
@@ -16,6 +16,8 @@
 
 #include "engine/pcg/graph/node_types.h"     // ? improve includes
 #include "engine/pcg/graph/program_graph.h"  // ? improve includes
+
+#include "engine/core/logger.h"
 
 // Forward declarations
 // ! CHANGE THIS
@@ -68,7 +70,7 @@ inline ed::LinkId MakeLinkID(uint32_t src_node, uint32_t src_port,
 }
 
 //=============================================================================
-// NODE PREVIEW - 2D slice visualization (like Zylann's SdfPreview)
+// NODE PREVIEW - 2D slice visualization
 //=============================================================================
 struct NodePreview {
   static constexpr int kPreviewSize = 64;
@@ -129,6 +131,8 @@ struct PCGGraphEditorPanel {
   //  LIFECYCLE
   // ─────────────────────────────────────────────────────────────────────────
   void Initialize() {
+    Logger::getInstance().Log(LogLevel::Info,
+                              "PCGGraphEditorPanel: Initialize");
     ed::Config config;
     config.SettingsFile = nullptr;  // Don't persist layout to file
     context_ = ed::CreateEditor(&config);
@@ -142,6 +146,9 @@ struct PCGGraphEditorPanel {
   }
 
   void SetGraph(PCG::ProgramGraph* graph) {
+    Logger::getInstance().Log(LogLevel::Info,
+                              "PCGGraphEditorPanel: SetGraph called");
+
     graph_ = graph;
     previews_.clear();
     selected_node_ids_.clear();
@@ -157,10 +164,11 @@ struct PCGGraphEditorPanel {
       ImGui::TextDisabled("No graph loaded");
       return;
     }
+    Logger::getInstance().Log(LogLevel::Debug,
+                              "PCGGraphEditorPanel::Draw start");
 
     // Process scheduled preview updates
     ProcessPreviewTimer(dt);
-
     // Draw toolbar
     DrawToolbar();
 
@@ -182,19 +190,19 @@ struct PCGGraphEditorPanel {
     // Handle background context menu
     HandleContextMenu();
 
-    // Draw node picker popup
-    DrawNodePicker();
-
     ed::End();
-    ed::SetCurrentEditor(nullptr);
 
     // Update selection state
     UpdateSelection();
+
+    ed::SetCurrentEditor(nullptr);
+
+    Logger::getInstance().Log(LogLevel::Debug, "PCGGraphEditorPanel::Draw end");
   }
 
 private:
   // ─────────────────────────────────────────────────────────────────────────
-  //  TOOLBAR (like Zylann's HBoxContainer toolbar)
+  //  TOOLBAR
   // ─────────────────────────────────────────────────────────────────────────
   void DrawToolbar() {
     if (ImGui::BeginMenuBar()) {
@@ -232,7 +240,7 @@ private:
   }
 
   // ─────────────────────────────────────────────────────────────────────────
-  //  NODE RENDERING (equivalent to VoxelGraphEditorNode)
+  //  NODE RENDERING
   // ─────────────────────────────────────────────────────────────────────────
   void DrawNodes() {
     const auto& type_db = PCG::NodeTypeDB::Instance();
@@ -374,7 +382,7 @@ private:
           // Combo box for enum values
           std::string current = std::get<std::string>(node.params[i]);
           if (ImGui::BeginCombo(param.name.c_str(), current.c_str())) {
-            for (const auto& option : param.enum_values) {
+            for (const auto& option : param.enum_items) {
               bool selected = (option == current);
               if (ImGui::Selectable(option.c_str(), selected)) {
                 node.params[i] = option;
@@ -490,7 +498,7 @@ private:
   }
 
   // ─────────────────────────────────────────────────────────────────────────
-  //  CONTEXT MENU (like Zylann's _on_graph_edit_gui_input right-click handler)
+  //  CONTEXT MENU
   // ─────────────────────────────────────────────────────────────────────────
   void HandleContextMenu() {
     ed::Suspend();
@@ -502,12 +510,10 @@ private:
     }
 
     if (ImGui::BeginPopup("GraphContextMenu")) {
-      if (ImGui::MenuItem("Add Node... ")) {
+      if (ImGui::MenuItem("Add Node")) {
         show_node_picker_ = true;
         node_picker_position_ = context_menu_position_;
       }
-
-      ImGui::Separator();
 
       if (!selected_node_ids_.empty()) {
         if (ImGui::MenuItem("Delete Selected", "Del")) {
@@ -518,11 +524,14 @@ private:
       ImGui::EndPopup();
     }
 
+    DrawNodePicker();
+
     ed::Resume();
   }
 
   // ─────────────────────────────────────────────────────────────────────────
-  //  NODE PICKER DIALOG (like Zylann's VoxelGraphNodeDialog)
+  //  NODE PICKER DIALOG
+  // TODO: handle search properly (closes on click)
   // ─────────────────────────────────────────────────────────────────────────
   void DrawNodePicker() {
     if (!show_node_picker_)
@@ -531,10 +540,17 @@ private:
     ImGui::SetNextWindowPos(node_picker_position_, ImGuiCond_Appearing);
     ImGui::SetNextWindowSize(ImVec2(300, 400), ImGuiCond_FirstUseEver);
 
-    if (ImGui::Begin("Add Node", &show_node_picker_,
-                     ImGuiWindowFlags_NoCollapse)) {
+    // Open popup if we just started showing it
+    static bool popup_opened = false;
+    if (!popup_opened) {
+      ImGui::OpenPopup("##NodePickerPopup");
+      popup_opened = true;
+    }
+
+    if (ImGui::BeginPopup("##NodePickerPopup", ImGuiWindowFlags_NoMove |
+                                                   ImGuiWindowFlags_NoResize)) {
       static char search_buffer[256] = "";
-      ImGui::InputTextWithHint("##search", "Search.. .", search_buffer, 256);
+      ImGui::InputTextWithHint("##search", "Search...", search_buffer, 256);
 
       ImGui::Separator();
 
@@ -550,7 +566,6 @@ private:
 
         bool has_matches = false;
 
-        // Check if any nodes in this category match
         type_db.ForEachType([&](uint32_t type_id, const PCG::NodeType& type) {
           if (type.category != category)
             return;
@@ -586,17 +601,34 @@ private:
             if (ImGui::Selectable(type.name.c_str())) {
               CreateNode(type_id, node_picker_position_);
               show_node_picker_ = false;
+              popup_opened = false;
               search_buffer[0] = '\0';
+              ImGui::CloseCurrentPopup();
             }
           });
         }
       }
+
+      // Close on escape or click outside
+      if (ImGui::IsKeyPressed(ImGuiKey_Escape) ||
+          (!ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup) &&
+           ImGui::IsMouseClicked(0))) {
+        show_node_picker_ = false;
+        popup_opened = false;
+        search_buffer[0] = '\0';
+        ImGui::CloseCurrentPopup();
+      }
+
+      ImGui::EndPopup();
+    } else {
+      // Popup was closed externally
+      show_node_picker_ = false;
+      popup_opened = false;
     }
-    ImGui::End();
   }
 
   // ─────────────────────────────────────────────────────────────────────────
-  //  NODE PREVIEW (like Zylann's update_slice_previews)
+  //  NODE PREVIEW
   // ─────────────────────────────────────────────────────────────────────────
   bool HasPreview(uint32_t type_id) const {
     // Preview nodes like SDF Preview, or outputs
@@ -671,7 +703,7 @@ private:
   }
 
   // ─────────────────────────────────────────────────────────────────────────
-  //  PREVIEW UPDATE SCHEDULING (like Zylann's schedule_preview_update)
+  //  PREVIEW UPDATE SCHEDULING
   // ─────────────────────────────────────────────────────────────────────────
   void SchedulePreviewUpdate() {
     preview_update_timer_ = 0.5f;  // Delay to batch rapid changes

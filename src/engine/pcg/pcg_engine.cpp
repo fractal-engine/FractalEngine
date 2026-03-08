@@ -4,7 +4,8 @@
 #include "engine/ecs/components/mesh_renderer_component.h"
 #include "engine/ecs/components/volume_component.h"
 #include "engine/ecs/world.h"
-#include "terrain/terrain_generator_resource.h"
+
+#include "generator_resource.h"
 
 void PCGEngine::ProcessQueued() {
   auto& ecs = ECS::Main();
