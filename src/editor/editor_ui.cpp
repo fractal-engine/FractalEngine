@@ -7,6 +7,7 @@
 #include "engine/core/view_ids.h"
 #include "engine/ecs/world.h"
 #include "gui/asset_browser.h"
+#include "gui/asset_graph_editor.h"
 #include "gui/camera_controls.h"
 #include "gui/console_panel.h"
 #include "gui/file_explorer.h"
@@ -14,6 +15,8 @@
 #include "gui/hierarchy_panel.h"
 #include "gui/inspector_panel.h"
 #include "gui/menu_bar.h"
+#include "gui/model_preview.h"
+#include "gui/model_viewer.h"
 #include "gui/status_bar.h"
 #include "gui/terrain_editor.h"
 #include "gui/toolbar.h"
@@ -29,6 +32,11 @@
 #include "editor/vendor/imgui/imgui_impl_bgfx.h"
 
 #include <SDL.h>
+
+// --- Standalone instances for the procedural tools ---
+static ModelPreview g_model_preview;
+static ModelViewer g_model_viewer;
+static AssetGraphEditor g_asset_graph_editor;
 
 EditorUI* EditorUI::s_instance_ = nullptr;
 
@@ -261,8 +269,12 @@ void EditorUI::DockSpace() {
 
   // ———— Menu bar —————
   Panels::MenuBar(
-      [&]() {
-        quit_ = true;
+      [this]() {
+        if (is_game_started_) {
+          is_game_started_ = false;
+          game_end_pressed();
+        }
+        this->quit_ = true;
         editor_exit_pressed();
       },
       debug_highlight_ids_, debug_show_metrics_, debug_show_log_,
@@ -299,13 +311,17 @@ void EditorUI::RenderUI() {
     // docked Panels
     ImGui::DockBuilderDockWindow("Toolbar", top);
     ImGui::DockBuilderDockWindow("Hierarchy", left);
+    ImGui::DockBuilderDockWindow("Procedural Preview",
+                                 left);  // Added to layout
     ImGui::DockBuilderDockWindow("Inspector", right);
     ImGui::DockBuilderDockWindow("World", right);
     ImGui::DockBuilderDockWindow("Terrain Editor", right);
     ImGui::DockBuilderDockWindow("Scene", dock_id_);
+    ImGui::DockBuilderDockWindow("Model View", dock_id_);  // Added to layout
     ImGui::DockBuilderDockWindow("Console", bottom);
     // ImGui::DockBuilderDockWindow(Panels::kDlgWinName, bottom);
     ImGui::DockBuilderDockWindow("Asset Browser", bottom);
+    ImGui::DockBuilderDockWindow("Asset Graph", bottom);  // Added to layout
     ImGui::DockBuilderDockWindow("Camera", right);
 
     ImGui::DockBuilderFinish(dock_id_);
@@ -313,25 +329,32 @@ void EditorUI::RenderUI() {
   }
 
   //--------------------------- TOP TOOLBAR ----------------------------------
-  Panels::ToolbarCallbacks cb{.onStart =
-                                  [&] {
-                                    if (!is_game_started_) {
-                                      is_game_started_ = true;
-                                      game_start_pressed();
-                                    }
-                                  },
-                              .onStop =
-                                  [&] {
-                                    if (is_game_started_) {
-                                      is_game_started_ = false;
-                                      game_end_pressed();
-                                    }
-                                  },
-                              .onQuit =
-                                  [&] {
-                                    quit_ = true;
-                                    editor_exit_pressed();
-                                  }};
+  // Safely assign explicitly so we don't trip over compiler layout rules
+  Panels::ToolbarCallbacks cb;
+
+  cb.onStart = [this]() {
+    if (!is_game_started_) {
+      is_game_started_ = true;
+      game_start_pressed();
+    }
+  };
+
+  cb.onStop = [this]() {
+    if (is_game_started_) {
+      is_game_started_ = false;
+      game_end_pressed();
+    }
+  };
+
+  cb.onQuit = [this]() {
+    if (is_game_started_) {
+      is_game_started_ = false;
+      game_end_pressed();
+    }
+    this->quit_ = true;
+    editor_exit_pressed();
+  };
+
   ImGui::Begin("Toolbar", nullptr);
   Panels::Toolbar(cb);
   ImGui::End();
@@ -394,6 +417,11 @@ void EditorUI::RenderUI() {
   ImGui::Begin("Camera", nullptr);
   Panels::CameraControls();
   ImGui::End();
+
+  // -------- PROCEDURAL GENERATION PANELS --------
+  g_model_preview.Render();
+  g_model_viewer.Render();
+  g_asset_graph_editor.Render();
 
   //------------------------- IMGUI DEBUG ---------------------------
   if (debug_show_metrics_) {
