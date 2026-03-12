@@ -10,7 +10,6 @@
 #include "editor/camera/god_camera.h"
 #include "editor/gizmos/component_gizmos.h"
 #include "editor/gui/search/search_popup.h"
-#include "editor/gui/window_base.h"  // ! remove once we make viewport_window
 #include "editor_base.h"
 
 #include "engine/renderer/graphics_renderer.h"
@@ -38,11 +37,6 @@ public:
   void Destroy() override;
   void BeginImGuiFrame(SDL_Window* window);
 
-  // selection API
-  void SetSelectedEntity(Entity entity);
-  Entity GetSelectedEntity() const;
-  Entity GetLastSelectedEntity() const;
-
 private:
   void HandleInput(Key key);
   void RenderUI();
@@ -62,11 +56,6 @@ private:
 
   // Id counter
   uint32_t g_id_counter_;
-
-  // back-store for selection
-  // entt::null is the type-safe way to say "nothing is selected"
-  Entity selected_entity_ = entt::null;
-  Entity last_selected_entity_ = entt::null;
 
   // ImGui docking and window flags
   ImGuiDockNodeFlags dock_flags_;

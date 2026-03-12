@@ -9,10 +9,14 @@
 #include <unordered_map>
 
 #include "editor/editor_ui.h"
+#include "editor/events/editor_events.h"
 #include "editor/gui/styles/editor_styles.h"
 #include "editor/vendor/IconFontCppHeaders/IconsFontAwesome6.h"
+
 #include "im_components.h"
 
+#include "engine/context/engine_context.h"  // ! should be removed?
+#include "engine/pcg/generator_resource.h"  // ! should be removed?
 #include "engine/transform/transform.h"
 // TODO: #include "rendering/icons/icon_pool.h"
 
@@ -344,13 +348,61 @@ void DrawSpotlightComponent(Entity entity, SpotlightComponent& spotlight) {
     _EcsRemove<SpotlightComponent>(entity);
 }
 
+void DrawVolumeComponent(Entity entity, VolumeComponent& volume) {
+  bool removed = false;
+
+  if (_BeginComponent("Volume", 0, nullptr, &removed)) {
+    _Headline("Properties");
+
+    int32_t res = static_cast<int32_t>(volume.resolution);
+    IMComponents::Input("Resolution", res, 1.0f);
+    if (res != static_cast<int32_t>(volume.resolution)) {
+      volume.resolution = static_cast<uint16_t>(glm::clamp(res, 64, 4096));
+      volume.dirty = true;
+    }
+
+    _SpacingS();
+    _Headline("Generator");
+
+    if (volume.generator_id != 0) {
+      // Show ID and button to open the graph editor
+      IMComponents::Label("Generator ID: " +
+                          std::to_string(volume.generator_id));
+
+      if (ImGui::Button("Open Graph Editor")) {
+        EditorEvents::open_graph_editor(volume.generator_id);
+      }
+    } else {
+      ImGui::TextDisabled("No generator selected");
+
+      if (ImGui::Button("Create PCG Graph")) {
+        auto& res_mgr = EngineContext::resourceManager();
+        auto [id, resource] =
+            res_mgr.Create<PCG::GeneratorResource>("PCG Graph");
+        resource->SetGenerator(PCG::CreateGenerator(PCG::GeneratorType::Graph));
+
+        volume.generator_id = id;
+        volume.dirty = true;
+
+        EditorEvents::open_graph_editor(id);
+      }
+    }
+
+    _EndComponent();
+  }
+
+  if (removed)
+    _EcsRemove<VolumeComponent>(entity);
+}
+
 // TODO: component inspectables
 // void DrawVelocityBlur(Entity entity, VelocityBlurComponent& velocity);
 // void DrawBoxCollider(Entity entity, BoxColliderComponent& collider);
-// void DrawSphereCollider(Entity entity, SphereColliderComponent& collider);
-// void DrawRigidbody(Entity entity, RigidbodyComponent& rigidbody);
-// void DrawAudioListener(Entity entity, AudioListenerComponent& listener);
-// void DrawAudioSource(Entity entity, AudioSourceComponent& source);
+// void DrawSphereCollider(Entity entity, SphereColliderComponent&
+// collider); void DrawRigidbody(Entity entity, RigidbodyComponent&
+// rigidbody); void DrawAudioListener(Entity entity, AudioListenerComponent&
+// listener); void DrawAudioSource(Entity entity, AudioSourceComponent&
+// source);
 
 // TODO: Post-processing inspectables
 // void DrawColor(PostProcessing::Color& color);

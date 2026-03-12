@@ -11,6 +11,7 @@
 
 #include "editor/editor_ui.h"
 #include "editor/gui/styles/editor_styles.h"
+#include "editor/gui/utils/gui_utils.h"
 #include "editor/vendor/IconFontCppHeaders/IconsFontAwesome6.h"
 
 #include "engine/core/logger.h"

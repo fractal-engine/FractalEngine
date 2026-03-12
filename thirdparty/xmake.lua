@@ -65,10 +65,17 @@ target("imgui-node-editor")
 
     add_packages("imgui")
 
-        on_config(function(target)
-        -- ! Wrapper required due to ImGui::GetKeyIndex() being used
-        -- ! in imgui-node-editor but removed in ImGui 1.87
-        target:add("cxxflags", "-include", path.join(os.scriptdir(), "imgui_compat.h"), {force = true})
+    on_config(function(target)
+    -- ! Wrapper required due to ImGui::GetKeyIndex() being used
+    -- ! in imgui-node-editor but removed in ImGui 1.87
+        local compat_header = path.join(os.scriptdir(), "imgui_compat.h")
+        if is_plat("windows") then
+            -- MSVC
+            target:add("cxxflags", "/FI" .. compat_header, {force = true})
+        else
+            -- GCC/Clang
+            target:add("cxxflags", "-include " .. compat_header, {force = true})
+        end
     end)
 target_end()
 

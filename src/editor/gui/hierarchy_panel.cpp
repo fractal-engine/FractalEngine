@@ -209,13 +209,11 @@ void HierarchyPanel::RenderItem(ImDrawList& draw_list, HierarchyItem& item,
       // Select item
       selected_items[_item.entity.Id()] = &_item;
 
-      // Update EditorUI selection
-      // TODO: change SetSelectedEntity to Runtime::SceneViewPipeline
-      // Runtime::SceneViewPipeline().SetSelectedEntity(&_item.entity);
-      EditorUI::Get()->SetSelectedEntity(_item.entity.Handle());
+      // Update selection
+      Runtime::GetSceneViewPipeline().SetSelectedEntity(&_item.entity);
 
       // TODO: Update inspector panel with EntityInspectable
-      // InspectorPanel::Inspect<EntityInspectable>(_item);
+      InspectorPanel::Inspect<EntityInspectable>(_item);
     };
 
     // Handle current items selection
@@ -468,17 +466,8 @@ void HierarchyPanel::RenderPopupMenu() {
         auto& world = ECS::Main();
         auto [entity, transform] = world.CreateEntity("PCG Graph");
 
-        auto& res_mgr = EngineContext::resourceManager();
-        auto [id, resource] =
-            res_mgr.Create<PCG::GeneratorResource>("PCG Graph");
-        resource->SetGenerator(PCG::CreateGenerator(PCG::GeneratorType::Graph));
-
-        auto& volume = world.Add<VolumeComponent>(entity);
-        volume.generator_id = id;
-        volume.resolution = 256;
-
+        world.Add<VolumeComponent>(entity);
         world.Add<MeshRendererComponent>(entity);
-        EditorUI::Get()->SetSelectedEntity(entity);
       }
 
       PopupMenu::EndMenu();

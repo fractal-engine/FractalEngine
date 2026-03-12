@@ -6,7 +6,7 @@
 #include <unordered_map>
 #include <vector>
 
-#include "editor/gui/window_base.h"
+#include "window_base.h"
 
 #include "editor/gui/styles/editor_styles.h"
 #include "engine/ecs/ecs_collection.h"

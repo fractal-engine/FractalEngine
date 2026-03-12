@@ -9,6 +9,8 @@
 #include "editor/project/project_observer.h"
 #include "editor/systems/editor_asset.h"
 
+#include "editor/gui/window_base.h"
+
 namespace Panels {
 
 using NodeRef = std::shared_ptr<ProjectObserver::IONode>;

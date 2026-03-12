@@ -24,21 +24,21 @@ public:
   // Get latest projection matrix used
   const glm::mat4& GetProjection() const;
 
-  // void CreateFrameGraph();
+  // TODO: void CreateFrameGraph();
 
-  // void RenderSelectedEntity(EntityContainer* entity, const glm::mat4&
+  // TODO: void RenderSelectedEntity(EntityContainer* entity, const glm::mat4&
   // view_projection, const SceneCamera& camera);
 
-  // void SetSelectedEntity(EntityContainer* selected);
+  // Entity selection in game canvas
+  void SetSelectedEntity(EntityContainer* selected);
+  const std::vector<EntityContainer*>& GetSelectedEntities() const;
+  void UnselectEntities();
 
   // Pipeline settings
   void SetWireframe(bool enabled) { wireframe_ = enabled; }
   void SetShowSkybox(bool enabled) { show_skybox_ = enabled; }
   void SetShowGizmos(bool enabled) { show_gizmos_ = enabled; }
   void SetShowGrid(bool enabled) { show_grid_ = enabled; }
-  void SetSelectedEntities(const std::vector<EntityContainer*>& entities) {
-    selected_entities_ = entities;
-  }
 
   // Settings
   bool wireframe_;

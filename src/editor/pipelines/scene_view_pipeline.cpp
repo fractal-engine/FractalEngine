@@ -805,3 +805,16 @@ const glm::mat4& SceneViewPipeline::GetView() const {
 const glm::mat4& SceneViewPipeline::GetProjection() const {
   return projection_;
 }
+
+void SceneViewPipeline::SetSelectedEntity(EntityContainer* _selected) {
+  selected_entities_ = {_selected};
+}
+
+const std::vector<EntityContainer*>& SceneViewPipeline::GetSelectedEntities()
+    const {
+  return selected_entities_;
+}
+
+void SceneViewPipeline::UnselectEntities() {
+  selected_entities_ = {};
+}

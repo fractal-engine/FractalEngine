@@ -1,5 +1,6 @@
 #include "editor_ui.h"
 
+#include "editor/events/editor_events.h"
 #include "editor/gui/styles/editor_styles.h"
 #include "editor/runtime/runtime.h"
 
@@ -11,7 +12,6 @@
 #include "engine/pcg/pcg_engine.h"
 
 #include "gui/asset_browser.h"
-#include "gui/camera_controls.h"
 #include "gui/console_panel.h"
 #include "gui/file_explorer.h"
 #include "gui/game_canvas.h"
@@ -84,9 +84,10 @@ void EditorUI::Initialize() {
 
   // ADD DEFAULT EDITOR WINDOWS
   _AddWindow<HierarchyPanel>();
+  _AddWindow<PCGGraphEditorPanel>();
+  _AddWindow<InspectorPanel>();
 
   // TODO: Refactor these panels to EditorBase:
-  // _AddWindow<InspectorPanel>();
   // _AddWindow<ConsolePanel>();
   // _AddWindow<AssetBrowserPanel>();
 }
@@ -149,7 +150,7 @@ void EditorUI::Run() {
 
       if (event.type == SDL_QUIT) {
         quit_ = true;
-        editor_exit_pressed();
+        EditorEvents::editor_exit_pressed();
       }
     }  // end PollEvent loop
 
@@ -223,18 +224,18 @@ void EditorUI::HandleInput(Key key) {
   switch (key) {
     case Key::DIGIT_0:
       quit_ = true;
-      editor_exit_pressed();
+      EditorEvents::editor_exit_pressed();
       return;
     case Key::DIGIT_1:
       if (!is_game_started_) {
         is_game_started_ = true;
-        game_start_pressed();
+        EditorEvents::game_start_pressed();
       }
       return;
     case Key::DIGIT_2:
       if (is_game_started_) {
         is_game_started_ = false;
-        game_end_pressed();
+        EditorEvents::game_end_pressed();
       }
       return;
     default:
@@ -283,7 +284,7 @@ void EditorUI::DockSpace() {
   Panels::MenuBar(
       [&]() {
         quit_ = true;
-        editor_exit_pressed();
+        EditorEvents::editor_exit_pressed();
       },
       debug_highlight_ids_, debug_show_metrics_, debug_show_log_,
       debug_activate_picker_, debug_show_style_editor_);
@@ -338,20 +339,20 @@ void EditorUI::RenderUI() {
                                   [&] {
                                     if (!is_game_started_) {
                                       is_game_started_ = true;
-                                      game_start_pressed();
+                                      EditorEvents::game_start_pressed();
                                     }
                                   },
                               .onStop =
                                   [&] {
                                     if (is_game_started_) {
                                       is_game_started_ = false;
-                                      game_end_pressed();
+                                      EditorEvents::game_end_pressed();
                                     }
                                   },
                               .onQuit =
                                   [&] {
                                     quit_ = true;
-                                    editor_exit_pressed();
+                                    EditorEvents::editor_exit_pressed();
                                   }};
   ImGui::Begin("Toolbar", nullptr);
   Panels::Toolbar(cb);
@@ -368,22 +369,6 @@ void EditorUI::RenderUI() {
   Panels::GameCanvas(is_game_started_, game_canvas_hovered_,
                      game_canvas_focused_);
   UpdateMovement();
-  ImGui::End();
-
-  // -------- RIGHT : INSPECTOR -----------------
-  ImGui::Begin("Inspector", nullptr);
-  Entity selectedEntity = GetSelectedEntity();
-  if (selectedEntity != entt::null && world.Reg().valid(selectedEntity)) {
-    // 1. Get the TransformComponent from the selected entity.
-    auto& transform = world.Get<TransformComponent>(selectedEntity);
-
-    // 2. Call the newly designed Inspector panel with the live component.
-    Panels::Inspector(transform);
-    Panels::InspectVolume(selectedEntity);
-
-  } else {
-    ImGui::TextDisabled("Select an entity to inspect its components.");
-  }
   ImGui::End();
 
   // -------- RIGHT : WORLD SETTINGS --------
@@ -405,34 +390,6 @@ void EditorUI::RenderUI() {
 
   ImGui::Begin("Asset Browser", nullptr);
   Panels::AssetBrowser();
-  ImGui::End();
-
-  //------------------------- PCG GRAPH EDITOR --------------------------
-  PCGEngine& pcg = EngineContext::Generator();
-  if (pcg.show_graph_editor && pcg.active_graph) {
-    ImGui::Begin("PCG Graph Editor", &pcg.show_graph_editor,
-                 ImGuiWindowFlags_MenuBar);
-
-    static Panels::PCGGraphEditorPanel graph_panel;
-    static bool graph_panel_initialized = false;
-
-    if (!graph_panel_initialized) {
-      graph_panel.Initialize();
-      graph_panel_initialized = true;
-    }
-
-    // Update graph reference if changed
-    if (graph_panel.graph_ != pcg.active_graph) {
-      graph_panel.SetGraph(pcg.active_graph);
-    }
-
-    graph_panel.Draw(ImGui::GetIO().DeltaTime);
-    ImGui::End();
-  }
-
-  // Camera Controls
-  ImGui::Begin("Camera", nullptr);
-  Panels::CameraControls();
   ImGui::End();
 
   //------------------------- SEARCH POPUP --------------------------
@@ -470,7 +427,6 @@ void EditorUI::LoadIcons() {
   tab_icons_.insert({"Scene", ICON_FA_GAMEPAD});
   tab_icons_.insert({"Inspector", ICON_FA_LIST});
   tab_icons_.insert({"Console", ICON_FA_TERMINAL});
-  tab_icons_.insert({"Camera", ICON_FA_VIDEO});
   tab_icons_.insert({"Assets", ICON_FA_FOLDER_OPEN});
   tab_icons_.insert({"World", ICON_FA_GLOBE});
   // tab_icons_.insert({"File Explorer", ICON_FA_FOLDER});
@@ -490,20 +446,6 @@ void EditorUI::BeginImGuiFrame(SDL_Window* window) {
   // drop shadow effect
   // static bool shadowOn = true;
   // ui::shadow::BeginFrame(shadowOn);
-}
-
-// ── Selection API ─────────────────────────────────────────────────────────
-void EditorUI::SetSelectedEntity(Entity entity) {
-  selected_entity_ = entity;
-  last_selected_entity_ = entity;
-}
-
-Entity EditorUI::GetSelectedEntity() const {
-  return selected_entity_;
-}
-
-Entity EditorUI::GetLastSelectedEntity() const {
-  return last_selected_entity_;
 }
 
 // TODO: move this to viewport
