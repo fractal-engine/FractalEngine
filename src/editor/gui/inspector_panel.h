@@ -2,6 +2,7 @@
 #define INSPECTOR_PANEL_H
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <type_traits>
 
@@ -29,6 +30,8 @@ public:
 private:
   // Current inspected object
   static inline std::unique_ptr<InspectableBase> inspected_;
+
+  Entity last_inspected_entity_ = entt::null;
 
   // Output texture of preview viewer
   size_t preview_viewer_output_;

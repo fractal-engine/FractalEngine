@@ -3,7 +3,9 @@
 
 #include <array>
 #include <functional>
+#include <optional>
 #include <string>
+#include <unordered_map>
 #include <variant>
 #include <vector>
 
@@ -11,17 +13,17 @@
 #include "graph_runtime.h"
 
 namespace PCG {
-//=============================================================================
+//
 // NODE TYPE DEFINITIONS
-//=============================================================================
+//
 enum class Category {
-  Input,
-  Output,
-  Math,
-  Noise,
-  Filter,   // operators
-  Erosion,  // Altitude/Slope/Ridge erosion
-  Utility,
+  INPUT,
+  OUTPUT,
+  MATH,
+  NOISE,
+  FILTER,
+  EROSION,
+  UTILITY,
   COUNT  // ! check if this should be here
 };
 
@@ -44,7 +46,7 @@ struct NodeType {
     float min_value = 0.0f;
     float max_value = 1.0f;
     bool has_range = false;
-    uint32_t index = -1;
+    std::optional<uint32_t> index;  // uint32_t index = -1;
     std::vector<std::string> enum_items;
   };
 
@@ -64,9 +66,9 @@ struct NodeType {
   GraphRuntime::RangeAnalysisFunc range_analysis_func = nullptr;
 };
 
-//=============================================================================
+//
 // NODE TYPE IDS - terrain generation nodes
-//=============================================================================
+//
 
 // TODO: revise the list
 enum class NodeTypeID : uint32_t {
@@ -126,9 +128,9 @@ enum class NodeTypeID : uint32_t {
   COUNT
 };
 
-//=============================================================================
+//
 // NODE TYPE DATABASE
-//=============================================================================
+//
 class NodeTypeDB {
 public:
   static NodeTypeDB& Instance();

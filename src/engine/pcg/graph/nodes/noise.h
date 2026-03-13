@@ -15,7 +15,7 @@ inline void RegisterNoiseNodes(std::span<NodeType> types) {
   {
     NodeType& t = types[static_cast<size_t>(NodeTypeID::OpenSimplex2_Deriv)];
     t.name = "OpenSimplex2 (Derivatives)";
-    t.category = Category::Noise;
+    t.category = Category::NOISE;
     t.inputs = {{"x", 0.0f}, {"y", 0.0f}};
     t.outputs = {{"value"}, {"dx"}, {"dy"}};
     t.params = {
@@ -58,7 +58,7 @@ inline void RegisterNoiseNodes(std::span<NodeType> types) {
   {
     NodeType& t = types[static_cast<size_t>(NodeTypeID::FN2_Simplex2D)];
     t.name = "FN2 Simplex 2D";
-    t.category = Category::Noise;
+    t.category = Category::NOISE;
     t.inputs = {{"x", 0.0f}, {"y", 0.0f}};
     t.outputs = {{"value"}};
     t.params = {
@@ -100,7 +100,7 @@ inline void RegisterNoiseNodes(std::span<NodeType> types) {
   {
     NodeType& t = types[static_cast<size_t>(NodeTypeID::UberFBM)];
     t.name = "Uber FBM";
-    t.category = Category::Noise;
+    t.category = Category::NOISE;
     t.inputs = {{"x", 0.0f}, {"y", 0.0f}};
     t.outputs = {{"value"}, {"dx"}, {"dy"}};
     t.params = {

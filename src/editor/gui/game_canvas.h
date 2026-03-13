@@ -98,9 +98,12 @@ inline void GameCanvas(bool isGameRunning, bool& hovered, bool& focused) {
       );
 
       // ImGuizmo transform manipulation
+      auto& state = Runtime::State();
       auto& pipeline = Runtime::GetSceneViewPipeline();
-      const std::vector<EntityContainer*>& selected =
-          pipeline.GetSelectedEntities();
+
+      Entity selected_entity = state.selected_entity;
+      bool has_selection = selected_entity != entt::null &&
+                           ECS::Main().Has<TransformComponent>(selected_entity);
 
       // Get camera matrices
       auto& camera_transform = std::get<0>(pipeline.GetGodCamera());
@@ -120,14 +123,13 @@ inline void GameCanvas(bool isGameRunning, bool& hovered, bool& focused) {
       ImGuizmo::SetRect(pos.x, pos.y, size.x, size.y);
 
       // Only show gizmos if: pipeline enabled, entity selected, not interacting
-      bool show_gizmos = pipeline.show_gizmos_ && !selected.empty();
+      bool show_gizmos = pipeline.show_gizmos_ && has_selection;
       bool right_click = ImGui::IsMouseDown(ImGuiMouseButton_Right);
       bool middle_click = ImGui::IsMouseDown(ImGuiMouseButton_Middle);
 
       if (show_gizmos && !right_click && !middle_click) {
         auto& world = ECS::Main();
-        EntityContainer* entity = selected[0];
-        if (entity && world.Has<TransformComponent>(entity->Handle())) {
+        if (has_selection) {
 
           // Handle keyboard shortcuts
           if (focused) {
@@ -135,7 +137,7 @@ inline void GameCanvas(bool isGameRunning, bool& hovered, bool& focused) {
           }
 
           // Get transform
-          auto& transform = world.Get<TransformComponent>(entity->Handle());
+          auto& transform = world.Get<TransformComponent>(selected_entity);
           glm::mat4 modelMatrix = transform.model_;
 
           // Snapping (hold Ctrl)

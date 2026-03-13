@@ -10,7 +10,7 @@ void RegisterInputNodes(
     std::span<NodeType, static_cast<size_t>(NodeTypeID::COUNT)> types) {
   NodeType& t = types[static_cast<size_t>(NodeTypeID::InputX)];
   t.name = "Input X";
-  t.category = Category::Input;
+  t.category = Category::INPUT;
   t.outputs = {{"x"}};
 }
 

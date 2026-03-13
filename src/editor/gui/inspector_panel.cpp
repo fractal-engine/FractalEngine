@@ -1,5 +1,9 @@
 #include "inspector_panel.h"
 
+#include "editor/gui/hierarchy_panel.h"
+#include "editor/gui/inspectables/entity_inspectable.h"
+#include "editor/runtime/runtime.h"
+
 InspectorPanel::InspectorPanel()
     : preview_viewer_output_(0),
       preview_viewer_height_(300.0f),
@@ -15,6 +19,27 @@ void InspectorPanel::Render() {
     ImDrawList& draw_list = *ImGui::GetWindowDrawList();
 
     IMComponents::Headline("Inspector", ICON_FA_LAYER_GROUP);
+
+    // Drive inspector from EditorState selection
+    auto& state = Runtime::State();
+    auto& world = ECS::Main();
+    Entity selection = state.selected_entity;
+
+    if (selection != entt::null && world.Reg().valid(selection)) {
+      // Only re-inspect if selection changed
+      if (selection != last_inspected_entity_) {
+        last_inspected_entity_ = selection;
+
+        // Keep the HierarchyItem alive
+        HierarchyItem item{EntityContainer(selection)};
+        Inspect<EntityInspectable>(item);
+      }
+    } else {
+      if (last_inspected_entity_ != entt::null) {
+        last_inspected_entity_ = entt::null;
+        inspected_ = nullptr;
+      }
+    }
 
     // Render inspected static content if available
     if (inspected_) {

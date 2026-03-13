@@ -56,7 +56,7 @@ CompilationResult GraphRuntime::Compile(const ProgramGraph& graph) {
   std::vector<uint32_t> terminal_ids;
   expanded_graph.ForEachNode([&](const ProgramGraph::Node& node) {
     const NodeType& type = type_db.Get(static_cast<NodeTypeID>(node.type_id));
-    if (type.category == Category::Output) {
+    if (type.category == Category::OUTPUT) {
       terminal_ids.push_back(node.id);
     }
   });
@@ -155,7 +155,7 @@ CompilationResult GraphRuntime::Compile(const ProgramGraph& graph) {
     const NodeType& type = type_db.Get(static_cast<NodeTypeID>(node.type_id));
 
     // Handle input nodes - allocate bindings
-    if (type.category == Category::Input) {
+    if (type.category == Category::INPUT) {
       uint16_t addr;
 
       if (node.type_id == static_cast<uint32_t>(NodeTypeID::Constant)) {
@@ -230,10 +230,12 @@ CompilationResult GraphRuntime::Compile(const ProgramGraph& graph) {
     }
 
     // Track output nodes
-    if (type.category == Category::Output) {
+    if (type.category == Category::OUTPUT) {
       assert(program_.outputs_count < MAX_OUTPUTS);
+
       OutputInfo& out_info = program_.outputs[program_.outputs_count];
       out_info.node_id = node_id;
+
       // Output reads from its first input
       if (!node.inputs.empty() && !node.inputs[0].connections.empty()) {
         const ProgramGraph::PortLocation& src = node.inputs[0].connections[0];

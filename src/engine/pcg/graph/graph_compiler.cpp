@@ -294,12 +294,12 @@ CompilationResult ReduceConstants(ProgramGraph& graph,
           type_db.Get(static_cast<NodeTypeID>(node.type_id));
 
       // Skip output nodes
-      if (node_type.category == Category::Output) {
+      if (node_type.category == Category::OUTPUT) {
         continue;
       }
 
       // Skip input nodes
-      if (node_type.category == Category::Input) {
+      if (node_type.category == Category::INPUT) {
         continue;
       }
 

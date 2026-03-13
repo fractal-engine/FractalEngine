@@ -38,7 +38,7 @@
 
 #include "runtime.h"
 
-#include "editor/events/editor_events.h"
+#include "editor/events.h"
 #include "editor/registry/asset_registry.h"
 #include "editor/registry/component_registry.h"
 
@@ -90,6 +90,8 @@ ShadowMap g_main_shadow_map;
 
 // scene manager
 SceneManager g_scene_manager;
+
+EditorState g_editor_state;
 
 // TODO: default settings
 
@@ -178,7 +180,7 @@ static void _LaunchEditor() {
   AssetRegistry::Create();
 
   // Create component registry
-  // TODO: ComponentRegistry::Create();
+  ComponentRegistry::Create();
 
   // initialize editor layer
   // TODO: should be EditorUI::Setup();
@@ -383,6 +385,10 @@ FrameGraph& GetFrameGraph() {
 
 SceneManager& Scene() {
   return g_scene_manager;
+}
+
+EditorState& State() {
+  return g_editor_state;
 }
 
 }  // namespace Runtime

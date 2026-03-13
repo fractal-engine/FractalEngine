@@ -210,10 +210,9 @@ void HierarchyPanel::RenderItem(ImDrawList& draw_list, HierarchyItem& item,
       selected_items[_item.entity.Id()] = &_item;
 
       // Update selection
-      Runtime::GetSceneViewPipeline().SetSelectedEntity(&_item.entity);
+      Runtime::State().SelectEntity(_item.entity.Handle());
 
-      // TODO: Update inspector panel with EntityInspectable
-      InspectorPanel::Inspect<EntityInspectable>(_item);
+      // InspectorPanel::Inspect<EntityInspectable>(_item);
     };
 
     // Handle current items selection
@@ -467,7 +466,8 @@ void HierarchyPanel::RenderPopupMenu() {
         auto [entity, transform] = world.CreateEntity("PCG Graph");
 
         world.Add<VolumeComponent>(entity);
-        world.Add<MeshRendererComponent>(entity);
+        // ? MeshRendererComponent should be added later when generator produces
+        // geometry
       }
 
       PopupMenu::EndMenu();

@@ -10,11 +10,23 @@ target("FastNoise2")
     
     add_includedirs("FastNoise2/include", {public = true})
     add_includedirs("FastNoise2/build/_deps/fastsimd-src/include", {public = true})
-    add_linkdirs("FastNoise2/build/src", {public = true})
+
+    -- Build path varies by platform
+    if is_plat("windows") then
+        add_linkdirs("FastNoise2/build/src/Release", {public = true})
+    else
+        add_linkdirs("FastNoise2/build/src", {public = true})
+    end
+
     add_links("FastNoise", {public = true})
     
     on_build(function (target)
-        local lib = path.join("$(projectdir)", "thirdparty/FastNoise2/build/src/libFastNoise.a")
+        local lib
+        if os.host() == "windows" then
+            lib = path.join("$(projectdir)", "thirdparty/FastNoise2/build/src/Release/FastNoise.lib")
+        else
+            lib = path.join("$(projectdir)", "thirdparty/FastNoise2/build/src/libFastNoise.a")
+        end
         if os.isfile(lib) then return end
 
         import("lib.detect.find_tool")

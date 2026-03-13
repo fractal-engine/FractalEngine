@@ -14,7 +14,7 @@ public:
   void RenderDynamicContent(ImDrawList& draw_list) override;
 
 private:
-  HierarchyItem& item;
+  HierarchyItem item;
 };
 
 #endif  // ENTITY_INSPECTABLE_H

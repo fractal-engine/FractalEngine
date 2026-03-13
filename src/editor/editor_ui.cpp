@@ -1,6 +1,6 @@
 #include "editor_ui.h"
 
-#include "editor/events/editor_events.h"
+#include "editor/events.h"
 #include "editor/gui/styles/editor_styles.h"
 #include "editor/runtime/runtime.h"
 
@@ -413,6 +413,17 @@ void EditorUI::RenderUI() {
   if (debug_activate_picker_) {
     ImGui::DebugStartItemPicker();
     debug_activate_picker_ = false;  // reset
+  }
+
+  // Push current state to pipeline for rendering
+  {
+    auto& state = Runtime::State();
+    std::vector<Entity> state_list;
+    if (state.selected_entity != entt::null &&
+        world.Reg().valid(state.selected_entity)) {
+      state_list.push_back(state.selected_entity);
+    }
+    Runtime::GetSceneViewPipeline().SetSelectedEntities(state_list);
   }
 
   // -------- Render all registered windows --------

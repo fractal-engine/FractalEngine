@@ -744,17 +744,17 @@ void PCGGraphEditorPanel::OnNodeParamChanged(uint32_t node_id) {
 //
 ImColor PCGGraphEditorPanel::GetCategoryColor(PCG::Category cat) const {
   switch (cat) {
-    case PCG::Category::Input:
+    case PCG::Category::INPUT:
       return ImColor(0.4f, 0.8f, 0.4f);
-    case PCG::Category::Output:
+    case PCG::Category::OUTPUT:
       return ImColor(0.8f, 0.4f, 0.4f);
-    case PCG::Category::Math:
+    case PCG::Category::MATH:
       return ImColor(0.6f, 0.6f, 0.9f);
-    case PCG::Category::Noise:
+    case PCG::Category::NOISE:
       return ImColor(0.9f, 0.7f, 0.3f);
-    case PCG::Category::Filter:
+    case PCG::Category::FILTER:
       return ImColor(0.7f, 0.5f, 0.8f);
-    case PCG::Category::Erosion:
+    case PCG::Category::EROSION:
       return ImColor(0.5f, 0.7f, 0.7f);
     default:
       return ImColor(0.7f, 0.7f, 0.7f);
@@ -763,17 +763,17 @@ ImColor PCGGraphEditorPanel::GetCategoryColor(PCG::Category cat) const {
 
 std::string PCGGraphEditorPanel::GetCategoryName(PCG::Category cat) const {
   switch (cat) {
-    case PCG::Category::Input:
+    case PCG::Category::INPUT:
       return "Input";
-    case PCG::Category::Output:
+    case PCG::Category::OUTPUT:
       return "Output";
-    case PCG::Category::Math:
+    case PCG::Category::MATH:
       return "Math";
-    case PCG::Category::Noise:
+    case PCG::Category::NOISE:
       return "Noise";
-    case PCG::Category::Filter:
+    case PCG::Category::FILTER:
       return "Filters";
-    case PCG::Category::Erosion:
+    case PCG::Category::EROSION:
       return "Erosion";
     default:
       return "Other";

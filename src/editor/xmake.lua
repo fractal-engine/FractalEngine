@@ -44,8 +44,7 @@ add_headerfiles(
 	"registry/*.h",
 	"pipelines/*.h",
 	"gizmos/*.h",
-	"camera/*.h",
-	"events/*.h"
+	"camera/*.h"
 )
 
 add_packages(

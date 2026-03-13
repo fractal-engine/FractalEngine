@@ -9,7 +9,7 @@
 #include <unordered_map>
 
 #include "editor/editor_ui.h"
-#include "editor/events/editor_events.h"
+#include "editor/events.h"
 #include "editor/gui/styles/editor_styles.h"
 #include "editor/vendor/IconFontCppHeaders/IconsFontAwesome6.h"
 

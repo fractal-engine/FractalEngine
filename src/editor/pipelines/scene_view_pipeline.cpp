@@ -271,10 +271,10 @@ void SceneViewPipeline::RenderForwardNode(const Node::Context& context) {
                         params._skyAmbientArray[2]);
     }
     // DEBUG: Check what skybox is providing
-    Logger::getInstance().Log(
+    /* Logger::getInstance().Log(
         LogLevel::Debug,
         "SkyLight ambient from skybox: " + std::to_string(color.r) + ", " +
-            std::to_string(color.g) + ", " + std::to_string(color.b));
+            std::to_string(color.g) + ", " + std::to_string(color.b));*/
 
     total_ambient += color * sky_light.intensity_;
   }
@@ -344,8 +344,8 @@ void SceneViewPipeline::RenderForwardNode(const Node::Context& context) {
 
     // Skip selected entities (rendered in selection pass)
     bool is_selected = false;
-    for (auto* selected : selected_entities_) {
-      if (selected && selected->Handle() == entity) {
+    for (auto selected : selected_entities_) {
+      if (selected == entity) {
         is_selected = true;
         break;
       }
@@ -379,38 +379,45 @@ void SceneViewPipeline::RenderForwardNode(const Node::Context& context) {
 
   if (show_gizmos_) {
     // Selection outline first (uses depth from the forward pass)
-    for (auto* e : selected_entities_) {
-      if (e)
-        RenderSelectedEntityOutline(e, view_projection);
+    for (auto selected : selected_entities_) {
+      if (selected != entt::null &&
+          world.Has<MeshRendererComponent>(selected)) {
+        auto& mesh_renderer = world.Get<MeshRendererComponent>(selected);
+        if (!mesh_renderer.mesh_ || !mesh_renderer.enabled_)
+          continue;
+        EntityContainer container(selected);
+        RenderSelectedEntityOutline(&container, view_projection);
+      }
+      /* Entity selected_entity = EditorUI::Get()->GetSelectedEntity();
+      ComponentGizmos::DrawTransformGizmo(selected_entity, viewMatrix,
+                                          projMatrix);*/
     }
-    /* Entity selected_entity = EditorUI::Get()->GetSelectedEntity();
-    ComponentGizmos::DrawTransformGizmo(selected_entity, viewMatrix,
-                                        projMatrix);*/
+
+    // Render skybox
+    if (show_skybox_ && context.globals.skybox) {
+      context.globals.skybox->Submit(ViewID::SCENE_FORWARD, viewMatrix,
+                                     projMatrix,
+                                     /*useInverseViewProj=*/true);
+    }
+
+    // Terrain
+    /* if (context.globals.terrain) {
+      context.globals.terrain->Submit(ViewID::SCENE_FORWARD, viewMatrix,
+    projMatrix, camPos);
+    }*/
+
+    // TODO: make sure it uses reflection
+    // TODO: comment out code after adding water element
+    /* if (show_water_) {
+      auto* game = static_cast<GameTest*>(Runtime::Game());
+      game->RenderWater(viewMatrix, projMatrix, camPos);
+      // future: context.globals.water->SetReflectionTexture(... from
+      // context.tex("reflection") ...);
+      //         context.globals.water->Submit(ViewID::SCENE_FORWARD,
+    viewMatrix,
+      //         projMatrix, camPos);
+    }*/
   }
-
-  // Render skybox
-  if (show_skybox_ && context.globals.skybox) {
-    context.globals.skybox->Submit(ViewID::SCENE_FORWARD, viewMatrix,
-                                   projMatrix,
-                                   /*useInverseViewProj=*/true);
-  }
-
-  // Terrain
-  /* if (context.globals.terrain) {
-    context.globals.terrain->Submit(ViewID::SCENE_FORWARD, viewMatrix,
-  projMatrix, camPos);
-  }*/
-
-  // TODO: make sure it uses reflection
-  // TODO: comment out code after adding water element
-  /* if (show_water_) {
-    auto* game = static_cast<GameTest*>(Runtime::Game());
-    game->RenderWater(viewMatrix, projMatrix, camPos);
-    // future: context.globals.water->SetReflectionTexture(... from
-    // context.tex("reflection") ...);
-    //         context.globals.water->Submit(ViewID::SCENE_FORWARD, viewMatrix,
-    //         projMatrix, camPos);
-  }*/
 }
 
 void SceneViewPipeline::RenderSelectionOutlineNode(
@@ -437,14 +444,19 @@ void SceneViewPipeline::RenderSelectionOutlineNode(
   bgfx::setViewTransform(ViewID::SCENE_FORWARD, viewMatrix, projMatrix);
 
   // Render each selected entity with outline
-  for (auto* entity : selected_entities_) {
-    if (!entity || !entity->Has<MeshRendererComponent>())
+  auto& world = ECS::Main();
+  for (auto selection : selected_entities_) {
+    if (selection == entt::null || !world.Has<MeshRendererComponent>(selection))
       continue;
 
-    TransformComponent& transform = entity->Transform();
-    MeshRendererComponent& renderer = entity->Get<MeshRendererComponent>();
+    auto& transform = world.Get<TransformComponent>(selection);
+    auto& renderer = world.Get<MeshRendererComponent>(selection);
 
     if (!renderer.enabled_)
+      continue;
+
+    // Mesh must be assigned
+    if (!renderer.mesh_)
       continue;
 
     // Render base mesh
@@ -455,7 +467,8 @@ void SceneViewPipeline::RenderSelectionOutlineNode(
     bgfx::submit(ViewID::SCENE_FORWARD, default_program_);
 
     // Render outline (scaled up)
-    RenderSelectedEntityOutline(entity, view_projection);
+    EntityContainer container(selection);
+    RenderSelectedEntityOutline(&container, view_projection);
   }
 }
 
@@ -551,6 +564,10 @@ void SceneViewPipeline::RenderSelectedEntityOutline(
 
   // Renderer must be enabled
   if (!renderer.enabled_)
+    return;
+
+  // Mesh must be assigned
+  if (!renderer.mesh_)
     return;
 
   // Placeholder transform component for outline
@@ -804,17 +821,4 @@ const glm::mat4& SceneViewPipeline::GetView() const {
 
 const glm::mat4& SceneViewPipeline::GetProjection() const {
   return projection_;
-}
-
-void SceneViewPipeline::SetSelectedEntity(EntityContainer* _selected) {
-  selected_entities_ = {_selected};
-}
-
-const std::vector<EntityContainer*>& SceneViewPipeline::GetSelectedEntities()
-    const {
-  return selected_entities_;
-}
-
-void SceneViewPipeline::UnselectEntities() {
-  selected_entities_ = {};
 }

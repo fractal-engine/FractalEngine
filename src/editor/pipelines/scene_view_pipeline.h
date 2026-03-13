@@ -30,9 +30,9 @@ public:
   // view_projection, const SceneCamera& camera);
 
   // Entity selection in game canvas
-  void SetSelectedEntity(EntityContainer* selected);
-  const std::vector<EntityContainer*>& GetSelectedEntities() const;
-  void UnselectEntities();
+  void SetSelectedEntities(const std::vector<Entity>& entities) {
+    selected_entities_ = entities;
+  }
 
   // Pipeline settings
   void SetWireframe(bool enabled) { wireframe_ = enabled; }
@@ -88,7 +88,7 @@ private:
   glm::mat4 projection_;
 
   // Entity selection
-  std::vector<EntityContainer*> selected_entities_;
+  std::vector<Entity> selected_entities_;
 
   // TODO: replace with actual implementation of selection material
   // bgfx::ProgramHandle selection_material_ BGFX_INVALID_HANDLE;  //

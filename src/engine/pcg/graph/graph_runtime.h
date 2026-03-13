@@ -1,6 +1,7 @@
 #ifndef GRAPH_RUNTIME_H
 #define GRAPH_RUNTIME_H
 
+#include <array>
 #include <memory>
 #include <span>
 #include <string>
