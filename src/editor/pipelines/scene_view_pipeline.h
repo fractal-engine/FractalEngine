@@ -6,6 +6,7 @@
 #include "engine/ecs/ecs_collection.h"
 #include "engine/renderer/frame_graph.h"
 #include "engine/transform/transform_system.h"
+
 class SceneViewPipeline {
 public:
   SceneViewPipeline();
