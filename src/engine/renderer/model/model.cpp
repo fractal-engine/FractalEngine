@@ -3,52 +3,26 @@
 #include "engine/content/cache/mesh_cache.h"
 #include "engine/core/logger.h"
 
-bool Model::LoadData() {
-  auto md = Formats::TranslateGLTF(source_path_);
+std::shared_ptr<Model> Model::Load(const std::string& file) {
+  const auto& mesh_list = Content::MeshCache::Instance().Get(file);
 
-  if (md.empty()) {
-    Logger::getInstance().Log(
-        LogLevel::Error,
-        "[Model::LoadData] failed - no meshes in " + source_path_);
-    return false;
+  if (mesh_list.empty()) {
+    Logger::getInstance().Log(LogLevel::Error,
+                              "[Model::Load] No meshes in: " + file);
+    return nullptr;
   }
 
-  // Compute metrics while CPU data is available
-  metrics_ = ComputeMetrics(md);
+  auto out = std::make_shared<Model>();
+  out->meshes_.reserve(mesh_list.size());
 
-  // Store for upload phase
-  mesh_data_ = std::move(md);
+  for (const auto& geom : mesh_list)
+    out->meshes_.emplace_back(std::make_unique<Mesh>(geom));
 
   Logger::getInstance().Log(
-      LogLevel::Debug, "[Model] Data loaded: " + source_path_ +
-                           ", meshes: " + std::to_string(mesh_data_.size()));
-  return true;
-}
+      LogLevel::Debug,
+      "[Model] Loaded " + std::to_string(out->NLoadedMeshes()) + " meshes");
 
-bool Model::UploadBuffers() {
-  if (mesh_data_.empty()) {
-    Logger::getInstance().Log(LogLevel::Error,
-                              "[Model::UploadBuffers] no data to upload");
-    return false;
-  }
-
-  meshes_.reserve(mesh_data_.size());
-  for (auto& md : mesh_data_)
-    meshes_.emplace_back(std::make_unique<Mesh>(md));
-
-  // Free intermediate CPU data
-  mesh_data_.clear();
-
-  Logger::getInstance().Log(LogLevel::Debug,
-                            "[Model] Buffers uploaded, mesh count: " +
-                                std::to_string(NLoadedMeshes()));
-  return true;
-}
-
-void Model::Destroy() {
-  meshes_.clear();
-  mesh_data_.clear();
-  metrics_ = Metrics{};
+  return out;
 }
 
 uint32_t Model::NLoadedMeshes() const {
@@ -65,35 +39,4 @@ void Model::Draw(bgfx::ViewId view, bgfx::ProgramHandle program) const {
     bgfx::setState(BGFX_STATE_DEFAULT);  // opaque
     bgfx::submit(view, program);
   }
-}
-
-Model::Metrics Model::ComputeMetrics(
-    const std::vector<Resources3D::MeshData>& mesh_data) {
-  Metrics m{};
-  m.n_meshes = static_cast<uint32_t>(mesh_data.size());
-
-  glm::vec3 centroid_acc(0.0f);
-
-  for (const auto& md : mesh_data) {
-    const size_t v_count = md.positions_.size() / 3;
-    m.n_vertices += static_cast<uint32_t>(v_count);
-    m.n_faces += static_cast<uint32_t>(md.indices_.size()) / 3;
-
-    for (size_t i = 0; i < v_count; i++) {
-      glm::vec3 pos(md.positions_[i * 3 + 0], md.positions_[i * 3 + 1],
-                    md.positions_[i * 3 + 2]);
-
-      m.min_point = glm::min(m.min_point, pos);
-      m.max_point = glm::max(m.max_point, pos);
-      m.furthest = glm::max(m.furthest, glm::length(pos));
-      centroid_acc += pos;
-    }
-  }
-
-  if (m.n_vertices > 0) {
-    m.centroid = centroid_acc / static_cast<float>(m.n_vertices);
-  }
-
-  m.origin = (m.min_point + m.max_point) * 0.5f;
-  return m;
 }

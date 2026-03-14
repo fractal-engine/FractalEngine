@@ -122,22 +122,6 @@ inline void GameCanvas(bool isGameRunning, bool& hovered, bool& focused) {
       ImGuizmo::SetDrawlist();
       ImGuizmo::SetRect(pos.x, pos.y, size.x, size.y);
 
-      // Build projection matrix for ImGuizmo
-      float gizmoAspect = size.x / size.y;
-
-      // Rebuild projection
-      float tanHalfFov = glm::tan(glm::radians(camera_component.fov_) * 0.5f);
-      glm::mat4 gizmoProjection(0.0f);
-      gizmoProjection[0][0] = 1.0f / (gizmoAspect * tanHalfFov);
-      gizmoProjection[1][1] = 1.0f / tanHalfFov;  // Y-flip for ImGuizmo
-      gizmoProjection[2][2] =
-          camera_component.far_clip_ /
-          (camera_component.far_clip_ - camera_component.near_clip_);
-      gizmoProjection[2][3] = 1.0f;
-      gizmoProjection[3][2] =
-          -(camera_component.near_clip_ * camera_component.far_clip_) /
-          (camera_component.far_clip_ - camera_component.near_clip_);
-
       // Only show gizmos if: pipeline enabled, entity selected, not interacting
       bool show_gizmos = pipeline.show_gizmos_ && has_selection;
       bool right_click = ImGui::IsMouseDown(ImGuiMouseButton_Right);
@@ -156,16 +140,16 @@ inline void GameCanvas(bool isGameRunning, bool& hovered, bool& focused) {
           auto& transform = world.Get<TransformComponent>(selected_entity);
           glm::mat4 modelMatrix = transform.model_;
 
-          // Snapping
+          // Snapping (hold Ctrl)
           bool snapping = ImGui::IsKeyDown(ImGuiKey_LeftCtrl) ||
                           ImGui::IsKeyDown(ImGuiKey_RightCtrl);
           float snapValue =
               (gizmo_state.operation == ImGuizmo::ROTATE) ? 45.0f : 0.5f;
           float snapValues[3] = {snapValue, snapValue, snapValue};
 
-          // Manipulate (fixed projection)
+          // Manipulate
           bool manipulated = ImGuizmo::Manipulate(
-              glm::value_ptr(view), glm::value_ptr(gizmoProjection),
+              glm::value_ptr(view), glm::value_ptr(projection),
               gizmo_state.operation, gizmo_state.mode,
               glm::value_ptr(modelMatrix),
               nullptr,  // delta
@@ -215,23 +199,20 @@ inline void GameCanvas(bool isGameRunning, bool& hovered, bool& focused) {
           } else {
             Logger::getInstance().Log(
                 LogLevel::Info, "Importing glTF model: " + abs_path.string());
-            auto& rm = EngineContext::resourceManager();
-            auto [id, model] = rm.Create<Model>(abs_path.filename().string());
-            model->SetSource(abs_path.string());
 
-            // Sync load
-            bool loaded = rm.ExecuteSync(model->Create());
+            // Load meshes
+            std::shared_ptr<Model> model = Model::Load(abs_path.string());
 
+            // debug
             Logger::getInstance().Log(
                 LogLevel::Debug,
                 "[GameCanvas] Model loaded, mesh count: " +
-                    std::to_string(loaded ? model->NLoadedMeshes() : 0));
+                    std::to_string(model ? model->NLoadedMeshes() : 0));
 
-            if (!loaded || model->NLoadedMeshes() == 0) {
+            if (!model) {
               Logger::getInstance().Log(
                   LogLevel::Error,
                   "Import failed: no meshes in " + abs_path.string());
-              rm.Release(id);
             } else {
               // Create ECS entity
               auto& world = ECS::Main();
@@ -249,6 +230,10 @@ inline void GameCanvas(bool isGameRunning, bool& hovered, bool& focused) {
                 mr.mesh_ = mesh;
                 mr.enabled_ = true;
               }
+
+              // Keep model alive for the lifetime of the scene
+              static std::vector<std::shared_ptr<Model>> asset_cache;
+              asset_cache.emplace_back(std::move(model));
             }
           }
         }

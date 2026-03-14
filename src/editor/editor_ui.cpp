@@ -12,16 +12,14 @@
 #include "engine/pcg/pcg_engine.h"
 
 #include "gui/asset_browser.h"
-#include "gui/asset_graph_editor.h"
-#include "gui/camera_controls.h"
 #include "gui/console_panel.h"
 #include "gui/file_explorer.h"
 #include "gui/game_canvas.h"
 #include "gui/hierarchy_panel.h"
 #include "gui/inspector_panel.h"
 #include "gui/menu_bar.h"
-#include "gui/model_preview.h"
-#include "gui/model_viewer.h"
+#include "gui/pcg_graph_editor.h"
+#include "gui/search/search_popup.h"
 #include "gui/status_bar.h"
 #include "gui/styles/editor_styles.h"
 #include "gui/terrain_editor.h"
@@ -284,12 +282,8 @@ void EditorUI::DockSpace() {
 
   // ———— Menu bar —————
   Panels::MenuBar(
-      [this]() {
-        if (is_game_started_) {
-          is_game_started_ = false;
-          EditorEvents::game_end_pressed();
-        }
-        this->quit_ = true;
+      [&]() {
+        quit_ = true;
         EditorEvents::editor_exit_pressed();
       },
       debug_highlight_ids_, debug_show_metrics_, debug_show_log_,
@@ -326,17 +320,13 @@ void EditorUI::RenderUI() {
     // docked Panels
     ImGui::DockBuilderDockWindow("Toolbar", top);
     ImGui::DockBuilderDockWindow("Hierarchy", left);
-    ImGui::DockBuilderDockWindow("Procedural Preview",
-                                 left);  // Added to layout
     ImGui::DockBuilderDockWindow("Inspector", right);
     ImGui::DockBuilderDockWindow("World", right);
     ImGui::DockBuilderDockWindow("Terrain Editor", right);
     ImGui::DockBuilderDockWindow("Scene", dock_id_);
-    ImGui::DockBuilderDockWindow("Model View", dock_id_);  // Added to layout
     ImGui::DockBuilderDockWindow("Console", bottom);
     // ImGui::DockBuilderDockWindow(Panels::kDlgWinName, bottom);
     ImGui::DockBuilderDockWindow("Asset Browser", bottom);
-    ImGui::DockBuilderDockWindow("Asset Graph", bottom);  // Added to layout
     ImGui::DockBuilderDockWindow("Camera", right);
     ImGui::DockBuilderDockWindow("PCG Graph Editor", bottom);
 
@@ -345,32 +335,25 @@ void EditorUI::RenderUI() {
   }
 
   //--------------------------- TOP TOOLBAR ----------------------------------
-  // Safely assign explicitly so we don't trip over compiler layout rules
-  Panels::ToolbarCallbacks cb;
-
-  cb.onStart = [this]() {
-    if (!is_game_started_) {
-      is_game_started_ = true;
-      EditorEvents::game_start_pressed();
-    }
-  };
-
-  cb.onStop = [this]() {
-    if (is_game_started_) {
-      is_game_started_ = false;
-      EditorEvents::game_end_pressed();
-    }
-  };
-
-  cb.onQuit = [this]() {
-    if (is_game_started_) {
-      is_game_started_ = false;
-      EditorEvents::game_end_pressed();
-    }
-    this->quit_ = true;
-    EditorEvents::editor_exit_pressed();
-  };
-
+  Panels::ToolbarCallbacks cb{.onStart =
+                                  [&] {
+                                    if (!is_game_started_) {
+                                      is_game_started_ = true;
+                                      EditorEvents::game_start_pressed();
+                                    }
+                                  },
+                              .onStop =
+                                  [&] {
+                                    if (is_game_started_) {
+                                      is_game_started_ = false;
+                                      EditorEvents::game_end_pressed();
+                                    }
+                                  },
+                              .onQuit =
+                                  [&] {
+                                    quit_ = true;
+                                    EditorEvents::editor_exit_pressed();
+                                  }};
   ImGui::Begin("Toolbar", nullptr);
   Panels::Toolbar(cb);
   ImGui::End();

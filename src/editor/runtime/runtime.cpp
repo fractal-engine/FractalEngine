@@ -78,8 +78,6 @@ ProjectManager g_project_manager;
 
 // Pipelines
 SceneViewPipeline g_scene_view_pipeline;
-PreviewPipeline g_preview_pipeline;
-// GameViewPipeline g_game_view_pipeline;
 
 // Scene gizmos
 IMGizmo g_scene_gizmos;
@@ -129,7 +127,7 @@ static void _CreateResources() {
   // TODO: create pipelines here
   g_scene_view_pipeline.Create();
   // g_game_view_pipeline.Create();
-  g_preview_pipeline.Create();
+  // g_preview_pipeline.Create();
 
   // Initialize FrameGraph with current viewport dimensions
   g_frame_graph->Rebuild(canvasViewportW, canvasViewportH);
@@ -331,7 +329,6 @@ int TERMINATE() {
 
   // Stop pipelines
   g_scene_view_pipeline.Destroy();
-  g_preview_pipeline.Destroy();
 
   g_frame_graph.reset();
 
@@ -380,10 +377,6 @@ ShadowMap& MainShadowMap() {
 
 SceneViewPipeline& GetSceneViewPipeline() {
   return g_scene_view_pipeline;
-}
-
-PreviewPipeline& GetPreviewPipeline() {
-  return g_preview_pipeline;
 }
 
 FrameGraph& GetFrameGraph() {
