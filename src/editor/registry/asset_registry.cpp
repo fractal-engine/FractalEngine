@@ -18,7 +18,7 @@
 namespace AssetRegistry {
 
 // Global registry for all assets
-std::unordered_map<std::string, std::shared_ptr<AssetInfo>> g_registry_;
+std::unordered_map<std::string, std::shared_ptr<AssetInfo>> g_asset_registry_;
 
 // Asset info for fallback asset
 std::shared_ptr<AssetInfo> fallback_asset_;
@@ -30,7 +30,7 @@ const std::shared_ptr<AssetInfo>& Fallback() {
 
 // Return full registry of asset types
 const std::unordered_map<std::string, std::shared_ptr<AssetInfo>>& Get() {
-  return g_registry_;
+  return g_asset_registry_;
 }
 
 // Find asset handler based on file extension
@@ -39,8 +39,8 @@ std::shared_ptr<AssetInfo> FetchByPath(const std::filesystem::path& path) {
   if (!ext.empty() && ext.front() == '.')
     ext.erase(ext.begin());
 
-  auto it = g_registry_.find(ext);
-  if (it != g_registry_.end())
+  auto it = g_asset_registry_.find(ext);
+  if (it != g_asset_registry_.end())
     return it->second;
 
   if (ext != "meta")  // .meta should not open anything

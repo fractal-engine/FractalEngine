@@ -5,7 +5,6 @@
 #include "engine/pcg/generator_base.h"
 
 namespace PCG {
-
 class GeneratorResource : public Resource {
 public:
   GeneratorResource() = default;

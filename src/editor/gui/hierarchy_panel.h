@@ -1,94 +1,95 @@
 #ifndef HIERARCHY_PANEL_H
 #define HIERARCHY_PANEL_H
 
-#include <imgui.h>
-#include <filesystem>
-#include "editor/editor_ui.h"
-#include "engine/ecs/world.h"  // We need this to access the ECS
+#include <cstdint>
+#include <string>
+#include <unordered_map>
+#include <vector>
 
-namespace Panels {
+#include "window_base.h"
 
-inline void HierarchyPanel() {
-  // We need to wrap the entire panel's content in Begin/End calls.
-  ImGui::Begin("Hierarchy", nullptr);
+#include "editor/gui/styles/editor_styles.h"
+#include "engine/ecs/ecs_collection.h"
 
-  //------------------------- ENTITIES ---------------------------------------
-  ImGui::TextUnformatted("Scene");
-  ImGui::Separator();
+//---------------------------------------------------------------------------
+// TODO:
+// - search/filter function
+// - rename context menu implementation
+// - camera movement integration
+// - rename EditorColor to actual theme usage
+// - replace direct imgui code for drawing with dynamic drawing impl
+// - fg
+//---------------------------------------------------------------------------
+struct HierarchyItem {
+  explicit HierarchyItem(EntityContainer entity,
+                         std::vector<HierarchyItem> children = {})
+      : entity(entity), children(children), expanded(false) {};
 
-  auto& ecs = ECS::Main();
-  auto* editor = EditorUI::Get();
+  EntityContainer entity;
+  std::vector<HierarchyItem> children;
+  bool expanded;
 
-  ecs.View<TransformComponent>().each([&](auto entity, auto& transform) {
-    ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_Leaf |
-                               ImGuiTreeNodeFlags_NoTreePushOnOpen |
-                               ImGuiTreeNodeFlags_SpanAvailWidth;
+  bool operator==(const HierarchyItem& other) const {
+    return entity.Id() == other.entity.Id();
+  }
+};
 
-    if (editor->GetSelectedEntity() == entity) {
-      flags |= ImGuiTreeNodeFlags_Selected;
-    }
+//---------------------------------------------------------------------------
+// HIERARCHY PANEL
+// - Includes scene graph view with tree, drag-drop reparenting, multi-selection
+//---------------------------------------------------------------------------
+class HierarchyPanel : public WindowBase {
+public:
+  HierarchyPanel();
 
-    std::string label =
-        transform.name_.empty()
-            ? "Entity " + std::to_string(entt::to_integral(entity))
-            : transform.name_;
+  void Render() override;
+  void Invalidate();
 
-    ImGui::TreeNodeEx((void*)((intptr_t)entity), flags, "%s", label.c_str());
+private:
+  // Rendering
+  void RenderSearch(ImDrawList& draw_list);
+  void RenderHierarchy(ImDrawList& draw_list);
+  void RenderItem(ImDrawList& draw_list, HierarchyItem& item,
+                  uint32_t indentation);
+  void RenderDraggedItem();
+  void RenderPopupMenu();
 
-    if (ImGui::IsItemClicked()) {
-      editor->SetSelectedEntity(entity);
-    }
-  });
+  // Hierarchy building
+  void BuildSceneHierarchy();
+  void BuildHierarchyChildren(HierarchyItem& parent);
 
-  ImGui::Spacing();
-  ImGui::Separator();
-  ImGui::Spacing();
+  // Camera movement to entity
+  void SetCameraTarget(TransformComponent* target);
+  void UpdateCameraMovement();
 
-  //------------------------- FILES ------------------------------------------
+  // Auto-scroll when dragging
+  void PerformAutoScroll();
 
-  ImGui::TextUnformatted("Assets");
-  ImGui::Separator();
+  void OnEntityChanged(entt::registry&, entt::entity);
 
-  static int fileTreeSelection = -1;
-  int nodeId = 0;
+  // Data
+  char search_buffer[256];
+  bool popup_menu_used;
 
-  std::function<void(const std::filesystem::path&, int)> recurse =
-      [&](const std::filesystem::path& p, int depth) {
-        // Error handling in case the path doesn't exist or isn't a directory
-        if (!std::filesystem::exists(p) || !std::filesystem::is_directory(p)) {
-          return;
-        }
-        for (auto& entry : std::filesystem::directory_iterator(p)) {
-          const bool isDir = entry.is_directory();
-          ImGuiTreeNodeFlags f = ImGuiTreeNodeFlags_SpanFullWidth;
-          if (!isDir)
-            f |= ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
+  std::vector<HierarchyItem> current_hierarchy;
+  std::unordered_map<uint32_t, HierarchyItem*> selected_items;
+  HierarchyItem* last_selected;
+  HierarchyItem* last_hovered;
 
-          if (fileTreeSelection == nodeId)
-            f |= ImGuiTreeNodeFlags_Selected;
+  // Drag state
+  bool dragging_hierarchy;
 
-          const std::string label = entry.path().filename().string();
-          const bool opened = ImGui::TreeNodeEx((void*)(intptr_t)nodeId, f,
-                                                "%s", label.c_str());
+  // Camera movement state
+  bool camera_moving;
+  float camera_movement_time;
+  TransformComponent* camera_target;
 
-          if (ImGui::IsItemClicked())
-            fileTreeSelection = nodeId;
-          ++nodeId;
+  // Handle cache
+  bool hierarchy_dirty_ = true;
 
-          if (isDir && opened) {
-            recurse(entry.path(), depth + 1);
-            ImGui::TreePop();
-          }
-        }
-      };
+  // EnTT handles
+  entt::scoped_connection on_create_connection_;
+  entt::scoped_connection on_destroy_connection_;
+};
 
-  // Replaced the undefined 'assetsRoot' variable with a hardcoded
-  // path for now
-  const std::filesystem::path assetsRootPath = "assets";
-  recurse(assetsRootPath, 0);
-
-  ImGui::End();
-}
-
-}  // namespace Panels
 #endif  // HIERARCHY_PANEL_H

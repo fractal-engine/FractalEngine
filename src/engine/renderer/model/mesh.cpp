@@ -17,37 +17,47 @@ void Mesh::EnsureLayout() {
       .end();
 }
 
-Mesh::Mesh(const Resources3D::MeshData& src) {
+Mesh::Mesh(const Geometry::MeshData& src) {
   EnsureLayout();
 
   // interleave pos+normal (if no normals -> pad zeros)
-  const bool has_normals = !src.normals_.empty();
-  const bool has_colors = !src.colors_.empty();
-  const size_t v_count = src.positions_.size() / 3;
+  const bool has_normals = src.HasNormals();
+  const bool has_colors = src.HasColors();
+  const size_t v_count = src.VertexCount();
 
   // 3 (pos) + 3 (normal) + 4 (color)
   std::vector<float> interleaved;
   interleaved.reserve(v_count * 10);
 
   for (size_t i = 0; i < v_count; ++i) {
+    // Position
+    interleaved.push_back(src.positions[i * 3 + 0]);
+    interleaved.push_back(src.positions[i * 3 + 1]);
+    interleaved.push_back(src.positions[i * 3 + 2]);
 
-    // pos
-    interleaved.insert(interleaved.end(), &src.positions_[i * 3],
-                       &src.positions_[i * 3] + 3);
+    // Normal
+    if (has_normals) {
+      interleaved.push_back(src.normals[i * 3 + 0]);
+      interleaved.push_back(src.normals[i * 3 + 1]);
+      interleaved.push_back(src.normals[i * 3 + 2]);
+    } else {
+      interleaved.push_back(0.f);
+      interleaved.push_back(1.f);
+      interleaved.push_back(0.f);
+    }
 
-    // normal or default up
-    if (has_normals)
-      interleaved.insert(interleaved.end(), &src.normals_[i * 3],
-                         &src.normals_[i * 3] + 3);
-    else
-      interleaved.insert(interleaved.end(), {0.f, 1.f, 0.f});
-
-    // color or white
-    if (has_colors)
-      interleaved.insert(interleaved.end(), &src.colors_[i * 4],
-                         &src.colors_[i * 4] + 4);
-    else
-      interleaved.insert(interleaved.end(), {1.f, 1.f, 1.f, 1.f});
+    // Color
+    if (has_colors) {
+      interleaved.push_back(src.colors[i * 4 + 0]);
+      interleaved.push_back(src.colors[i * 4 + 1]);
+      interleaved.push_back(src.colors[i * 4 + 2]);
+      interleaved.push_back(src.colors[i * 4 + 3]);
+    } else {
+      interleaved.push_back(1.f);
+      interleaved.push_back(1.f);
+      interleaved.push_back(1.f);
+      interleaved.push_back(1.f);
+    }
   }
 
   const bgfx::Memory* vmem =
@@ -55,10 +65,10 @@ Mesh::Mesh(const Resources3D::MeshData& src) {
   vbo_ = bgfx::createVertexBuffer(vmem, layout_);
 
   const bgfx::Memory* imem =
-      bgfx::copy(src.indices_.data(), sizeof(uint32_t) * src.indices_.size());
+      bgfx::copy(src.indices.data(), sizeof(uint32_t) * src.indices.size());
   ibo_ = bgfx::createIndexBuffer(imem, BGFX_BUFFER_INDEX32);
 
-  index_count_ = static_cast<uint32_t>(src.indices_.size());
+  index_count_ = static_cast<uint32_t>(src.indices.size());
 }
 
 Mesh::~Mesh() {

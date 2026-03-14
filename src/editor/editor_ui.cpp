@@ -1,36 +1,48 @@
-#include "editor/editor_ui.h"
-#include "editor/resources/theme/dark_theme.hpp"
+#include "editor_ui.h"
+
+#include "editor/events.h"
+#include "editor/gui/styles/editor_styles.h"
 #include "editor/runtime/runtime.h"
+
 #include "engine/context/engine_context.h"
 #include "engine/core/engine_globals.h"
 #include "engine/core/logger.h"
 #include "engine/core/view_ids.h"
 #include "engine/ecs/world.h"
+#include "engine/pcg/pcg_engine.h"
+
 #include "gui/asset_browser.h"
-#include "gui/camera_controls.h"
 #include "gui/console_panel.h"
 #include "gui/file_explorer.h"
 #include "gui/game_canvas.h"
 #include "gui/hierarchy_panel.h"
 #include "gui/inspector_panel.h"
 #include "gui/menu_bar.h"
+#include "gui/pcg_graph_editor.h"
+#include "gui/search/search_popup.h"
 #include "gui/status_bar.h"
+#include "gui/styles/editor_styles.h"
 #include "gui/terrain_editor.h"
 #include "gui/toolbar.h"
 #include "gui/world_settings.h"
-#include "imgui.h"
-#include "imgui_internal.h"
-#include "imgui_utils.h"
+
 #include "platform/platform_utils.h"
 #include "platform/window_manager.h"
+
 #include "resources/decorators/drop_shadows.h"
 
 #include <backends/imgui_impl_sdl2.h>
 #include "editor/vendor/imgui/imgui_impl_bgfx.h"
+#include "imgui_internal.h"
+#include "imgui_utils.h"
 
 #include <SDL.h>
 
+// Window base class
+std::vector<WindowBase*> g_windows_;
+
 EditorUI* EditorUI::s_instance_ = nullptr;
+// uint32_t EditorUI::g_id_counter_ = 0;
 
 EditorUI::EditorUI(RendererBase* renderer) : renderer_(renderer) {
   s_instance_ = this;
@@ -47,7 +59,7 @@ EditorUI* EditorUI::Get() {
 void EditorUI::Initialize() {
   IMGUI_CHECKVERSION();
   ImGui::CreateContext();
-  Theme::Initialize();
+  EditorStyles::Initialize();
   LoadIcons();
 
   ImGuiIO& io = ImGui::GetIO();
@@ -69,6 +81,15 @@ void EditorUI::Initialize() {
                           (float)WindowManager::GetHeight());
   io.DisplayFramebufferScale =
       ImVec2(WindowManager::GetDPIScale(), WindowManager::GetDPIScale());
+
+  // ADD DEFAULT EDITOR WINDOWS
+  _AddWindow<HierarchyPanel>();
+  _AddWindow<PCGGraphEditorPanel>();
+  _AddWindow<InspectorPanel>();
+
+  // TODO: Refactor these panels to EditorBase:
+  // _AddWindow<ConsolePanel>();
+  // _AddWindow<AssetBrowserPanel>();
 }
 
 // TODO: refactor loop, should be split into EditorUI::NewFrame() /
@@ -129,7 +150,7 @@ void EditorUI::Run() {
 
       if (event.type == SDL_QUIT) {
         quit_ = true;
-        editor_exit_pressed();
+        EditorEvents::editor_exit_pressed();
       }
     }  // end PollEvent loop
 
@@ -203,18 +224,18 @@ void EditorUI::HandleInput(Key key) {
   switch (key) {
     case Key::DIGIT_0:
       quit_ = true;
-      editor_exit_pressed();
+      EditorEvents::editor_exit_pressed();
       return;
     case Key::DIGIT_1:
       if (!is_game_started_) {
         is_game_started_ = true;
-        game_start_pressed();
+        EditorEvents::game_start_pressed();
       }
       return;
     case Key::DIGIT_2:
       if (is_game_started_) {
         is_game_started_ = false;
-        game_end_pressed();
+        EditorEvents::game_end_pressed();
       }
       return;
     default:
@@ -263,7 +284,7 @@ void EditorUI::DockSpace() {
   Panels::MenuBar(
       [&]() {
         quit_ = true;
-        editor_exit_pressed();
+        EditorEvents::editor_exit_pressed();
       },
       debug_highlight_ids_, debug_show_metrics_, debug_show_log_,
       debug_activate_picker_, debug_show_style_editor_);
@@ -307,6 +328,7 @@ void EditorUI::RenderUI() {
     // ImGui::DockBuilderDockWindow(Panels::kDlgWinName, bottom);
     ImGui::DockBuilderDockWindow("Asset Browser", bottom);
     ImGui::DockBuilderDockWindow("Camera", right);
+    ImGui::DockBuilderDockWindow("PCG Graph Editor", bottom);
 
     ImGui::DockBuilderFinish(dock_id_);
     built_layout_ = true;
@@ -317,33 +339,29 @@ void EditorUI::RenderUI() {
                                   [&] {
                                     if (!is_game_started_) {
                                       is_game_started_ = true;
-                                      game_start_pressed();
+                                      EditorEvents::game_start_pressed();
                                     }
                                   },
                               .onStop =
                                   [&] {
                                     if (is_game_started_) {
                                       is_game_started_ = false;
-                                      game_end_pressed();
+                                      EditorEvents::game_end_pressed();
                                     }
                                   },
                               .onQuit =
                                   [&] {
                                     quit_ = true;
-                                    editor_exit_pressed();
+                                    EditorEvents::editor_exit_pressed();
                                   }};
   ImGui::Begin("Toolbar", nullptr);
   Panels::Toolbar(cb);
   ImGui::End();
 
   // Get the ECS instance once for this frame
-  auto& ecs = ECS::Main();
+  auto& world = ECS::Main();
 
-  // -------- LEFT : HIERARCHY (Now reads live data from ECS) --------
-  ImGui::Begin("Hierarchy", nullptr);
-  Panels::HierarchyPanel();  // We will also update this panel to be data-driven
-  ImGui::End();
-
+  // TODO: CHANGE ALL PANELS TO DERIVE FROM WINDOWBASE
   // -------- MIDDLE : SCENE --------
   // The rendering pipeline now handles the gizmo, so this panel is just a
   // simple canvas.
@@ -351,22 +369,6 @@ void EditorUI::RenderUI() {
   Panels::GameCanvas(is_game_started_, game_canvas_hovered_,
                      game_canvas_focused_);
   UpdateMovement();
-  ImGui::End();
-
-  // -------- RIGHT : INSPECTOR -----------------
-  ImGui::Begin("Inspector", nullptr);
-  Entity selectedEntity = GetSelectedEntity();
-  if (selectedEntity != entt::null && ecs.Reg().valid(selectedEntity)) {
-    // 1. Get the TransformComponent from the selected entity.
-    auto& transform = ecs.Get<TransformComponent>(selectedEntity);
-
-    // 2. Call the newly designed Inspector panel with the live component.
-    Panels::Inspector(transform);
-    Panels::InspectVolume(selectedEntity);
-
-  } else {
-    ImGui::TextDisabled("Select an entity to inspect its components.");
-  }
   ImGui::End();
 
   // -------- RIGHT : WORLD SETTINGS --------
@@ -390,10 +392,8 @@ void EditorUI::RenderUI() {
   Panels::AssetBrowser();
   ImGui::End();
 
-  // Camera Controls
-  ImGui::Begin("Camera", nullptr);
-  Panels::CameraControls();
-  ImGui::End();
+  //------------------------- SEARCH POPUP --------------------------
+  SearchPopup::Render();
 
   //------------------------- IMGUI DEBUG ---------------------------
   if (debug_show_metrics_) {
@@ -414,6 +414,22 @@ void EditorUI::RenderUI() {
     ImGui::DebugStartItemPicker();
     debug_activate_picker_ = false;  // reset
   }
+
+  // Push current state to pipeline for rendering
+  {
+    auto& state = Runtime::State();
+    std::vector<Entity> state_list;
+    if (state.selected_entity != entt::null &&
+        world.Reg().valid(state.selected_entity)) {
+      state_list.push_back(state.selected_entity);
+    }
+    Runtime::GetSceneViewPipeline().SetSelectedEntities(state_list);
+  }
+
+  // -------- Render all registered windows --------
+  for (auto* window : g_windows_) {
+    window->Render();
+  }
 }
 
 void EditorUI::LoadIcons() {
@@ -422,13 +438,16 @@ void EditorUI::LoadIcons() {
   tab_icons_.insert({"Scene", ICON_FA_GAMEPAD});
   tab_icons_.insert({"Inspector", ICON_FA_LIST});
   tab_icons_.insert({"Console", ICON_FA_TERMINAL});
-  tab_icons_.insert({"Camera", ICON_FA_VIDEO});
   tab_icons_.insert({"Assets", ICON_FA_FOLDER_OPEN});
   tab_icons_.insert({"World", ICON_FA_GLOBE});
   // tab_icons_.insert({"File Explorer", ICON_FA_FOLDER});
 }
 
 void EditorUI::BeginImGuiFrame(SDL_Window* window) {
+
+  // Reset ID counter for new frame
+  g_id_counter_ = 0;
+
   ImGui_ImplSDL2_NewFrame();  // platform backend
   ImGui_Implbgfx_NewFrame();  // renderer backend
   ImGui::NewFrame();          // ImGui begins
@@ -440,20 +459,6 @@ void EditorUI::BeginImGuiFrame(SDL_Window* window) {
   // ui::shadow::BeginFrame(shadowOn);
 }
 
-// ── Selection API ─────────────────────────────────────────────────────────
-void EditorUI::SetSelectedEntity(Entity entity) {
-  selected_entity_ = entity;
-  last_selected_entity_ = entity;
-}
-
-Entity EditorUI::GetSelectedEntity() const {
-  return selected_entity_;
-}
-
-Entity EditorUI::GetLastSelectedEntity() const {
-  return last_selected_entity_;
-}
-
 // TODO: move this to viewport
 void EditorUI::UpdateMovement() {
   // Build per-frame input
@@ -462,9 +467,9 @@ void EditorUI::UpdateMovement() {
 
   // Enable/disable text input
   if (input.scene_hovered) {
-    platform::DisableTextInput();
+    Platform::DisableTextInput();
   } else {
-    platform::EnableTextInput();
+    Platform::EnableTextInput();
   }
 
   input.right_mouse =
@@ -511,4 +516,19 @@ void EditorUI::UpdateMovement() {
 
   // Rebuild model matrix
   Transform::Evaluate(CameraTransform);
+}
+
+ImGuiID EditorUI::GenerateId() {
+  return ++g_id_counter_;
+}
+
+std::string EditorUI::GenerateIdString() {
+  return "##" + std::to_string(++g_id_counter_);
+}
+
+template <typename T, typename... Args>
+void EditorUI::_AddWindow(Args&&... args) {
+  static_assert(std::is_base_of<WindowBase, T>::value,
+                "Only classes deriving from WindowBase can be added!");
+  g_windows_.emplace_back(new T(std::forward<Args>(args)...));
 }

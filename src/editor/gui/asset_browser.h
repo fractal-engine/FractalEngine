@@ -2,12 +2,14 @@
 #define ASSET_BROWSER_H
 
 #include <imgui.h>
+
 #include <filesystem>
 #include <string>
 
 #include "editor/project/project_observer.h"
 #include "editor/systems/editor_asset.h"
-#include "editor/vendor/IconFontCppHeaders/IconsFontAwesome6.h" // TODO: remove include once we have editor_window.h
+
+#include "editor/gui/window_base.h"
 
 namespace Panels {
 

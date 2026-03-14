@@ -19,13 +19,15 @@ struct AssetInfo {
 
   AssetType type_ = AssetType::FALLBACK;
   std::function<std::shared_ptr<EditorAsset>()> create_instance_;
-  // std::function<void(AssetID /*asset_id*/)> inspect_; // missing inspect function
+  // std::function<void(AssetID /*asset_id*/)> inspect_; // missing inspect
+  // function
 };
 // Asset registry for managing different asset types and their extensions
 namespace AssetRegistry {
 
 // Global registry and fallback asset
-extern std::unordered_map<std::string, std::shared_ptr<AssetInfo>> g_registry_;
+extern std::unordered_map<std::string, std::shared_ptr<AssetInfo>>
+    g_asset_registry_;
 extern std::shared_ptr<AssetInfo> fallback_asset_;
 
 // Create asset info for a specific type
@@ -55,7 +57,7 @@ void RegisterAsset(AssetType type, const std::vector<std::string>& extensions) {
   auto asset_info = CreateAssetInfo<TAsset>(type);
 
   for (const std::string& ext : extensions) {
-    g_registry_[ext] = asset_info;
+    g_asset_registry_[ext] = asset_info;
   }
 }
 

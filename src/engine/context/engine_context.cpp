@@ -148,6 +148,7 @@ ShaderManager& Shader() {
   return *shader_manager_instance_;
 }
 
+// TODO: fix name
 ResourceManager& resourceManager() {
   return *resource_manager_;
 }

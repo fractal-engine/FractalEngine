@@ -2,15 +2,15 @@
 #import <Metal/Metal.h>
 #import <QuartzCore/CAMetalLayer.h>
 #import <SDL2/SDL_syswm.h>
-#include "imgui.h"
-#include "backends/imgui_impl_sdl2.h"
+#include <imgui.h>
+#include <backends/imgui_impl_sdl2.h>
 
 #include "platform_utils.h"
 #include "engine/core/logger.h" // ! remove engine dependency
 
 #if defined(__APPLE__)
 
-namespace platform {
+namespace Platform {
 
 void GetDrawableSize(SDL_Window* window, int* out_w, int* out_h) {
     SDL_Metal_GetDrawableSize(window, out_w, out_h);
@@ -69,13 +69,13 @@ void InitSDLForImGui(SDL_Window* window) {
 void ToggleBorderlessFullscreen(SDL_Window* w, bool enable)
 {
     if (enable)
-        RestoreMinSize(w);                                   // let Cocoa expand
+        Platform::RestoreMinSize(w);                                   // let Cocoa expand
     SDL_SetWindowFullscreen(w,
             enable ? SDL_WINDOW_FULLSCREEN_DESKTOP : 0);
 
     if (!enable)
-        LockMinSize(w, 1280, 720);                           // restore window clamp
-    RefreshFramebufferSize(w);
+        Platform::LockMinSize(w, 1280, 720);                           // restore window clamp
+    Platform::RefreshFramebufferSize(w);
 }
 
 bool IsBorderlessFullscreen(SDL_Window* win)
@@ -126,6 +126,27 @@ bool IsTextInputActive() {
     return SDL_IsTextInputActive() == SDL_TRUE;
 }
 
-}  // namespace platform
+// TODO: move to input/cursor
+glm::vec2 GetCursorPosition() {
+  int x, y;
+  SDL_GetMouseState(&x, &y);
+  return glm::vec2(static_cast<float>(x), static_cast<float>(y));
+}
+
+void SetCursorPosition(SDL_Window* window, const glm::vec2& pos) {
+  SDL_WarpMouseInWindow(window, static_cast<int>(pos.x), static_cast<int>(pos.y));
+}
+
+glm::vec2 GetGlobalCursorPosition() {
+  int x, y;
+  SDL_GetGlobalMouseState(&x, &y);
+  return glm::vec2(static_cast<float>(x), static_cast<float>(y));
+}
+
+void SetGlobalCursorPosition(const glm::vec2& pos) {
+  SDL_WarpMouseGlobal(static_cast<int>(pos.x), static_cast<int>(pos.y));
+}
+
+}  // namespace Platform
 
 #endif

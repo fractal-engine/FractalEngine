@@ -3,13 +3,19 @@
 
 #include <entt/entt.hpp>
 #include <memory>
+
+#define IMGUI_DEFINE_MATH_OPERATORS  // ! remove once viewport is done
+#include "imgui.h"
+
 #include "editor/camera/god_camera.h"
 #include "editor/gizmos/component_gizmos.h"
+#include "editor/gui/search/search_popup.h"
 #include "editor_base.h"
+
 #include "engine/renderer/graphics_renderer.h"
+
 #include "game/game_test.h"
-#include "imgui.h"
-#include "imgui_internal.h"
+
 #include "platform/input/key_map_sdl.h"
 
 class EditorUI : public EditorBase {
@@ -19,16 +25,17 @@ public:
 
   static EditorUI* Get();  // Singleton access
 
+  // Generate unique ImGui ID string
+  std::string GenerateIdString();
+
+  // Generaye unique ImGui ID
+  ImGuiID GenerateId();
+
   void Initialize();
   void Run() override;
   void RequestUpdate() override;
   void Destroy() override;
   void BeginImGuiFrame(SDL_Window* window);
-
-  // selection API
-  void SetSelectedEntity(Entity entity);
-  Entity GetSelectedEntity() const;
-  Entity GetLastSelectedEntity() const;
 
 private:
   void HandleInput(Key key);
@@ -37,6 +44,9 @@ private:
   void LoadIcons();
   void UpdateMovement();
 
+  template <typename T, typename... Args>
+  void _AddWindow(Args&&... args);
+
   RendererBase* renderer_ = nullptr;
   bool quit_ = false;
   bool is_game_started_ = true;
@@ -44,10 +54,8 @@ private:
   bool game_canvas_focused_ = false;
   bool built_layout_ = false;  // guard for BuildDefaultLayout()
 
-  // back-store for selection
-  // entt::null is the type-safe way to say "nothing is selected"
-  Entity selected_entity_ = entt::null;
-  Entity last_selected_entity_ = entt::null;
+  // Id counter
+  uint32_t g_id_counter_;
 
   // ImGui docking and window flags
   ImGuiDockNodeFlags dock_flags_;

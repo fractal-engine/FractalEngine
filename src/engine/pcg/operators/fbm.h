@@ -2,12 +2,20 @@
 #define FBM_H
 
 #include <FastNoise/FastNoise.h>
-#include <glm/glm.hpp>
 #include <array>
+#include <glm/glm.hpp>
+#include <memory>
 
 #include "../noise/OpenSimplex2S.hpp"
 
 class OpenSimplex2S;
+
+// ---------------------------------------------------------------------------
+// fbm.h
+// Custom implementation of FBM with per-octave control and derivative support.
+// TODO:
+// - Remove parameter values from header (move to cpp).
+// ---------------------------------------------------------------------------
 
 namespace PCG {
 struct UberFBMParams {
@@ -51,13 +59,20 @@ struct UberFBMResult {
 
 class UberFBM {
 public:
+  // Default constructor
+  UberFBM(int seed)
+      : simplex_source_(std::make_unique<OpenSimplex2S>(seed)),
+        noise_source_(FastNoise::New<FastNoise::Simplex>()),
+        simplex_deriv_(simplex_source_.get()) {}
+
   UberFBM(FastNoise::SmartNode<> noise_source, OpenSimplex2S* simplex_deriv)
-      : noise_source_(noise_source), simplex_deriv_(simplex_deriv) {}
+      : noise_source_(noise_source), simplex_deriv_(simplex_deriv) {};
 
   UberFBMResult Eval(float x, float y, int seed,
                      const UberFBMParams& params) const;
 
 private:
+  std::unique_ptr<OpenSimplex2S> simplex_source_;
   FastNoise::SmartNode<> noise_source_;
   OpenSimplex2S* simplex_deriv_;
 

@@ -6,15 +6,29 @@
 target("FastNoise2")
     set_kind("phony")
 
-    on_load(function (target)
-        target:add("defines", "FASTNOISE2_NOISETOOL=OFF", "FASTNOISE2_FETCH_IMGUI=OFF")
-        target:add("defines", "FASTNOISE_STATIC_LIB", {public = true}) -- prevent DLL linkage (linker error)
-    end)
+    add_defines("FASTNOISE_STATIC_LIB", {public = true})
     
     add_includedirs("FastNoise2/include", {public = true})
     add_includedirs("FastNoise2/build/_deps/fastsimd-src/include", {public = true})
+
+    -- Build path varies by platform
+    if is_plat("windows") then
+        add_linkdirs("FastNoise2/build/src/Release", {public = true})
+    else
+        add_linkdirs("FastNoise2/build/src", {public = true})
+    end
+
+    add_links("FastNoise", {public = true})
     
     on_build(function (target)
+        local lib
+        if os.host() == "windows" then
+            lib = path.join("$(projectdir)", "thirdparty/FastNoise2/build/src/Release/FastNoise.lib")
+        else
+            lib = path.join("$(projectdir)", "thirdparty/FastNoise2/build/src/libFastNoise.a")
+        end
+        if os.isfile(lib) then return end
+
         import("lib.detect.find_tool")
         import("core.project.config")
         
@@ -24,30 +38,24 @@ target("FastNoise2")
             
             local cmake_args = {
                 "-B", "build",
-                "-DFASTNOISE2_NOISETOOL=OFF",
-                "-DFASTNOISE2_FETCH_IMGUI=OFF",
-                "-DBUILD_SHARED_LIBS=OFF",  -- prevent DLL linkage (linker error)
+                "-DFASTNOISE2_TOOLS=OFF",
+                "-DFASTNOISE2_TESTS=OFF",
+                "-DFASTNOISE2_UTILITY=OFF",
+                "-DBUILD_SHARED_LIBS=OFF",
+                "-DCMAKE_BUILD_TYPE=Release",
             }
             
             -- Check platform inside build function
             if os.host() == "windows" then
                 -- ! MT runtime via compiler flags (required for Windows compilation!)
-                table.insert(cmake_args, "-DCMAKE_BUILD_TYPE=Release")
-                table.insert(cmake_args, "-DCMAKE_CXX_FLAGS_RELEASE=/MT /O2 /Ob2 /DNDEBUG")
-                table.insert(cmake_args, "-DCMAKE_C_FLAGS_RELEASE=/MT /O2 /Ob2 /DNDEBUG")
                 table.insert(cmake_args, "-DCMAKE_POLICY_DEFAULT_CMP0091=NEW")
                 table.insert(cmake_args, "-DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded")
-            else
-                table.insert(cmake_args, "-DCMAKE_BUILD_TYPE=Release")
             end
             
             os.execv(cmake.program, cmake_args)
             os.execv(cmake.program, {"--build", "build", "--config", "Release"})
         end
     end)
-
-    add_linkdirs("FastNoise2/build/Release/lib", {public = true})
-    add_links("FastNoise", {public = true})
 target_end()
 
 target("implot")
@@ -57,5 +65,38 @@ target("implot")
     add_headerfiles("implot/*.h")
     add_includedirs("implot", {public = true})
     
+    add_packages("imgui")
+target_end()
+
+target("imgui-node-editor")
+    set_kind("static")
+
+    add_files("imgui-node-editor/*.cpp")
+    add_headerfiles("imgui-node-editor/*.h")
+    add_includedirs("imgui-node-editor", {public = true})
+
+    add_packages("imgui")
+
+    on_config(function(target)
+    -- ! Wrapper required due to ImGui::GetKeyIndex() being used
+    -- ! in imgui-node-editor but removed in ImGui 1.87
+        local compat_header = path.join(os.scriptdir(), "imgui_compat.h")
+        if is_plat("windows") then
+            -- MSVC
+            target:add("cxxflags", "/FI" .. compat_header, {force = true})
+        else
+            -- GCC/Clang
+            target:add("cxxflags", "-include " .. compat_header, {force = true})
+        end
+    end)
+target_end()
+
+target("ImGuiFileDialog")
+    set_kind("static")
+
+    add_files("ImGuiFileDialog/*.cpp")
+    add_headerfiles("ImGuiFileDialog/*.h")
+    add_includedirs("ImGuiFileDialog", {public = true})
+
     add_packages("imgui")
 target_end()

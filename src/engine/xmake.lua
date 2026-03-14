@@ -11,40 +11,51 @@ target("engine")
 
     -- IMPLEMENTATION FILES -------
     add_files("core/*.cpp", "audio/*.cpp", "misc/*.cpp", "scene/*.cpp", "context/*.cpp",
-            "formats/*.cpp", "ecs/*.cpp", "memory/*.cpp", "transform/*.cpp", "time/*.cpp",
+            "ecs/*.cpp", "memory/*.cpp", "transform/*.cpp", "time/*.cpp",
             "math/*.cpp", "pcg/*.cpp",
+
+    -- GEOMETRY FILES -------
+    "geometry/meshing/*.cpp", "geometry/projection/*.cpp",
 
     -- renderer files
     "renderer/*.cpp", "renderer/lighting/*.cpp", "renderer/shaders/*.cpp",
             "renderer/icons/*.cpp", "renderer/texture/*.cpp", "renderer/model/*.cpp",
             "renderer/skybox/*.cpp", "renderer/gizmos/*.cpp", "renderer/shadows/*.cpp",
 
+    -- content files
+    "content/cache/*.cpp", "content/loaders/*.cpp",
+
     -- resources files
-    "resources/*.cpp", "resources/textures/*.cpp", "resources/3d/*.cpp",
+    "resources/*.cpp", "resources/textures/*.cpp",
 
     -- PCG files
-    "pcg/operators/ridge.cpp", "pcg/operators/fbm.cpp",
-            "pcg/operators/remap.cpp", "pcg/constraints/constraint_system.cpp",
-            "pcg/terrain/terrain_generator.cpp", "pcg/noise/OpenSimplex2S.cpp", "pcg/graph/program_graph.cpp",
-            "pcg/graph/graph_serializer.cpp")
+    "pcg/operators/*.cpp", "pcg/constraints/constraint_system.cpp",
+            "pcg/terrain/*.cpp", "pcg/noise/OpenSimplex2S.cpp",
+            "pcg/graph/*.cpp")
 
     -- HEADER FILES -------
-    add_headerfiles("core/*.h", "audio/*.h", "scene/*.h", "context/*.h", "formats/*.h",
-            "ecs/*.h", "memory/*.h", "transform/*.h", "time/*.h", "math/*.h", "pcg/*.h",
+    add_headerfiles("core/*.h", "audio/*.h", "scene/*.h", "context/*.h","ecs/*.h",
+            "memory/*.h", "transform/*.h", "time/*.h", "math/*.h", "pcg/*.h",
 
     -- renderer files
     "renderer/*.h", "renderer/lighting/*.h", "renderer/shaders/*.h",
             "renderer/icons/*.h", "renderer/texture/*.h", "renderer/model/*.h",
             "renderer/skybox/*.h", "renderer/gizmos/*.h", "renderer/shadows/*.h",
 
+    -- geometry files
+    "geometry/meshing/*.h", "geometry/projection/*.h",
+
+    -- content files
+    "content/cache/*.cpp", "content/loaders/*.cpp",
+
     -- resource files
-    "resources/*.h", "resources/textures/*.h", "resources/3d/*.h")
+    "resources/*.h", "resources/textures/*.h")
 
     add_rules("shaderc.build")
     add_files("$(projectdir)/src/assets/shaders/**.sc")
     remove_files("$(projectdir)/src/assets/shaders/varying*.sc")
 
-    add_packages("boost", "libsdl2", "bgfx", "glm", "imgui", "libsdl2_ttf", "portaudio", "tinygltf", "nlohmann_json", "entt")
+    add_packages("boost", "libsdl2", "bgfx", "glm", "imgui", "libsdl2_ttf", "portaudio", "tinygltf", "nlohmann_json", "entt", "assimp")
 
     if is_mode("debug") then
         add_links("bimg_decodeDebug", "bimg_encodeDebug")
@@ -72,7 +83,7 @@ rule("shaderc.build")
     if not exe then
         import("lib.detect.find_program")
 
-        print("Searching for shaderc in system PATH...")
+        -- print("Searching for shaderc in system PATH...")
         exe =  find_program("shaderc")
             or find_program("shadercRelease")
             or find_program("shadercDebug")

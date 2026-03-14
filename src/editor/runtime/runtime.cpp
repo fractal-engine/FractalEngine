@@ -38,8 +38,10 @@
 
 #include "runtime.h"
 
+#include "editor/events.h"
 #include "editor/registry/asset_registry.h"
 #include "editor/registry/component_registry.h"
+
 #include "engine/audio/sound_manager.h"  // TODO: remove later
 #include "engine/context/engine_context.h"
 #include "engine/core/engine_globals.h"
@@ -52,6 +54,7 @@
 #include "engine/scene/scene_manager.h"
 #include "engine/scene/scene_template.h"
 #include "engine/time/time.h"
+
 #include "game/game_test.h"
 
 // ------------------ single-instance state -----------------
@@ -87,6 +90,8 @@ ShadowMap g_main_shadow_map;
 
 // scene manager
 SceneManager g_scene_manager;
+
+EditorState g_editor_state;
 
 // TODO: default settings
 
@@ -175,7 +180,7 @@ static void _LaunchEditor() {
   AssetRegistry::Create();
 
   // Create component registry
-  // TODO: ComponentRegistry::Create();
+  ComponentRegistry::Create();
 
   // initialize editor layer
   // TODO: should be EditorUI::Setup();
@@ -226,14 +231,17 @@ static void _NextFrame() {
   // TODO: Stop EngineContext::EndFrame(); ???
 }
 
+// TODO: create a dedicated eventbus for gameplay events?
 static void _ConnectSignals() {
 
   // connect editor event handles
-  g_editor->game_start_pressed.connect([&] { g_game_manager->StartGame(); });
-  g_editor->game_end_pressed.connect([&] { g_game_manager->EndGame(); });
-  g_editor->editor_exit_pressed.connect([&] { g_game_manager->Terminate(); });
+  EditorEvents::game_start_pressed.connect(
+      [&] { g_game_manager->StartGame(); });
+  EditorEvents::game_end_pressed.connect([&] { g_game_manager->EndGame(); });
+  EditorEvents::editor_exit_pressed.connect(
+      [&] { g_game_manager->Terminate(); });
 
-  g_editor->game_inputed.connect([&](InputEvent event) {
+  EditorEvents::game_inputed.connect([&](InputEvent event) {
     g_input->ForwardInputEvent(event, g_game_manager->GetFrameCount());
   });
 
@@ -377,6 +385,10 @@ FrameGraph& GetFrameGraph() {
 
 SceneManager& Scene() {
   return g_scene_manager;
+}
+
+EditorState& State() {
+  return g_editor_state;
 }
 
 }  // namespace Runtime

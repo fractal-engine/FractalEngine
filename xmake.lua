@@ -3,12 +3,19 @@
 ----------------------------------------------------------------
 set_languages("c++20")
 
--- default compiler flags (MSVC only)
+-- MSVC-specific compiler flags 
 if is_plat("windows") then
     add_cxxflags("/Zc:__cplusplus", "/Zc:preprocessor")
+    add_defines("NOMINMAX")
+    add_defines("_CRT_SECURE_NO_WARNINGS")
+
     -- use static CRT
     set_runtimes(is_mode("debug") and "MTd" or "MT")
 end
+
+-- compiler flags
+add_cxflags("-fno-strict-aliasing", {tools = {"gcc", "clang"}})
+add_cxflags("/permissive-", {tools = "cl"}) 
 
 -- set path globally
 add_includedirs("thirdparty")
@@ -22,6 +29,9 @@ add_requires("boost", "libsdl2", "libsdl2_ttf", "portaudio", "glm", "tinygltf", 
 add_requires("imgui 1.91.8-docking", {configs={sdl2=true, sdl2_renderer=true, docking=true}})
 add_requires("bgfx", {configs = {tools = true}})
 add_requires("reflect-cpp", {configs = {json = true}})
+add_requires("assimp", {configs = {
+    shared = false, build_all_importers = false, build_gltf_importer = true, build_obj_importer = true,
+    build_fbx_importer = true, build_all_exporters = false, no_export = true}})
 
 if is_mode("debug") then
     add_defines("BX_CONFIG_DEBUG=1")

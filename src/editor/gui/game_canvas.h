@@ -98,8 +98,12 @@ inline void GameCanvas(bool isGameRunning, bool& hovered, bool& focused) {
       );
 
       // ImGuizmo transform manipulation
+      auto& state = Runtime::State();
       auto& pipeline = Runtime::GetSceneViewPipeline();
-      Entity selected = EditorUI::Get()->GetSelectedEntity();
+
+      Entity selected_entity = state.selected_entity;
+      bool has_selection = selected_entity != entt::null &&
+                           ECS::Main().Has<TransformComponent>(selected_entity);
 
       // Get camera matrices
       auto& camera_transform = std::get<0>(pipeline.GetGodCamera());
@@ -119,13 +123,13 @@ inline void GameCanvas(bool isGameRunning, bool& hovered, bool& focused) {
       ImGuizmo::SetRect(pos.x, pos.y, size.x, size.y);
 
       // Only show gizmos if: pipeline enabled, entity selected, not interacting
-      bool show_gizmos = pipeline.show_gizmos_ && selected != entt::null;
+      bool show_gizmos = pipeline.show_gizmos_ && has_selection;
       bool right_click = ImGui::IsMouseDown(ImGuiMouseButton_Right);
       bool middle_click = ImGui::IsMouseDown(ImGuiMouseButton_Middle);
 
       if (show_gizmos && !right_click && !middle_click) {
         auto& world = ECS::Main();
-        if (world.Has<TransformComponent>(selected)) {
+        if (has_selection) {
 
           // Handle keyboard shortcuts
           if (focused) {
@@ -133,7 +137,7 @@ inline void GameCanvas(bool isGameRunning, bool& hovered, bool& focused) {
           }
 
           // Get transform
-          auto& transform = world.Get<TransformComponent>(selected);
+          auto& transform = world.Get<TransformComponent>(selected_entity);
           glm::mat4 modelMatrix = transform.model_;
 
           // Snapping (hold Ctrl)
@@ -214,12 +218,6 @@ inline void GameCanvas(bool isGameRunning, bool& hovered, bool& focused) {
               auto& world = ECS::Main();
               auto [entity, tr] =
                   world.CreateEntity(abs_path.filename().string());
-
-              Logger::getInstance().Log(LogLevel::Debug,
-                                        "[GameCanvas] Created entity: " +
-                                            std::to_string((int)entity));
-
-              EditorUI::Get()->SetSelectedEntity(entity);
 
               // Attach a MeshRendererComponent for each mesh
               for (uint32_t i = 0; i < model->NLoadedMeshes(); ++i) {

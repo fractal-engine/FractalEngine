@@ -2,8 +2,9 @@
 
 #include <SDL.h>
 #include <bgfx/bgfx.h>
+#include <glm/glm.hpp>
 
-namespace platform {
+namespace Platform {
 
 /**
  * Returns the pixel size of the drawable area (HiDPI aware) */
@@ -36,4 +37,11 @@ void DisableTextInput();
 void EnableTextInput();
 bool IsTextInputActive();
 
-}  // namespace platform
+// Cursor utilities
+// TODO: move to /input/cursor
+glm::vec2 GetCursorPosition();
+void SetCursorPosition(SDL_Window* window, const glm::vec2& pos);
+glm::vec2 GetGlobalCursorPosition();
+void SetGlobalCursorPosition(const glm::vec2& pos);
+
+}  // namespace Platform

@@ -24,21 +24,21 @@ public:
   // Get latest projection matrix used
   const glm::mat4& GetProjection() const;
 
-  // void CreateFrameGraph();
+  // TODO: void CreateFrameGraph();
 
-  // void RenderSelectedEntity(EntityContainer* entity, const glm::mat4&
+  // TODO: void RenderSelectedEntity(EntityContainer* entity, const glm::mat4&
   // view_projection, const SceneCamera& camera);
 
-  // void SetSelectedEntity(EntityContainer* selected);
+  // Entity selection in game canvas
+  void SetSelectedEntities(const std::vector<Entity>& entities) {
+    selected_entities_ = entities;
+  }
 
   // Pipeline settings
   void SetWireframe(bool enabled) { wireframe_ = enabled; }
   void SetShowSkybox(bool enabled) { show_skybox_ = enabled; }
   void SetShowGizmos(bool enabled) { show_gizmos_ = enabled; }
   void SetShowGrid(bool enabled) { show_grid_ = enabled; }
-  void SetSelectedEntities(const std::vector<EntityContainer*>& entities) {
-    selected_entities_ = entities;
-  }
 
   // Settings
   bool wireframe_;
@@ -88,7 +88,7 @@ private:
   glm::mat4 projection_;
 
   // Entity selection
-  std::vector<EntityContainer*> selected_entities_;
+  std::vector<Entity> selected_entities_;
 
   // TODO: replace with actual implementation of selection material
   // bgfx::ProgramHandle selection_material_ BGFX_INVALID_HANDLE;  //
@@ -103,7 +103,7 @@ private:
 
   // Grid resources
   const Mesh* grid_mesh_;
-  Resources3D::MeshData grid_data;
+  Geometry::MeshData grid_data;
 };
 
 #endif  // SCENE_VIEW_PIPELINE_H
