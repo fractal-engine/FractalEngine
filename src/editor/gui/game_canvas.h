@@ -122,6 +122,22 @@ inline void GameCanvas(bool isGameRunning, bool& hovered, bool& focused) {
       ImGuizmo::SetDrawlist();
       ImGuizmo::SetRect(pos.x, pos.y, size.x, size.y);
 
+      // Build projection matrix for ImGuizmo
+      float gizmoAspect = size.x / size.y;
+
+      // Rebuild projection
+      float tanHalfFov = glm::tan(glm::radians(camera_component.fov_) * 0.5f);
+      glm::mat4 gizmoProjection(0.0f);
+      gizmoProjection[0][0] = 1.0f / (gizmoAspect * tanHalfFov);
+      gizmoProjection[1][1] = 1.0f / tanHalfFov;  // Y-flip for ImGuizmo
+      gizmoProjection[2][2] =
+          camera_component.far_plane_ /
+          (camera_component.far_plane_ - camera_component.near_plane_);
+      gizmoProjection[2][3] = 1.0f;
+      gizmoProjection[3][2] =
+          -(camera_component.near_plane_ * camera_component.far_plane_) /
+          (camera_component.far_plane_ - camera_component.near_plane_);
+
       // Only show gizmos if: pipeline enabled, entity selected, not interacting
       bool show_gizmos = pipeline.show_gizmos_ && has_selection;
       bool right_click = ImGui::IsMouseDown(ImGuiMouseButton_Right);
@@ -149,7 +165,7 @@ inline void GameCanvas(bool isGameRunning, bool& hovered, bool& focused) {
 
           // Manipulate
           bool manipulated = ImGuizmo::Manipulate(
-              glm::value_ptr(view), glm::value_ptr(projection),
+              glm::value_ptr(view), glm::value_ptr(gizmoProjection),
               gizmo_state.operation, gizmo_state.mode,
               glm::value_ptr(modelMatrix),
               nullptr,  // delta
@@ -201,6 +217,8 @@ inline void GameCanvas(bool isGameRunning, bool& hovered, bool& focused) {
                 LogLevel::Info, "Importing glTF model: " + abs_path.string());
 
             // Load meshes
+            // ! Synchronous loading
+            // TODO: replace implementation with LoadData() from model.h instead
             std::shared_ptr<Model> model = Model::Load(abs_path.string());
 
             // debug
@@ -232,6 +250,8 @@ inline void GameCanvas(bool isGameRunning, bool& hovered, bool& focused) {
               }
 
               // Keep model alive for the lifetime of the scene
+              // ! Potential memory leak
+              // ! loaded models should be stored in a scene-level asset manager
               static std::vector<std::shared_ptr<Model>> asset_cache;
               asset_cache.emplace_back(std::move(model));
             }

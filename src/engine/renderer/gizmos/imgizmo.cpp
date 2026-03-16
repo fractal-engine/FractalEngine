@@ -214,22 +214,15 @@ glm::mat4 IMGizmo::GetModelMatrix(glm::vec3 position, glm::quat rotation,
 }
 
 const Mesh* IMGizmo::CreatePlaneMesh() {
-  // Create plane vertices (XZ plane at Y=0)
   Geometry::MeshData plane_data;
 
-  // Positions (4 corners)
-  plane_data.positions = {
-      -1.0f, 0.0f, -1.0f,  // 0
-      1.0f,  0.0f, -1.0f,  // 1
-      1.0f,  0.0f, 1.0f,   // 2
-      -1.0f, 0.0f, 1.0f    // 3
+  plane_data.vertices = {
+      {{-1.0f, 0.0f, -1.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}, {}, {}},
+      {{1.0f, 0.0f, -1.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}, {}, {}},
+      {{1.0f, 0.0f, 1.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f}, {}, {}},
+      {{-1.0f, 0.0f, 1.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 1.0f}, {}, {}},
   };
 
-  // Normals (all pointing up)
-  plane_data.normals = {0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f,
-                        0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f};
-
-  // Indices (two triangles)
   plane_data.indices = {0, 1, 2, 0, 2, 3};
 
   return new Mesh(plane_data);

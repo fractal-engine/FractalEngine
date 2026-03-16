@@ -12,52 +12,38 @@ namespace {
 
 Geometry::MeshData ConvertMesh(const aiMesh* ai_mesh) {
   Geometry::MeshData out;
-  out.Reserve(ai_mesh->mNumVertices, ai_mesh->mNumFaces * 3);
+  out.vertices.reserve(ai_mesh->mNumVertices);
+  out.material_index = ai_mesh->mMaterialIndex;
 
-  // Positions
   for (unsigned int i = 0; i < ai_mesh->mNumVertices; ++i) {
-    const auto& v = ai_mesh->mVertices[i];
-    out.positions.push_back(v.x);
-    out.positions.push_back(v.y);
-    out.positions.push_back(v.z);
+    Geometry::VertexData v;
+    v.position = {ai_mesh->mVertices[i].x, ai_mesh->mVertices[i].y,
+                  ai_mesh->mVertices[i].z};
+    v.normal = ai_mesh->HasNormals()
+                   ? glm::vec3(ai_mesh->mNormals[i].x, ai_mesh->mNormals[i].y,
+                               ai_mesh->mNormals[i].z)
+                   : glm::vec3(0.0f);
+    v.uv = ai_mesh->HasTextureCoords(0)
+               ? glm::vec2(ai_mesh->mTextureCoords[0][i].x,
+                           ai_mesh->mTextureCoords[0][i].y)
+               : glm::vec2(0.0f);
+    v.tangent =
+        ai_mesh->HasTangentsAndBitangents()
+            ? glm::vec3(ai_mesh->mTangents[i].x, ai_mesh->mTangents[i].y,
+                        ai_mesh->mTangents[i].z)
+            : glm::vec3(0.0f);
+    v.bitangent =
+        ai_mesh->HasTangentsAndBitangents()
+            ? glm::vec3(ai_mesh->mBitangents[i].x, ai_mesh->mBitangents[i].y,
+                        ai_mesh->mBitangents[i].z)
+            : glm::vec3(0.0f);
+    out.vertices.push_back(v);
   }
 
-  // Normals
-  if (ai_mesh->HasNormals()) {
-    for (unsigned int i = 0; i < ai_mesh->mNumVertices; ++i) {
-      const auto& n = ai_mesh->mNormals[i];
-      out.normals.push_back(n.x);
-      out.normals.push_back(n.y);
-      out.normals.push_back(n.z);
-    }
-  }
-
-  // UVs
-  if (ai_mesh->HasTextureCoords(0)) {
-    for (unsigned int i = 0; i < ai_mesh->mNumVertices; ++i) {
-      const auto& uv = ai_mesh->mTextureCoords[0][i];
-      out.tex_coords.push_back(uv.x);
-      out.tex_coords.push_back(uv.y);
-    }
-  }
-
-  // Vertex colors
-  if (ai_mesh->HasVertexColors(0)) {
-    for (unsigned int i = 0; i < ai_mesh->mNumVertices; ++i) {
-      const auto& c = ai_mesh->mColors[0][i];
-      out.colors.push_back(c.r);
-      out.colors.push_back(c.g);
-      out.colors.push_back(c.b);
-      out.colors.push_back(c.a);
-    }
-  }
-
-  // Indices
   for (unsigned int f = 0; f < ai_mesh->mNumFaces; ++f) {
     const aiFace& face = ai_mesh->mFaces[f];
-    for (unsigned int j = 0; j < face.mNumIndices; ++j) {
+    for (unsigned int j = 0; j < face.mNumIndices; ++j)
       out.indices.push_back(face.mIndices[j]);
-    }
   }
 
   return out;
@@ -83,13 +69,15 @@ std::vector<Geometry::MeshData> MeshLoader::Load(const std::string& path) {
   const aiScene* scene = importer.ReadFile(
       path, aiProcess_Triangulate | aiProcess_GenSmoothNormals |
                 aiProcess_JoinIdenticalVertices |
-                aiProcess_ImproveCacheLocality);
+                aiProcess_ImproveCacheLocality | aiProcess_CalcTangentSpace);
 
   if (!scene || (scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE) ||
       !scene->mRootNode) {
     Logger::getInstance().Log(LogLevel::Error,
                               "[MeshLoader] Failed to load: " + path + " - " +
                                   importer.GetErrorString());
+
+    // return interleaved vertices
     return {};
   }
 

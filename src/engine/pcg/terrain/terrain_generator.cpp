@@ -270,7 +270,7 @@ Sample Generator::Eval(float x, float y) const {
   if (params.with_colors)
     mesh.colors.reserve(vcount * 4);
   if (params.with_uvs)
-    mesh.tex_coords.reserve(vcount * 2);
+    mesh.uv.reserve(vcount * 2);
 
   std::vector<float> height_grid(vcount);
 
@@ -315,11 +315,11 @@ Sample Generator::Eval(float x, float y) const {
       // UV
       if (params.with_uvs) {
         // U = normalized X position
-        mesh.tex_coords.push_back(x / float(size - 1));
+        mesh.uv.push_back(x / float(size - 1));
 
         // V = slope (biome blending)
         float normalized_slope = std::clamp(s.slope, 0.0f, 1.0f);
-        mesh.tex_coords.push_back(normalized_slope);
+        mesh.uv.push_back(normalized_slope);
       }
 
       // Color from rule output

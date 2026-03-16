@@ -9,59 +9,26 @@ void Mesh::EnsureLayout() {
   if (layout_.getStride() != 0)
     return;
 
-  // TODO: check if we should have Color0 set here
+  // ? Color0 has been removed
   layout_.begin()
       .add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float)
       .add(bgfx::Attrib::Normal, 3, bgfx::AttribType::Float)
-      .add(bgfx::Attrib::Color0, 4, bgfx::AttribType::Float)
+      .add(bgfx::Attrib::TexCoord0, 2, bgfx::AttribType::Float)
+      .add(bgfx::Attrib::Tangent, 3, bgfx::AttribType::Float)
+      .add(bgfx::Attrib::Bitangent, 3, bgfx::AttribType::Float)
       .end();
 }
 
 Mesh::Mesh(const Geometry::MeshData& src) {
   EnsureLayout();
 
-  // interleave pos+normal (if no normals -> pad zeros)
-  const bool has_normals = src.HasNormals();
-  const bool has_colors = src.HasColors();
-  const size_t v_count = src.VertexCount();
+  static_assert(
+      sizeof(Geometry::VertexData) == (3 + 3 + 2 + 3 + 3) * sizeof(float),
+      "VertexData has unexpected padding");
 
-  // 3 (pos) + 3 (normal) + 4 (color)
-  std::vector<float> interleaved;
-  interleaved.reserve(v_count * 10);
-
-  for (size_t i = 0; i < v_count; ++i) {
-    // Position
-    interleaved.push_back(src.positions[i * 3 + 0]);
-    interleaved.push_back(src.positions[i * 3 + 1]);
-    interleaved.push_back(src.positions[i * 3 + 2]);
-
-    // Normal
-    if (has_normals) {
-      interleaved.push_back(src.normals[i * 3 + 0]);
-      interleaved.push_back(src.normals[i * 3 + 1]);
-      interleaved.push_back(src.normals[i * 3 + 2]);
-    } else {
-      interleaved.push_back(0.f);
-      interleaved.push_back(1.f);
-      interleaved.push_back(0.f);
-    }
-
-    // Color
-    if (has_colors) {
-      interleaved.push_back(src.colors[i * 4 + 0]);
-      interleaved.push_back(src.colors[i * 4 + 1]);
-      interleaved.push_back(src.colors[i * 4 + 2]);
-      interleaved.push_back(src.colors[i * 4 + 3]);
-    } else {
-      interleaved.push_back(1.f);
-      interleaved.push_back(1.f);
-      interleaved.push_back(1.f);
-      interleaved.push_back(1.f);
-    }
-  }
-
-  const bgfx::Memory* vmem =
-      bgfx::copy(interleaved.data(), sizeof(float) * interleaved.size());
+  // VertexData is already interleaved — pass directly to bgfx
+  const bgfx::Memory* vmem = bgfx::copy(
+      src.vertices.data(), sizeof(Geometry::VertexData) * src.vertices.size());
   vbo_ = bgfx::createVertexBuffer(vmem, layout_);
 
   const bgfx::Memory* imem =
