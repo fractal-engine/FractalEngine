@@ -6,6 +6,7 @@
 #include "engine/ecs/ecs_collection.h"
 #include "engine/renderer/frame_graph.h"
 #include "engine/transform/transform_system.h"
+
 class SceneViewPipeline {
 public:
   SceneViewPipeline();
@@ -103,7 +104,7 @@ private:
 
   // Grid resources
   const Mesh* grid_mesh_;
-  Geometry::MeshData grid_data;
+  Geometry::MeshData grid_data_;
 };
 
 #endif  // SCENE_VIEW_PIPELINE_H
