@@ -5,5 +5,5 @@ $input v_position
 /* Outputs positions as RGB color */
 void main()
 {
-    gl_FragColor = vec4(abs(v_position.xyz), 1.0);
+    gl_FragColor = vec4(abs(v_position.xyz) * 2.5, 1.0);
 }

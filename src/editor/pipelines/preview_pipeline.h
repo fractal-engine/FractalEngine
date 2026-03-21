@@ -17,6 +17,7 @@ struct PreviewOutput {
   uint16_t width = 0;
   uint16_t height = 0;
   bool resize_pending = false;
+  bgfx::ViewId view_id = 0; // View ID tracker
 };
 
 struct PreviewRenderInstruction {
