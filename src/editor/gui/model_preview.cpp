@@ -42,7 +42,7 @@ void ModelPreview::Init() {
   // Once the PCG framework is ready, this source will simply swap from
   // Model::Load() to the PCG generator output.
   // ------------------------------------------------------------------------
-  model_ = Model::Load("C:/Users/moses/Downloads/Coach.glb");
+  model_ = Model::Load("/Users/louismercier/Projects/FractalEngine/build/macosx/x86_64/release/examples/example-project/loomis_head.glb");
 
   // Create outputs for all our procedural variants
   for (int i = 0; i < total_variants_; ++i) {

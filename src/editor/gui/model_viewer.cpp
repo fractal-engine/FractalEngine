@@ -125,7 +125,36 @@ void ModelViewer::RenderViewport() {
       camera_distance_ = glm::clamp(camera_distance_, 0.01f, 50.0f);
       ImGui::GetIO().MouseWheel = 0.0f;  // Eat scroll input
     }
+    float wasd_speed = camera_distance_ * 0.015f;
+    if (ImGui::IsKeyDown(ImGuiKey_W)) camera_pan_y_ -= wasd_speed;
+    if (ImGui::IsKeyDown(ImGuiKey_S)) camera_pan_y_ += wasd_speed;
+    if (ImGui::IsKeyDown(ImGuiKey_A)) camera_pan_x_ -= wasd_speed;
+    if (ImGui::IsKeyDown(ImGuiKey_D)) camera_pan_x_ += wasd_speed;
   }
+
+  // --- TRACKPAD ---
+static bool is_alt_dragging = false;
+if (is_hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left) &&
+    ImGui::GetIO().KeyAlt) {
+  is_alt_dragging = true;
+}
+if (!ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
+  is_alt_dragging = false;
+}
+
+if (is_alt_dragging) {
+  ImVec2 delta = ImGui::GetIO().MouseDelta;
+  if (ImGui::GetIO().KeyShift) {
+    // ALT + SHIFT + LMB = PAN
+    camera_pan_x_ -= delta.x * (camera_distance_ * 0.001f);
+    camera_pan_y_ += delta.y * (camera_distance_ * 0.001f);
+  } else {
+    // ALT + LMB = ORBIT
+    model_yaw_ -= delta.x * 0.01f;
+    model_pitch_ -= delta.y * 0.01f;
+    model_pitch_ = glm::clamp(model_pitch_, -1.5f, 1.5f);
+  }
+}
 
   static bool is_dragging = false;
   if (is_hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Middle)) {
