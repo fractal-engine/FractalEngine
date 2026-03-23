@@ -74,11 +74,14 @@ void Headline(std::string title, const char* icon, bool separator) {
 
   ImGui::Dummy(ImVec2(0.0f, margin_top));
   {
+    // ! Check if we actually need the if statement
     if (icon && icon[0] != '\0') {
       ImGui::Text("%s", icon);
       ImGui::SameLine();
     }
+    ImGui::PushFont(EditorStyles::GetFonts().h3_bold);
     ImGui::Text("%s", title.c_str());
+    ImGui::PopFont();
   }
   ImGui::Dummy(ImVec2(0.0f, margin_bottom));
 

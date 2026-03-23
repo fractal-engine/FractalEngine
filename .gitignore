@@ -26,3 +26,6 @@ packages/
 
 # clangd files
 .cache/
+
+# LLMs
+.claude/

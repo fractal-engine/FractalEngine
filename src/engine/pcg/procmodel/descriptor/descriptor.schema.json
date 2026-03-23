@@ -1,0 +1,117 @@
+{
+  "model_id": "test_model",
+  "model_name": "Test Model",
+  "domain": "building",
+  "path": "assets/models/test_building.gltf",
+  "scale_min": [
+    0.8,
+    0.8,
+    0.8
+  ],
+  "scale_max": [
+    1.2,
+    1.2,
+    1.2
+  ],
+  "selection_groups": [
+    {
+      "group_id": "_BASE_",
+      "required": true,
+      "activated_by": "",
+      "parts": [
+        {
+          "id": "BASE_A",
+          "name": "Base A",
+          "weight": 1.0
+        },
+        {
+          "id": "BASE_B",
+          "name": "Base B",
+          "weight": 0.5
+        },
+        {
+          "id": "BASE_C",
+          "name": "Base C",
+          "weight": 1.0
+        }
+      ]
+    },
+    {
+      "group_id": "_ROOF_",
+      "required": true,
+      "activated_by": "_BASE_",
+      "parts": [
+        {
+          "id": "ROOF_A",
+          "name": "Roof A",
+          "weight": 1.0
+        },
+        {
+          "id": "ROOF_B",
+          "name": "Roof B",
+          "weight": 1.0
+        },
+        {
+          "id": "ROOF_C",
+          "name": "Roof C",
+          "weight": 1.0
+        }
+      ]
+    },
+    {
+      "group_id": "_WINDOW_",
+      "required": true,
+      "activated_by": "",
+      "parts": [
+        {
+          "id": "WINDOW_A",
+          "name": "Window A",
+          "weight": 1.0
+        },
+        {
+          "id": "WINDOW_B",
+          "name": "Window B",
+          "weight": 1.0
+        },
+        {
+          "id": "WINDOW_C",
+          "name": "Window C",
+          "weight": 1.0
+        }
+      ]
+    }
+  ],
+  "parameter_ranges": [
+    {
+      "part_id": "",
+      "scale_min": [
+        0.9,
+        0.9,
+        0.9
+      ],
+      "scale_max": [
+        1.1,
+        1.1,
+        1.1
+      ],
+      "activated_by": ""
+    }
+  ],
+  "constraints": [
+    {
+      "id": "exc_body_b_head_a",
+      "type": "excludes",
+      "part_a": "body_b",
+      "part_b": "head_a"
+    }
+  ],
+  "parameter_bindings": [
+    {
+      "source_part": "body_a",
+      "source_param": "scale",
+      "target_part": "head_a",
+      "target_param": "scale",
+      "ratio": 0.8
+    }
+  ]
+}

@@ -1,0 +1,4 @@
+#ifndef MODEL_GENERATOR_H
+#define MODEL_GENERATOR_H
+
+#endif  // MODEL_GENERATOR_H
