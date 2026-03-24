@@ -20,8 +20,8 @@ constexpr uint8_t SCENE_FORWARD = 7;
 constexpr uint8_t SCENE_SKYBOX = 8;
 
 // For preview thumbnails
-constexpr uint8_t PREVIEW_PASS_BASE = 9;
-constexpr uint8_t PREVIEW_PASS_MAX = 50;
+constexpr uint8_t PREVIEW_PASS_BASE = 50;
+constexpr uint8_t PREVIEW_PASS_MAX = 150;
 
 // miscellaneous
 constexpr uint8_t UI = 254;

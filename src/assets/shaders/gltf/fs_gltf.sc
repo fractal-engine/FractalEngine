@@ -1,9 +1,22 @@
 $input v_position
 #include "common.sh"
 
-// --- DEBUG VISUALIZATION SHADER ---
-/* Outputs positions as RGB color */
 void main()
 {
-    gl_FragColor = vec4(abs(v_position.xyz), 1.0);
+    // Extract the 3D position
+    vec3 pos = v_position.xyz;
+
+    // Auto-calculate flat normals based on screen-space derivatives
+    vec3 dpdx = dFdx(pos);
+    vec3 dpdy = dFdy(pos);
+    vec3 normal = normalize(cross(dpdx, dpdy));
+    
+    // Simulate a simple directional light (like Blender's default solid view)
+    vec3 lightDir = normalize(vec3(-0.5, -1.0, -0.5));
+    float ndotl = max(dot(normal, -lightDir), 0.0);
+    
+    // Ambient gray (0.3) + Diffuse gray (0.5)
+    vec3 finalColor = vec3_splat(0.3) + (vec3_splat(0.5) * ndotl);
+    
+    gl_FragColor = vec4(finalColor, 1.0);
 }

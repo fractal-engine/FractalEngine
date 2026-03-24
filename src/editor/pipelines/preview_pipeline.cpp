@@ -10,6 +10,9 @@
 #include "engine/renderer/lighting/light.h"
 #include "engine/renderer/model/model.h"
 
+// Static counter to guarantee unique View IDs across all pipeline instances
+static uint16_t s_global_preview_view_offset = 0;
+
 PreviewPipeline::PreviewPipeline()
     : preview_program_(BGFX_INVALID_HANDLE),
       outputs_(),
@@ -18,7 +21,7 @@ PreviewPipeline::PreviewPipeline()
 void PreviewPipeline::Create() {
   // Load shader
   preview_program_ =
-      Runtime::Shader()->LoadProgram("preview", "vs_lit.bin", "fs_lit.bin");
+      Runtime::Shader()->LoadProgram("preview", "vs_gltf.bin", "fs_gltf.bin");
 
   if (!bgfx::isValid(preview_program_)) {
     Logger::getInstance().Log(LogLevel::Error,
@@ -86,14 +89,7 @@ void PreviewPipeline::Render() {
       continue;
 
     // Configure preview view
-    bgfx::ViewId view_id = ViewID::PREVIEW_PASS_BASE + static_cast<uint8_t>(i);
-
-    // Check view ID range
-    if (view_id > ViewID::PREVIEW_PASS_MAX) {
-      Logger::getInstance().Log(LogLevel::Warning,
-                                "PreviewPipeline: Too many preview outputs");
-      continue;
-    }
+    bgfx::ViewId view_id = output.view_id;
 
     uint32_t clear_color =
         (uint32_t(instruction.background_color.r * 255) << 24) |
@@ -106,7 +102,8 @@ void PreviewPipeline::Render() {
     bgfx::setViewRect(view_id, 0, 0, output.width, output.height);
     bgfx::setViewFrameBuffer(view_id, output.framebuffer);
 
-    // Build view and projection matrices
+    // ------ Build view and projection matrices ------
+    // Build model matrix
     glm::mat4 model_mtx =
         Transformation::Model(instruction.model_transform.position_,
                               instruction.model_transform.rotation_,
@@ -118,19 +115,15 @@ void PreviewPipeline::Render() {
 
     float aspect =
         (output.height > 0) ? float(output.width) / float(output.height) : 1.0f;
+
+    // Explicit radians bypasses Transformation::Projection FOV bugs
+    // Near plane set to 0.01f so the camera doesn't slice the model when zoomed
+
     glm::mat4 proj_mtx =
         Transformation::Projection(45.0f, aspect, 0.3f, 1000.0f);
 
     bgfx::setViewTransform(view_id, glm::value_ptr(view_mtx),
                            glm::value_ptr(proj_mtx));
-
-    // Set up directional light for preview
-    Light::SetAmbient(glm::vec3(0.2f));
-    Light::SetDirectionalLight(
-        0, glm::normalize(glm::vec3(-0.5f, -1.0f, -0.3f)), glm::vec3(0.1f),
-        glm::vec3(0.8f), glm::vec3(1.0f));
-    Light::SetLightCounts(1, 0, 0);
-    Light::ApplyUniforms();
 
     // Submit all meshes of model
     bgfx::setTransform(glm::value_ptr(model_mtx));
@@ -139,6 +132,26 @@ void PreviewPipeline::Render() {
       const Mesh* mesh = instruction.model->QueryMesh(i);
       if (!mesh)
         continue;
+
+      // Matte Lighting
+      // ----------------------------
+      // 1. Set ambient light (Brightened to 0.4 so dark materials are visible)
+      Light::SetAmbient(glm::vec3(0.4f));
+
+      // 2. Set primary directional light (Bright white sunlight to pop the
+      // model details)
+      Light::SetDirectionalLight(
+          0, glm::normalize(glm::vec3(-0.5f, -1.0f, -0.5f)),  // Direction
+          glm::vec3(0.2f),  // Ambient intensity
+          glm::vec3(3.0f),  // Diffuse intensity
+          glm::vec3(1.0f)   // Specular intensity
+      );
+
+      // 3. using exactly 1 directional light, 0 point, 0 spot
+      Light::SetLightCounts(1, 0, 0);
+
+      // 4. Push data to BGFX uniforms for this render pass
+      Light::ApplyUniforms();
 
       mesh->Bind();
       bgfx::setState(BGFX_STATE_DEFAULT | BGFX_STATE_CULL_CW);
@@ -172,6 +185,12 @@ size_t PreviewPipeline::CreateOutput() {
   if (!bgfx::isValid(output.framebuffer)) {
     Logger::getInstance().Log(LogLevel::Error,
                               "PreviewPipeline: Failed to create output FBO");
+  }
+
+  output.view_id = ViewID::PREVIEW_PASS_BASE + s_global_preview_view_offset++;
+  if (output.view_id > ViewID::PREVIEW_PASS_MAX) {
+    Logger::getInstance().Log(LogLevel::Error,
+                              "PreviewPipeline: Exceeded maximum View IDs!");
   }
 
   outputs_.push_back(output);

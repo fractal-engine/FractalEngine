@@ -81,12 +81,11 @@ void SceneViewPipeline::RegisterNodes() {
 
   // --- NODES ---
   // Node 0: Shadows
-  frame_graph.AddNode(Node{.name = "shadows",
-                           .reads = {},
-                           .writes = {"shadow_map"},
-                           .execute = [this](const Node::Context& ctx) {
-                             RenderShadowNode(ctx);
-                           }});
+  frame_graph.AddNode(Node{
+      .name = "shadows",
+      .reads = {},
+      .writes = {"shadow_map"},
+      .execute = [this](const Node::Context& ctx) { RenderShadowNode(ctx); }});
 
   // Node 1: Reflection rendering (for water)
   frame_graph.AddNode(Node{.name = "reflection",

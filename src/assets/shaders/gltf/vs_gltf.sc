@@ -3,10 +3,9 @@ $output v_position
 
 #include "common.sh"
 
-// --- DEBUG VISUALIZATION SHADER ---
-/* Outputs positions as RGB color */
 void main()
 {
-    v_position = vec4(a_position, 1.0);
-    gl_Position = mul(u_modelViewProj, v_position);
+    // Pass world-space position to fragment shader 
+    v_position = mul(u_model[0], vec4(a_position, 1.0));
+    gl_Position = mul(u_modelViewProj, vec4(a_position, 1.0));
 }

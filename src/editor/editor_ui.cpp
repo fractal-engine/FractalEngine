@@ -1,16 +1,13 @@
-#include "editor_ui.h"
-
+#include "editor/editor_ui.h"
 #include "editor/events.h"
-#include "editor/gui/styles/editor_styles.h"
+#include "editor/gui/styles/editor_styles.h"  
 #include "editor/runtime/runtime.h"
-
 #include "engine/context/engine_context.h"
 #include "engine/core/engine_globals.h"
 #include "engine/core/logger.h"
 #include "engine/core/view_ids.h"
 #include "engine/ecs/world.h"
 #include "engine/pcg/pcg_engine.h"
-
 #include "gui/asset_browser.h"
 #include "gui/asset_graph_editor.h"
 #include "gui/console_panel.h"
@@ -24,28 +21,30 @@
 #include "gui/pcg_graph_editor.h"
 #include "gui/search/search_popup.h"
 #include "gui/status_bar.h"
-#include "gui/styles/editor_styles.h"
 #include "gui/terrain_editor.h"
 #include "gui/toolbar.h"
 #include "gui/world_settings.h"
-
+#include "imgui.h"
+#include "imgui_internal.h"
+#include "imgui_utils.h"
 #include "platform/platform_utils.h"
 #include "platform/window_manager.h"
-
 #include "resources/decorators/drop_shadows.h"
 
 #include <backends/imgui_impl_sdl2.h>
 #include "editor/vendor/imgui/imgui_impl_bgfx.h"
-#include "imgui_internal.h"
-#include "imgui_utils.h"
 
 #include <SDL.h>
+
+// --- Standalone instances for the procedural tools ---
+static ModelPreview g_model_preview;
+static ModelViewer g_model_viewer;
+static AssetGraphEditor g_asset_graph_editor;
 
 // Window base class
 std::vector<WindowBase*> g_windows_;
 
 EditorUI* EditorUI::s_instance_ = nullptr;
-// uint32_t EditorUI::g_id_counter_ = 0;
 
 EditorUI::EditorUI(RendererBase* renderer) : renderer_(renderer) {
   s_instance_ = this;
@@ -327,25 +326,23 @@ void EditorUI::RenderUI() {
     // docked Panels
     ImGui::DockBuilderDockWindow("Toolbar", top);
     ImGui::DockBuilderDockWindow("Hierarchy", left);
-    ImGui::DockBuilderDockWindow("Procedural Preview",
-                                 left);  // Added to layout
+    ImGui::DockBuilderDockWindow("Procedural Preview", left);
     ImGui::DockBuilderDockWindow("Inspector", right);
     ImGui::DockBuilderDockWindow("World", right);
     ImGui::DockBuilderDockWindow("Terrain Editor", right);
     ImGui::DockBuilderDockWindow("Scene", dock_id_);
-    ImGui::DockBuilderDockWindow("Model View", dock_id_);  // Added to layout
+    ImGui::DockBuilderDockWindow("Model View", dock_id_);
     ImGui::DockBuilderDockWindow("Console", bottom);
-    // ImGui::DockBuilderDockWindow(Panels::kDlgWinName, bottom);
     ImGui::DockBuilderDockWindow("Asset Browser", bottom);
     ImGui::DockBuilderDockWindow("Camera", right);
     ImGui::DockBuilderDockWindow("PCG Graph Editor", bottom);
+    ImGui::DockBuilderDockWindow("Asset Graph", bottom);
 
     ImGui::DockBuilderFinish(dock_id_);
     built_layout_ = true;
   }
 
   //--------------------------- TOP TOOLBAR ----------------------------------
-  // Safely assign explicitly so we don't trip over compiler layout rules
   Panels::ToolbarCallbacks cb;
 
   cb.onStart = [this]() {
@@ -375,13 +372,9 @@ void EditorUI::RenderUI() {
   Panels::Toolbar(cb);
   ImGui::End();
 
-  // Get the ECS instance once for this frame
   auto& world = ECS::Main();
 
-  // TODO: CHANGE ALL PANELS TO DERIVE FROM WINDOWBASE
   // -------- MIDDLE : SCENE --------
-  // The rendering pipeline now handles the gizmo, so this panel is just a
-  // simple canvas.
   ImGui::Begin("Scene", nullptr);
   Panels::GameCanvas(is_game_started_, game_canvas_hovered_,
                      game_canvas_focused_);
@@ -403,14 +396,17 @@ void EditorUI::RenderUI() {
   Panels::ConsolePanel();
   ImGui::End();
 
-  // Panels::FileExplorer();
-
   ImGui::Begin("Asset Browser", nullptr);
   Panels::AssetBrowser();
   ImGui::End();
-
+  // Panels::FileExplorer();
   //------------------------- SEARCH POPUP --------------------------
   SearchPopup::Render();
+
+  // -------- PROCEDURAL GENERATION PANELS --------
+  g_model_preview.Render();
+  g_model_viewer.Render();
+  g_asset_graph_editor.Render();
 
   //------------------------- IMGUI DEBUG ---------------------------
   if (debug_show_metrics_) {
@@ -443,7 +439,9 @@ void EditorUI::RenderUI() {
     Runtime::GetSceneViewPipeline().SetSelectedEntities(state_list);
   }
 
-  // -------- Render all registered windows --------
+  // -------- Render all registered WindowBase windows --------
+  // This automatically renders HierarchyPanel, InspectorPanel,
+  // PCGGraphEditorPanel
   for (auto* window : g_windows_) {
     window->Render();
   }
@@ -457,11 +455,9 @@ void EditorUI::LoadIcons() {
   tab_icons_.insert({"Console", ICON_FA_TERMINAL});
   tab_icons_.insert({"Assets", ICON_FA_FOLDER_OPEN});
   tab_icons_.insert({"World", ICON_FA_GLOBE});
-  // tab_icons_.insert({"File Explorer", ICON_FA_FOLDER});
 }
 
 void EditorUI::BeginImGuiFrame(SDL_Window* window) {
-
   // Reset ID counter for new frame
   g_id_counter_ = 0;
 
@@ -469,14 +465,12 @@ void EditorUI::BeginImGuiFrame(SDL_Window* window) {
   ImGui_Implbgfx_NewFrame();  // renderer backend
   ImGui::NewFrame();          // ImGui begins
   ImGuizmo::BeginFrame();     // ImGuizmo begins
-
   // ---- decorators start here ----
   // drop shadow effect
   // static bool shadowOn = true;
   // ui::shadow::BeginFrame(shadowOn);
 }
 
-// TODO: move this to viewport
 void EditorUI::UpdateMovement() {
   // Build per-frame input
   GodCameraFrameInput input{};
@@ -484,9 +478,9 @@ void EditorUI::UpdateMovement() {
 
   // Enable/disable text input
   if (input.scene_hovered) {
-    Platform::DisableTextInput();
+    Platform::DisableTextInput();  
   } else {
-    Platform::EnableTextInput();
+    Platform::EnableTextInput();  
   }
 
   input.right_mouse =
