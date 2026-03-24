@@ -42,7 +42,9 @@ void ModelPreview::Init() {
   // Once the PCG framework is ready, this source will simply swap from
   // Model::Load() to the PCG generator output.
   // ------------------------------------------------------------------------
-  model_ = Model::Load("/Users/louismercier/Projects/FractalEngine/build/macosx/x86_64/release/examples/example-project/loomis_head.glb");
+  model_ = Model::Load(
+      "/Users/louismercier/Projects/FractalEngine/build/macosx/x86_64/release/"
+      "examples/example-project/loomis_head.glb");
 
   // Create outputs for all our procedural variants
   for (int i = 0; i < total_variants_; ++i) {
@@ -152,7 +154,7 @@ void ModelPreview::RenderGrid(ImDrawList* draw_list) {
       inst.model_transform.scale_ = glm::vec3(s_model_scale_);
       inst.model_transform.rotation_ =
           glm::angleAxis(float(i) * 0.4f, glm::vec3(0.0f, 1.0f, 0.0f));
-      inst.camera_transform.position_ = glm::vec3(0.0f, 0.0f, 6.0f);
+      inst.camera_transform.position_ = glm::vec3(0.0f, 0.0f, -6.0f);
 
       preview_pipeline_.AddRenderInstruction(inst);
 

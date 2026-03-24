@@ -109,25 +109,18 @@ void PreviewPipeline::Render() {
                               instruction.model_transform.rotation_,
                               instruction.model_transform.scale_);
 
-    // --- Preview Camera Controls ---
-    glm::vec3 cam_pos = instruction.camera_transform.position_;
-    glm::quat cam_rot = instruction.camera_transform.rotation_;
-
-    // Calculate exact forward and up vectors from the camera's rotation
-    glm::vec3 cam_fwd = cam_rot * glm::vec3(0.0f, 0.0f, -1.0f);
-    glm::vec3 cam_up = cam_rot * glm::vec3(0.0f, 1.0f, 0.0f);
-
-    // Explicit lookAt completely bypasses Transformation::View bugs
-    glm::mat4 view_mtx = glm::lookAt(cam_pos, cam_pos + cam_fwd, cam_up);
+    glm::mat4 view_mtx =
+        Transformation::View(instruction.camera_transform.position_,
+                             instruction.camera_transform.rotation_);
 
     float aspect =
         (output.height > 0) ? float(output.width) / float(output.height) : 1.0f;
 
     // Explicit radians bypasses Transformation::Projection FOV bugs
     // Near plane set to 0.01f so the camera doesn't slice the model when zoomed
-  
+
     glm::mat4 proj_mtx =
-        glm::perspective(glm::radians(45.0f), aspect, 0.01f, 1000.0f);
+        Transformation::Projection(45.0f, aspect, 0.3f, 1000.0f);
 
     bgfx::setViewTransform(view_id, glm::value_ptr(view_mtx),
                            glm::value_ptr(proj_mtx));
@@ -194,7 +187,7 @@ size_t PreviewPipeline::CreateOutput() {
                               "PreviewPipeline: Failed to create output FBO");
   }
 
-   output.view_id = ViewID::PREVIEW_PASS_BASE + s_global_preview_view_offset++;
+  output.view_id = ViewID::PREVIEW_PASS_BASE + s_global_preview_view_offset++;
   if (output.view_id > ViewID::PREVIEW_PASS_MAX) {
     Logger::getInstance().Log(LogLevel::Error,
                               "PreviewPipeline: Exceeded maximum View IDs!");

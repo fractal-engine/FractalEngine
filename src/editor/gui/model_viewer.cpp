@@ -126,35 +126,39 @@ void ModelViewer::RenderViewport() {
       ImGui::GetIO().MouseWheel = 0.0f;  // Eat scroll input
     }
     float wasd_speed = camera_distance_ * 0.015f;
-    if (ImGui::IsKeyDown(ImGuiKey_W)) camera_pan_y_ -= wasd_speed;
-    if (ImGui::IsKeyDown(ImGuiKey_S)) camera_pan_y_ += wasd_speed;
-    if (ImGui::IsKeyDown(ImGuiKey_A)) camera_pan_x_ -= wasd_speed;
-    if (ImGui::IsKeyDown(ImGuiKey_D)) camera_pan_x_ += wasd_speed;
+    if (ImGui::IsKeyDown(ImGuiKey_W))
+      camera_pan_y_ -= wasd_speed;
+    if (ImGui::IsKeyDown(ImGuiKey_S))
+      camera_pan_y_ += wasd_speed;
+    if (ImGui::IsKeyDown(ImGuiKey_A))
+      camera_pan_x_ -= wasd_speed;
+    if (ImGui::IsKeyDown(ImGuiKey_D))
+      camera_pan_x_ += wasd_speed;
   }
 
   // --- TRACKPAD ---
-static bool is_alt_dragging = false;
-if (is_hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left) &&
-    ImGui::GetIO().KeyAlt) {
-  is_alt_dragging = true;
-}
-if (!ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
-  is_alt_dragging = false;
-}
-
-if (is_alt_dragging) {
-  ImVec2 delta = ImGui::GetIO().MouseDelta;
-  if (ImGui::GetIO().KeyShift) {
-    // ALT + SHIFT + LMB = PAN
-    camera_pan_x_ -= delta.x * (camera_distance_ * 0.001f);
-    camera_pan_y_ += delta.y * (camera_distance_ * 0.001f);
-  } else {
-    // ALT + LMB = ORBIT
-    model_yaw_ -= delta.x * 0.01f;
-    model_pitch_ -= delta.y * 0.01f;
-    model_pitch_ = glm::clamp(model_pitch_, -1.5f, 1.5f);
+  static bool is_alt_dragging = false;
+  if (is_hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left) &&
+      ImGui::GetIO().KeyAlt) {
+    is_alt_dragging = true;
   }
-}
+  if (!ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
+    is_alt_dragging = false;
+  }
+
+  if (is_alt_dragging) {
+    ImVec2 delta = ImGui::GetIO().MouseDelta;
+    if (ImGui::GetIO().KeyShift) {
+      // ALT + SHIFT + LMB = PAN
+      camera_pan_x_ += delta.x * (camera_distance_ * 0.001f);
+      camera_pan_y_ -= delta.y * (camera_distance_ * 0.001f);
+    } else {
+      // ALT + LMB = ORBIT
+      model_yaw_ += delta.x * 0.01f;
+      model_pitch_ += delta.y * 0.01f;
+      model_pitch_ = glm::clamp(model_pitch_, -1.5f, 1.5f);
+    }
+  }
 
   static bool is_dragging = false;
   if (is_hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Middle)) {
@@ -169,7 +173,7 @@ if (is_alt_dragging) {
     if (ImGui::GetIO().KeyShift) {
       // SHIFT + MMB = PAN (Moves focal point relative to camera distance)
       camera_pan_x_ -= delta.x * (camera_distance_ * 0.001f);
-      camera_pan_y_ += delta.y * (camera_distance_ * 0.001f);
+      camera_pan_y_ -= delta.y * (camera_distance_ * 0.001f);
     } else {
       // MMB = TURNTABLE ORBIT
       model_yaw_ -= delta.x * 0.01f;
@@ -195,7 +199,7 @@ if (is_alt_dragging) {
   // The final focal point is the rotated center of the scaled model + user pan
   // offsets
   glm::vec3 rotated_center = base_rotation * (center * norm_scale);
-  glm::vec3 focal_point = rotated_center + pan_offset;
+  glm::vec3 focal_point = (center * norm_scale) + pan_offset;
 
   PreviewRenderInstruction inst;
   inst.output_index = viewport_output_;
@@ -206,13 +210,13 @@ if (is_alt_dragging) {
   // Keep model at origin to prevent lasso clipping, but apply the orientation
   // fix
   inst.model_transform.position_ = glm::vec3(0.0f);
-  inst.model_transform.rotation_ = base_rotation;
+  inst.model_transform.rotation_ = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
   inst.model_transform.scale_ = glm::vec3(norm_scale);
 
   // Orbit camera perfectly around the focal point
   inst.camera_transform.rotation_ = q_cam;
   inst.camera_transform.position_ =
-      focal_point + (q_cam * glm::vec3(0.0f, 0.0f, camera_distance_));
+      focal_point + (q_cam * glm::vec3(0.0f, 0.0f, -camera_distance_));
 
   preview_pipeline_.AddRenderInstruction(inst);
 
