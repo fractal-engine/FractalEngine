@@ -79,6 +79,94 @@
           "weight": 1.0
         }
       ]
+    },
+    {
+      "group_id": "_BALCONY_",
+      "required": true,
+      "activated_by": "",
+      "parts": [
+        {
+          "id": "BALCONY_A",
+          "name": "Balcony A",
+          "weight": 1.0
+        },
+        {
+          "id": "BALCONY_B",
+          "name": "Balcony B",
+          "weight": 1.0
+        },
+        {
+          "id": "BALCONY_C",
+          "name": "Balcony C",
+          "weight": 1.0
+        }
+      ]
+    },
+    {
+      "group_id": "_CHIMNEY_",
+      "required": true,
+      "activated_by": "",
+      "parts": [
+        {
+          "id": "CHIMNEY_A",
+          "name": "Chimney A",
+          "weight": 1.0
+        },
+        {
+          "id": "CHIMNEY_B",
+          "name": "Chimney B",
+          "weight": 1.0
+        },
+        {
+          "id": "CHIMNEY_C",
+          "name": "Chimney C",
+          "weight": 1.0
+        }
+      ]
+    },
+    {
+      "group_id": "_DOOR_",
+      "required": true,
+      "activated_by": "",
+      "parts": [
+        {
+          "id": "DOOR_A",
+          "name": "Door A",
+          "weight": 1.0
+        },
+        {
+          "id": "DOOR_B",
+          "name": "Door B",
+          "weight": 1.0
+        },
+        {
+          "id": "DOOR_C",
+          "name": "Door C",
+          "weight": 1.0
+        }
+      ]
+    },
+    {
+      "group_id": "_DECOR_",
+      "required": true,
+      "activated_by": "",
+      "parts": [
+        {
+          "id": "DECOR_A",
+          "name": "Decor A",
+          "weight": 1.0
+        },
+        {
+          "id": "DECOR_B",
+          "name": "Decor B",
+          "weight": 1.0
+        },
+        {
+          "id": "DECOR_C",
+          "name": "Decor C",
+          "weight": 1.0
+        }
+      ]
     }
   ],
   "parameter_ranges": [
