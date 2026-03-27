@@ -3,25 +3,23 @@
 
 #include <string>
 
+#include "engine/content/scene_data.h"
 #include "model_graph.h"
-
-namespace Content {
-struct SceneData;
-}
 
 namespace ProcModel {
 
 class ModelGraphBuilder {
- public:
+public:
   static ModelGraph Build(const Content::SceneData& scene,
                           const std::string& source_path);
 
 private:
-    static ModelGraphNode ConvertNode(const Content::SceneNode& scene_node);
-  static void BuildLookup(ModelGraphNode& node,
-                           std::unordered_map<std::string, ModelGraphNode*>& lookup);
+  static ModelGraphNode ConvertNode(const Content::SceneNode& scene_node);
+  static void BuildLookup(
+      ModelGraphNode& node,
+      std::unordered_map<std::string, ModelGraphNode*>& lookup);
 };
 
 }  // namespace ProcModel
 
-#endif // MODEL_GRAPH_BUILDER_H
+#endif  // MODEL_GRAPH_BUILDER_H

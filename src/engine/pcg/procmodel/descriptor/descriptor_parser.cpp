@@ -5,6 +5,8 @@
 #include <fstream>
 
 #include "engine/core/logger.h"
+#include "engine/pcg/procmodel/descriptor/model_descriptor.h"
+#include "glm/ext/vector_float3.hpp"
 
 namespace ProcModel {
 
@@ -28,8 +30,63 @@ bool DescriptorParser::ParseSelectionGroup(const nlohmann::json& j,
   return !out.parts.empty();
 }
 
-bool DescriptorParser::FromJson(const nlohmann::json& j,
-                                ModelDescriptor& out) {
+bool DescriptorParser::ParseParameterRange(const nlohmann::json& j,
+                                           ParameterRange& out) {
+  if (!j.contains("part_id"))
+    return false;
+
+  out.part_id = j["part_id"].get<std::string>();
+  out.activated_by = j.value("activated_by", std::string(""));
+
+  if (j.contains("rotation_min")) {
+    auto& r = j["rotation_min"];
+    out.rotation_min = glm::vec3(r[0], r[1], r[2]);
+  }
+  if (j.contains("rotation_max")) {
+    auto& r = j["rotation_max"];
+    out.rotation_max = glm::vec3(r[0], r[1], r[2]);
+  }
+
+  return true;
+}
+
+bool DescriptorParser::ParseConstraintRule(const nlohmann::json& j,
+                                           ConstraintRule& out) {
+  if (!j.contains("id") || !j.contains("type") || !j.contains("part_a") ||
+      !j.contains("part_b"))
+    return false;
+
+  out.id = j["id"].get<std::string>();
+  out.part_a = j["part_a"].get<std::string>();
+  out.part_b = j["part_b"].get<std::string>();
+
+  std::string type_str = j["type"].get<std::string>();
+  if (type_str == "excludes") {
+    out.type = ConstraintRule::Type::EXCLUDES;
+  } else if (type_str == "requires") {
+    out.type = ConstraintRule::Type::REQUIRES;
+  } else {
+    return false;
+  }
+
+  return true;
+}
+
+bool DescriptorParser::ParseParameterBinding(const nlohmann::json& j,
+                                             ParameterBinding& out) {
+  if (!j.contains("source_part") || !j.contains("target_part"))
+    return false;
+
+  out.source_part = j["source_part"].get<std::string>();
+  out.source_param = j.value("source_param", std::string(""));
+  out.target_part = j["target_part"].get<std::string>();
+  out.target_param = j.value("target_param", std::string(""));
+  out.ratio = j.value("ratio", 1.0f);
+
+  return true;
+}
+
+bool DescriptorParser::FromJson(const nlohmann::json& j, ModelDescriptor& out) {
   if (!j.contains("model_id")) {
     Logger::getInstance().Log(LogLevel::Error,
                               "[DescriptorParser] Missing model_id");
@@ -65,7 +122,44 @@ bool DescriptorParser::FromJson(const nlohmann::json& j,
     }
   }
 
-  // TODO: ParseParameterRange, ParseConstraintRule, ParseParameterBinding
+  if (j.contains("parameter_ranges")) {
+    for (const auto& range_json : j["parameter_ranges"]) {
+      ParameterRange range;
+      if (ParseParameterRange(range_json, range)) {
+        out.parameter_ranges.push_back(std::move(range));
+      } else {
+        Logger::getInstance().Log(
+            LogLevel::Warning,
+            "[DescriptorParser] Failed to parse parameter range");
+      }
+    }
+  }
+
+  if (j.contains("constraints")) {
+    for (const auto& rule_json : j["constraints"]) {
+      ConstraintRule rule;
+      if (ParseConstraintRule(rule_json, rule)) {
+        out.constraints.push_back(std::move(rule));
+      } else {
+        Logger::getInstance().Log(
+            LogLevel::Warning,
+            "[DescriptorParser] Failed to parse constraint rule");
+      }
+    }
+  }
+
+  if (j.contains("parameter_bindings")) {
+    for (const auto& binding_json : j["parameter_bindings"]) {
+      ParameterBinding binding;
+      if (ParseParameterBinding(binding_json, binding)) {
+        out.parameter_bindings.push_back(std::move(binding));
+      } else {
+        Logger::getInstance().Log(
+            LogLevel::Warning,
+            "[DescriptorParser] Failed to parse parameter binding");
+      }
+    }
+  }
 
   return true;
 }
@@ -75,9 +169,8 @@ bool DescriptorParser::LoadFromFile(const std::string& path,
   try {
     std::ifstream file(path);
     if (!file.is_open()) {
-      Logger::getInstance().Log(
-          LogLevel::Error,
-          "[DescriptorParser] Cannot open: " + path);
+      Logger::getInstance().Log(LogLevel::Error,
+                                "[DescriptorParser] Cannot open: " + path);
       return false;
     }
     nlohmann::json j = nlohmann::json::parse(file);

@@ -26,8 +26,8 @@ struct SelectionGroup {
 struct ParameterRange {
   std::string part_id;
 
-  // std::optional<glm::vec3> scale_min;
-  // std::optional<glm::vec3> scale_max;
+  std::optional<glm::vec3> scale_min;
+  std::optional<glm::vec3> scale_max;
   std::optional<glm::vec3> rotation_min;
   std::optional<glm::vec3> rotation_max;
 
@@ -54,10 +54,10 @@ struct ParameterBinding {
 
 // Full archetype definition
 struct ModelDescriptor {
-  std::string model_id; // archetype identity
+  std::string model_id;  // archetype identity
   std::string model_name;
   std::string path;
-  std::string domain; // e.g. vegetation, building, etc
+  std::string domain;  // e.g. vegetation, building, etc
 
   std::vector<SelectionGroup> selection_groups;
   std::vector<ParameterRange> parameter_ranges;
@@ -67,7 +67,7 @@ struct ModelDescriptor {
   // Archetype-level attributes
   std::optional<glm::vec3> scale_min;  // model scale range
   std::optional<glm::vec3> scale_max;
-  std::vector<std::string> tags;       // ex: "vegetation", "tropical"
+  std::vector<std::string> tags;  // ex: "vegetation", "tropical"
 };
 
 }  // namespace ProcModel

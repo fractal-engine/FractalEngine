@@ -5,6 +5,8 @@
 #include <string>
 #include <vector>
 
+#include "engine/pcg/procmodel/descriptor/model_descriptor.h"
+
 namespace ProcModel {
 
 struct ModelGraphNode {
@@ -12,8 +14,15 @@ struct ModelGraphNode {
   glm::mat4 local_transform;
   std::vector<int> mesh_indices;  // empty if no geometry
   std::vector<ModelGraphNode> children;
+
+  // Annotation slots
+  std::string group_id;  // Empty if not part of a selection group
+  const PartDescriptor* part = nullptr;  // Null if not a selectable part
+  std::vector<const ParameterRange*> parameter_ranges;
+  std::vector<const ParameterBinding*> outgoing_bindings;
+  bool is_fixed = false;  // True if node always present
 };
 
 }  // namespace ProcModel
 
-#endif // MODEL_GRAPH_NODE_H
+#endif  // MODEL_GRAPH_NODE_H
