@@ -1,205 +1,209 @@
 {
-  "model_id": "test_model",
-  "model_name": "Test Model",
+  "model_id": "test_building",
+  "model_name": "Test Building",
   "domain": "building",
-  "path": "assets/models/test_building.gltf",
-  "scale_min": [
-    0.8,
-    0.8,
-    0.8
-  ],
-  "scale_max": [
-    1.2,
-    1.2,
-    1.2
-  ],
+  "path": "/Users/louismercier/Projects/FractalEngine/build/macosx/x86_64/release/examples/example-project/test_model.glb",
   "selection_groups": [
     {
-      "group_id": "_BASE_",
+      "group_id": "BASE_",
       "required": true,
       "activated_by": "",
       "parts": [
         {
           "id": "BASE_A",
-          "name": "Base A",
+          "name": "Style A",
           "weight": 1.0
         },
         {
           "id": "BASE_B",
-          "name": "Base B",
-          "weight": 0.5
+          "name": "Style B",
+          "weight": 1.0
         },
         {
           "id": "BASE_C",
-          "name": "Base C",
+          "name": "Style C",
           "weight": 1.0
         }
       ]
     },
     {
-      "group_id": "_ROOF_",
+      "group_id": "ROOF_A_",
       "required": true,
-      "activated_by": "_BASE_",
+      "activated_by": "BASE_A",
       "parts": [
         {
-          "id": "ROOF_A",
+          "id": "ROOF_A_A",
           "name": "Roof A",
           "weight": 1.0
         },
         {
-          "id": "ROOF_B",
+          "id": "ROOF_A_B",
           "name": "Roof B",
           "weight": 1.0
         },
         {
-          "id": "ROOF_C",
+          "id": "ROOF_A_C",
           "name": "Roof C",
           "weight": 1.0
         }
       ]
     },
     {
-      "group_id": "_WINDOW_",
+      "group_id": "ROOF_B_",
       "required": true,
-      "activated_by": "",
+      "activated_by": "BASE_B",
       "parts": [
         {
-          "id": "WINDOW_A",
-          "name": "Window A",
+          "id": "ROOF_B_A",
+          "name": "Roof A",
           "weight": 1.0
         },
         {
-          "id": "WINDOW_B",
-          "name": "Window B",
+          "id": "ROOF_B_B",
+          "name": "Roof B",
           "weight": 1.0
         },
         {
-          "id": "WINDOW_C",
-          "name": "Window C",
+          "id": "ROOF_B_C",
+          "name": "Roof C",
           "weight": 1.0
         }
       ]
     },
     {
-      "group_id": "_BALCONY_",
+      "group_id": "ROOF_C_",
       "required": true,
-      "activated_by": "",
+      "activated_by": "BASE_C",
       "parts": [
         {
-          "id": "BALCONY_A",
-          "name": "Balcony A",
+          "id": "ROOF_C_A",
+          "name": "Roof A",
           "weight": 1.0
         },
         {
-          "id": "BALCONY_B",
-          "name": "Balcony B",
+          "id": "ROOF_C_B",
+          "name": "Roof B",
           "weight": 1.0
         },
         {
-          "id": "BALCONY_C",
-          "name": "Balcony C",
+          "id": "ROOF_C_C",
+          "name": "Roof C",
           "weight": 1.0
         }
       ]
     },
     {
-      "group_id": "_CHIMNEY_",
+      "group_id": "DOOR_A_",
       "required": true,
-      "activated_by": "",
+      "activated_by": "BASE_A",
       "parts": [
         {
-          "id": "CHIMNEY_A",
-          "name": "Chimney A",
-          "weight": 1.0
-        },
-        {
-          "id": "CHIMNEY_B",
-          "name": "Chimney B",
-          "weight": 1.0
-        },
-        {
-          "id": "CHIMNEY_C",
-          "name": "Chimney C",
-          "weight": 1.0
-        }
-      ]
-    },
-    {
-      "group_id": "_DOOR_",
-      "required": true,
-      "activated_by": "",
-      "parts": [
-        {
-          "id": "DOOR_A",
+          "id": "DOOR_A_A",
           "name": "Door A",
           "weight": 1.0
         },
         {
-          "id": "DOOR_B",
+          "id": "DOOR_A_B",
           "name": "Door B",
           "weight": 1.0
         },
         {
-          "id": "DOOR_C",
+          "id": "DOOR_A_C",
           "name": "Door C",
           "weight": 1.0
         }
       ]
     },
     {
-      "group_id": "_DECOR_",
+      "group_id": "DOOR_B_",
       "required": true,
-      "activated_by": "",
+      "activated_by": "BASE_B",
       "parts": [
         {
-          "id": "DECOR_A",
-          "name": "Decor A",
+          "id": "DOOR_B_A",
+          "name": "Door A",
           "weight": 1.0
         },
         {
-          "id": "DECOR_B",
-          "name": "Decor B",
+          "id": "DOOR_B_B",
+          "name": "Door B",
           "weight": 1.0
         },
         {
-          "id": "DECOR_C",
-          "name": "Decor C",
+          "id": "DOOR_B_C",
+          "name": "Door C",
+          "weight": 1.0
+        }
+      ]
+    },
+    {
+      "group_id": "WINDOW_A_",
+      "required": true,
+      "activated_by": "BASE_A",
+      "parts": [
+        {
+          "id": "WINDOW_A_A",
+          "name": "Window A",
+          "weight": 1.0
+        },
+        {
+          "id": "WINDOW_A_B",
+          "name": "Window B",
+          "weight": 1.0
+        },
+        {
+          "id": "WINDOW_A_C",
+          "name": "Window C",
+          "weight": 1.0
+        }
+      ]
+    },
+    {
+      "group_id": "WINDOW_B_",
+      "required": true,
+      "activated_by": "BASE_B",
+      "parts": [
+        {
+          "id": "WINDOW_B_A",
+          "name": "Window A",
+          "weight": 1.0
+        },
+        {
+          "id": "WINDOW_B_B",
+          "name": "Window B",
+          "weight": 1.0
+        },
+        {
+          "id": "WINDOW_B_C",
+          "name": "Window C",
+          "weight": 1.0
+        }
+      ]
+    },
+    {
+      "group_id": "WINDOW_C_",
+      "required": true,
+      "activated_by": "BASE_C",
+      "parts": [
+        {
+          "id": "WINDOW_C_A",
+          "name": "Window A",
+          "weight": 1.0
+        },
+        {
+          "id": "WINDOW_C_B",
+          "name": "Window B",
+          "weight": 1.0
+        },
+        {
+          "id": "WINDOW_C_C",
+          "name": "Window C",
           "weight": 1.0
         }
       ]
     }
   ],
-  "parameter_ranges": [
-    {
-      "part_id": "",
-      "scale_min": [
-        0.9,
-        0.9,
-        0.9
-      ],
-      "scale_max": [
-        1.1,
-        1.1,
-        1.1
-      ],
-      "activated_by": ""
-    }
-  ],
-  "constraints": [
-    {
-      "id": "exc_body_b_head_a",
-      "type": "excludes",
-      "part_a": "body_b",
-      "part_b": "head_a"
-    }
-  ],
-  "parameter_bindings": [
-    {
-      "source_part": "body_a",
-      "source_param": "scale",
-      "target_part": "head_a",
-      "target_param": "scale",
-      "ratio": 0.8
-    }
-  ]
+  "parameter_ranges": [],
+  "constraints": [],
+  "parameter_bindings": []
 }
