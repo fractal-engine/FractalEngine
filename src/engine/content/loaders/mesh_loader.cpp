@@ -61,6 +61,33 @@ void ProcessNode(const aiNode* node, const aiScene* scene,
   }
 }
 
+// Build SceneNode tree 
+SceneNode ProcessNodeHierarchy(const aiNode* node, const aiScene* scene,
+                               std::vector<Geometry::MeshData>& out_meshes) {
+  SceneNode result;
+  result.name = node->mName.C_Str();
+
+  // Convert Assimp's row-major 4x4 to glm column-major
+  const auto& m = node->mTransformation;
+  result.local_transform = glm::mat4(
+      m.a1, m.b1, m.c1, m.d1,
+      m.a2, m.b2, m.c2, m.d2,
+      m.a3, m.b3, m.c3, m.d3,
+      m.a4, m.b4, m.c4, m.d4);
+
+  for (unsigned int i = 0; i < node->mNumMeshes; ++i) {
+    const aiMesh* mesh = scene->mMeshes[node->mMeshes[i]];
+    result.mesh_indices.push_back(static_cast<int>(out_meshes.size()));
+    out_meshes.push_back(ConvertMesh(mesh));
+  }
+
+  for (unsigned int i = 0; i < node->mNumChildren; ++i) {
+    result.children.push_back(
+        ProcessNodeHierarchy(node->mChildren[i], scene, out_meshes));
+  }
+
+  return result;
+}
 }  // namespace
 
 std::vector<Geometry::MeshData> MeshLoader::Load(const std::string& path) {
@@ -89,6 +116,34 @@ std::vector<Geometry::MeshData> MeshLoader::Load(const std::string& path) {
                                                  " meshes from " + path);
 
   return meshes;
+}
+
+SceneData MeshLoader::LoadScene(const std::string& path) {
+  Assimp::Importer importer;
+
+  // aiProcess_OptimizeGraph and aiProcess_PreTransformVertices omitted to preserve hierarchy
+  const aiScene* scene = importer.ReadFile(
+      path, aiProcess_Triangulate | aiProcess_GenSmoothNormals |
+                aiProcess_JoinIdenticalVertices |
+                aiProcess_CalcTangentSpace);
+
+  if (!scene || (scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE) ||
+      !scene->mRootNode) {
+    Logger::getInstance().Log(LogLevel::Error,
+                              "[MeshLoader] Failed to load scene: " + path +
+                                  " - " + importer.GetErrorString());
+    return {};
+  }
+
+  SceneData data;
+  data.root = ProcessNodeHierarchy(scene->mRootNode, scene, data.meshes);
+
+  Logger::getInstance().Log(LogLevel::Debug,
+                            "[MeshLoader] Loaded scene with " +
+                                std::to_string(data.meshes.size()) +
+                                " meshes from " + path);
+
+  return data;
 }
 
 bool MeshLoader::IsSupported(const std::string& path) {

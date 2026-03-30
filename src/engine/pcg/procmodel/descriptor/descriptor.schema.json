@@ -1,0 +1,209 @@
+{
+  "model_id": "test_building",
+  "model_name": "Test Building",
+  "domain": "building",
+  "path": "/Users/louismercier/Projects/FractalEngine/build/macosx/x86_64/release/examples/example-project/test_model.glb",
+  "selection_groups": [
+    {
+      "group_id": "BASE_",
+      "required": true,
+      "activated_by": "",
+      "parts": [
+        {
+          "id": "BASE_A",
+          "name": "Style A",
+          "weight": 1.0
+        },
+        {
+          "id": "BASE_B",
+          "name": "Style B",
+          "weight": 1.0
+        },
+        {
+          "id": "BASE_C",
+          "name": "Style C",
+          "weight": 1.0
+        }
+      ]
+    },
+    {
+      "group_id": "ROOF_A_",
+      "required": true,
+      "activated_by": "BASE_A",
+      "parts": [
+        {
+          "id": "ROOF_A_A",
+          "name": "Roof A",
+          "weight": 1.0
+        },
+        {
+          "id": "ROOF_A_B",
+          "name": "Roof B",
+          "weight": 1.0
+        },
+        {
+          "id": "ROOF_A_C",
+          "name": "Roof C",
+          "weight": 1.0
+        }
+      ]
+    },
+    {
+      "group_id": "ROOF_B_",
+      "required": true,
+      "activated_by": "BASE_B",
+      "parts": [
+        {
+          "id": "ROOF_B_A",
+          "name": "Roof A",
+          "weight": 1.0
+        },
+        {
+          "id": "ROOF_B_B",
+          "name": "Roof B",
+          "weight": 1.0
+        },
+        {
+          "id": "ROOF_B_C",
+          "name": "Roof C",
+          "weight": 1.0
+        }
+      ]
+    },
+    {
+      "group_id": "ROOF_C_",
+      "required": true,
+      "activated_by": "BASE_C",
+      "parts": [
+        {
+          "id": "ROOF_C_A",
+          "name": "Roof A",
+          "weight": 1.0
+        },
+        {
+          "id": "ROOF_C_B",
+          "name": "Roof B",
+          "weight": 1.0
+        },
+        {
+          "id": "ROOF_C_C",
+          "name": "Roof C",
+          "weight": 1.0
+        }
+      ]
+    },
+    {
+      "group_id": "DOOR_A_",
+      "required": true,
+      "activated_by": "BASE_A",
+      "parts": [
+        {
+          "id": "DOOR_A_A",
+          "name": "Door A",
+          "weight": 1.0
+        },
+        {
+          "id": "DOOR_A_B",
+          "name": "Door B",
+          "weight": 1.0
+        },
+        {
+          "id": "DOOR_A_C",
+          "name": "Door C",
+          "weight": 1.0
+        }
+      ]
+    },
+    {
+      "group_id": "DOOR_B_",
+      "required": true,
+      "activated_by": "BASE_B",
+      "parts": [
+        {
+          "id": "DOOR_B_A",
+          "name": "Door A",
+          "weight": 1.0
+        },
+        {
+          "id": "DOOR_B_B",
+          "name": "Door B",
+          "weight": 1.0
+        },
+        {
+          "id": "DOOR_B_C",
+          "name": "Door C",
+          "weight": 1.0
+        }
+      ]
+    },
+    {
+      "group_id": "WINDOW_A_",
+      "required": true,
+      "activated_by": "BASE_A",
+      "parts": [
+        {
+          "id": "WINDOW_A_A",
+          "name": "Window A",
+          "weight": 1.0
+        },
+        {
+          "id": "WINDOW_A_B",
+          "name": "Window B",
+          "weight": 1.0
+        },
+        {
+          "id": "WINDOW_A_C",
+          "name": "Window C",
+          "weight": 1.0
+        }
+      ]
+    },
+    {
+      "group_id": "WINDOW_B_",
+      "required": true,
+      "activated_by": "BASE_B",
+      "parts": [
+        {
+          "id": "WINDOW_B_A",
+          "name": "Window A",
+          "weight": 1.0
+        },
+        {
+          "id": "WINDOW_B_B",
+          "name": "Window B",
+          "weight": 1.0
+        },
+        {
+          "id": "WINDOW_B_C",
+          "name": "Window C",
+          "weight": 1.0
+        }
+      ]
+    },
+    {
+      "group_id": "WINDOW_C_",
+      "required": true,
+      "activated_by": "BASE_C",
+      "parts": [
+        {
+          "id": "WINDOW_C_A",
+          "name": "Window A",
+          "weight": 1.0
+        },
+        {
+          "id": "WINDOW_C_B",
+          "name": "Window B",
+          "weight": 1.0
+        },
+        {
+          "id": "WINDOW_C_C",
+          "name": "Window C",
+          "weight": 1.0
+        }
+      ]
+    }
+  ],
+  "parameter_ranges": [],
+  "constraints": [],
+  "parameter_bindings": []
+}

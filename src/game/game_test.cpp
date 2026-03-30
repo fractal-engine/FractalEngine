@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "editor/runtime/runtime.h"
+#include "engine/context/engine_context.h"
 #include "engine/core/logger.h"
 #include "engine/core/view_ids.h"
 #include "engine/ecs/ecs_collection.h"
@@ -20,6 +21,11 @@
 #include "engine/resources/shader_utils.h"
 #include "engine/resources/textures/texture_utils.h"
 #include "engine/transform/transform.h"
+
+// REMOVE THESE - only used for procmodel
+#include "engine/content/loaders/mesh_loader.h"
+#include "engine/pcg/procmodel/descriptor/descriptor_builder.h"
+#include "engine/pcg/procmodel/model_graph/model_graph_builder.h"
 
 /*******************************************************************************
  * TODO:
@@ -278,6 +284,42 @@ void GameTest::Init() {
       KNOWN_SHADOW_MAP_SIZE, KNOWN_SHADOW_MAP_SIZE, false, 1,
       bgfx::TextureFormat::D32, BGFX_TEXTURE_RT | BGFX_SAMPLER_COMPARE_LESS);
   shadowMapFB = bgfx::createFrameBuffer(1, &shadowMapTexture, true); */
+
+  // ── Procmodel vertical slice test ──
+  auto& pcg = EngineContext::Generator();
+  auto result = pcg.RequestInstance(
+      "/Users/louismercier/Projects/FractalEngine/build/macosx/x86_64/release/"
+      "examples/example-project/test_model.json",
+      42);
+
+  if (result.root != entt::null) {
+    Logger::getInstance().Log(LogLevel::Info,
+                              "[GameTest] Procmodel test: spawned " +
+                                  std::to_string(result.part_entities.size()) +
+                                  " parts");
+  } else {
+    Logger::getInstance().Log(LogLevel::Error,
+                              "[GameTest] Procmodel test: failed to spawn");
+  }
+
+  // DEBUG - display file hierarchy in logger
+  auto scene = Content::MeshLoader::LoadScene(
+      "/Users/louismercier/Projects/FractalEngine/build/macosx/x86_64/release/"
+      "examples/example-project/test_model.glb");
+
+  auto graph = ProcModel::ModelGraphBuilder::Build(scene, "test_model.glb");
+
+  auto desc = ProcModel::DescriptorBuilder::Build("test_model",
+                                                  "test_model.glb", graph);
+
+  for (const auto& group : desc.selection_groups) {
+    Logger::getInstance().Log(
+        LogLevel::Info, "[Test] Group: " + group.group_id + " (" +
+                            std::to_string(group.parts.size()) + " parts)");
+    for (const auto& part : group.parts) {
+      Logger::getInstance().Log(LogLevel::Info, "  - " + part.id);
+    }
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════
