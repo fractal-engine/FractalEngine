@@ -290,7 +290,7 @@ void GameTest::Init() {
   auto result = pcg.RequestInstance(
       "/Users/louismercier/Projects/FractalEngine/build/macosx/x86_64/release/"
       "examples/example-project/test_model.json",
-      42);
+      66);
 
   if (result.root != entt::null) {
     Logger::getInstance().Log(LogLevel::Info,

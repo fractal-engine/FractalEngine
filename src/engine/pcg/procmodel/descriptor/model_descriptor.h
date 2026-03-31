@@ -21,6 +21,7 @@ struct SelectionGroup {
   std::vector<PartDescriptor> parts;
   bool required = true;
   std::string activated_by;  // Empty = root group
+  std::string attachment_id;
 };
 
 struct ParameterRange {

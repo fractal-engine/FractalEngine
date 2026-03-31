@@ -60,6 +60,7 @@ std::optional<ResolvedModel> ModelGenerator::Generate(
       resolved.group_id = group->group_id;
       resolved.mesh_indices = node->mesh_indices;
       resolved.local_transform = node->local_transform;
+      resolved.attachment_id = group->attachment_id;
 
       // Sample parameter ranges from annotations
       ApplyParameterRanges(resolved, *node, rng);
