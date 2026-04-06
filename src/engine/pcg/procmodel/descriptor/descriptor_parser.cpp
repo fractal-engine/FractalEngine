@@ -18,7 +18,12 @@ bool DescriptorParser::ParseSelectionGroup(const nlohmann::json& j,
   out.group_id = j["group_id"].get<std::string>();
   out.required = j.value("required", true);
   out.activated_by = j.value("activated_by", std::string(""));
-  out.attachment_id = j.value("attachment_id", std::string(""));
+
+  if (j.contains("attach_to")) {
+    for (const auto& id : j["attach_to"]) {
+      out.attach_to.push_back(id.get<std::string>());
+    }
+  }
 
   for (const auto& part_json : j["parts"]) {
     PartDescriptor part;

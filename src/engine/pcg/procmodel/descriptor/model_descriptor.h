@@ -20,8 +20,8 @@ struct SelectionGroup {
   std::string group_id;
   std::vector<PartDescriptor> parts;
   bool required = true;
-  std::string activated_by;  // Empty = root group
-  std::string attachment_id;
+  std::string activated_by;            // Empty = root group
+  std::vector<std::string> attach_to;  // attachment slots
 };
 
 struct ParameterRange {

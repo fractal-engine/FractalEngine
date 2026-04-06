@@ -16,7 +16,7 @@ struct ResolvedDescriptor {
   glm::mat4 local_transform;
   glm::vec3 applied_scale;
   glm::vec3 applied_rotation;
-  std::string attachment_id;
+  std::vector<std::string> attach_to;
 };
 
 // Contains list of descriptors

@@ -198,6 +198,7 @@ before_buildcmd_file(function(target, batchcmds, shaderfile, opt)
 		default = "varying_default.def.sc",
 		debug = "varying_debug.def.sc",
 		materials = "varying_materials.def.sc",
+		selection = "varying_default.def.sc",
 	}
 
 	-- pick first key matching anywhere in relative path

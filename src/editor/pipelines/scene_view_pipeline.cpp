@@ -4,6 +4,7 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
+#include "bgfx/defines.h"
 #include "editor/camera/camera_view.h"
 #include "editor/editor_ui.h"
 #include "editor/gizmos/component_gizmos.h"
@@ -49,7 +50,11 @@ void SceneViewPipeline::Create() {
 
   // Load shared shaders
   default_program_ =
-      Runtime::Shader()->LoadProgram("materials", "vs_lit.bin", "fs_lit.bin");
+      // ! Check lighting shaders (not working)
+      // Runtime::Shader()->LoadProgram("materials", "vs_lit.bin",
+      // "fs_lit.bin");
+      // ! GLTF shaders are placeholders
+      Runtime::Shader()->LoadProgram("gltf", "vs_gltf.bin", "fs_gltf.bin");
   selection_program_ = Runtime::Shader()->LoadProgram(
       "selection", "vs_selection.bin", "fs_selection.bin");
   debug_program_ = Runtime::Shader()->LoadProgram("debug", "vs_grid_plane.bin",
@@ -236,7 +241,8 @@ void SceneViewPipeline::RenderForwardNode(const Node::Context& context) {
   bgfx::setViewFrameBuffer(ViewID::SCENE_FORWARD,
                            renderer->GetSceneFramebuffer());
 
-  bgfx::setViewClear(ViewID::SCENE_FORWARD, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH,
+  bgfx::setViewClear(ViewID::SCENE_FORWARD,
+                     BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH | BGFX_CLEAR_STENCIL,
                      wireframe_ ? 0xffffffff : 0x303030ff, 1.0f, 0);
 
   // Get shadows
@@ -571,7 +577,7 @@ void SceneViewPipeline::RenderSelectedEntityOutline(
 
   // Placeholder transform component for outline
   TransformComponent outline_transform = transform;
-  float thickness = 0.038f;
+  float thickness = 0.02f;
   outline_transform.scale_ += glm::vec3(thickness);
 
   // Recompute model matrix for outline
@@ -589,9 +595,13 @@ void SceneViewPipeline::RenderSelectedEntityOutline(
   // Forward render entity's base mesh
   // TODO: Set shader uniforms (mvp, model, normal)
   // TODO: should use Shader and Material systems once implemented
+  bgfx::setStencil(
+      BGFX_STENCIL_TEST_ALWAYS | BGFX_STENCIL_FUNC_REF(1) |
+      BGFX_STENCIL_FUNC_RMASK(0xFF) | BGFX_STENCIL_OP_FAIL_S_REPLACE |
+      BGFX_STENCIL_OP_FAIL_Z_REPLACE | BGFX_STENCIL_OP_PASS_Z_REPLACE);
   bgfx::setTransform(glm::value_ptr(transform.model_));
   renderer.mesh_->Bind();
-  bgfx::setState(BGFX_STATE_DEFAULT);
+  bgfx::setState(BGFX_STATE_DEFAULT | BGFX_STATE_CULL_CW);
   bgfx::submit(ViewID::SCENE_FORWARD, default_program_);
 
   // Render outline of selected entity
@@ -603,13 +613,16 @@ void SceneViewPipeline::RenderSelectedEntityOutline(
   // Render mesh as outline
   // TODO: should use Shader and Material systems once implemented?
   // TODO: Use stencil test to only draw outline edges
+  bgfx::setStencil(BGFX_STENCIL_TEST_NOTEQUAL | BGFX_STENCIL_FUNC_REF(1) |
+                   BGFX_STENCIL_FUNC_RMASK(0xFF) | BGFX_STENCIL_OP_FAIL_S_KEEP |
+                   BGFX_STENCIL_OP_FAIL_Z_KEEP | BGFX_STENCIL_OP_PASS_Z_KEEP);
   bgfx::setTransform(glm::value_ptr(outline_transform.model_));
   renderer.mesh_->Bind();
-  // TODO: Use selection_material_ for outline shader
-  bgfx::setState(BGFX_STATE_DEFAULT | BGFX_STATE_BLEND_ALPHA |
-                 BGFX_STATE_CULL_CW);
-  bgfx::submit(ViewID::SCENE_FORWARD, selection_program_);
 
+  bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A |
+                 BGFX_STATE_DEPTH_TEST_LEQUAL | BGFX_STATE_CULL_CW);
+
+  bgfx::submit(ViewID::SCENE_FORWARD, selection_program_);
   // TODO: Reset BGFX blend and stencil state if needed
 }
 

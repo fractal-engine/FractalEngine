@@ -48,15 +48,6 @@ Entity ModelInstantiator::CreatePartEntity(const ResolvedDescriptor& descriptor,
 
   auto [entity, transform] = ecs.CreateEntity(descriptor.descriptor_id, parent);
 
-  // Resolve attachment transform
-  glm::mat4 base_transform = descriptor.local_transform;
-  if (!descriptor.attachment_id.empty()) {
-    auto attach = graph.node_lookup.find(descriptor.attachment_id);
-    if (attach != graph.node_lookup.end()) {
-      base_transform = attach->second->local_transform;
-    }
-  }
-
   // Decompose the base local transform from graph node
   glm::vec3 position;
   glm::quat rotation;

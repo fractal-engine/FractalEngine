@@ -60,13 +60,25 @@ std::optional<ResolvedModel> ModelGenerator::Generate(
       resolved.group_id = group->group_id;
       resolved.mesh_indices = node->mesh_indices;
       resolved.local_transform = node->local_transform;
-      resolved.attachment_id = group->attachment_id;
+      resolved.attach_to = group->attach_to;
 
       // Sample parameter ranges from annotations
       ApplyParameterRanges(resolved, *node, rng);
 
-      resolved_descriptors.push_back(std::move(resolved));
+      if (group->attach_to.empty()) {
+        resolved_descriptors.push_back(std::move(resolved));
+      } else {
+        for (const auto& attach_id : group->attach_to) {
+          auto attach_it = graph.node_lookup.find(attach_id);
+          if (attach_it == graph.node_lookup.end())
+            continue;
 
+          ResolvedDescriptor attached = resolved;
+          attached.local_transform = attach_it->second->local_transform;
+          attached.descriptor_id = resolved.descriptor_id + "_at_" + attach_id;
+          resolved_descriptors.push_back(std::move(attached));
+        }
+      }
       // Activate dependent groups
       for (const auto& g : descriptor.selection_groups) {
         if (g.activated_by == chosen->id) {
