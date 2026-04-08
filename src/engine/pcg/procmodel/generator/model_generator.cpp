@@ -74,7 +74,7 @@ std::optional<ResolvedModel> ModelGenerator::Generate(
             continue;
 
           ResolvedDescriptor attached = resolved;
-          attached.local_transform = attach_it->second->local_transform;
+          attached.local_transform = attach_it->second->world_transform;
           attached.descriptor_id = resolved.descriptor_id + "_at_" + attach_id;
           resolved_descriptors.push_back(std::move(attached));
         }

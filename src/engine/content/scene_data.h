@@ -7,6 +7,11 @@
 
 #include "engine/core/types/geometry_data.h"
 
+//
+// SCENE_DATA_H
+// Data container for hierarchal imports
+//
+
 namespace Content {
 
 struct SceneNode {
@@ -23,5 +28,4 @@ struct SceneData {
 
 }  // namespace Content
 
-
-#endif // SCENE_DATA_H
+#endif  // SCENE_DATA_H

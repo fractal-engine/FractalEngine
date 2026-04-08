@@ -11,7 +11,8 @@ namespace ProcModel {
 
 struct ModelGraphNode {
   std::string name;
-  glm::mat4 local_transform;
+  glm::mat4 local_transform;  // relative to node's parents
+  glm::mat4 world_transform;
   std::vector<int> mesh_indices;  // empty if no geometry
   std::vector<ModelGraphNode> children;
 
