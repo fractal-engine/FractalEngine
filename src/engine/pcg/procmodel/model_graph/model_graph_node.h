@@ -21,6 +21,8 @@ struct ModelGraphNode {
   std::vector<const ParameterRange*> parameter_ranges;
   std::vector<const ParameterBinding*> outgoing_bindings;
   bool is_fixed = false;  // True if node always present
+  bool is_attach_point = false;
+  std::string attach_group_id;
 };
 
 }  // namespace ProcModel

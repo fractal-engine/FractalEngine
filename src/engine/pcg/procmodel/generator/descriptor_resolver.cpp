@@ -14,7 +14,7 @@ DescriptorResolver::ResolveResult DescriptorResolver::Resolve(
 
   for (const auto& [name, node_ptr] : graph.node_lookup) {
     if (node_ptr->group_id.empty() && node_ptr->parameter_ranges.empty() &&
-        !node_ptr->is_fixed) {
+        !node_ptr->is_fixed && !node_ptr->is_attach_point) {
       result.warnings.push_back("Node '" + name +
                                 "' not referenced by any descriptor entry");
     }
@@ -65,8 +65,20 @@ bool DescriptorResolver::MapSelectionGroups(ModelGraph& graph,
       node->group_id = group.group_id;
       node->part = &part;
     }
-  }
 
+    // Check for attachment points
+    for (const auto& attach_name : group.attach_to) {
+      auto att_it = graph.node_lookup.find(attach_name);
+      if (att_it == graph.node_lookup.end()) {
+        errors.push_back("Attach point '" + attach_name + "' in group '" +
+                         group.group_id + "' not found in model graph");
+        all_ok = false;
+        continue;
+      }
+      att_it->second->is_attach_point = true;
+      att_it->second->attach_group_id = group.group_id;
+    }
+  }
   return all_ok;
 }
 
