@@ -17,13 +17,17 @@ struct PreviewOutput {
   uint16_t width = 0;
   uint16_t height = 0;
   bool resize_pending = false;
-  bgfx::ViewId view_id = 0; // View ID tracker
+  bgfx::ViewId view_id = 0;  // View ID tracker
 };
 
 struct PreviewRenderInstruction {
   size_t output_index = 0;
   glm::vec4 background_color = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
   Model* model = nullptr;
+
+  // For selective mesh rendering
+  std::vector<uint32_t> mesh_filter;
+
   // ! add lighting?
   TransformComponent model_transform;
   TransformComponent camera_transform;

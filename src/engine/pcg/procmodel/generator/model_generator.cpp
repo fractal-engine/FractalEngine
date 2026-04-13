@@ -1,8 +1,48 @@
 #include "model_generator.h"
 
+#include <pcg_random.hpp>
 #include <random>
 
 namespace ProcModel {
+
+// Final matrix is composed in ModelInstantiator
+static void ApplyParameterRanges(ResolvedDescriptor& resolved,
+                                 const ModelGraphNode& node, pcg32& rng) {
+  for (const auto* range : node.parameter_ranges) {
+    if (range->rotation_min && range->rotation_max) {
+      std::uniform_real_distribution<float> dist_x(range->rotation_min->x,
+                                                   range->rotation_max->x);
+      std::uniform_real_distribution<float> dist_y(range->rotation_min->y,
+                                                   range->rotation_max->y);
+      std::uniform_real_distribution<float> dist_z(range->rotation_min->z,
+                                                   range->rotation_max->z);
+
+      resolved.applied_rotation =
+          glm::vec3(dist_x(rng), dist_y(rng), dist_z(rng));
+    }
+  }
+}
+
+static const PartDescriptor* WeightedSelect(
+    const std::vector<const PartDescriptor*>& candidates, pcg32& rng) {
+  float total_weight = 0.0f;
+  for (const auto* c : candidates) {
+    total_weight += c->weight;
+  }
+
+  std::uniform_real_distribution<float> dist(0.0f, total_weight);
+  float roll = dist(rng);
+
+  float cumulative = 0.0f;
+  for (const auto* c : candidates) {
+    cumulative += c->weight;
+    if (roll <= cumulative) {
+      return c;
+    }
+  }
+
+  return candidates.back();
+}
 
 std::optional<ResolvedModel> ModelGenerator::Generate(
     const ModelGraph& graph, const ModelDescriptor& descriptor, uint64_t seed,
@@ -108,27 +148,6 @@ std::optional<ResolvedModel> ModelGenerator::Generate(
   return std::nullopt;
 }
 
-const PartDescriptor* ModelGenerator::WeightedSelect(
-    const std::vector<const PartDescriptor*>& candidates, pcg32& rng) {
-  float total_weight = 0.0f;
-  for (const auto* c : candidates) {
-    total_weight += c->weight;
-  }
-
-  std::uniform_real_distribution<float> dist(0.0f, total_weight);
-  float roll = dist(rng);
-
-  float cumulative = 0.0f;
-  for (const auto* c : candidates) {
-    cumulative += c->weight;
-    if (roll <= cumulative) {
-      return c;
-    }
-  }
-
-  return candidates.back();
-}
-
 bool ModelGenerator::IsValidSelection(
     const std::string& part_id,
     const std::unordered_set<std::string>& selected_ids,
@@ -149,25 +168,6 @@ bool ModelGenerator::IsValidSelection(
     }
   }
   return true;
-}
-
-// Final matrix is composed in ModelInstantiator
-void ModelGenerator::ApplyParameterRanges(ResolvedDescriptor& resolved,
-                                          const ModelGraphNode& node,
-                                          pcg32& rng) {
-  for (const auto* range : node.parameter_ranges) {
-    if (range->rotation_min && range->rotation_max) {
-      std::uniform_real_distribution<float> dist_x(range->rotation_min->x,
-                                                   range->rotation_max->x);
-      std::uniform_real_distribution<float> dist_y(range->rotation_min->y,
-                                                   range->rotation_max->y);
-      std::uniform_real_distribution<float> dist_z(range->rotation_min->z,
-                                                   range->rotation_max->z);
-
-      resolved.applied_rotation =
-          glm::vec3(dist_x(rng), dist_y(rng), dist_z(rng));
-    }
-  }
 }
 
 void ModelGenerator::ApplyParameterBindings(

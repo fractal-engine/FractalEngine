@@ -6,9 +6,8 @@
 #include "editor/gui/styles/editor_styles.h"
 #include "engine/ecs/components/transform_component.h"
 #include "engine/renderer/model/model.h"
-#include "model_preview.h"
 
-ModelViewer::ModelViewer() {}
+ModelViewer::ModelViewer(PreviewData* data) : data_(data) {}
 
 ModelViewer::~ModelViewer() {
   if (initialized_) {
@@ -22,18 +21,6 @@ void ModelViewer::Init() {
 
   preview_pipeline_.Create();
   viewport_output_ = preview_pipeline_.CreateOutput();
-
-  // Grab the loaded model from the preview tool
-  model_ = ModelPreview::GetModel();
-
-  if (model_) {
-    // Read the actual metrics from the loaded model
-    const Model::Metrics& metrics = model_->GetMetrics();
-    material_slots_ = metrics.n_materials;
-    vert_count_ = metrics.n_vertices;
-    tri_count_ = metrics.n_faces;
-  }
-
   initialized_ = true;
 }
 
@@ -62,11 +49,13 @@ void ModelViewer::Render() {
 }
 
 void ModelViewer::RenderViewport() {
-  int current_variant = ModelPreview::GetSelectedVariant();
+  int current_instance = data_->selected_instance;
+  bool has_instance =
+      data_->model && current_instance >= 0 &&
+      current_instance < static_cast<int>(data_->instances.size());
 
-  std::string model_path = "MODELS/BUILDINGS/PROCEDURAL/VARIANT_" +
-                           std::to_string(current_variant) + ".SCENE.MBIN";
-  ImGui::TextDisabled("%s", model_path.c_str());
+  ImGui::TextDisabled("Instance %d / %d", current_instance,
+                      static_cast<int>(data_->instances.size()));
 
   ImVec2 avail = ImGui::GetContentRegionAvail();
   float viewport_height = avail.y * 0.60f;
@@ -85,12 +74,13 @@ void ModelViewer::RenderViewport() {
 
   ImDrawList* draw_list = ImGui::GetWindowDrawList();
   draw_list->AddRectFilled(p_min, p_max, EditorColor::background);
-
-  // --- Dynamic Bounding Box Scaling ---
+  //
+  // BOUNDING BOX SCALING
+  //
   glm::vec3 center = glm::vec3(0.0f);
-  float max_dim = 1.0f;  // Track the largest dimension to normalize the scale
-  if (model_) {
-    const auto& metrics = model_->GetMetrics();
+  float max_dim = 1.0f;
+  if (data_->model) {
+    const auto& metrics = data_->model->GetMetrics();
     center = (metrics.min_point + metrics.max_point) * 0.5f;
     glm::vec3 dims = metrics.max_point - metrics.min_point;
     max_dim = glm::max(dims.x, glm::max(dims.y, dims.z));
@@ -98,23 +88,23 @@ void ModelViewer::RenderViewport() {
       max_dim = 1.0f;
   }
 
-  // Scales the model down so its largest side fits perfectly inside a 1.0 unit
-  // box
+  // Scales the model down
   float norm_scale = 1.0f / max_dim;
 
   // Reset smoothly when a new variant is clicked
-  static int last_variant = -1;
-  if (current_variant != last_variant && model_) {
-    // 1.5 distance perfectly frames a 1.0-sized object in a 45deg FOV camera
+  static int last_instance = -1;
+  if (current_instance != last_instance && data_->model) {
     camera_distance_ = 2.5f;
-    model_pitch_ = -0.2f;  // Look slightly down
-    model_yaw_ = float(current_variant) * 0.4f;
+    model_pitch_ = -0.2f;
+    model_yaw_ = 0.0f;
     camera_pan_x_ = 0.0f;
     camera_pan_y_ = 0.0f;
-    last_variant = current_variant;
+    last_instance = current_instance;
   }
 
-  // --- BLENDER CONTROLS ---
+  //
+  // CAMERA CONTROLS
+  //
   ImGui::InvisibleButton("##ModelInteract", size);
   bool is_hovered = ImGui::IsItemHovered();
 
@@ -136,7 +126,9 @@ void ModelViewer::RenderViewport() {
       camera_pan_x_ += wasd_speed;
   }
 
-  // --- TRACKPAD ---
+  //
+  // TRACKPAD
+  //
   static bool is_alt_dragging = false;
   if (is_hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left) &&
       ImGui::GetIO().KeyAlt) {
@@ -201,30 +193,37 @@ void ModelViewer::RenderViewport() {
   glm::vec3 rotated_center = base_rotation * (center * norm_scale);
   glm::vec3 focal_point = (center * norm_scale) + pan_offset;
 
-  PreviewRenderInstruction inst;
-  inst.output_index = viewport_output_;
-  inst.background_color = glm::vec4(0.094f, 0.094f, 0.094f, 1.0f);
+  if (has_instance) {
+    PreviewRenderInstruction inst;
+    inst.output_index = viewport_output_;
+    inst.background_color = glm::vec4(0.094f, 0.094f, 0.094f, 1.0f);
+    inst.model = data_->model.get();
 
-  inst.model = model_.get();
+    // Filter to only selected instance's meshes
+    const auto& resolved = data_->instances[current_instance];
+    for (const auto& desc : resolved.descriptors) {
+      for (int idx : desc.mesh_indices) {
+        inst.mesh_filter.push_back(static_cast<uint32_t>(idx));
+      }
+    }
 
-  // Keep model at origin to prevent lasso clipping, but apply the orientation
-  // fix
-  inst.model_transform.position_ = glm::vec3(0.0f);
-  inst.model_transform.rotation_ = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
-  inst.model_transform.scale_ = glm::vec3(norm_scale);
+    // Keep model at origin to prevent lasso clipping
+    inst.model_transform.position_ = glm::vec3(0.0f);
+    inst.model_transform.rotation_ = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
+    inst.model_transform.scale_ = glm::vec3(norm_scale);
 
-  // Orbit camera perfectly around the focal point
-  inst.camera_transform.rotation_ = q_cam;
-  inst.camera_transform.position_ =
-      focal_point + (q_cam * glm::vec3(0.0f, 0.0f, -camera_distance_));
+    // Orbit camera perfectly around the focal point
+    inst.camera_transform.rotation_ = q_cam;
+    inst.camera_transform.position_ =
+        focal_point + (q_cam * glm::vec3(0.0f, 0.0f, -camera_distance_));
 
-  preview_pipeline_.AddRenderInstruction(inst);
+    preview_pipeline_.AddRenderInstruction(inst);
+  }
 
   bgfx::TextureHandle tex =
       preview_pipeline_.GetOutputTexture(viewport_output_);
-  if (model_ && bgfx::isValid(tex)) {
+  if (has_instance && bgfx::isValid(tex)) {
     ImGui::SetCursorScreenPos(p_min);
-    // Render with UVs flipped vertically to correct BGFX rendering
     ImGui::Image((ImTextureID)(uintptr_t)tex.idx, size, ImVec2(0, 1),
                  ImVec2(1, 0));
   } else {
@@ -243,33 +242,55 @@ void ModelViewer::RenderViewport() {
 void ModelViewer::RenderModelProperties() {
   ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(8.0f, 6.0f));
 
-  if (ImGui::CollapsingHeader("Procedural Mesh Data",
+  if (ImGui::CollapsingHeader("Mesh Data", ImGuiTreeNodeFlags_DefaultOpen)) {
+    ImGui::Indent(10.0f);
+    ImGui::Dummy(ImVec2(0, 4.0f));
+
+    if (data_->model) {
+      const auto& metrics = data_->model->GetMetrics();
+      ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "Topology");
+      ImGui::Text("Vertices: %u", metrics.n_vertices);
+      ImGui::Text("Triangles: %u", metrics.n_faces);
+
+      ImGui::Dummy(ImVec2(0, 4.0f));
+      ImGui::Separator();
+      ImGui::Dummy(ImVec2(0, 4.0f));
+
+      ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "Materials");
+      ImGui::Text("Slots: %u", metrics.n_materials);
+    } else {
+      ImGui::TextDisabled("No model loaded");
+    }
+
+    ImGui::Dummy(ImVec2(0, 4.0f));
+    ImGui::Unindent(10.0f);
+  }
+
+  ImGui::PopStyleVar();
+}
+
+void ModelViewer::RenderInstanceList() {
+  int idx = data_->selected_instance;
+
+  if (idx < 0 || idx >= static_cast<int>(data_->instances.size()))
+    return;
+
+  const auto& resolved = data_->instances[idx];
+
+  ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(8.0f, 6.0f));
+
+  // Display selection path of current instance
+  if (ImGui::CollapsingHeader("Instance Parts",
                               ImGuiTreeNodeFlags_DefaultOpen)) {
     ImGui::Indent(10.0f);
     ImGui::Dummy(ImVec2(0, 4.0f));
 
-    // Dynamic stats pulled directly from Model::Metrics
-    ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "Topology");
-    ImGui::Text("Vertices: %u", vert_count_);
-    ImGui::Text("Triangles: %u", tri_count_);
-
-    ImGui::Dummy(ImVec2(0, 4.0f));
-    ImGui::Separator();
+    ImGui::Text("Seed: %llu", resolved.seed);
     ImGui::Dummy(ImVec2(0, 4.0f));
 
-    ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "Materials");
-    ImGui::Text("Slots Active: %u", material_slots_);
-    ImGui::Text("Base Material: %s", "Mat_Default_01");
-
-    ImGui::Dummy(ImVec2(0, 4.0f));
-    ImGui::Separator();
-    ImGui::Dummy(ImVec2(0, 4.0f));
-
-    ImGui::AlignTextToFramePadding();
-    ImGui::Text("LOD Bias");
-    ImGui::SameLine(100.0f);
-    ImGui::SetNextItemWidth(-FLT_MIN);
-    ImGui::SliderFloat("##LOD", &lod_bias_, 0.1f, 5.0f, "%.2f");
+    for (const auto& desc : resolved.descriptors) {
+      ImGui::Text("%s", desc.descriptor_id.c_str());
+    }
 
     ImGui::Dummy(ImVec2(0, 4.0f));
     ImGui::Unindent(10.0f);

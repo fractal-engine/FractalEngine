@@ -3,41 +3,41 @@
 
 #include <imgui.h>
 
+#include "editor/gui/window_base.h"
 #include "editor/pipelines/preview_pipeline.h"
-#include "platform/window_manager.h"
 
-class Model;
-
-class ModelViewer {
+class ModelViewer : public WindowBase {
 public:
-  ModelViewer();
-  ~ModelViewer();
+  explicit ModelViewer(PreviewData* data);
+  ~ModelViewer() override;
 
-  void Init();
-  void Render();
+  void Render() override;
 
 private:
+  void Init();
+
   void RenderViewport();
   void RenderModelProperties();
+  void RenderInstanceList();
 
   PreviewPipeline preview_pipeline_;
+  PreviewData* data_;
   size_t viewport_output_;
-  std::shared_ptr<Model> model_;
-  
 
-  // Viewport interactions
+  // Camera state
   float model_pitch_ = 0.0f;
   float model_yaw_ = 0.0f;
   float camera_pan_x_ = 0.0f;
   float camera_pan_y_ = 0.0f;
-  float camera_distance_ = 5.0f;  // Safe starting distance
+  float camera_distance_ = 5.0f;
   glm::vec3 target_center_ = glm::vec3(0.0f);
 
-  // Topology data
+  // Cached metrics
   uint32_t vert_count_ = 0;
   uint32_t tri_count_ = 0;
   uint32_t material_slots_ = 0;
   float lod_bias_ = 1.0f;
+
   bool initialized_ = false;
 };
 

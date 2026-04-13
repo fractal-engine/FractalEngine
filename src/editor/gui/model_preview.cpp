@@ -1,27 +1,18 @@
 #include "model_preview.h"
 
 #include <algorithm>
+
+#include <ImGuiFileDialog/ImGuiFileDialog.h>
+
 #include "editor/gui/styles/editor_styles.h"
-#include "engine/ecs/components/transform_component.h"  // For TransformComponent
+#include "engine/context/engine_context.h"
+#include "engine/ecs/components/transform_component.h"
+#include "engine/memory/resource_manager.h"
+#include "engine/pcg/procmodel/generator/model_generator.h"
+#include "engine/pcg/procmodel/procmodel_resource.h"
 #include "engine/renderer/model/model.h"
 
-// Variables
-int ModelPreview::s_selected_variant_ = 0;
-float ModelPreview::s_model_scale_ = 1.0f;  // Default scale 1.0
-std::shared_ptr<Model> ModelPreview::model_ = nullptr;
-
-// Functions
-int ModelPreview::GetSelectedVariant() {
-  return s_selected_variant_;
-}
-std::shared_ptr<Model> ModelPreview::GetModel() {
-  return model_;
-}
-float ModelPreview::GetModelScale() {
-  return s_model_scale_;
-}
-
-ModelPreview::ModelPreview() {}
+ModelPreview::ModelPreview(PreviewData* data) : data_(data) {}
 
 ModelPreview::~ModelPreview() {
   if (initialized_) {
@@ -35,32 +26,71 @@ void ModelPreview::Init() {
 
   preview_pipeline_.Create();
 
-  // ------------------------------------------------------------------------
-  // [PCG INTEGRATION HOOK]
-  // Currently, we load a hardcoded asset to visualize the UI pipeline.
-  // How we handle the model structurally is identical to the final product.
-  // Once the PCG framework is ready, this source will simply swap from
-  // Model::Load() to the PCG generator output.
-  // ------------------------------------------------------------------------
-  model_ = Model::Load(
-      "/Users/louismercier/Projects/FractalEngine/build/macosx/x86_64/release/"
-      "examples/example-project/loomis_head.glb");
-
-  // Create outputs for all our procedural variants
-  for (int i = 0; i < total_variants_; ++i) {
-    variant_outputs_.push_back(preview_pipeline_.CreateOutput());
+  // Create outputs for all instances
+  for (int i = 0; i < total_instances_; ++i) {
+    instance_outputs_.push_back(preview_pipeline_.CreateOutput());
   }
 
   initialized_ = true;
+}
+
+void ModelPreview::LoadDescriptor(const std::string& path) {
+  descriptor_path_ = path;
+
+  auto& pcg = EngineContext::Generator();
+  data_->archetype_id = pcg.LoadArchetype(descriptor_path_);
+
+  if (data_->archetype_id == 0) {
+    Logger::getInstance().Log(
+        LogLevel::Error, "[ModelPreview] Failed to load archetype: " + path);
+    data_->model = nullptr;
+    data_->instances.clear();
+    return;
+  }
+
+  auto& resource_mgr = EngineContext::resourceManager();
+  auto resource = resource_mgr.GetResourceAs<ProcModel::ProcModelResource>(
+      data_->archetype_id);
+  if (resource) {
+    data_->model = Model::Load(resource->GetDescriptor().path);
+  }
+
+  regenerate_ = true;
+}
+
+void ModelPreview::GenerateInstances() {
+  data_->instances.clear();
+
+  if (data_->archetype_id == 0)
+    return;
+
+  auto& resource_mgr = EngineContext::resourceManager();
+  auto resource = resource_mgr.GetResourceAs<ProcModel::ProcModelResource>(
+      data_->archetype_id);
+  if (!resource || !resource->IsResolved())
+    return;
+
+  for (int i = 0; i < total_instances_; ++i) {
+    auto resolved = ProcModel::ModelGenerator::Generate(
+        resource->GetGraph(), resource->GetDescriptor(), current_seed_ + i);
+    if (resolved) {
+      data_->instances.push_back(std::move(*resolved));
+    }
+  }
+
+  regenerate_ = false;
 }
 
 void ModelPreview::Render() {
   if (!initialized_)
     Init();
 
+  if (regenerate_)
+    GenerateInstances();
+
   ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(8.0f, 8.0f));
   ImGui::Begin("Procedural Preview", nullptr);
-  // Toolbar gets the parent window's draw list
+
   RenderToolbar(ImGui::GetWindowDrawList());
 
   ImGui::BeginChild("GridArea", ImVec2(0, 0), false);
@@ -74,16 +104,33 @@ void ModelPreview::Render() {
   ImGui::End();
   ImGui::PopStyleVar();
 
-  // Render the preview pipeline framebuffers
   preview_pipeline_.Render();
 }
 
 void ModelPreview::RenderToolbar(ImDrawList* draw_list) {
   ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(8.0f, 4.0f));
 
-  if (ImGui::Button(ICON_FA_ROTATE " Generate")) {
-    current_seed_++;
+  if (ImGui::Button(ICON_FA_FOLDER_OPEN " Load")) {
+    IGFD::FileDialogConfig cfg{};
+    cfg.path = std::filesystem::current_path().string();
+    IGFD::FileDialog::Instance()->OpenDialog("LoadDescriptorDlg",
+                                             "Select Descriptor", ".json", cfg);
   }
+
+  if (IGFD::FileDialog::Instance()->Display("LoadDescriptorDlg")) {
+    if (IGFD::FileDialog::Instance()->IsOk()) {
+      LoadDescriptor(IGFD::FileDialog::Instance()->GetFilePathName());
+    }
+    IGFD::FileDialog::Instance()->Close();
+  }
+
+  if (ImGui::Button(ICON_FA_ROTATE " Generate")) {
+    current_seed_ = static_cast<uint32_t>(Time::Now() * 1000.0);
+    regenerate_ = true;
+  }
+
+  ImGui::SameLine();
+  ImGui::Text("Base seed: %u", current_seed_);
 
   ImGui::SameLine();
   float zoom_width = 120.0f;
@@ -113,8 +160,11 @@ void ModelPreview::RenderGrid(ImDrawList* draw_list) {
       1, static_cast<int>(content_avail.x / (thumbnail_size_ + padding)));
   float dpi = WindowManager::GetDPIScale();
 
-  if (ImGui::BeginTable("VariantGrid", columns)) {
-    for (int i = 0; i < total_variants_; i++) {
+  int render_count =
+      std::min(total_instances_, static_cast<int>(data_->instances.size()));
+
+  if (ImGui::BeginTable("InstanceGrid", columns)) {
+    for (int i = 0; i < total_instances_; i++) {
       ImGui::TableNextColumn();
 
       ImVec2 cursor_pos = ImGui::GetCursorScreenPos();
@@ -122,53 +172,56 @@ void ModelPreview::RenderGrid(ImDrawList* draw_list) {
       ImVec2 rect_max =
           ImVec2(rect_min.x + thumbnail_size_, rect_min.y + thumbnail_size_);
 
-      ImGui::InvisibleButton(("##var_" + std::to_string(i)).c_str(),
+      ImGui::InvisibleButton(("##inst_" + std::to_string(i)).c_str(),
                              ImVec2(thumbnail_size_, thumbnail_size_));
       bool hovered = ImGui::IsItemHovered();
-      bool selected = (s_selected_variant_ == i);
+      bool selected = (data_->selected_instance == i);
 
       if (ImGui::IsItemClicked()) {
-        s_selected_variant_ = i;
+        data_->selected_instance = i;
       }
 
-      ImU32 bg_color = EditorColor::element;  // #212121
+      ImU32 bg_color = EditorColor::element;
       if (hovered)
         bg_color = EditorColor::element_hovered;
       if (selected)
-        bg_color = EditorColor::element_active;  // #4D5C74 Slate Blue
+        bg_color = EditorColor::element_active;
 
-      // Draw standard card background
       draw_list->AddRectFilled(rect_min, rect_max, bg_color, 4.0f);
 
-      // Add Pipeline Render Instruction for this variant
-      size_t out_idx = variant_outputs_[i];
-      preview_pipeline_.ResizeOutput(out_idx, thumbnail_size_ * dpi,
-                                     thumbnail_size_ * dpi);
+      bool has_instance = (i < render_count) && data_->model;
 
-      PreviewRenderInstruction inst;
-      inst.output_index = out_idx;
-      // Darker grey FBO background to contrast against the panel/highlight
-      inst.background_color = glm::vec4(0.06f, 0.06f, 0.06f, 1.0f);
+      if (has_instance) {
+        size_t out_idx = instance_outputs_[i];
+        preview_pipeline_.ResizeOutput(out_idx, thumbnail_size_ * dpi,
+                                       thumbnail_size_ * dpi);
 
-      inst.model = model_.get();
-      inst.model_transform.scale_ = glm::vec3(s_model_scale_);
-      inst.model_transform.rotation_ =
-          glm::angleAxis(float(i) * 0.4f, glm::vec3(0.0f, 1.0f, 0.0f));
-      inst.camera_transform.position_ = glm::vec3(0.0f, 0.0f, -6.0f);
+        PreviewRenderInstruction inst;
+        inst.output_index = out_idx;
+        inst.background_color = glm::vec4(0.06f, 0.06f, 0.06f, 1.0f);
+        inst.model = data_->model.get();
 
-      preview_pipeline_.AddRenderInstruction(inst);
+        for (const auto& desc : data_->instances[i].descriptors) {
+          for (int idx : desc.mesh_indices) {
+            inst.mesh_filter.push_back(static_cast<uint32_t>(idx));
+          }
+        }
 
-      bgfx::TextureHandle tex = preview_pipeline_.GetOutputTexture(out_idx);
+        inst.model_transform.scale_ = glm::vec3(1.0f);
+        inst.model_transform.rotation_ =
+            glm::angleAxis(0.0f, glm::vec3(0.0f, 1.0f, 0.0f));
+        inst.camera_transform.position_ = glm::vec3(0.0f, 0.0f, -6.0f);
 
-      if (model_ && bgfx::isValid(tex)) {
-        // Draw the image slightly smaller than the cell so the
-        // background 'bg_color' acts as a border frame
-        float pad = 3.0f;
-        ImVec2 img_min = ImVec2(rect_min.x + pad, rect_min.y + pad);
-        ImVec2 img_max = ImVec2(rect_max.x - pad, rect_max.y - pad);
+        preview_pipeline_.AddRenderInstruction(inst);
 
-        draw_list->AddImage((ImTextureID)(uintptr_t)tex.idx, img_min, img_max,
-                            ImVec2(0, 1), ImVec2(1, 0));
+        bgfx::TextureHandle tex = preview_pipeline_.GetOutputTexture(out_idx);
+        if (bgfx::isValid(tex)) {
+          float pad = 3.0f;
+          ImVec2 img_min = ImVec2(rect_min.x + pad, rect_min.y + pad);
+          ImVec2 img_max = ImVec2(rect_max.x - pad, rect_max.y - pad);
+          draw_list->AddImage((ImTextureID)(uintptr_t)tex.idx, img_min, img_max,
+                              ImVec2(0, 1), ImVec2(1, 0));
+        }
       } else {
         ImGui::PushFont(EditorStyles::GetFonts().h2);
         std::string icon = ICON_FA_CUBE;
@@ -183,9 +236,10 @@ void ModelPreview::RenderGrid(ImDrawList* draw_list) {
       draw_list->AddRect(rect_min, rect_max, EditorColor::border_color, 4.0f, 0,
                          1.0f);
 
-      // Pure white 'text' color draws cleanly over the
-      // 3D render
-      std::string label = "Var " + std::to_string(i);
+      std::string label =
+          (i < render_count)
+              ? "Seed " + std::to_string(data_->instances[i].seed)
+              : "Empty";
       draw_list->AddText(ImVec2(rect_min.x + 8.0f, rect_max.y - 20.0f),
                          EditorColor::text, label.c_str());
     }

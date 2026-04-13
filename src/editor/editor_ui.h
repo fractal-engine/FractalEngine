@@ -4,19 +4,32 @@
 #include <entt/entt.hpp>
 #include <memory>
 
-#define IMGUI_DEFINE_MATH_OPERATORS  // ! remove once viewport is done
+#define IMGUI_DEFINE_MATH_OPERATORS  // ! remove once EditorApp is implemented
 #include "imgui.h"
 
 #include "editor/camera/god_camera.h"
 #include "editor/gizmos/component_gizmos.h"
 #include "editor/gui/search/search_popup.h"
 #include "editor_base.h"
+#include "engine/pcg/procmodel/preview_data.h"  // ! remove once EditorApp is implemented
 
 #include "engine/renderer/graphics_renderer.h"
 
 #include "game/game_test.h"
 
 #include "platform/input/key_map_sdl.h"
+
+/**************************************************************************
+ * EditorUI
+ * -------
+ * Editor layer
+ * Currently manages ImGui context, docking, window registry, rendering, and
+ * application loop
+ *
+ * TODO:
+ *  - Decouple EditorUI into EditorUI (UI framework only), and EditorApp
+ * (application loop)
+ **************************************************************************/
 
 class EditorUI : public EditorBase {
 public:
@@ -76,6 +89,7 @@ private:
   std::unordered_map<std::string, std::string> tab_icons_;
 
   GodCameraState god_state_{};
+  PreviewData procmodel_data_;
 };
 
 #endif  // EDITOR_UI_H

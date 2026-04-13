@@ -3,7 +3,6 @@
 
 #include <cstdint>
 #include <optional>
-#include <pcg_random.hpp>
 #include <string>
 #include <unordered_set>
 #include <vector>
@@ -21,16 +20,10 @@ public:
       int max_retries = 10);
 
 private:
-  static const PartDescriptor* WeightedSelect(
-      const std::vector<const PartDescriptor*>& candidates, pcg32& rng);
-
   static bool IsValidSelection(
       const std::string& part_id,
       const std::unordered_set<std::string>& selected_ids,
       const std::vector<ConstraintRule>& constraints);
-
-  static void ApplyParameterRanges(ResolvedDescriptor& resolved,
-                                   const ModelGraphNode& node, pcg32& rng);
 
   static void ApplyParameterBindings(
       std::vector<ResolvedDescriptor>& descriptors,

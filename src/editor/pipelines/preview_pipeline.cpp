@@ -125,11 +125,20 @@ void PreviewPipeline::Render() {
     bgfx::setViewTransform(view_id, glm::value_ptr(view_mtx),
                            glm::value_ptr(proj_mtx));
 
-    // Submit all meshes of model
+    // Submit all meshes of model, filtered if specified
     bgfx::setTransform(glm::value_ptr(model_mtx));
 
-    for (int i = 0; i < instruction.model->NLoadedMeshes(); i++) {
-      const Mesh* mesh = instruction.model->QueryMesh(i);
+    uint32_t mesh_count = instruction.model->NLoadedMeshes();
+    for (uint32_t m = 0; m < mesh_count; m++) {
+      // Skip if filter is active and index is not in it
+      if (!instruction.mesh_filter.empty() &&
+          std::find(instruction.mesh_filter.begin(),
+                    instruction.mesh_filter.end(),
+                    m) == instruction.mesh_filter.end()) {
+        continue;
+      }
+
+      const Mesh* mesh = instruction.model->QueryMesh(m);
       if (!mesh)
         continue;
 

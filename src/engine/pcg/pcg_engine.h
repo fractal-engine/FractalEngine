@@ -34,6 +34,8 @@ public:
       const std::string& descriptor_path, uint64_t seed,
       Entity parent = entt::null);
 
+  ResourceID LoadArchetype(const std::string& descriptor_path);
+
 private:
   std::queue<GenerationRequest> pending_requests_;
   std::unordered_set<uint32_t> cancelled_;
