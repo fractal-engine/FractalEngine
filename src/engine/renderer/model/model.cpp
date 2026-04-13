@@ -55,6 +55,22 @@ bool Model::LoadData() {
   return true;
 }
 
+std::shared_ptr<Model> Model::FromMeshData(
+    const std::vector<Geometry::MeshData>& mesh_data) {
+  if (mesh_data.empty())
+    return nullptr;
+
+  auto out = std::make_shared<Model>();
+  out->metrics_ = ComputeMetrics(mesh_data);
+  out->mesh_data_ = mesh_data;  // needed for filtered metrics
+  out->meshes_.reserve(mesh_data.size());
+
+  for (const auto& geom : mesh_data)
+    out->meshes_.emplace_back(std::make_unique<Mesh>(geom));
+
+  return out;
+}
+
 uint32_t Model::NLoadedMeshes() const {
   return static_cast<uint32_t>(meshes_.size());
 }
@@ -89,6 +105,16 @@ bool Model::UploadBuffers() {
                             "[Model] Buffers uploaded, mesh count: " +
                                 std::to_string(NLoadedMeshes()));
   return true;
+}
+
+Model::Metrics Model::ComputeFilteredMetrics(
+    const std::vector<uint32_t>& mesh_filter) const {
+  std::vector<Geometry::MeshData> filtered;
+  for (uint32_t idx : mesh_filter) {
+    if (idx < mesh_data_.size())
+      filtered.push_back(mesh_data_[idx]);
+  }
+  return ComputeMetrics(filtered);
 }
 
 Model::Metrics Model::ComputeMetrics(

@@ -52,9 +52,8 @@ void ModelPreview::LoadDescriptor(const std::string& path) {
   auto resource = resource_mgr.GetResourceAs<ProcModel::ProcModelResource>(
       data_->archetype_id);
   if (resource) {
-    data_->model = Model::Load(resource->GetDescriptor().path);
+    data_->model = Model::FromMeshData(resource->GetGraph().meshes);
   }
-
   regenerate_ = true;
 }
 
@@ -235,13 +234,6 @@ void ModelPreview::RenderGrid(ImDrawList* draw_list) {
 
       draw_list->AddRect(rect_min, rect_max, EditorColor::border_color, 4.0f, 0,
                          1.0f);
-
-      std::string label =
-          (i < render_count)
-              ? "Seed " + std::to_string(data_->instances[i].seed)
-              : "Empty";
-      draw_list->AddText(ImVec2(rect_min.x + 8.0f, rect_max.y - 20.0f),
-                         EditorColor::text, label.c_str());
     }
     ImGui::EndTable();
   }

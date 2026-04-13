@@ -40,6 +40,8 @@ void ModelViewer::Render() {
   ImGui::BeginChild("PropertiesArea", ImVec2(0, 0), false,
                     ImGuiWindowFlags_None);
   RenderModelProperties();
+  RenderInstanceList();
+
   ImGui::EndChild();
   ImGui::End();
   ImGui::PopStyleVar();
@@ -246,8 +248,16 @@ void ModelViewer::RenderModelProperties() {
     ImGui::Indent(10.0f);
     ImGui::Dummy(ImVec2(0, 4.0f));
 
-    if (data_->model) {
-      const auto& metrics = data_->model->GetMetrics();
+    int idx = data_->selected_instance;
+    if (data_->model && idx >= 0 &&
+        idx < static_cast<int>(data_->instances.size())) {
+      std::vector<uint32_t> filter;
+      for (const auto& desc : data_->instances[idx].descriptors) {
+        for (int mesh_idx : desc.mesh_indices)
+          filter.push_back(static_cast<uint32_t>(mesh_idx));
+      }
+      auto metrics = data_->model->ComputeFilteredMetrics(filter);
+
       ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "Topology");
       ImGui::Text("Vertices: %u", metrics.n_vertices);
       ImGui::Text("Triangles: %u", metrics.n_faces);
@@ -263,10 +273,22 @@ void ModelViewer::RenderModelProperties() {
     }
 
     ImGui::Dummy(ImVec2(0, 4.0f));
-    ImGui::Unindent(10.0f);
-  }
+    ImGui::Separator();
+    ImGui::Dummy(ImVec2(0, 4.0f));
 
-  ImGui::PopStyleVar();
+    if (idx >= 0 && idx < static_cast<int>(data_->instances.size())) {
+      const auto& resolved = data_->instances[idx];
+      ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "Instance");
+      ImGui::Text("Parts: %u",
+                  static_cast<uint32_t>(resolved.descriptors.size()));
+      ImGui::Text("Seed: %llu", resolved.seed);
+
+      ImGui::Dummy(ImVec2(0, 4.0f));
+      ImGui::Unindent(10.0f);
+    }
+
+    ImGui::PopStyleVar();
+  }
 }
 
 void ModelViewer::RenderInstanceList() {
@@ -283,9 +305,6 @@ void ModelViewer::RenderInstanceList() {
   if (ImGui::CollapsingHeader("Instance Parts",
                               ImGuiTreeNodeFlags_DefaultOpen)) {
     ImGui::Indent(10.0f);
-    ImGui::Dummy(ImVec2(0, 4.0f));
-
-    ImGui::Text("Seed: %llu", resolved.seed);
     ImGui::Dummy(ImVec2(0, 4.0f));
 
     for (const auto& desc : resolved.descriptors) {

@@ -51,6 +51,14 @@ public:
 
   const Mesh* QueryMesh(uint32_t index) const;
 
+  // Factory function
+  static std::shared_ptr<Model> FromMeshData(
+      const std::vector<Geometry::MeshData>& mesh_data);
+
+  // Computes metrics for a filtered subset of meshes
+  Metrics ComputeFilteredMetrics(
+      const std::vector<uint32_t>& mesh_filter) const;
+
   void Destroy() override;
 
 private:
