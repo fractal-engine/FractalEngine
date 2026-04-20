@@ -1,7 +1,10 @@
 #include "model_generator.h"
 
 #include <pcg_random.hpp>
+#include <queue>
 #include <random>
+
+#include "engine/core/logger.h"
 
 namespace ProcModel {
 
@@ -46,7 +49,7 @@ static const PartDescriptor* WeightedSelect(
 
 std::optional<ResolvedModel> ModelGenerator::Generate(
     const ModelGraph& graph, const ModelDescriptor& descriptor, uint64_t seed,
-    int max_retries) {
+    int max_retries, ValidationLogger* validator_logger) {
 
   for (int attempt = 0; attempt < max_retries; ++attempt) {
     pcg32 rng(seed + attempt);
@@ -56,16 +59,41 @@ std::optional<ResolvedModel> ModelGenerator::Generate(
     bool failed = false;
 
     // Collect root groups
-    std::vector<const SelectionGroup*> pending;
+    std::queue<const SelectionGroup*> pending;
     for (const auto& group : descriptor.selection_groups) {
       if (group.activated_by.empty()) {
-        pending.push_back(&group);
+        pending.push(&group);
       }
     }
 
+    // --- diagnostic counters ---
+    size_t groups_processed = 0;               // DEBUG
+    size_t groups_enqueued = pending.size();   // DEBUG
+    size_t max_pending_size = pending.size();  // DEBUG
+    const size_t hard_guard =
+        descriptor.selection_groups.size() * 32 + 128;  // DEBUG
+
     while (!pending.empty() && !failed) {
-      const SelectionGroup* group = pending.back();
-      pending.pop_back();
+
+      // DEBUG
+      if (groups_processed > hard_guard) {
+        Logger::getInstance().Log(
+            LogLevel::Error,
+            "[Generator][Diag] Hard guard hit. Potential activation cycle. "
+            "attempt=" +
+                std::to_string(attempt) +
+                " seed=" + std::to_string(seed + attempt) +
+                " processed=" + std::to_string(groups_processed) +
+                " enqueued=" + std::to_string(groups_enqueued) +
+                " pending=" + std::to_string(pending.size()) +
+                " maxPending=" + std::to_string(max_pending_size));
+        failed = true;
+        break;
+      }  // DEBUG
+
+      const SelectionGroup* group = pending.front();
+      pending.pop();
+      ++groups_processed;  // DEBUG
 
       // Filter parts by constraints
       std::vector<const PartDescriptor*> valid;
@@ -114,6 +142,7 @@ std::optional<ResolvedModel> ModelGenerator::Generate(
             continue;
 
           ResolvedDescriptor attached = resolved;
+
           attached.local_transform = attach_it->second->world_transform;
           attached.descriptor_id = resolved.descriptor_id + "_at_" + attach_id;
           resolved_descriptors.push_back(std::move(attached));
@@ -122,10 +151,25 @@ std::optional<ResolvedModel> ModelGenerator::Generate(
       // Activate dependent groups
       for (const auto& g : descriptor.selection_groups) {
         if (g.activated_by == chosen->id) {
-          pending.push_back(&g);
+          pending.push(&g);
+
+          // DEBUG
+          ++groups_enqueued;
+          max_pending_size = std::max(max_pending_size, pending.size());
         }
       }
     }
+
+    Logger::getInstance().Log(
+        LogLevel::Debug,
+        "[Generator][Diag] attempt=" + std::to_string(attempt) +
+            " seed=" + std::to_string(seed + attempt) +
+            " failed=" + std::to_string(failed ? 1 : 0) +
+            " processed=" + std::to_string(groups_processed) +
+            " enqueued=" + std::to_string(groups_enqueued) +
+            " maxPending=" + std::to_string(max_pending_size) +
+            " selected=" + std::to_string(selected_ids.size()) +
+            " resolved=" + std::to_string(resolved_descriptors.size()));
 
     if (failed)
       continue;
@@ -141,6 +185,17 @@ std::optional<ResolvedModel> ModelGenerator::Generate(
       result.descriptors = std::move(resolved_descriptors);
       result.model_scale =
           glm::vec3(1.0f);  // TODO: sample from descriptor scale range
+
+      // Post-generation validation
+      if (validator_logger) {
+        ValidationResult vr =
+            ProcModelValidator::Validate(result, graph, descriptor, attempt);
+        validator_logger->Write(vr);
+        if (!vr.passed) {
+          continue;  // Retry with next seed
+        }
+      }
+
       return result;
     }
   }

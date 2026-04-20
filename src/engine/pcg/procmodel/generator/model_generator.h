@@ -10,6 +10,8 @@
 #include "engine/pcg/procmodel/descriptor/model_descriptor.h"
 #include "engine/pcg/procmodel/generator/resolved_model.h"
 #include "engine/pcg/procmodel/model_graph/model_graph.h"
+#include "engine/pcg/procmodel/validation/procmodel_validator.h"
+#include "engine/pcg/procmodel/validation/validation_logger.h"
 
 namespace ProcModel {
 
@@ -17,7 +19,7 @@ class ModelGenerator {
 public:
   static std::optional<ResolvedModel> Generate(
       const ModelGraph& graph, const ModelDescriptor& descriptor, uint64_t seed,
-      int max_retries = 10);
+      int max_retries = 10, ValidationLogger* validator_logger = nullptr);
 
 private:
   static bool IsValidSelection(

@@ -13,7 +13,7 @@ DescriptorResolver::ResolveResult DescriptorResolver::Resolve(
   bool bindings_ok = MapParameterBindings(graph, descriptor, result.errors);
 
   for (const auto& [name, node_ptr] : graph.node_lookup) {
-    if (node_ptr->group_id.empty() && node_ptr->parameter_ranges.empty() &&
+    if (node_ptr->group_ids.empty() && node_ptr->parameter_ranges.empty() &&
         !node_ptr->is_fixed && !node_ptr->is_attach_point) {
       result.warnings.push_back("Node '" + name +
                                 "' not referenced by any descriptor entry");
@@ -53,17 +53,19 @@ bool DescriptorResolver::MapSelectionGroups(ModelGraph& graph,
 
       ModelGraphNode* node = it->second;
 
-      // Check for duplicate assignment
-      if (!node->group_id.empty()) {
-        errors.push_back("Node '" + part.id + "' already assigned to group '" +
-                         node->group_id + "', cannot assign to '" +
-                         group.group_id + "'");
-        all_ok = false;
-        continue;
+      // Reject only same-group duplicates
+      // Allows reusable parts to be shared across groups
+      for (const auto& existing : node->group_ids) {
+        if (existing == group.group_id) {
+          errors.push_back("Node '" + part.id + "' listed twice in group '" +
+                           group.group_id + "'");
+          all_ok = false;
+          break;
+        }
       }
 
-      node->group_id = group.group_id;
-      node->part = &part;
+      node->group_ids.push_back(group.group_id);
+      node->parts.push_back(&part);
     }
 
     // Check for attachment points
