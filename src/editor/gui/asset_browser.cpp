@@ -452,11 +452,11 @@ bool AssetBrowserPanel::RenderNode(ImDrawList& draw_list, NodeRef node,
     return false;
 
   // Skip file nodes without assets
-  /* if (!node->IsFolder()) {
+  if (!node->IsFolder()) {
     auto file = std::static_pointer_cast<const ProjectObserver::File>(node);
     if (!file->asset_id_)
       return false;
-  }*/
+  }
 
   // Interactive area
   ImVec2 p0 = position;
