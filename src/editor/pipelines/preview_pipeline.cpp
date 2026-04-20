@@ -23,6 +23,9 @@ void PreviewPipeline::Create() {
   preview_program_ =
       Runtime::Shader()->LoadProgram("preview", "vs_gltf.bin", "fs_gltf.bin");
 
+  // ! REMOVE THIS
+  u_mesh_color_ = bgfx::createUniform("u_meshColor", bgfx::UniformType::Vec4);
+
   if (!bgfx::isValid(preview_program_)) {
     Logger::getInstance().Log(LogLevel::Error,
                               "PreviewPipeline: Failed to load preview shader");
@@ -46,16 +49,16 @@ void PreviewPipeline::Render() {
   if (!bgfx::isValid(preview_program_))
     return;
 
-  for (size_t i = 0; i < render_instructions_.size(); i++) {
-    auto& instruction = render_instructions_[i];
+  // Group instructions by output
+  std::unordered_map<size_t, std::vector<PreviewRenderInstruction*>> grouped;
+  for (auto& inst : render_instructions_) {
+    if (inst.output_index < outputs_.size())
+      grouped[inst.output_index].push_back(&inst);
+  }
 
-    if (!instruction.model)
-      continue;
-
-    if (instruction.output_index >= outputs_.size())
-      continue;
-
-    PreviewOutput& output = outputs_[instruction.output_index];
+  // Render each grouped output
+  for (auto& [output_index, instructions] : grouped) {
+    PreviewOutput& output = outputs_[output_index];
 
     // Recreate framebuffer if resize is pending
     if (output.resize_pending) {
@@ -90,81 +93,107 @@ void PreviewPipeline::Render() {
 
     // Configure preview view
     bgfx::ViewId view_id = output.view_id;
-
-    uint32_t clear_color =
-        (uint32_t(instruction.background_color.r * 255) << 24) |
-        (uint32_t(instruction.background_color.g * 255) << 16) |
-        (uint32_t(instruction.background_color.b * 255) << 8) |
-        (uint32_t(instruction.background_color.a * 255));
-
-    bgfx::setViewClear(view_id, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH,
-                       clear_color, 1.0f, 0);
     bgfx::setViewRect(view_id, 0, 0, output.width, output.height);
     bgfx::setViewFrameBuffer(view_id, output.framebuffer);
 
-    // ------ Build view and projection matrices ------
-    // Build model matrix
-    glm::mat4 model_mtx =
-        Transformation::Model(instruction.model_transform.position_,
-                              instruction.model_transform.rotation_,
-                              instruction.model_transform.scale_);
-
-    glm::mat4 view_mtx =
-        Transformation::View(instruction.camera_transform.position_,
-                             instruction.camera_transform.rotation_);
-
-    float aspect =
-        (output.height > 0) ? float(output.width) / float(output.height) : 1.0f;
-
-    // Explicit radians bypasses Transformation::Projection FOV bugs
-    // Near plane set to 0.01f so the camera doesn't slice the model when zoomed
-
-    glm::mat4 proj_mtx =
-        Transformation::Projection(45.0f, aspect, 0.3f, 1000.0f);
-
-    bgfx::setViewTransform(view_id, glm::value_ptr(view_mtx),
-                           glm::value_ptr(proj_mtx));
-
-    // Submit all meshes of model, filtered if specified
-    bgfx::setTransform(glm::value_ptr(model_mtx));
-
-    uint32_t mesh_count = instruction.model->NLoadedMeshes();
-    for (uint32_t m = 0; m < mesh_count; m++) {
-      // Skip if filter is active and index is not in it
-      if (!instruction.mesh_filter.empty() &&
-          std::find(instruction.mesh_filter.begin(),
-                    instruction.mesh_filter.end(),
-                    m) == instruction.mesh_filter.end()) {
-        continue;
+    // Process instructions for this output
+    for (auto* instruction : instructions) {
+      if (instruction->clear_output) {
+        uint32_t clear_color =
+            (uint32_t(instruction->background_color.r * 255) << 24) |
+            (uint32_t(instruction->background_color.g * 255) << 16) |
+            (uint32_t(instruction->background_color.b * 255) << 8) |
+            (uint32_t(instruction->background_color.a * 255));
+        bgfx::setViewClear(view_id, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH,
+                           clear_color, 1.0f, 0);
+        bgfx::touch(view_id);
       }
 
-      const Mesh* mesh = instruction.model->QueryMesh(m);
-      if (!mesh)
+      if (!instruction->model)
         continue;
 
-      // Matte Lighting
-      // ----------------------------
-      // 1. Set ambient light (Brightened to 0.4 so dark materials are visible)
-      Light::SetAmbient(glm::vec3(0.4f));
+      // ------ Build view and projection matrices ------
+      // Build model matrix
+      glm::mat4 model_mtx =
+          Transformation::Model(instruction->model_transform.position_,
+                                instruction->model_transform.rotation_,
+                                instruction->model_transform.scale_);
 
-      // 2. Set primary directional light (Bright white sunlight to pop the
-      // model details)
-      Light::SetDirectionalLight(
-          0, glm::normalize(glm::vec3(-0.5f, -1.0f, -0.5f)),  // Direction
-          glm::vec3(0.2f),  // Ambient intensity
-          glm::vec3(3.0f),  // Diffuse intensity
-          glm::vec3(1.0f)   // Specular intensity
-      );
+      glm::mat4 view_mtx =
+          Transformation::View(instruction->camera_transform.position_,
+                               instruction->camera_transform.rotation_);
 
-      // 3. using exactly 1 directional light, 0 point, 0 spot
-      Light::SetLightCounts(1, 0, 0);
+      float aspect = (output.height > 0)
+                         ? float(output.width) / float(output.height)
+                         : 1.0f;
 
-      // 4. Push data to BGFX uniforms for this render pass
-      Light::ApplyUniforms();
+      // Explicit radians bypasses Transformation::Projection FOV bugs
+      // Near plane set to 0.01f so the camera doesn't slice the model when
+      // zoomed
 
-      mesh->Bind();
-      bgfx::setState(BGFX_STATE_DEFAULT | BGFX_STATE_CULL_CW);
-      bgfx::submit(view_id, preview_program_);
+      glm::mat4 proj_mtx =
+          Transformation::Projection(45.0f, aspect, 0.3f, 1000.0f);
+
+      bgfx::setViewTransform(view_id, glm::value_ptr(view_mtx),
+                             glm::value_ptr(proj_mtx));
+
+      uint32_t mesh_count = instruction->model->NLoadedMeshes();
+      for (uint32_t m = 0; m < mesh_count; m++) {
+        if (!instruction->mesh_filter.empty() &&
+            std::find(instruction->mesh_filter.begin(),
+                      instruction->mesh_filter.end(),
+                      m) == instruction->mesh_filter.end()) {
+          continue;
+        }
+
+        const Mesh* mesh = instruction->model->QueryMesh(m);
+        if (!mesh)
+          continue;
+
+        // Submit per-mesh transform override or default model transform
+        auto mt = instruction->mesh_transforms.find(m);
+        if (mt != instruction->mesh_transforms.end()) {
+
+          glm::mat4 mtx = Transformation::Model(
+              mt->second.position_, mt->second.rotation_, mt->second.scale_);
+          bgfx::setTransform(glm::value_ptr(mtx));
+        } else {
+          bgfx::setTransform(glm::value_ptr(model_mtx));
+        }
+
+        // ! REMOVE THIS - only used for procmodel (applies diffuse light to
+        // coloring)
+        auto mc = instruction->mesh_colors.find(m);
+        glm::vec4 color = (mc != instruction->mesh_colors.end())
+                              ? glm::vec4(mc->second, 1.0f)
+                              : glm::vec4(1.0f);
+        bgfx::setUniform(u_mesh_color_,
+                         glm::value_ptr(color));  // Matte Lighting
+
+        // ----------------------------
+        // 1. Set ambient light (Brightened to 0.4 so dark materials are
+        // visible)
+        Light::SetAmbient(glm::vec3(0.4f));
+
+        // 2. Set primary directional light (Bright white sunlight to pop the
+        // model details)
+        Light::SetDirectionalLight(
+            0, glm::normalize(glm::vec3(-0.5f, -1.0f, -0.5f)),  // Direction
+            glm::vec3(0.2f),  // Ambient intensity
+            glm::vec3(3.0f),  // Diffuse intensity
+            glm::vec3(1.0f)   // Specular intensity
+        );
+
+        // 3. using exactly 1 directional light, 0 point, 0 spot
+        Light::SetLightCounts(1, 0, 0);
+
+        // 4. Push data to BGFX uniforms for this render pass
+        Light::ApplyUniforms();
+
+        mesh->Bind();
+        bgfx::setState(BGFX_STATE_DEFAULT | BGFX_STATE_CULL_CW);
+        bgfx::submit(view_id, preview_program_);
+      }
     }
   }
 

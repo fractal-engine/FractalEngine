@@ -99,7 +99,7 @@ std::optional<ResolvedModel> ModelGenerator::Generate(
       resolved.descriptor_id = chosen->id;
       resolved.group_id = group->group_id;
       resolved.mesh_indices = node->mesh_indices;
-      resolved.local_transform = node->local_transform;
+      resolved.local_transform = node->world_transform;
       resolved.attach_to = group->attach_to;
 
       // Sample parameter ranges from annotations

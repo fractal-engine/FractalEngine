@@ -209,7 +209,7 @@ void SetupStyle() {
   style.WindowBorderSize = 1.0f;  // Thin border separating panels
   style.PopupBorderSize = 1.0f;
   style.TabBorderSize = 0.0f;
-  style.ChildBorderSize = 1.0f;
+  style.ChildBorderSize = 0.0f;
 
   style.WindowRounding = 0.0f;
   style.FrameRounding = 3.0f;

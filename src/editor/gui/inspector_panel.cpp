@@ -8,8 +8,7 @@ InspectorPanel::InspectorPanel()
     : preview_viewer_output_(0),
       preview_viewer_height_(300.0f),
       preview_camera_transform_() {
-  // TODO: initialize preview pipeline output
-  // preview_viewer_output_ = Runtime::previewPipeline().createOutput();
+  preview_viewer_output_ = Runtime::GetPreviewPipeline().CreateOutput();
 }
 
 void InspectorPanel::Render() {
@@ -144,9 +143,11 @@ void InspectorPanel::RenderPreviewViewer(ImDrawList& draw_list, ImVec2 size) {
 
   //
   // HANDLE PREVIEW OUTPUT
-  // TODO: implement when preview pipeline is ready
-  // PreviewPipeline& pipeline = Runtime::previewPipeline();
-  // const PreviewOutput& output = pipeline.getOutput(preview_viewer_output_);
+  //
+
+  PreviewPipeline& pipeline = Runtime::GetPreviewPipeline();
+  const PreviewOutput& output = pipeline.GetOutput(preview_viewer_output_);
+  // TODO: handle output size, resize and render instructions
 
   //
   // DRAW RENDERED PREVIEW

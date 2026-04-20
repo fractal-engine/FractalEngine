@@ -1,6 +1,7 @@
 #include "model_viewer.h"
 
 #define GLM_ENABLE_EXPERIMENTAL
+#include <glm/gtx/matrix_decompose.hpp>
 #include <glm/gtx/quaternion.hpp>
 
 #include "editor/gui/styles/editor_styles.h"
@@ -76,6 +77,7 @@ void ModelViewer::RenderViewport() {
 
   ImDrawList* draw_list = ImGui::GetWindowDrawList();
   draw_list->AddRectFilled(p_min, p_max, EditorColor::background);
+
   //
   // BOUNDING BOX SCALING
   //
@@ -119,9 +121,9 @@ void ModelViewer::RenderViewport() {
     }
     float wasd_speed = camera_distance_ * 0.015f;
     if (ImGui::IsKeyDown(ImGuiKey_W))
-      camera_pan_y_ -= wasd_speed;
-    if (ImGui::IsKeyDown(ImGuiKey_S))
       camera_pan_y_ += wasd_speed;
+    if (ImGui::IsKeyDown(ImGuiKey_S))
+      camera_pan_y_ -= wasd_speed;
     if (ImGui::IsKeyDown(ImGuiKey_A))
       camera_pan_x_ -= wasd_speed;
     if (ImGui::IsKeyDown(ImGuiKey_D))
@@ -196,30 +198,80 @@ void ModelViewer::RenderViewport() {
   glm::vec3 focal_point = (center * norm_scale) + pan_offset;
 
   if (has_instance) {
-    PreviewRenderInstruction inst;
-    inst.output_index = viewport_output_;
-    inst.background_color = glm::vec4(0.094f, 0.094f, 0.094f, 1.0f);
-    inst.model = data_->model.get();
-
-    // Filter to only selected instance's meshes
     const auto& resolved = data_->instances[current_instance];
+
+    bool on_first_draw = true;
+
     for (const auto& desc : resolved.descriptors) {
-      for (int idx : desc.mesh_indices) {
-        inst.mesh_filter.push_back(static_cast<uint32_t>(idx));
+      PreviewRenderInstruction inst;
+      inst.output_index = viewport_output_;
+      inst.background_color = glm::vec4(0.35f, 0.35f, 0.35f, 1.0f);
+      inst.model = data_->model.get();
+      inst.clear_output = on_first_draw;
+      on_first_draw = false;
+
+      // Apply group coloring from group ID - REMOVE THIS
+      static const std::unordered_map<std::string, glm::vec3> GROUP_COLORS = {
+          {"_BASE_", glm::vec3(0.92f, 0.92f, 0.90f)},  // white
+
+          // red
+          {"_ROOF_A", glm::vec3(0.68f, 0.28f, 0.28f)},
+          {"_ROOF_B", glm::vec3(0.80f, 0.38f, 0.38f)},
+          {"_ROOF_C", glm::vec3(0.90f, 0.50f, 0.50f)},
+
+          // blue
+          {"_WINDOW_A", glm::vec3(0.35f, 0.50f, 0.85f)},
+          {"_WINDOW_B", glm::vec3(0.50f, 0.65f, 0.92f)},
+          {"_WINDOW_C", glm::vec3(0.65f, 0.78f, 0.97f)},
+
+          // green
+          {"_PILLAR_A", glm::vec3(0.40f, 0.70f, 0.50f)},
+          {"_PILLAR_B", glm::vec3(0.55f, 0.82f, 0.65f)},
+          {"_PILLAR_C", glm::vec3(0.70f, 0.90f, 0.78f)},
+
+          // yellow
+          {"_CHIMNEY_A", glm::vec3(0.78f, 0.68f, 0.30f)},
+          {"_CHIMNEY_B", glm::vec3(0.88f, 0.78f, 0.40f)},
+          {"_CHIMNEY_C", glm::vec3(0.95f, 0.86f, 0.55f)},
+
+          // purple
+          {"_DECOR_A", glm::vec3(0.68f, 0.45f, 0.78f)},
+          {"_DECOR_B", glm::vec3(0.80f, 0.60f, 0.88f)},
+          {"_DECOR_C", glm::vec3(0.90f, 0.72f, 0.95f)},
+      };
+
+      for (int mesh_idx : desc.mesh_indices) {
+
+        auto color_it = GROUP_COLORS.find(desc.group_id);  // ! REMOVE THIS
+
+        // ! REMOVE THIS
+        glm::vec3 color = (color_it != GROUP_COLORS.end())
+                              ? color_it->second
+                              : glm::vec3(0.7f);  // Default grey fallback
+
+        uint32_t idx = static_cast<uint32_t>(mesh_idx);
+        inst.mesh_filter.push_back(idx);
+        inst.mesh_colors[mesh_idx] = color;  // ! REMOVE THIS
+
+        // Decompose part transform and apply normalization scale
+        glm::vec3 pos, scale, skew;
+        glm::quat rot;
+        glm::vec4 persp;
+        glm::decompose(desc.local_transform, scale, rot, pos, skew, persp);
+
+        TransformComponent transform_component;
+        transform_component.position_ = pos * norm_scale;
+        transform_component.rotation_ = rot;
+        transform_component.scale_ = scale * norm_scale;
+        inst.mesh_transforms[idx] = transform_component;
       }
+      // Orbit camera around focal point
+      inst.camera_transform.rotation_ = q_cam;
+      inst.camera_transform.position_ =
+          focal_point + (q_cam * glm::vec3(0.0f, 0.0f, -camera_distance_));
+
+      preview_pipeline_.AddRenderInstruction(inst);
     }
-
-    // Keep model at origin to prevent lasso clipping
-    inst.model_transform.position_ = glm::vec3(0.0f);
-    inst.model_transform.rotation_ = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
-    inst.model_transform.scale_ = glm::vec3(norm_scale);
-
-    // Orbit camera perfectly around the focal point
-    inst.camera_transform.rotation_ = q_cam;
-    inst.camera_transform.position_ =
-        focal_point + (q_cam * glm::vec3(0.0f, 0.0f, -camera_distance_));
-
-    preview_pipeline_.AddRenderInstruction(inst);
   }
 
   bgfx::TextureHandle tex =
@@ -258,6 +310,14 @@ void ModelViewer::RenderModelProperties() {
       }
       auto metrics = data_->model->ComputeFilteredMetrics(filter);
 
+      ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "Local Transform");
+      ImGui::Text("Vertices: %u", metrics.n_vertices);
+      ImGui::Text("Triangles: %u", metrics.n_faces);
+
+      ImGui::Dummy(ImVec2(0, 4.0f));
+      ImGui::Separator();
+      ImGui::Dummy(ImVec2(0, 4.0f));
+
       ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "Topology");
       ImGui::Text("Vertices: %u", metrics.n_vertices);
       ImGui::Text("Triangles: %u", metrics.n_faces);
@@ -286,9 +346,8 @@ void ModelViewer::RenderModelProperties() {
       ImGui::Dummy(ImVec2(0, 4.0f));
       ImGui::Unindent(10.0f);
     }
-
-    ImGui::PopStyleVar();
   }
+  ImGui::PopStyleVar();
 }
 
 void ModelViewer::RenderInstanceList() {

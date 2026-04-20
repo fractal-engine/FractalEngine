@@ -19,6 +19,27 @@ ModelGraphNode ModelGraphBuilder::ConvertNode(
     node.children.push_back(ConvertNode(child, node.world_transform));
   }
 
+  if (node.name == "BASE_C" || node.name == "ROOT" ||
+      node.name == "_ATTACH_PILLAR_C_01") {
+    Logger::getInstance().Log(
+        LogLevel::Debug,
+        "[GraphBuilder] Node: " + node.name +
+            " local[3]: " + std::to_string(node.local_transform[3][0]) + ", " +
+            std::to_string(node.local_transform[3][1]) + ", " +
+            std::to_string(node.local_transform[3][2]) +
+            " world[3]: " + std::to_string(node.world_transform[3][0]) + ", " +
+            std::to_string(node.world_transform[3][1]) + ", " +
+            std::to_string(node.world_transform[3][2]));
+  }
+
+  if (node.name.find("_ATTACH_PILLAR_A") != std::string::npos) {
+    Logger::getInstance().Log(
+        LogLevel::Debug, "[GraphBuilder] " + node.name + " world: " +
+                             std::to_string(node.world_transform[3][0]) + ", " +
+                             std::to_string(node.world_transform[3][1]) + ", " +
+                             std::to_string(node.world_transform[3][2]));
+  }
+
   return node;
 }
 

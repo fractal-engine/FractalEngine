@@ -1,6 +1,8 @@
 $input v_position
 #include "common.sh"
 
+uniform vec4 u_meshColor;
+
 void main()
 {
     // Extract the 3D position
@@ -16,7 +18,9 @@ void main()
     float ndotl = max(dot(normal, -lightDir), 0.0);
     
     // Ambient gray (0.3) + Diffuse gray (0.5)
-    vec3 finalColor = vec3_splat(0.3) + (vec3_splat(0.5) * ndotl);
+    // vec3 finalColor = vec3_splat(0.3) + (vec3_splat(0.5) * ndotl); use this when removing baseColor
+    vec3 baseColor = u_meshColor.rgb; // REMOVE THIS
+    vec3 finalColor = (baseColor * 0.3) + (baseColor * 0.5 * ndotl);
     
     gl_FragColor = vec4(finalColor, 1.0);
 }
