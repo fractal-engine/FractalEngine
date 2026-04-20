@@ -55,7 +55,8 @@ add_files(
 	"pcg/procmodel/descriptor/*.cpp",
 	"pcg/procmodel/model_graph/*.cpp",
 	"pcg/procmodel/generator/*.cpp",
-	"pcg/procmodel/instantiator/*.cpp"
+	"pcg/procmodel/instantiator/*.cpp",
+	"pcg/procmodel/validation/*.cpp"
 )
 
 -- HEADER FILES -------
@@ -99,7 +100,8 @@ add_headerfiles(
 	"pcg/procmodel/descriptor/*.h",
 	"pcg/procmodel/generator/*.h",
 	"pcg/procmodel/instantiator/*.h",
-	"pcg/procmodel/model_graph/*.h"
+	"pcg/procmodel/model_graph/*.h",
+	"pcg/procmodel/validation/*.h"
 )
 
 add_rules("shaderc.build")

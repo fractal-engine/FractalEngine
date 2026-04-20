@@ -126,7 +126,8 @@ ProcModel::ModelInstantiator::InstantiateResult PCGEngine::RequestInstance(
 
   // Generate instance
   auto resolved = ProcModel::ModelGenerator::Generate(
-      resource->GetGraph(), resource->GetDescriptor(), seed);
+      resource->GetGraph(), resource->GetDescriptor(), seed, 10,
+      &ValidationLog());
   if (!resolved) {
     Logger::getInstance().Log(
         LogLevel::Warning,

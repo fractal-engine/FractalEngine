@@ -2,13 +2,14 @@
 #define PCG_ENGINE_H
 
 #include <functional>
+#include <memory>
 #include <queue>
 #include <unordered_set>
 
 #include "engine/pcg/graph/program_graph.h"
 #include "engine/pcg/procmodel/instantiator/model_instantiator.h"
 #include "engine/pcg/procmodel/procmodel_resource.h"
-
+#include "engine/pcg/procmodel/validation/validation_logger.h"
 struct GenerationRequest {
   uint32_t volume_id;  // Entity ID (VolumeComponent lookup)
   uint8_t priority;    // Higher = sooner
@@ -36,11 +37,20 @@ public:
 
   ResourceID LoadArchetype(const std::string& descriptor_path);
 
+  // Validation logger (one per session)
+  ProcModel::ValidationLogger& ValidationLog() {
+    if (!validation_logger_)
+      validation_logger_ = std::make_unique<ProcModel::ValidationLogger>();
+    return *validation_logger_;
+  }
+
 private:
   std::queue<GenerationRequest> pending_requests_;
   std::unordered_set<uint32_t> cancelled_;
 
   std::unordered_map<std::string, ResourceID> procmodel_cache_;
+
+  std::unique_ptr<ProcModel::ValidationLogger> validation_logger_;
 };
 
 #endif  // PCG_ENGINE_H
