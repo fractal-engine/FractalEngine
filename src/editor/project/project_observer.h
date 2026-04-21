@@ -67,7 +67,7 @@ public:
           subfolders_(),
           parent_id_(parent_id),
           expanded_(false) {}
-          
+
     ~Folder() override {}
 
     bool IsFolder() override { return true; }
@@ -136,6 +136,9 @@ private:
   std::shared_ptr<ProjectObserver::Folder> FindFolder(
       const FileSystem::Path& relative_path,
       const std::shared_ptr<Folder>& current_folder);
+
+  // Set hidden files
+  bool ShouldIgnore(const FileSystem::Path& path, bool is_directory);
 
   // Project root path being observed
   FileSystem::Path target_;
