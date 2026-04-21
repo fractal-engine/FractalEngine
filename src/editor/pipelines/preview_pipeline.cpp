@@ -132,7 +132,7 @@ void PreviewPipeline::Render() {
       // zoomed
 
       glm::mat4 proj_mtx =
-          Transformation::Projection(45.0f, aspect, 0.3f, 1000.0f);
+          Transformation::Projection(45.0f, aspect, 0.01f, 1000.0f);
 
       bgfx::setViewTransform(view_id, glm::value_ptr(view_mtx),
                              glm::value_ptr(proj_mtx));

@@ -151,7 +151,9 @@ void ModelPreview::RenderToolbar(ImDrawList* draw_list) {
                                              "Select Descriptor", ".json", cfg);
   }
 
-  if (IGFD::FileDialog::Instance()->Display("LoadDescriptorDlg")) {
+  if (IGFD::FileDialog::Instance()->Display("LoadDescriptorDlg",
+                                            ImGuiWindowFlags_NoCollapse,
+                                            ImVec2(700.0f, 500.0f))) {
     if (IGFD::FileDialog::Instance()->IsOk()) {
       LoadDescriptor(IGFD::FileDialog::Instance()->GetFilePathName());
     }
