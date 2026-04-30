@@ -87,6 +87,7 @@ void EditorUI::Initialize() {
   _AddWindow<InspectorPanel>();
   _AddWindow<ModelPreview>(&procmodel_data_);
   _AddWindow<ModelViewer>(&procmodel_data_);
+  _AddWindow<AssetGraphEditor>(&procmodel_data_);
 
   // TODO: Refactor these panels to EditorBase:
   // _AddWindow<ConsolePanel>();

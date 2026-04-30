@@ -30,7 +30,6 @@ void ModelPreview::Init() {
     return;
 
   preview_pipeline_.Create();
-
   // Create outputs for all instances
   for (int i = 0; i < total_instances_; ++i) {
     instance_outputs_.push_back(preview_pipeline_.CreateOutput());
@@ -63,29 +62,6 @@ void ModelPreview::LoadDescriptor(const std::string& path) {
     data_->model = Model::FromMeshData(resource->GetGraph().meshes);
   }
 }
-
-/* void ModelPreview::GenerateInstances() {
-  data_->instances.clear();
-
-  if (data_->archetype_id == 0)
-    return;
-
-  auto& resource_mgr = EngineContext::resourceManager();
-  auto resource = resource_mgr.GetResourceAs<ProcModel::ProcModelResource>(
-      data_->archetype_id);
-  if (!resource || !resource->IsResolved())
-    return;
-
-  for (int i = 0; i < total_instances_; ++i) {
-    auto resolved = ProcModel::ModelGenerator::Generate(
-        resource->GetGraph(), resource->GetDescriptor(), current_seed_ + i);
-    if (resolved) {
-      data_->instances.push_back(std::move(*resolved));
-    }
-  }
-
-  regenerate_ = false;
-}*/
 
 void ModelPreview::TickGenerate() {
   if (images_generated_ >= total_instances_)
@@ -125,7 +101,6 @@ void ModelPreview::Render() {
   RenderToolbar(ImGui::GetWindowDrawList());
 
   ImGui::BeginChild("GridArea", ImVec2(0, 0), false);
-
   // Fetch the draw list INSIDE the child window so scrolling
   // automatically clips the images
   ImDrawList* child_draw_list = ImGui::GetWindowDrawList();
@@ -168,7 +143,6 @@ void ModelPreview::RenderToolbar(ImDrawList* draw_list) {
     images_submitted_ = 0;
   }
 
-  // IMComponents::IndicatorLabel("Base seed: %u", current_seed_);
   ImGui::Text("Base seed: %u", current_seed_);
 
   ImGui::SameLine();
@@ -176,7 +150,6 @@ void ModelPreview::RenderToolbar(ImDrawList* draw_list) {
   float current_x = ImGui::GetCursorPosX();
   float right_edge =
       ImGui::GetWindowWidth() - zoom_width - ImGui::GetStyle().WindowPadding.x;
-
   // Safely push to the right only if we have space, otherwise stay next in line
   if (right_edge > current_x) {
     ImGui::SetCursorPosX(right_edge);
@@ -194,11 +167,9 @@ void ModelPreview::RenderToolbar(ImDrawList* draw_list) {
 void ModelPreview::RenderGrid(ImDrawList* draw_list) {
   ImVec2 content_avail = ImGui::GetContentRegionAvail();
   float padding = 8.0f;
-
   int columns = std::max(
       1, static_cast<int>(content_avail.x / (thumbnail_size_ + padding)));
   float dpi = WindowManager::GetDPIScale();
-
   int render_count =
       std::min(total_instances_, static_cast<int>(data_->instances.size()));
 
@@ -261,6 +232,21 @@ void ModelPreview::RenderGrid(ImDrawList* draw_list) {
   }
 }
 
+// Procedural Color Generator based on Group ID (Replaces Hardcoded Maps)
+static glm::vec3 GenerateGroupColor(const std::string& group_id) {
+  if (group_id == "_BASE_")
+    return glm::vec3(0.92f, 0.92f, 0.90f);
+
+  // Hash the string to generate a deterministic RGB value
+  size_t hash = std::hash<std::string>{}(group_id);
+  float r = ((hash & 0xFF0000) >> 16) / 255.0f;
+  float g = ((hash & 0x00FF00) >> 8) / 255.0f;
+  float b = (hash & 0x0000FF) / 255.0f;
+
+  // Mix with white to guarantee pastel colors that look good in the editor
+  return glm::mix(glm::vec3(r, g, b), glm::vec3(1.0f), 0.4f);
+}
+
 void ModelPreview::SubmitViews() {
   if (!data_->model)
     return;
@@ -268,37 +254,6 @@ void ModelPreview::SubmitViews() {
   float dpi = WindowManager::GetDPIScale();
   int render_count =
       std::min(total_instances_, static_cast<int>(data_->instances.size()));
-
-  // Apply group coloring from group ID - REMOVE THIS
-  static const std::unordered_map<std::string, glm::vec3> GROUP_COLORS = {
-      {"_BASE_", glm::vec3(0.92f, 0.92f, 0.90f)},  // white
-
-      // red
-      {"_ROOF_A", glm::vec3(0.68f, 0.28f, 0.28f)},
-      {"_ROOF_B", glm::vec3(0.80f, 0.38f, 0.38f)},
-      {"_ROOF_C", glm::vec3(0.90f, 0.50f, 0.50f)},
-
-      // blue
-      {"_WINDOW_A", glm::vec3(0.35f, 0.50f, 0.85f)},
-      {"_WINDOW_B", glm::vec3(0.50f, 0.65f, 0.92f)},
-      {"_WINDOW_C", glm::vec3(0.65f, 0.78f, 0.97f)},
-
-      // green
-      {"_PILLAR_A", glm::vec3(0.40f, 0.70f, 0.50f)},
-      {"_PILLAR_B", glm::vec3(0.55f, 0.82f, 0.65f)},
-      {"_PILLAR_C", glm::vec3(0.70f, 0.90f, 0.78f)},
-
-      // yellow
-      {"_CHIMNEY_A", glm::vec3(0.78f, 0.68f, 0.30f)},
-      {"_CHIMNEY_B", glm::vec3(0.88f, 0.78f, 0.40f)},
-      {"_CHIMNEY_C", glm::vec3(0.95f, 0.86f, 0.55f)},
-
-      // purple
-      {"_DECOR_A", glm::vec3(0.68f, 0.45f, 0.78f)},
-      {"_DECOR_B", glm::vec3(0.80f, 0.60f, 0.88f)},
-      {"_DECOR_C", glm::vec3(0.90f, 0.72f, 0.95f)},
-  };
-
   int budget = images_per_frame_;
 
   while (images_submitted_ < render_count && budget-- > 0) {
@@ -309,14 +264,10 @@ void ModelPreview::SubmitViews() {
 
     bool on_first_draw = true;
 
-    // Submit per-part render instructions
     for (const auto& desc : data_->instances[i].descriptors) {
-      auto color_it = GROUP_COLORS.find(desc.group_id);  // ! REMOVE THIS
 
-      // ! REMOVE THIS
-      glm::vec3 color = (color_it != GROUP_COLORS.end())
-                            ? color_it->second
-                            : glm::vec3(0.7f);  // Default grey fallback
+      // Generate procedural colors dynamically
+      glm::vec3 color = GenerateGroupColor(desc.group_id);
 
       for (int idx : desc.mesh_indices) {
         uint32_t mesh_idx = static_cast<uint32_t>(idx);
@@ -329,9 +280,8 @@ void ModelPreview::SubmitViews() {
         on_first_draw = false;
 
         inst.mesh_filter = {mesh_idx};
-        inst.mesh_colors[mesh_idx] = color;  // ! REMOVE THIS
+        inst.mesh_colors[mesh_idx] = color;
 
-        // Use resolved transform
         glm::vec3 pos, scale, skew;
         glm::quat rot;
         glm::vec4 persp;
@@ -351,3 +301,26 @@ void ModelPreview::SubmitViews() {
     ++images_submitted_;
   }
 }
+
+/* void ModelPreview::GenerateInstances() {
+  data_->instances.clear();
+
+  if (data_->archetype_id == 0)
+    return;
+
+  auto& resource_mgr = EngineContext::resourceManager();
+  auto resource = resource_mgr.GetResourceAs<ProcModel::ProcModelResource>(
+      data_->archetype_id);
+  if (!resource || !resource->IsResolved())
+    return;
+
+  for (int i = 0; i < total_instances_; ++i) {
+    auto resolved = ProcModel::ModelGenerator::Generate(
+        resource->GetGraph(), resource->GetDescriptor(), current_seed_ + i);
+    if (resolved) {
+      data_->instances.push_back(std::move(*resolved));
+    }
+  }
+
+  regenerate_ = false;
+}*/
