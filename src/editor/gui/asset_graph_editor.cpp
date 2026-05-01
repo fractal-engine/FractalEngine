@@ -1,7 +1,10 @@
 #include "asset_graph_editor.h"
 #include <ImGuiFileDialog/ImGuiFileDialog.h>
+
+#include <cmath>  // Needed for std::abs, std::round
 #include <functional>
-#include <unordered_set>  // Needed for cycle protection
+#include <unordered_set> // Needed for cycle protection
+
 #include "engine/context/engine_context.h"
 #include "engine/core/logger.h"
 #include "engine/pcg/pcg_engine.h"
@@ -20,9 +23,8 @@
 
 namespace ed = ax::NodeEditor;
 
-// -------------------------------
-// JSON Serializer
-// -------------------------------
+// Set up json serializers so the nlohmann library knows how to save our custom
+// structs
 namespace glm {
 void to_json(nlohmann::json& j, const vec3& v) {
   j = nlohmann::json::array({v.x, v.y, v.z});
@@ -88,13 +90,13 @@ void to_json(nlohmann::json& j, const ModelDescriptor& m) {
 }
 }  // namespace ProcModel
 
-// -------------------------------
-// Helper Functions
-// -------------------------------
+// Utility function to convert strings to unique numerical ids for ImGui
 static uintptr_t HashString(const std::string& str) {
   return std::hash<std::string>{}(str);
 }
 
+// Collapses raw lists of attachment points (e.g. 620 string entries) into a
+// readable summary count
 static std::map<std::string, int> GroupAttachmentPoints(
     const std::vector<std::string>& attachments) {
   std::map<std::string, int> grouped;
@@ -110,14 +112,65 @@ static std::map<std::string, int> GroupAttachmentPoints(
   return grouped;
 }
 
-// -------------------------------
-// Editor Implementation
-// -------------------------------
+// Extracts the base category from a group ID (e.g., "_WINDOW_A" becomes
+// "WINDOW") This allows a grouping of variants under a single consistent color
+// scheme.
+static std::string ExtractCategoryName(const std::string& group_id) {
+  std::string category = group_id;
 
+  // Strip leading underscores
+  while (!category.empty() && category.front() == '_') {
+    category.erase(0, 1);
+  }
+
+  // Keep everything up to the next underscore
+  size_t pos = category.find('_');
+  if (pos != std::string::npos) {
+    category = category.substr(0, pos);
+  }
+
+  return category;
+}
+
+// Generates a consistent, dark-pastel color for the node header based on its
+// category
+static ImU32 GenerateGroupHeaderColor(const std::string& group_id) {
+  std::string category = ExtractCategoryName(group_id);
+
+  // Provide a neutral dark gray for the root base node
+  if (category == "BASE") {
+    return IM_COL32(70, 70, 70, 255);
+  }
+
+  // Hash the category string to generate a deterministic rgb color
+  size_t hash = std::hash<std::string>{}(category);
+  int r = (hash & 0xFF0000) >> 16;
+  int g = (hash & 0x00FF00) >> 8;
+  int b = (hash & 0x0000FF);
+
+  // Mix the random color with a dark base to ensure it looks deep and
+  // professional
+  r = (r + 40) / 2;
+  g = (g + 40) / 2;
+  b = (b + 80) / 2;
+
+  return IM_COL32(r, g, b, 255);
+}
+
+// Implementation of the editor window
 AssetGraphEditor::AssetGraphEditor(PreviewData* data) : data_(data) {
   ed::Config config;
   config.SettingsFile = "AssetGraphEditor.json";
   m_EditorContext = ed::CreateEditor(&config);
+
+  // Set Unreal Engine style dark background and grid colors
+  ed::SetCurrentEditor(m_EditorContext);
+  ed::Style& style = ed::GetStyle();
+  style.Colors[ed::StyleColor_Bg] =
+      ImVec4(0.08f, 0.08f, 0.08f, 1.0f);  // Deep dark grey/black
+  style.Colors[ed::StyleColor_Grid] =
+      ImVec4(0.16f, 0.16f, 0.16f, 1.0f);  // Subtle grid lines
+  ed::SetCurrentEditor(nullptr);
 }
 
 AssetGraphEditor::~AssetGraphEditor() {
@@ -128,7 +181,7 @@ void AssetGraphEditor::LoadGraph(const std::string& filepath) {
   m_ModelData = ProcModel::ModelDescriptor{};
   if (ProcModel::DescriptorParser::LoadFromFile(filepath, m_ModelData)) {
     m_CurrentFilePath = filepath;
-    m_NeedsAutoLayout = true;  // Trigger layout on next frame
+    m_NeedsAutoLayout = true;
     Logger::getInstance().Log(LogLevel::Info,
                               "[AssetGraphEditor] Loaded: " + filepath);
   }
@@ -145,7 +198,7 @@ void AssetGraphEditor::SaveGraph(const std::string& filepath) {
     Logger::getInstance().Log(LogLevel::Info,
                               "[AssetGraphEditor] Saved: " + filepath);
 
-    // Sync with the engine
+    // Trigger the preview window to regenerate models when saved
     if (data_) {
       auto& pcg = EngineContext::Generator();
       data_->archetype_id = pcg.LoadArchetype(filepath);
@@ -161,7 +214,7 @@ void AssetGraphEditor::Render() {
   ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
   ImGui::Begin("Asset Graph", nullptr);
 
-  // --- Toolbar ---
+  // Render the top toolbar area
   ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(8.0f, 8.0f));
   ImGui::BeginChild("GraphToolbar", ImVec2(0, 36.0f), true,
                     ImGuiWindowFlags_NoScrollbar);
@@ -173,6 +226,7 @@ void AssetGraphEditor::Render() {
                                              "Select Descriptor", ".json", cfg);
   }
 
+  // Handle file dialog completion
   if (IGFD::FileDialog::Instance()->Display("GraphLoadDlg",
                                             ImGuiWindowFlags_NoCollapse,
                                             ImVec2(700.0f, 500.0f))) {
@@ -183,7 +237,6 @@ void AssetGraphEditor::Render() {
   }
 
   ImGui::SameLine();
-
   if (ImGui::Button(ICON_FA_FLOPPY_DISK " Save")) {
     SaveGraph(m_CurrentFilePath);
   }
@@ -208,13 +261,14 @@ void AssetGraphEditor::Render() {
   ImGui::EndChild();
   ImGui::PopStyleVar();
 
-  // --- Node Editor Implementation ---
+  // Render the actual node graph workspace
   RenderNodeGraph();
 
   ImGui::End();
   ImGui::PopStyleVar();
 }
 
+// Automatically organizes nodes into a clean horizontal tree structure
 void AssetGraphEditor::AutoLayoutNodes() {
   if (m_ModelData.selection_groups.empty())
     return;
@@ -229,55 +283,90 @@ void AssetGraphEditor::AutoLayoutNodes() {
   std::unordered_map<std::string, std::vector<ProcModel::SelectionGroup*>> tree;
   std::vector<ProcModel::SelectionGroup*> roots;
 
+  // Build the hierarchical tree based on 'activated_by' links
   for (auto& group : m_ModelData.selection_groups) {
     if (group.activated_by.empty()) {
       roots.push_back(&group);
     } else {
       std::string parentGroupId = partToGroup[group.activated_by];
       if (parentGroupId.empty()) {
-        roots.push_back(&group);  // Fallback if link is broken
+        roots.push_back(&group);
       } else {
         tree[parentGroupId].push_back(&group);
       }
     }
   }
 
-  float currentY = 0.0f;
-  std::unordered_set<std::string> visited;  // Cycle protection
+  std::unordered_map<std::string, float> nodeHeights;
+  std::unordered_map<std::string, float> subtreeHeights;
+  std::unordered_set<std::string> visited;
 
-  std::function<void(ProcModel::SelectionGroup*, int)> placeNode =
-      [&](ProcModel::SelectionGroup* node, int depth) {
-        // Prevent infinite loops if artist creates a circular reference
+  // First pass: compute the total height required by each branch to avoid
+  // overlapping
+  std::function<float(ProcModel::SelectionGroup*)> computeHeight =
+      [&](ProcModel::SelectionGroup* node) {
+        if (visited.count(node->group_id))
+          return 0.0f;
+        visited.insert(node->group_id);
+
+        float h = 100.0f + (node->parts.size() * 32.0f);
+        if (!node->attach_to.empty())
+          h += 35.0f;
+        nodeHeights[node->group_id] = h;
+
+        float childrenH = 0.0f;
+        if (tree.count(node->group_id)) {
+          for (auto* child : tree[node->group_id]) {
+            childrenH += computeHeight(child) + 40.0f;
+          }
+          if (childrenH > 0)
+            childrenH -= 40.0f;
+        }
+        subtreeHeights[node->group_id] = std::max(h, childrenH);
+        return subtreeHeights[node->group_id];
+      };
+
+  for (auto* root : roots)
+    computeHeight(root);
+
+  // Second pass: physically assign positions based on the heights calculated
+  visited.clear();
+  std::function<void(ProcModel::SelectionGroup*, int, float)> placeNode =
+      [&](ProcModel::SelectionGroup* node, int depth, float startY) {
         if (visited.count(node->group_id))
           return;
         visited.insert(node->group_id);
 
         ed::NodeId id = HashString(node->group_id);
-        float x = depth * 350.0f;
-        float y = currentY;
+        float x = depth * 420.0f;
 
+        // Center the parent node vertically relative to its children
+        float y = startY + (subtreeHeights[node->group_id] -
+                            nodeHeights[node->group_id]) *
+                               0.5f;
         ed::SetNodePosition(id, ImVec2(x, y));
 
-        float estimatedHeight = 110.0f + (node->parts.size() * 35.0f);
-        if (!node->attach_to.empty())
-          estimatedHeight += 40.0f;
-
-        currentY += estimatedHeight;
-
         if (tree.count(node->group_id)) {
+          float childY = startY;
           for (auto* child : tree[node->group_id]) {
-            placeNode(child, depth + 1);
+            placeNode(child, depth + 1, childY);
+            childY += subtreeHeights[child->group_id] + 40.0f;
           }
         }
       };
 
+  float currentRootY = 0.0f;
   for (auto* root : roots) {
-    placeNode(root, 0);
-    currentY += 80.0f;
+    placeNode(root, 0, currentRootY);
+    currentRootY += subtreeHeights[root->group_id] + 80.0f;
   }
 }
 
 void AssetGraphEditor::RenderNodeGraph() {
+  // Capture the editor's screen space coordinates before starting it
+  ImVec2 editor_pos = ImGui::GetCursorScreenPos();
+  ImVec2 editor_size = ImGui::GetContentRegionAvail();
+
   ed::SetCurrentEditor(m_EditorContext);
   ed::Begin("PCG_Node_Editor");
 
@@ -285,7 +374,7 @@ void AssetGraphEditor::RenderNodeGraph() {
 
   if (m_NeedsAutoLayout) {
     AutoLayoutNodes();
-    trigger_nav = true;  // Tell it to frame the nodes at the end of the loop
+    trigger_nav = true;
     m_NeedsAutoLayout = false;
   }
 
@@ -295,22 +384,47 @@ void AssetGraphEditor::RenderNodeGraph() {
   const float nodeWidth = 260.0f;
 
   for (auto& group : m_ModelData.selection_groups) {
+    // Tighten node padding horizontally so pins can sit nicely on the outer
+    // edges
     ed::PushStyleVar(ed::StyleVar_NodePadding, ImVec4(4.0f, 8.0f, 4.0f, 8.0f));
 
     ed::NodeId nodeId = HashString(group.group_id);
     ed::BeginNode(nodeId);
 
-    // 1. HEADER
-    ImGui::Dummy(ImVec2(nodeWidth, 0));
-    ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 4.0f);
+    // Capture the exact top-left coordinate of the node's content area
+    ImVec2 cursorPos = ImGui::GetCursorScreenPos();
+
+    // Calculate header dimensions safely
+    float headerHeight = ImGui::GetTextLineHeight() + 12.0f;
+    ImVec2 headerMin =
+        ImVec2(cursorPos.x - 4.0f,
+               cursorPos.y - 8.0f);  // account for the 4px padding we set above
+    ImVec2 headerMax =
+        ImVec2(headerMin.x + nodeWidth + 8.0f, headerMin.y + headerHeight);
+
+    // Draw the colored header background
+    ImGui::GetWindowDrawList()->AddRectFilled(
+        headerMin, headerMax, GenerateGroupHeaderColor(group.group_id),
+        ed::GetStyle().NodeRounding, ImDrawFlags_RoundCornersTop);
+
+    // Position the text perfectly inside the drawn header box
+    ImGui::SetCursorScreenPos(ImVec2(headerMin.x + 8.0f, headerMin.y + 6.0f));
+    ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 255, 255, 255));
     ImGui::TextUnformatted(group.group_id.c_str());
     if (group.required) {
       ImGui::SameLine();
       ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "(Req)");
     }
-    ImGui::Dummy(ImVec2(0, 5));
+    ImGui::PopStyleColor();
 
-    // 2. INPUT PIN (Left edge)
+    // Push the cursor down beneath the header so the rest of the node content
+    // renders correctly
+    ImGui::SetCursorScreenPos(ImVec2(cursorPos.x, headerMax.y + 8.0f));
+
+    // Force the node to expand to our desired fixed width
+    ImGui::Dummy(ImVec2(nodeWidth, 0.0f));
+
+    // Draw the activation input pin on the left side
     ed::PinId inputPinId = HashString(group.group_id + "_IN");
     m_PinIdToGroup[inputPinId.Get()] = &group;
 
@@ -328,7 +442,7 @@ void AssetGraphEditor::RenderNodeGraph() {
     ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 1.0f);
     ImGui::Text("Activate");
 
-    // 3. ATTACHMENTS
+    // Display attachment summaries if available
     if (!group.attach_to.empty()) {
       ImGui::Dummy(ImVec2(0, 4));
       auto grouped_attachments = GroupAttachmentPoints(group.attach_to);
@@ -344,7 +458,7 @@ void AssetGraphEditor::RenderNodeGraph() {
       ImGui::Dummy(ImVec2(0, 4));
     }
 
-    // 4. CUSTOM SEPARATOR
+    // Draw a horizontal line separating the settings from the output styles
     ImGui::Dummy(ImVec2(0, 4));
     ImVec2 p0 = ImGui::GetCursorScreenPos();
     ImGui::GetWindowDrawList()->AddLine(ImVec2(p0.x, p0.y),
@@ -352,7 +466,7 @@ void AssetGraphEditor::RenderNodeGraph() {
                                         IM_COL32(80, 80, 80, 255), 1.0f);
     ImGui::Dummy(ImVec2(0, 4));
 
-    // 5. OUTPUT PINS (Right edge)
+    // Render individual parts as output pins
     for (auto& part : group.parts) {
       ed::PinId outputPinId = HashString(part.id);
       m_PinIdToString[outputPinId.Get()] = part.id;
@@ -367,7 +481,7 @@ void AssetGraphEditor::RenderNodeGraph() {
       ImGui::SameLine();
       ImGui::TextUnformatted(part.name.c_str());
 
-      // Pin alignment
+      // Align the output pin to the far right edge of the node
       ImGui::SameLine(nodeWidth - 12.0f);
       ed::BeginPin(outputPinId, ed::PinKind::Output);
       ImVec2 posOut = ImGui::GetCursorScreenPos();
@@ -383,28 +497,25 @@ void AssetGraphEditor::RenderNodeGraph() {
       ImGui::PopID();
     }
 
-    // 6. ADD STYLE BUTTON
+    // Button to append new parts to this group
     ImGui::Dummy(ImVec2(0, 5));
     ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 8.0f);
 
-    // Give the button a unique ID context
     ImGui::PushID(group.group_id.c_str());
-
-    if (ImGui::Button("+ Add Style", ImVec2(nodeWidth - 16.0f, 0))) {
+    if (ImGui::Button("+ Add Part", ImVec2(nodeWidth - 16.0f, 0))) {
       ProcModel::PartDescriptor new_part;
-      new_part.id = group.group_id + "_NEW_STYLE";
-      new_part.name = "New Style";
+      new_part.id = group.group_id + "_NEW_PART";
+      new_part.name = "New Part";
       new_part.weight = 1.0f;
       group.parts.push_back(new_part);
     }
-
-    ImGui::PopID();  
+    ImGui::PopID();
 
     ed::EndNode();
     ed::PopStyleVar();
-  } 
+  }
 
-  // Draw Link cables
+  // Render all active connections between nodes
   int link_id_counter = 1;
   for (const auto& group : m_ModelData.selection_groups) {
     if (!group.activated_by.empty()) {
@@ -417,13 +528,14 @@ void AssetGraphEditor::RenderNodeGraph() {
     }
   }
 
-  // Handle Cable dragging
+  // Process user interactions for creating new links
   if (ed::BeginCreate()) {
     ed::PinId inputPinId, outputPinId;
     if (ed::QueryNewLink(&inputPinId, &outputPinId)) {
       ProcModel::SelectionGroup* targetGroup = nullptr;
       std::string sourcePartId = "";
 
+      // Ensure connection flows from an output pin to an input pin
       if (m_PinIdToGroup.count(inputPinId.Get()) &&
           m_PinIdToString.count(outputPinId.Get())) {
         targetGroup = m_PinIdToGroup[inputPinId.Get()];
@@ -445,7 +557,7 @@ void AssetGraphEditor::RenderNodeGraph() {
   }
   ed::EndCreate();
 
-  // Handle deleting link cables (ALT+Click or Delete key)
+  // Process user interactions for deleting existing links
   if (ed::BeginDelete()) {
     ed::LinkId deletedLinkId;
     if (ed::QueryDeletedLink(&deletedLinkId)) {
@@ -465,11 +577,32 @@ void AssetGraphEditor::RenderNodeGraph() {
   }
   ed::EndDelete();
 
-  // --- Navigate to content AFTER nodes are fully drawn ---
+  // Frame the camera gracefully after the layout algorithm runs
   if (trigger_nav) {
     ed::NavigateToContent();
   }
 
   ed::End();
+
+  // Get the current zoom level from the node editor
+  float zoom = ed::GetCurrentZoom();
+  std::string zoom_text;
+  if (std::abs(zoom - 1.0f) < 0.01f) {
+    zoom_text = "Zoom 1:1";
+  } else {
+    zoom_text = "Zoom " +
+                std::to_string(static_cast<int>(std::round(zoom * 100.0f))) +
+                "%";
+  }
+
+  // Draw the text overlay floating in the top-right corner of the canvas view
+  ImVec2 text_size = ImGui::CalcTextSize(zoom_text.c_str());
+  ImVec2 text_pos = ImVec2(editor_pos.x + editor_size.x - text_size.x - 16.0f,
+                           editor_pos.y + 16.0f);
+
+  // Use GetWindowDrawList so the text sits permanently on top of the node grid
+  ImGui::GetWindowDrawList()->AddText(text_pos, IM_COL32(180, 180, 180, 255),
+                                      zoom_text.c_str());
+
   ed::SetCurrentEditor(nullptr);
 }
