@@ -1,26 +1,34 @@
 #include "model.h"
 
+#include "engine/content/cache/material_cache.h"
 #include "engine/content/cache/mesh_cache.h"
-#include "engine/content/loaders/mesh_loader.h"
+
 #include "engine/core/logger.h"
 
-Model::Model() : metrics_(), source_path_(), mesh_data_(), meshes_() {}
+Model::Model()
+    : metrics_(), source_path_(), mesh_data_(), meshes_(), materials_() {}
 
 Model::~Model() {
   meshes_.clear();
   mesh_data_.clear();
+  materials_.clear();
 }
 
 std::shared_ptr<Model> Model::Load(const std::string& file) {
+  // Get cached meshes
   const auto& mesh_list = Content::MeshCache::Instance().Get(file);
 
-  if (mesh_list.empty()) {
-    Logger::getInstance().Log(LogLevel::Error,
-                              "[Model::Load] No meshes in: " + file);
+  // Get cached materials
+  const auto& materials = Content::MaterialCache::Instance().Get(file);
+
+  if (mesh_list.empty() && materials.empty()) {
+    Logger::getInstance().Log(
+        LogLevel::Error, "[Model::Load] No meshes or materials in: " + file);
     return nullptr;
   }
 
   auto out = std::make_shared<Model>();
+  out->materials_ = materials;
   out->meshes_.reserve(mesh_list.size());
 
   for (const auto& geom : mesh_list)
@@ -28,7 +36,8 @@ std::shared_ptr<Model> Model::Load(const std::string& file) {
 
   Logger::getInstance().Log(
       LogLevel::Debug,
-      "[Model] Loaded " + std::to_string(out->NLoadedMeshes()) + " meshes");
+      "[Model] Loaded " + std::to_string(out->NLoadedMeshes()) + " meshes, " +
+          std::to_string(out->materials_.size()) + " materials");
 
   return out;
 }
@@ -56,13 +65,16 @@ bool Model::LoadData() {
 }
 
 std::shared_ptr<Model> Model::FromMeshData(
-    const std::vector<Geometry::MeshData>& mesh_data) {
+    const std::vector<Geometry::MeshData>& mesh_data,
+    const std::vector<Content::MaterialData>& materials) {
+
   if (mesh_data.empty())
     return nullptr;
 
   auto out = std::make_shared<Model>();
   out->metrics_ = ComputeMetrics(mesh_data);
   out->mesh_data_ = mesh_data;  // needed for filtered metrics
+  out->materials_ = materials;
   out->meshes_.reserve(mesh_data.size());
 
   for (const auto& geom : mesh_data)
@@ -79,6 +91,8 @@ const Mesh* Model::QueryMesh(uint32_t index) const {
   return index < meshes_.size() ? meshes_[index].get() : nullptr;
 }
 
+// ! This function needs to be removed, SceneViewPipeline should handle this
+// ! This is too tightly coupled to the renderer
 void Model::Draw(bgfx::ViewId view, bgfx::ProgramHandle program) const {
   for (const auto& mesh : meshes_) {
     mesh->Bind();
@@ -143,6 +157,10 @@ Model::Metrics Model::ComputeMetrics(
 
   m.origin = (m.min_point + m.max_point) * 0.5f;
   return m;
+}
+
+const std::vector<Content::MaterialData>& Model::GetMaterials() const {
+  return materials_;
 }
 
 void Model::Destroy() {

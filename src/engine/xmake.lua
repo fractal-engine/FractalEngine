@@ -37,6 +37,7 @@ add_files(
 	"renderer/skybox/*.cpp",
 	"renderer/gizmos/*.cpp",
 	"renderer/shadows/*.cpp",
+	"renderer/material/*.cpp",
 
 	-- content files
 	"content/cache/*.cpp",
@@ -82,6 +83,7 @@ add_headerfiles(
 	"renderer/skybox/*.h",
 	"renderer/gizmos/*.h",
 	"renderer/shadows/*.h",
+	"renderer/material/*.h",
 
 	-- geometry files
 	"geometry/meshing/*.h",

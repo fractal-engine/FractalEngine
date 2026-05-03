@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "engine/core/types/geometry_data.h"
+#include "engine/core/types/material_data.h"
 
 //
 // SCENE_DATA_H
@@ -22,8 +23,9 @@ struct SceneNode {
 };
 
 struct SceneData {
-  std::vector<Geometry::MeshData> meshes;
   SceneNode root;
+  std::vector<Geometry::MeshData> meshes;
+  std::vector<Content::MaterialData> materials;
 };
 
 }  // namespace Content

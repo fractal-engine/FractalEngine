@@ -80,6 +80,8 @@ public:
   bgfx::UniformHandle GetSunDirectionUniform() const { return sunDirUniform_; }
   bgfx::UniformHandle GetSunLuminanceUniform() const { return sunLumUniform_; }
   bgfx::UniformHandle GetViewPosUniform() const { return u_viewPos; }
+  bgfx::UniformHandle GetMeshColorUniform() const { return u_meshColor; }
+  bgfx::UniformHandle GetAlbedoUniform() const { return u_albedoMap; }
 
 private:
   SDL_Window* window_;
@@ -107,8 +109,10 @@ private:
   bgfx::UniformHandle sunDirUniform_;
   bgfx::UniformHandle sunLumUniform_;
   bgfx::UniformHandle u_viewPos;
+  bgfx::UniformHandle u_meshColor;
+  bgfx::UniformHandle u_albedoMap;
 
-  // Track uniforms (not used)
+  // ! Track uniforms (not used yet)
   std::unordered_map<std::string, bgfx::UniformHandle> uniform_registry_;
 
   ImTextureID scene_tex_id_{0};

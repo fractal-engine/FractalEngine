@@ -9,14 +9,20 @@
 
 #include "editor/runtime/runtime.h"
 #include "editor/vendor/imguizmo/ImGuizmo.h"
+#include "engine/core/types/material_data.h"
+
 #include "engine/core/engine_globals.h"
 #include "engine/core/logger.h"
 #include "engine/core/view_ids.h"
+
 #include "engine/ecs/world.h"
 #include "engine/math/transformation.h"
+
 #include "engine/renderer/frame_graph.h"
 #include "engine/renderer/graphics_renderer.h"
+#include "engine/renderer/material/material_registry.h"
 #include "engine/renderer/model/model.h"
+
 #include "engine/resources/file_system_utils.h"
 
 // TODO: rename window to scene_view_window
@@ -237,6 +243,9 @@ inline void GameCanvas(bool isGameRunning, bool& hovered, bool& focused) {
               auto [entity, tr] =
                   world.CreateEntity(abs_path.filename().string());
 
+              // Get materials from loaded model
+              const auto& materials = model->GetMaterials();
+
               // Attach a MeshRendererComponent for each mesh
               for (uint32_t i = 0; i < model->NLoadedMeshes(); ++i) {
                 const Mesh* mesh = model->QueryMesh(i);
@@ -247,11 +256,35 @@ inline void GameCanvas(bool isGameRunning, bool& hovered, bool& focused) {
                     world.Add<MeshRendererComponent>(entity);
                 mr.mesh_ = mesh;
                 mr.enabled_ = true;
+
+                // Register material and assign handle
+                uint32_t mat_idx = mesh->MaterialIndex();
+                if (mat_idx < materials.size()) {
+                  mr.material_ =
+                      Renderer::MaterialRegistry::Instance().Register(
+                          materials[mat_idx]);
+
+                  Logger::getInstance().Log(
+                      LogLevel::Debug, "[GameCanvas] Registered material '" +
+                                           materials[mat_idx].name +
+                                           "' with handle " +
+                                           std::to_string(mr.material_));
+                } else {
+                  mr.material_ = Renderer::INVALID_MATERIAL;
+
+                  Logger::getInstance().Log(
+                      LogLevel::Warning,
+                      "[GameCanvas] Mesh material_index " +
+                          std::to_string(mat_idx) +
+                          " out of range (materials.size()=" +
+                          std::to_string(materials.size()) + ")");
+                }
               }
 
               // Keep model alive for the lifetime of the scene
               // ! Potential memory leak
-              // ! loaded models should be stored in a scene-level asset manager
+              // ! loaded models should be stored in a scene-level asset
+              // manager
               static std::vector<std::shared_ptr<Model>> asset_cache;
               asset_cache.emplace_back(std::move(model));
             }

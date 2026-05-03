@@ -7,8 +7,13 @@
 #include <string>
 #include <vector>
 
+#include "engine/content/loaders/material_loader.h"
+#include "engine/content/loaders/mesh_loader.h"
+
 #include "engine/core/types/geometry_data.h"
+
 #include "engine/memory/resource.h"
+
 #include "engine/renderer/model/mesh.h"
 
 class Model : public Resource {
@@ -53,11 +58,14 @@ public:
 
   // Factory function
   static std::shared_ptr<Model> FromMeshData(
-      const std::vector<Geometry::MeshData>& mesh_data);
+      const std::vector<Geometry::MeshData>& mesh_data,
+      const std::vector<Content::MaterialData>& materials);
 
   // Computes metrics for a filtered subset of meshes
   Metrics ComputeFilteredMetrics(
       const std::vector<uint32_t>& mesh_filter) const;
+
+  const std::vector<Content::MaterialData>& GetMaterials() const;
 
   void Destroy() override;
 
@@ -77,6 +85,7 @@ private:
 
   // Intermediate CPU data
   std::vector<Geometry::MeshData> mesh_data_;
+  std::vector<Content::MaterialData> materials_;
 
   // Final GPU meshes
   std::vector<std::unique_ptr<Mesh>> meshes_;

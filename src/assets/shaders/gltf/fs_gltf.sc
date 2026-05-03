@@ -1,26 +1,30 @@
-$input v_position
+$input v_position, v_normal, v_texcoord0
+
 #include "common.sh"
 
-uniform vec4 u_meshColor;
+uniform vec4 u_meshColor;      // base_color fallback
+uniform vec4 u_AlbedoMap;   // x=1 if texture bound, 0 otherwise
+
+SAMPLER2D(s_albedo, 0);
 
 void main()
 {
-    // Extract the 3D position
-    vec3 pos = v_position.xyz;
+    vec3 normal = normalize(v_normal);
 
-    // Auto-calculate flat normals based on screen-space derivatives
-    vec3 dpdx = dFdx(pos);
-    vec3 dpdy = dFdy(pos);
-    vec3 normal = normalize(cross(dpdx, dpdy));
-    
-    // Simulate a simple directional light (like Blender's default solid view)
-    vec3 lightDir = normalize(vec3(-0.5, -1.0, -0.5));
-    float ndotl = max(dot(normal, -lightDir), 0.0);
-    
-    // Ambient gray (0.3) + Diffuse gray (0.5)
-    // vec3 finalColor = vec3_splat(0.3) + (vec3_splat(0.5) * ndotl); use this when removing baseColor
-    vec3 baseColor = u_meshColor.rgb; // REMOVE THIS
-    vec3 finalColor = (baseColor * 0.3) + (baseColor * 0.5 * ndotl);
-    
-    gl_FragColor = vec4(finalColor, 1.0);
+    // Sample albedo texture if available, otherwise use flat color
+    vec3 base_color;
+    if (u_AlbedoMap.x > 0.5) {
+        base_color = texture2D(s_albedo, v_texcoord0).rgb;
+    } else {
+        base_color = u_meshColor.rgb;
+    }
+
+    // Directional light
+    vec3 light_dir = normalize(vec3(-0.5, -1.0, -0.5));
+    float ndotl = max(dot(normal, -light_dir), 0.0);
+
+    vec3 ambient  = base_color * 0.3;
+    vec3 diffuse  = base_color * 0.7 * ndotl;
+
+    gl_FragColor = vec4(ambient + diffuse, u_meshColor.a);
 }

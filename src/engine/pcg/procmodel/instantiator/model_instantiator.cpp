@@ -68,6 +68,9 @@ Entity ModelInstantiator::CreatePartEntity(const ResolvedDescriptor& descriptor,
   transform.euler_angles_ = glm::degrees(glm::eulerAngles(transform.rotation_));
   transform.modified_ = true;
 
+  // Get materials from graph for registration
+  const auto& materials = graph.GetMaterials();
+
   // Attach mesh renderers
   if (descriptor.mesh_indices.size() == 1) {
     // Single mesh — attach directly to part entity
@@ -76,6 +79,15 @@ Entity ModelInstantiator::CreatePartEntity(const ResolvedDescriptor& descriptor,
       auto& renderer = ecs.Add<MeshRendererComponent>(entity);
       renderer.mesh_ = mesh;
       renderer.enabled_ = true;
+
+      // Register material and assign handle
+      uint32_t mat_idx = mesh->MaterialIndex();
+      if (mat_idx < materials.size()) {
+        renderer.material_ =
+            Renderer::MaterialRegistry::Instance().Register(materials[mat_idx]);
+      } else {
+        renderer.material_ = Renderer::INVALID_MATERIAL;
+      }
     }
   } else if (descriptor.mesh_indices.size() > 1) {
     // Multiple meshes — create child entity per mesh
@@ -94,6 +106,15 @@ Entity ModelInstantiator::CreatePartEntity(const ResolvedDescriptor& descriptor,
       auto& renderer = ecs.Add<MeshRendererComponent>(child);
       renderer.mesh_ = mesh;
       renderer.enabled_ = true;
+
+      // Register material and assign handle
+      uint32_t mat_idx = mesh->MaterialIndex();
+      if (mat_idx < materials.size()) {
+        renderer.material_ =
+            Renderer::MaterialRegistry::Instance().Register(materials[mat_idx]);
+      } else {
+        renderer.material_ = Renderer::INVALID_MATERIAL;
+      }
     }
   }
 
