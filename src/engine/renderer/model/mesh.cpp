@@ -36,6 +36,7 @@ Mesh::Mesh(const Geometry::MeshData& src) {
   ibo_ = bgfx::createIndexBuffer(imem, BGFX_BUFFER_INDEX32);
 
   index_count_ = static_cast<uint32_t>(src.indices.size());
+  material_index_ = src.material_index;
 }
 
 Mesh::~Mesh() {
@@ -48,4 +49,8 @@ Mesh::~Mesh() {
 void Mesh::Bind() const {
   bgfx::setVertexBuffer(0, vbo_);
   bgfx::setIndexBuffer(ibo_);
+}
+
+uint32_t Mesh::MaterialIndex() const {
+  return material_index_;
 }

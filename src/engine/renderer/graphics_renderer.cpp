@@ -71,6 +71,7 @@ bool GraphicsRenderer::InitBgfx() {
 
   // Create uniforms
   u_viewPos = bgfx::createUniform("u_viewPos", bgfx::UniformType::Vec4);
+  u_meshColor = bgfx::createUniform("u_meshColor", bgfx::UniformType::Vec4);
 
   ConfigureViews();
 
@@ -336,6 +337,9 @@ void GraphicsRenderer::Destroy() {
   // Destroy uniforms
   if (bgfx::isValid(u_viewPos))
     bgfx::destroy(u_viewPos);
+
+  if (bgfx::isValid(u_meshColor))
+    bgfx::destroy(u_meshColor);
 
   // 3. Clear ImGui texture ID before shutdown
   scene_tex_id_ = 0;

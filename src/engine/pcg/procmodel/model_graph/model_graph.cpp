@@ -16,4 +16,8 @@ const Mesh* ModelGraph::GetMesh(int index) const {
   return gpu_meshes[index].get();
 }
 
+const std::vector<Content::MaterialData>& ModelGraph::GetMaterials() const {
+  return materials;
+}
+
 }  // namespace ProcModel

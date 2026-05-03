@@ -4,11 +4,14 @@
 #include <entt/entt.hpp>
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
+
+#include "engine/renderer/material/material_registry.h"
 #include "engine/renderer/model/mesh.h"
 
 /* ────────────────────────────── MESH RENDERER ──────────────────────────── */
 struct MeshRendererComponent {
   const Mesh* mesh_{nullptr};
+  Renderer::MaterialHandle material_{Renderer::INVALID_MATERIAL};
   bool enabled_{true};
 };
 

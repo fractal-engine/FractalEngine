@@ -43,6 +43,8 @@ private:
 
   uint32_t index_count_{0};  // TODO: remove this
 
+  uint32_t material_index_{0};
+
   static bgfx::VertexLayout layout_;
   static void EnsureLayout();
 };

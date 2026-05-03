@@ -369,6 +369,30 @@ void SceneViewPipeline::RenderForwardNode(const Node::Context& context) {
     bgfx::setTransform(glm::value_ptr(transform.model_));
     renderer_comp.mesh_->Bind();
 
+    // Set material uniforms via material registry
+    const Content::MaterialData* mat =
+        Renderer::MaterialRegistry::Instance().Get(renderer_comp.material_);
+
+    float has_albedo[4] = {0.0f, 0.0f, 0.0f, 0.0f};
+
+    if (mat && !mat->albedo_map.empty()) {
+      // ! texture upload not yet implemented - placeholder
+      // bgfx::setTexture(0, s_albedo_sampler, albedo_texture_handle);
+      // has_albedo[0] = 1.0f;
+    }
+
+    bgfx::setUniform(renderer->GetAlbedoUniform(), has_albedo);
+
+    if (mat) {
+      float mesh_color[4] = {mat->base_color.r, mat->base_color.g,
+                             mat->base_color.b, mat->base_color.a};
+      bgfx::setUniform(renderer->GetMeshColorUniform(), mesh_color);
+    } else {
+      // Fallback gray material
+      float default_color[4] = {0.8f, 0.8f, 0.8f, 1.0f};
+      bgfx::setUniform(renderer->GetMeshColorUniform(), default_color);
+    }
+
     // Set culling/state
     // ? Create a method for handling render states?
     uint64_t render_state = BGFX_STATE_DEFAULT | BGFX_STATE_CULL_CW;

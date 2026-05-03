@@ -51,6 +51,21 @@ void ModelViewer::Render() {
   preview_pipeline_.Render();
 }
 
+// Procedural Color Generator based on Group ID
+static glm::vec3 GenerateGroupColor(const std::string& group_id) {
+  if (group_id == "_BASE_")
+    return glm::vec3(0.92f, 0.92f, 0.90f);
+
+  // Hash the string to generate a deterministic RGB value
+  size_t hash = std::hash<std::string>{}(group_id);
+  float r = ((hash & 0xFF0000) >> 16) / 255.0f;
+  float g = ((hash & 0x00FF00) >> 8) / 255.0f;
+  float b = (hash & 0x0000FF) / 255.0f;
+
+  // Mix with white to guarantee pastel colors that look good in the editor
+  return glm::mix(glm::vec3(r, g, b), glm::vec3(1.0f), 0.4f);
+}
+
 void ModelViewer::RenderViewport() {
   int current_instance = data_->selected_instance;
   bool has_instance =
@@ -106,9 +121,9 @@ void ModelViewer::RenderViewport() {
     last_instance = current_instance;
   }
 
-  //
-  // CAMERA CONTROLS
-  //
+ 
+  // --- Camera Controls ---
+  
   ImGui::InvisibleButton("##ModelInteract", size);
   bool is_hovered = ImGui::IsItemHovered();
 
@@ -130,9 +145,9 @@ void ModelViewer::RenderViewport() {
       camera_pan_x_ += wasd_speed;
   }
 
-  //
+
   // TRACKPAD
-  //
+
   static bool is_alt_dragging = false;
   if (is_hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left) &&
       ImGui::GetIO().KeyAlt) {
@@ -199,7 +214,6 @@ void ModelViewer::RenderViewport() {
 
   if (has_instance) {
     const auto& resolved = data_->instances[current_instance];
-
     bool on_first_draw = true;
 
     for (const auto& desc : resolved.descriptors) {
@@ -210,48 +224,13 @@ void ModelViewer::RenderViewport() {
       inst.clear_output = on_first_draw;
       on_first_draw = false;
 
-      // Apply group coloring from group ID - REMOVE THIS
-      static const std::unordered_map<std::string, glm::vec3> GROUP_COLORS = {
-          {"_BASE_", glm::vec3(0.92f, 0.92f, 0.90f)},  // white
-
-          // red
-          {"_ROOF_A", glm::vec3(0.68f, 0.28f, 0.28f)},
-          {"_ROOF_B", glm::vec3(0.80f, 0.38f, 0.38f)},
-          {"_ROOF_C", glm::vec3(0.90f, 0.50f, 0.50f)},
-
-          // blue
-          {"_WINDOW_A", glm::vec3(0.35f, 0.50f, 0.85f)},
-          {"_WINDOW_B", glm::vec3(0.50f, 0.65f, 0.92f)},
-          {"_WINDOW_C", glm::vec3(0.65f, 0.78f, 0.97f)},
-
-          // green
-          {"_PILLAR_A", glm::vec3(0.40f, 0.70f, 0.50f)},
-          {"_PILLAR_B", glm::vec3(0.55f, 0.82f, 0.65f)},
-          {"_PILLAR_C", glm::vec3(0.70f, 0.90f, 0.78f)},
-
-          // yellow
-          {"_CHIMNEY_A", glm::vec3(0.78f, 0.68f, 0.30f)},
-          {"_CHIMNEY_B", glm::vec3(0.88f, 0.78f, 0.40f)},
-          {"_CHIMNEY_C", glm::vec3(0.95f, 0.86f, 0.55f)},
-
-          // purple
-          {"_DECOR_A", glm::vec3(0.68f, 0.45f, 0.78f)},
-          {"_DECOR_B", glm::vec3(0.80f, 0.60f, 0.88f)},
-          {"_DECOR_C", glm::vec3(0.90f, 0.72f, 0.95f)},
-      };
+      // Procedural color generation directly applied here
+      glm::vec3 color = GenerateGroupColor(desc.group_id);
 
       for (int mesh_idx : desc.mesh_indices) {
-
-        auto color_it = GROUP_COLORS.find(desc.group_id);  // ! REMOVE THIS
-
-        // ! REMOVE THIS
-        glm::vec3 color = (color_it != GROUP_COLORS.end())
-                              ? color_it->second
-                              : glm::vec3(0.7f);  // Default grey fallback
-
         uint32_t idx = static_cast<uint32_t>(mesh_idx);
         inst.mesh_filter.push_back(idx);
-        inst.mesh_colors[mesh_idx] = color;  // ! REMOVE THIS
+        inst.mesh_colors[mesh_idx] = color;
 
         // Decompose part transform and apply normalization scale
         glm::vec3 pos, scale, skew;
@@ -290,64 +269,46 @@ void ModelViewer::RenderViewport() {
     ImGui::PopFont();
   }
 
+  // --- Data Overlay ---
+  if (has_instance && data_->model) {
+    const auto& resolved = data_->instances[current_instance];
+
+    // Re-calculate the filtered metrics dynamically for the overlay
+    std::vector<uint32_t> filter;
+    for (const auto& desc : resolved.descriptors) {
+      for (int mesh_idx : desc.mesh_indices) {
+        filter.push_back(static_cast<uint32_t>(mesh_idx));
+      }
+    }
+    auto metrics = data_->model->ComputeFilteredMetrics(filter);
+
+    // Build the string with real data
+    std::string stats =
+        "Vertices: " + std::to_string(metrics.n_vertices) + "\n" +
+        "Triangles: " + std::to_string(metrics.n_faces) + "\n" +
+        "Materials: " + std::to_string(metrics.n_materials) + "\n" +
+        "Parts: " + std::to_string(resolved.descriptors.size()) + "\n" +
+        "Seed: " + std::to_string(resolved.seed);
+
+    ImVec2 text_size = ImGui::CalcTextSize(stats.c_str());
+
+    // Position top-right with 15px padding from the edges
+    ImVec2 text_pos = ImVec2(p_max.x - text_size.x - 15.0f, p_min.y + 15.0f);
+
+    // Draw subtle dark background box (Blender style) for readability
+    draw_list->AddRectFilled(ImVec2(text_pos.x - 8.0f, text_pos.y - 8.0f),
+                             ImVec2(text_pos.x + text_size.x + 8.0f,
+                                    text_pos.y + text_size.y + 8.0f),
+                             IM_COL32(20, 20, 20, 180), 4.0f);
+
+    draw_list->AddText(text_pos, EditorColor::text, stats.c_str());
+  }
+
   ImGui::EndChild();
 }
 
 void ModelViewer::RenderModelProperties() {
-  ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(8.0f, 6.0f));
-
-  if (ImGui::CollapsingHeader("Mesh Data", ImGuiTreeNodeFlags_DefaultOpen)) {
-    ImGui::Indent(10.0f);
-    ImGui::Dummy(ImVec2(0, 4.0f));
-
-    int idx = data_->selected_instance;
-    if (data_->model && idx >= 0 &&
-        idx < static_cast<int>(data_->instances.size())) {
-      std::vector<uint32_t> filter;
-      for (const auto& desc : data_->instances[idx].descriptors) {
-        for (int mesh_idx : desc.mesh_indices)
-          filter.push_back(static_cast<uint32_t>(mesh_idx));
-      }
-      auto metrics = data_->model->ComputeFilteredMetrics(filter);
-
-      ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "Local Transform");
-      ImGui::Text("Vertices: %u", metrics.n_vertices);
-      ImGui::Text("Triangles: %u", metrics.n_faces);
-
-      ImGui::Dummy(ImVec2(0, 4.0f));
-      ImGui::Separator();
-      ImGui::Dummy(ImVec2(0, 4.0f));
-
-      ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "Topology");
-      ImGui::Text("Vertices: %u", metrics.n_vertices);
-      ImGui::Text("Triangles: %u", metrics.n_faces);
-
-      ImGui::Dummy(ImVec2(0, 4.0f));
-      ImGui::Separator();
-      ImGui::Dummy(ImVec2(0, 4.0f));
-
-      ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "Materials");
-      ImGui::Text("Slots: %u", metrics.n_materials);
-    } else {
-      ImGui::TextDisabled("No model loaded");
-    }
-
-    ImGui::Dummy(ImVec2(0, 4.0f));
-    ImGui::Separator();
-    ImGui::Dummy(ImVec2(0, 4.0f));
-
-    if (idx >= 0 && idx < static_cast<int>(data_->instances.size())) {
-      const auto& resolved = data_->instances[idx];
-      ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "Instance");
-      ImGui::Text("Parts: %u",
-                  static_cast<uint32_t>(resolved.descriptors.size()));
-      ImGui::Text("Seed: %llu", resolved.seed);
-
-      ImGui::Dummy(ImVec2(0, 4.0f));
-      ImGui::Unindent(10.0f);
-    }
-  }
-  ImGui::PopStyleVar();
+  // Empty, data moved to overlay
 }
 
 void ModelViewer::RenderInstanceList() {

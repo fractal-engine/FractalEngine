@@ -7,6 +7,8 @@
 #include <vector>
 
 #include "engine/core/types/geometry_data.h"
+#include "engine/core/types/material_data.h"
+
 #include "engine/renderer/model/mesh.h"
 
 #include "model_graph_node.h"
@@ -17,6 +19,7 @@ struct ModelGraph {
   std::string source_path;
   ModelGraphNode root;
   std::vector<Geometry::MeshData> meshes;
+  std::vector<Content::MaterialData> materials;
 
   // Flat lookup for DescriptorResolver
   std::unordered_map<std::string, ModelGraphNode*> node_lookup;
@@ -26,6 +29,9 @@ struct ModelGraph {
 
   bool UploadMeshes();
   const Mesh* GetMesh(int index) const;
+
+  // ? Check if it can be declared like GetMesh()
+  const std::vector<Content::MaterialData>& GetMaterials() const;
 };
 
 }  // namespace ProcModel
