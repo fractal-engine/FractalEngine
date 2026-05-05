@@ -3,7 +3,7 @@
 
 #include <cmath>  // Needed for std::abs, std::round
 #include <functional>
-#include <unordered_set> // Needed for cycle protection
+#include <unordered_set>  // Needed for cycle protection
 
 #include "engine/context/engine_context.h"
 #include "engine/core/logger.h"
@@ -62,7 +62,7 @@ void to_json(nlohmann::json& j, const SelectionGroup& g) {
     j["attach_to"] = g.attach_to;
 }
 void to_json(nlohmann::json& j, const ParameterRange& p) {
-  j = nlohmann::json{{"part_id", p.part_id}, {"activated_by", p.activated_by}};
+  j = nlohmann::json{{"part_id", p.part_id}};
   if (p.scale_min)
     j["scale_min"] = *p.scale_min;
   if (p.scale_max)

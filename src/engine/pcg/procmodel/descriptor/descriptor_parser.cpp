@@ -42,7 +42,6 @@ bool DescriptorParser::ParseParameterRange(const nlohmann::json& j,
     return false;
 
   out.part_id = j["part_id"].get<std::string>();
-  out.activated_by = j.value("activated_by", std::string(""));
 
   if (j.contains("rotation_min")) {
     auto& r = j["rotation_min"];

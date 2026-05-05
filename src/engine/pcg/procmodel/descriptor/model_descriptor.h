@@ -15,7 +15,6 @@ struct PartDescriptor {
   float weight = 1.0f;
 };
 
-// used to be selection groups
 struct SelectionGroup {
   std::string group_id;
   std::vector<PartDescriptor> parts;
@@ -24,6 +23,10 @@ struct SelectionGroup {
   std::vector<std::string> attach_to;  // attachment slots
 };
 
+//
+// PARAMETER RANGES
+// used for per-part transforms
+//
 struct ParameterRange {
   std::string part_id;
 
@@ -31,11 +34,8 @@ struct ParameterRange {
   std::optional<glm::vec3> scale_max;
   std::optional<glm::vec3> rotation_min;
   std::optional<glm::vec3> rotation_max;
-
-  std::string activated_by;  // Empty = always applied to this node if selected
 };
 
-// used to be ConstraintRule
 struct ConstraintRule {
   enum class Type { EXCLUDES, REQUIRES };
 
