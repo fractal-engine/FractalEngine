@@ -86,7 +86,7 @@ void to_json(nlohmann::json& j, const SelectionGroup& g) {
     j["attach_to"] = g.attach_to;
 }
 
-// Serialization of ParameterRange
+// Serialization of ParameterRange 
 void to_json(nlohmann::json& j, const ParameterRange& p) {
   j = nlohmann::json{{"part_id", p.part_id}};
   if (p.scale_min)
@@ -527,7 +527,8 @@ void AssetGraphEditor::RenderNodeGraph() {
   m_PinIdToString.clear();
   m_PinIdToGroup.clear();
 
-  const float nodeWidth = 280.0f;
+  const float nodeWidth =
+      300.0f;  // Wider node to accommodate safely padded input fields
 
   int group_index =
       0;  // Ensures ImGui text input fields stay stable across updates
@@ -556,26 +557,33 @@ void AssetGraphEditor::RenderNodeGraph() {
     // Position the text perfectly inside the drawn header box (fixes leaking)
     ImGui::SetCursorScreenPos(ImVec2(headerMin.x + 8.0f, headerMin.y + 6.0f));
 
-    // Editable Group ID
-    char group_id_buf[128] = {0};
-    strncpy(group_id_buf, group.group_id.c_str(), sizeof(group_id_buf) - 1);
+    // Prevent the _BASE_ node from being renamed, as it is the mandatory root.
+    if (group.group_id == "_BASE_") {
+      ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 255, 255, 255));
+      ImGui::TextUnformatted(group.group_id.c_str());
+      ImGui::PopStyleColor();
+    } else {
+      // Editable Group ID for all other nodes
+      char group_id_buf[128] = {0};
+      strncpy(group_id_buf, group.group_id.c_str(), sizeof(group_id_buf) - 1);
 
-    ImGui::PushStyleColor(ImGuiCol_FrameBg, IM_COL32(0, 0, 0, 50));
-    ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 255, 255, 255));
-    ImGui::SetNextItemWidth(nodeWidth - 60.0f);
+      ImGui::PushStyleColor(ImGuiCol_FrameBg, IM_COL32(0, 0, 0, 50));
+      ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 255, 255, 255));
+      ImGui::SetNextItemWidth(nodeWidth - 60.0f);
 
-    if (ImGui::InputText(("##groupid_" + std::to_string(group_index)).c_str(),
-                         group_id_buf, sizeof(group_id_buf))) {
-      std::string new_id = group_id_buf;
-      if (new_id != group.group_id && !new_id.empty()) {
-        // Transfer current node position to the renamed hash-id
-        ed::NodeId old_id = HashString(group.group_id);
-        ed::NodeId new_id_hash = HashString(new_id);
-        ed::SetNodePosition(new_id_hash, ed::GetNodePosition(old_id));
-        group.group_id = new_id;
+      if (ImGui::InputText(("##groupid_" + std::to_string(group_index)).c_str(),
+                           group_id_buf, sizeof(group_id_buf))) {
+        std::string new_id = group_id_buf;
+        if (new_id != group.group_id && !new_id.empty()) {
+          // Transfer current node position to the renamed hash-id
+          ed::NodeId old_id = HashString(group.group_id);
+          ed::NodeId new_id_hash = HashString(new_id);
+          ed::SetNodePosition(new_id_hash, ed::GetNodePosition(old_id));
+          group.group_id = new_id;
+        }
       }
+      ImGui::PopStyleColor(2);
     }
-    ImGui::PopStyleColor(2);
 
     if (group.required) {
       ImGui::SameLine();
@@ -589,23 +597,57 @@ void AssetGraphEditor::RenderNodeGraph() {
     // Force the node to expand to our desired fixed width
     ImGui::Dummy(ImVec2(nodeWidth, 0.0f));
 
-    // Draw the activation input pin on the left side
-    ed::PinId inputPinId = HashString(group.group_id + "_IN");
-    m_PinIdToGroup[inputPinId.Get()] = &group;
+    // Only draw the "Activate" input pin for non-root nodes
+    if (group.group_id != "_BASE_") {
+      ed::PinId inputPinId = HashString(group.group_id + "_IN");
+      m_PinIdToGroup[inputPinId.Get()] = &group;
 
-    ed::BeginPin(inputPinId, ed::PinKind::Input);
-    ImVec2 posIn = ImGui::GetCursorScreenPos();
-    ImGui::Dummy(ImVec2(12, 12));
-    ImGui::GetWindowDrawList()->AddCircleFilled(
-        ImVec2(posIn.x + 6, posIn.y + 6), 5.0f, IM_COL32(220, 180, 50, 255));
-    ImGui::GetWindowDrawList()->AddCircle(ImVec2(posIn.x + 6, posIn.y + 6),
-                                          5.0f, IM_COL32(30, 30, 30, 255), 12,
-                                          1.5f);
-    ed::EndPin();
+      ed::BeginPin(inputPinId, ed::PinKind::Input);
+      ImVec2 posIn = ImGui::GetCursorScreenPos();
+      ImGui::Dummy(ImVec2(12, 12));
+      ImGui::GetWindowDrawList()->AddCircleFilled(
+          ImVec2(posIn.x + 6, posIn.y + 6), 5.0f, IM_COL32(220, 180, 50, 255));
+      ImGui::GetWindowDrawList()->AddCircle(ImVec2(posIn.x + 6, posIn.y + 6),
+                                            5.0f, IM_COL32(30, 30, 30, 255), 12,
+                                            1.5f);
+      ed::EndPin();
 
-    ImGui::SameLine();
-    ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 1.0f);
-    ImGui::Text("Activate");
+      ImGui::SameLine();
+      ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 1.0f);
+      ImGui::Text("Activate");
+    } else {
+      // Label specifically for the root base node
+      ImGui::Dummy(ImVec2(0, 4));
+      ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 12.0f);
+      ImGui::TextColored(ImVec4(0.4f, 0.8f, 0.4f, 1.0f), "Root Node");
+
+      // Let the user define the global model .glb path directly inside the Base
+      // Node
+      ImGui::Dummy(ImVec2(0, 8));  // Padding before
+
+      ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 12.0f);
+      ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.6f, 0.6f, 0.6f, 1.0f));
+      ImGui::Text("Scene File Path (.glb):");
+      ImGui::PopStyleColor();
+
+      ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 12.0f);
+      // Constrain width to completely avoid the right edge where output pins
+      // reside
+      ImGui::SetNextItemWidth(nodeWidth - 24.0f);
+
+      char path_buf[512] = {0};
+      strncpy(path_buf, m_ModelData.path.c_str(), sizeof(path_buf) - 1);
+
+      ImGui::PushStyleColor(ImGuiCol_FrameBg, IM_COL32(20, 20, 20, 255));
+      if (ImGui::InputText(
+              ("##model_path_" + std::to_string(group_index)).c_str(), path_buf,
+              sizeof(path_buf))) {
+        m_ModelData.path = path_buf;
+      }
+      ImGui::PopStyleColor();
+
+      ImGui::Dummy(ImVec2(0, 8));  // Padding after
+    }
 
     // Display attachment summaries if available
     if (!group.attach_to.empty()) {
@@ -640,7 +682,7 @@ void AssetGraphEditor::RenderNodeGraph() {
       ImGui::PushID(part.id.c_str());
 
       ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 8.0f);
-      ImGui::PushItemWidth(90.0f);
+      ImGui::PushItemWidth(70.0f);
       ImGui::SliderFloat("##w", &part.weight, 0.0f, 5.0f, "W: %.1f");
       ImGui::PopItemWidth();
 
@@ -650,7 +692,9 @@ void AssetGraphEditor::RenderNodeGraph() {
       char part_id_buf[128] = {0};
       strncpy(part_id_buf, part.id.c_str(), sizeof(part_id_buf) - 1);
 
-      ImGui::SetNextItemWidth(nodeWidth - 110.0f);
+      // Strict constraint on text box width to guarantee horizontal clearance
+      // for the output pin
+      ImGui::SetNextItemWidth(nodeWidth - 130.0f);
       ImGui::PushStyleColor(ImGuiCol_FrameBg,
                             IM_COL32(20, 20, 20, 255));  // darker input box
 
@@ -671,8 +715,8 @@ void AssetGraphEditor::RenderNodeGraph() {
       }
       ImGui::PopStyleColor();
 
-      // Align the output pin to the far right edge of the node
-      ImGui::SameLine(nodeWidth - 12.0f);
+      // Align the output pin exactly to the far right margin
+      ImGui::SameLine(nodeWidth - 16.0f);
       ed::BeginPin(outputPinId, ed::PinKind::Output);
       ImVec2 posOut = ImGui::GetCursorScreenPos();
       ImGui::Dummy(ImVec2(12, 12));
