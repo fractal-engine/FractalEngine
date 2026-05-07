@@ -47,8 +47,7 @@ static bool s_show_not_implemented_popup = false;
 static bool s_show_error_popup = false;
 static std::string s_error_message = "";
 
-// Set up json serialization overloads so nlohmann can save our custom engine
-// structures
+// Set up json serialization overloads so nlohmann can save our custom engine structs
 namespace glm {
 void to_json(nlohmann::json& j, const vec3& v) {
   j = nlohmann::json::array({v.x, v.y, v.z});
@@ -343,6 +342,17 @@ void AssetGraphEditor::Render() {
     IGFD::FileDialog::Instance()->Close();
   }
 
+  // Handle the file dialog for selecting the 3D model scene path
+  // (.glb/.gltf)
+  if (IGFD::FileDialog::Instance()->Display("ModelPathDlg",
+                                            ImGuiWindowFlags_NoCollapse,
+                                            ImVec2(700.0f, 500.0f))) {
+    if (IGFD::FileDialog::Instance()->IsOk()) {
+      m_ModelData.path = IGFD::FileDialog::Instance()->GetFilePathName();
+    }
+    IGFD::FileDialog::Instance()->Close();
+  }
+
   ImGui::SameLine();
   ImGui::TextDisabled(" | ");
   ImGui::SameLine();
@@ -621,19 +631,20 @@ void AssetGraphEditor::RenderNodeGraph() {
       ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 12.0f);
       ImGui::TextColored(ImVec4(0.4f, 0.8f, 0.4f, 1.0f), "Root Node");
 
-      // Let the user define the global model .glb path directly inside the Base
-      // Node
+      // Let the user define the global model .glb path via a text field and
+      // File Picker button
       ImGui::Dummy(ImVec2(0, 8));  // Padding before
 
       ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 12.0f);
       ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.6f, 0.6f, 0.6f, 1.0f));
-      ImGui::Text("Scene File Path (.glb):");
+      ImGui::Text("Scene File Path (.glb, .gltf):");
       ImGui::PopStyleColor();
 
       ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 12.0f);
-      // Constrain width to completely avoid the right edge where output pins
-      // reside
-      ImGui::SetNextItemWidth(nodeWidth - 24.0f);
+
+      // Calculate widths for the input text and the folder button
+      float folderBtnWidth = 28.0f;
+      ImGui::SetNextItemWidth(nodeWidth - 24.0f - folderBtnWidth - 4.0f);
 
       char path_buf[512] = {0};
       strncpy(path_buf, m_ModelData.path.c_str(), sizeof(path_buf) - 1);
@@ -645,6 +656,17 @@ void AssetGraphEditor::RenderNodeGraph() {
         m_ModelData.path = path_buf;
       }
       ImGui::PopStyleColor();
+
+      // Add File Picker Button right next to the text input
+      ImGui::SameLine();
+      if (ImGui::Button(ICON_FA_FOLDER_OPEN "##pick_model",
+                        ImVec2(folderBtnWidth, 0))) {
+        IGFD::FileDialogConfig cfg{};
+        cfg.path = std::filesystem::current_path().string();
+        // Open a file dialog restricted to 3D model formats
+        IGFD::FileDialog::Instance()->OpenDialog(
+            "ModelPathDlg", "Select Scene File", ".glb,.gltf", cfg);
+      }
 
       ImGui::Dummy(ImVec2(0, 8));  // Padding after
     }
