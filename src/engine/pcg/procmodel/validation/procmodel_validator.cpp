@@ -259,8 +259,8 @@ static void CheckForwardAxisConsistency(const ModelGraph& graph,
 
 // ---------------------------------------------------------------------------
 // Check: compute geometric bounds
-//   Fills per-part, per-group, and full-model AABBs. Never produces
-//   diagnostics; pure data.
+//  Fills per-part, per-group, and full-model AABBs. Accumulate per authored
+//  part
 // ---------------------------------------------------------------------------
 static void ComputeBounds(const ResolvedModel& resolved,
                           const ModelGraph& graph, ValidationResult& out) {
@@ -274,7 +274,13 @@ static void ComputeBounds(const ResolvedModel& resolved,
       MergeAABB(part_box, mesh_box);
     }
 
-    out.per_part_bounds[d.descriptor_id] = part_box;
+    // Accumulate into per-part and per-group bounds, keyed by authored
+    // part_id so attachment-expanded descriptors merge together
+    const std::string& id = d.descriptor_id;
+    size_t at = id.find("_at_");
+    std::string part_id = (at == std::string::npos) ? id : id.substr(0, at);
+
+    MergeAABB(out.per_part_bounds[part_id], part_box);
     MergeAABB(out.per_group_bounds[d.group_id], part_box);
     MergeAABB(out.model_bounds, part_box);
   }
@@ -285,18 +291,34 @@ static void ComputeBounds(const ResolvedModel& resolved,
 // ---------------------------------------------------------------------------
 static void RecordRawData(const ResolvedModel& resolved,
                           ValidationResult& out) {
+  // Collapse attachment-expanded descriptors back to their authored part
+  // Generator produces one ResolvedDescriptor per attach_to node
+  // Amounts to one entry per authored selection
+  std::unordered_map<std::string, ValidationResult::ResolvedEntry> by_part;
   std::unordered_set<std::string> unique_parts;
+
   for (const auto& d : resolved.descriptors) {
     const std::string& id = d.descriptor_id;
     size_t at = id.find("_at_");
-    unique_parts.insert(at == std::string::npos ? id : id.substr(0, at));
+    std::string part_id = (at == std::string::npos) ? id : id.substr(0, at);
+    unique_parts.insert(part_id);
 
-    ValidationResult::ResolvedEntry entry;
-    entry.descriptor_id = d.descriptor_id;
-    entry.group_id = d.group_id;
-    entry.applied_rotation = d.applied_rotation;
-    entry.applied_scale = d.applied_scale;
-    entry.attach_to = d.attach_to;
+    auto it = by_part.find(part_id);
+    if (it == by_part.end()) {
+      ValidationResult::ResolvedEntry entry;
+      entry.descriptor_id = part_id;
+      entry.group_id = d.group_id;
+      entry.applied_rotation = d.applied_rotation;
+      entry.applied_scale = d.applied_scale;
+
+      // attach_to holds authored list
+      entry.attach_to = d.attach_to;
+      by_part.emplace(part_id, std::move(entry));
+    }
+  }
+
+  out.resolved_entries.reserve(by_part.size());
+  for (auto& [_, entry] : by_part) {
     out.resolved_entries.push_back(std::move(entry));
   }
 

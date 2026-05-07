@@ -4,7 +4,9 @@
 #include <string>
 
 #include "engine/memory/resource.h"
+
 #include "engine/pcg/procmodel/descriptor/model_descriptor.h"
+#include "engine/pcg/procmodel/generator/model_pipeline.h"
 #include "engine/pcg/procmodel/generator/resolved_model.h"
 #include "engine/pcg/procmodel/model_graph/model_graph.h"
 
@@ -21,12 +23,16 @@ public:
   ModelDescriptor& GetDescriptor() { return descriptor_; }
   const ModelDescriptor& GetDescriptor() const { return descriptor_; }
 
+  ModelPipeline& GetPipeline() { return pipeline_; }
+  const ModelPipeline& GetPipeline() const { return pipeline_; }
+
   bool IsResolved() const { return resolved_; }
   void SetResolved(bool value) { resolved_ = value; }
 
   void Destroy() override {
     graph_ = {};
     descriptor_ = {};
+    pipeline_ = {};
     resolved_ = false;
   }
 
@@ -36,6 +42,8 @@ private:
   ModelGraph graph_;
   ModelDescriptor descriptor_;
   bool resolved_ = false;
+
+  ModelPipeline pipeline_;
 };
 
 }  // namespace ProcModel

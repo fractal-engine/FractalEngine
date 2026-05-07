@@ -9,6 +9,9 @@
 
 namespace ProcModel {
 
+// TODO: Split ProcModelValidator telemetry into a separate ProcModelInspector
+// - telemetry: ComputeBounds, RecordRawData, CheckForwardAxisConsistency
+
 // Post-generation validator for ProcModel instances.
 //
 // Runs a fixed set of structural and geometric checks over a ResolvedModel.

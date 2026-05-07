@@ -37,7 +37,7 @@ bool DescriptorParser::ParseSelectionGroup(const nlohmann::json& j,
 }
 
 bool DescriptorParser::ParseParameterRange(const nlohmann::json& j,
-                                           ParameterRange& out) {
+                                           TransformRange& out) {
   if (!j.contains("part_id"))
     return false;
 
@@ -127,11 +127,11 @@ bool DescriptorParser::FromJson(const nlohmann::json& j, ModelDescriptor& out) {
     }
   }
 
-  if (j.contains("parameter_ranges")) {
-    for (const auto& range_json : j["parameter_ranges"]) {
-      ParameterRange range;
+  if (j.contains("transform_ranges")) {
+    for (const auto& range_json : j["transform_ranges"]) {
+      TransformRange range;
       if (ParseParameterRange(range_json, range)) {
-        out.parameter_ranges.push_back(std::move(range));
+        out.transform_ranges.push_back(std::move(range));
       } else {
         Logger::getInstance().Log(
             LogLevel::Warning,

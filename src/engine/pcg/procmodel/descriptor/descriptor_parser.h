@@ -9,17 +9,18 @@
 namespace ProcModel {
 
 class DescriptorParser {
- public:
+public:
   static bool FromJson(const nlohmann::json& j, ModelDescriptor& out);
   static bool LoadFromFile(const std::string& path, ModelDescriptor& out);
 
- private:
+private:
   static bool ParseSelectionGroup(const nlohmann::json& j, SelectionGroup& out);
-  static bool ParseParameterRange(const nlohmann::json& j, ParameterRange& out);
+  static bool ParseParameterRange(const nlohmann::json& j, TransformRange& out);
   static bool ParseConstraintRule(const nlohmann::json& j, ConstraintRule& out);
-  static bool ParseParameterBinding(const nlohmann::json& j, ParameterBinding& out);
+  static bool ParseParameterBinding(const nlohmann::json& j,
+                                    ParameterBinding& out);
 };
 
 }  // namespace ProcModel
 
-#endif // DESCRIPTOR_PARSER_H
+#endif  // DESCRIPTOR_PARSER_H

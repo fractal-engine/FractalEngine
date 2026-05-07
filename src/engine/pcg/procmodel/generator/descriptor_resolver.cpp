@@ -13,7 +13,7 @@ DescriptorResolver::ResolveResult DescriptorResolver::Resolve(
   bool bindings_ok = MapParameterBindings(graph, descriptor, result.errors);
 
   for (const auto& [name, node_ptr] : graph.node_lookup) {
-    if (node_ptr->group_ids.empty() && node_ptr->parameter_ranges.empty() &&
+    if (node_ptr->group_ids.empty() && node_ptr->transform_ranges.empty() &&
         !node_ptr->is_fixed && !node_ptr->is_attach_point) {
       result.warnings.push_back("Node '" + name +
                                 "' not referenced by any descriptor entry");
@@ -89,16 +89,16 @@ bool DescriptorResolver::MapParameterRanges(ModelGraph& graph,
                                             std::vector<std::string>& errors) {
   bool all_ok = true;
 
-  for (const auto& range : descriptor.parameter_ranges) {
+  for (const auto& range : descriptor.transform_ranges) {
     auto it = graph.node_lookup.find(range.part_id);
     if (it == graph.node_lookup.end()) {
-      errors.push_back("ParameterRange references unknown part '" +
+      errors.push_back("TransformRange references unknown part '" +
                        range.part_id + "'");
       all_ok = false;
       continue;
     }
 
-    it->second->parameter_ranges.push_back(&range);
+    it->second->transform_ranges.push_back(&range);
   }
 
   return all_ok;

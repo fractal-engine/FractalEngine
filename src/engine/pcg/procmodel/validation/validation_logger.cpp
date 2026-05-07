@@ -119,7 +119,7 @@ std::filesystem::path ValidationLogger::DefaultLogPath() {
   // TODO: switch to executable-relative path once a platform abstraction
   // for exe-dir exists.
   return std::filesystem::current_path() / "logs" / "procmodel" /
-         "variation_log.jsonl";
+         "generation_log.jsonl";
 }
 
 bool ValidationLogger::EnsureOpen() {
@@ -159,6 +159,15 @@ bool ValidationLogger::Write(const ValidationResult& result) {
   std::scoped_lock lock(mutex_);
   if (!EnsureOpen())
     return false;
+
+  // DEBUG
+  static int s_write_count = 0;
+  ++s_write_count;
+  if (s_write_count % 100 == 0) {
+    Logger::getInstance().Log(
+        LogLevel::Debug,
+        "[ValidationLogger] Records written: " + std::to_string(s_write_count));
+  }
 
   try {
     stream_ << SerializeResult(result).dump() << '\n';

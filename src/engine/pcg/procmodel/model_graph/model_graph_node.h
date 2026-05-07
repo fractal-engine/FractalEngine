@@ -19,7 +19,7 @@ struct ModelGraphNode {
   // Annotation slots
   std::vector<std::string> group_ids;
   std::vector<const PartDescriptor*> parts;
-  std::vector<const ParameterRange*> parameter_ranges;
+  std::vector<const TransformRange*> transform_ranges;
   std::vector<const ParameterBinding*> outgoing_bindings;
   bool is_fixed = false;  // True if node always present
   bool is_attach_point = false;
