@@ -11,7 +11,7 @@ namespace ProcModel {
 // Final matrix is composed in ModelInstantiator
 static void ApplyParameterRanges(ResolvedDescriptor& resolved,
                                  const ModelGraphNode& node, pcg32& rng) {
-  for (const auto* range : node.parameter_ranges) {
+  for (const auto* range : node.transform_ranges) {
     if (range->rotation_min && range->rotation_max) {
       std::uniform_real_distribution<float> dist_x(range->rotation_min->x,
                                                    range->rotation_max->x);
@@ -20,7 +20,19 @@ static void ApplyParameterRanges(ResolvedDescriptor& resolved,
       std::uniform_real_distribution<float> dist_z(range->rotation_min->z,
                                                    range->rotation_max->z);
 
-      resolved.applied_rotation =
+      resolved.applied_rotation +=
+          glm::vec3(dist_x(rng), dist_y(rng), dist_z(rng));
+    }
+
+    if (range->scale_min && range->scale_max) {
+      std::uniform_real_distribution<float> dist_x(range->scale_min->x,
+                                                   range->scale_max->x);
+      std::uniform_real_distribution<float> dist_y(range->scale_min->y,
+                                                   range->scale_max->y);
+      std::uniform_real_distribution<float> dist_z(range->scale_min->z,
+                                                   range->scale_max->z);
+
+      resolved.applied_scale *=
           glm::vec3(dist_x(rng), dist_y(rng), dist_z(rng));
     }
   }

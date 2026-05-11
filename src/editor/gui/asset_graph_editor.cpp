@@ -85,8 +85,8 @@ void to_json(nlohmann::json& j, const SelectionGroup& g) {
     j["attach_to"] = g.attach_to;
 }
 
-// Serialization of ParameterRange 
-void to_json(nlohmann::json& j, const ParameterRange& p) {
+// Serialization of TransformRange 
+void to_json(nlohmann::json& j, const TransformRange& p) {
   j = nlohmann::json{{"part_id", p.part_id}};
   if (p.scale_min)
     j["scale_min"] = *p.scale_min;
@@ -104,7 +104,7 @@ void to_json(nlohmann::json& j, const ModelDescriptor& m) {
                      {"path", m.path},
                      {"domain", m.domain},
                      {"selection_groups", m.selection_groups},
-                     {"parameter_ranges", m.parameter_ranges},
+                     {"transform_ranges", m.transform_ranges},
                      {"constraints", m.constraints},
                      {"parameter_bindings", m.parameter_bindings}};
   if (m.scale_min)

@@ -24,10 +24,10 @@ struct SelectionGroup {
 };
 
 //
-// PARAMETER RANGES
+// TRANSFORM RANGE
 // used for per-part transforms
 //
-struct ParameterRange {
+struct TransformRange {
   std::string part_id;
 
   std::optional<glm::vec3> scale_min;
@@ -61,7 +61,7 @@ struct ModelDescriptor {
   std::string domain;  // e.g. vegetation, building, etc
 
   std::vector<SelectionGroup> selection_groups;
-  std::vector<ParameterRange> parameter_ranges;
+  std::vector<TransformRange> transform_ranges;
   std::vector<ConstraintRule> constraints;
   std::vector<ParameterBinding> parameter_bindings;
 

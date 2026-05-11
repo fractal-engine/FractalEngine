@@ -17,9 +17,12 @@ struct GenerationRequest {
 
 class PCGEngine {
 public:
-  // ─────────────────────────────────────────────────────────────
+  void Create();
+  void Destroy();
+
+  //
   // GENERATION QUEUE
-  // ─────────────────────────────────────────────────────────────
+  //
   void RequestGeneration(uint32_t volume_entity_id, uint8_t priority = 0) {
     pending_requests_.push({volume_entity_id, priority});
   }
