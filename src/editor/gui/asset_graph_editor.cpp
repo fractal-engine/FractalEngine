@@ -1,7 +1,8 @@
 #include "asset_graph_editor.h"
 #include <ImGuiFileDialog/ImGuiFileDialog.h>
 
-#include <cmath>  // Needed for std::abs, std::round
+#include <cmath>       // Needed for std::abs, std::round
+#include <filesystem>  // Needed to extract filenames for new JSONs
 #include <functional>
 #include <unordered_set>  // Needed for cycle protection
 
@@ -14,17 +15,39 @@
 #include <iostream>
 #include <map>
 
+// Fallback definitions for icons if they are not provided by the engine's
+// global icon header. Each macro has its own block to prevent compilation
+// errors if some icons are partially defined.
 #ifndef ICON_FA_PLUS
 #define ICON_FA_PLUS "+"
+#endif
+#ifndef ICON_FA_FLOPPY_DISK
 #define ICON_FA_FLOPPY_DISK "Save"
+#endif
+#ifndef ICON_FA_FOLDER_OPEN
 #define ICON_FA_FOLDER_OPEN "Load"
+#endif
+#ifndef ICON_FA_LINK
 #define ICON_FA_LINK "@"
+#endif
+#ifndef ICON_FA_EXCLAMATION_TRIANGLE
+#define ICON_FA_EXCLAMATION_TRIANGLE "!"
+#endif
+#ifndef ICON_FA_SLIDERS
+#define ICON_FA_SLIDERS "Sliders"
+#endif
+#ifndef ICON_FA_FILE
+#define ICON_FA_FILE "New"
 #endif
 
 namespace ed = ax::NodeEditor;
 
-// Set up json serializers so the nlohmann library knows how to save our custom
-// structs
+// Dialogue states for modal alerts
+static bool s_show_not_implemented_popup = false;
+static bool s_show_error_popup = false;
+static std::string s_error_message = "";
+
+// Set up json serialization overloads so nlohmann can save our custom engine structs
 namespace glm {
 void to_json(nlohmann::json& j, const vec3& v) {
   j = nlohmann::json::array({v.x, v.y, v.z});
@@ -61,6 +84,8 @@ void to_json(nlohmann::json& j, const SelectionGroup& g) {
   if (!g.attach_to.empty())
     j["attach_to"] = g.attach_to;
 }
+
+// Serialization of TransformRange 
 void to_json(nlohmann::json& j, const TransformRange& p) {
   j = nlohmann::json{{"part_id", p.part_id}};
   if (p.scale_min)
@@ -72,6 +97,7 @@ void to_json(nlohmann::json& j, const TransformRange& p) {
   if (p.rotation_max)
     j["rotation_max"] = *p.rotation_max;
 }
+
 void to_json(nlohmann::json& j, const ModelDescriptor& m) {
   j = nlohmann::json{{"model_id", m.model_id},
                      {"model_name", m.model_name},
@@ -90,13 +116,14 @@ void to_json(nlohmann::json& j, const ModelDescriptor& m) {
 }
 }  // namespace ProcModel
 
-// Utility function to convert strings to unique numerical ids for ImGui
+// Utility function to convert strings to unique numerical IDs for ImGui context
+// tracking
 static uintptr_t HashString(const std::string& str) {
   return std::hash<std::string>{}(str);
 }
 
-// Collapses raw lists of attachment points (e.g. 620 string entries) into a
-// readable summary count
+// Collapses lists of attachments (e.g. 620 entries) into a clean counted label
+// in the UI
 static std::map<std::string, int> GroupAttachmentPoints(
     const std::vector<std::string>& attachments) {
   std::map<std::string, int> grouped;
@@ -112,9 +139,8 @@ static std::map<std::string, int> GroupAttachmentPoints(
   return grouped;
 }
 
-// Extracts the base category from a group ID (e.g., "_WINDOW_A" becomes
-// "WINDOW") This allows a grouping of variants under a single consistent color
-// scheme.
+// Extracts the parent category from a node's group ID (e.g., "_WINDOW_A"
+// becomes "WINDOW")
 static std::string ExtractCategoryName(const std::string& group_id) {
   std::string category = group_id;
 
@@ -148,8 +174,7 @@ static ImU32 GenerateGroupHeaderColor(const std::string& group_id) {
   int g = (hash & 0x00FF00) >> 8;
   int b = (hash & 0x0000FF);
 
-  // Mix the random color with a dark base to ensure it looks deep and
-  // professional
+  // Mix the random color with a dark base 
   r = (r + 40) / 2;
   g = (g + 40) / 2;
   b = (b + 80) / 2;
@@ -157,7 +182,8 @@ static ImU32 GenerateGroupHeaderColor(const std::string& group_id) {
   return IM_COL32(r, g, b, 255);
 }
 
-// Implementation of the editor window
+// Constructor: Initializes context and applies Unreal-style colors to
+// background grid
 AssetGraphEditor::AssetGraphEditor(PreviewData* data) : data_(data) {
   ed::Config config;
   config.SettingsFile = "AssetGraphEditor.json";
@@ -177,6 +203,7 @@ AssetGraphEditor::~AssetGraphEditor() {
   ed::DestroyEditor(m_EditorContext);
 }
 
+// Loads a PCG graph file using the engine's built-in parser
 void AssetGraphEditor::LoadGraph(const std::string& filepath) {
   m_ModelData = ProcModel::ModelDescriptor{};
   if (ProcModel::DescriptorParser::LoadFromFile(filepath, m_ModelData)) {
@@ -184,9 +211,15 @@ void AssetGraphEditor::LoadGraph(const std::string& filepath) {
     m_NeedsAutoLayout = true;
     Logger::getInstance().Log(LogLevel::Info,
                               "[AssetGraphEditor] Loaded: " + filepath);
+  } else {
+    // Intercept loading failure and raise an error dialogue safely
+    s_error_message = "Failed to parse JSON file:\n" + filepath +
+                      "\nCheck console for details.";
+    s_show_error_popup = true;
   }
 }
 
+// Saves the PCG graph out to a clean formatted JSON file
 void AssetGraphEditor::SaveGraph(const std::string& filepath) {
   if (filepath.empty())
     return;
@@ -198,13 +231,16 @@ void AssetGraphEditor::SaveGraph(const std::string& filepath) {
     Logger::getInstance().Log(LogLevel::Info,
                               "[AssetGraphEditor] Saved: " + filepath);
 
-    // Trigger the preview window to regenerate models when saved
+    // Sync changes to the ModelPreview window in real-time
     if (data_) {
       auto& pcg = EngineContext::Generator();
       data_->archetype_id = pcg.LoadArchetype(filepath);
       data_->instances.clear();
     }
   } else {
+    // Intercept save failure and raise a warning dialogue safely
+    s_error_message = "Failed to write to file:\n" + filepath;
+    s_show_error_popup = true;
     Logger::getInstance().Log(LogLevel::Error,
                               "[AssetGraphEditor] Failed to save: " + filepath);
   }
@@ -214,10 +250,34 @@ void AssetGraphEditor::Render() {
   ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
   ImGui::Begin("Asset Graph", nullptr);
 
-  // Render the top toolbar area
+  // Toolbar area rendering
   ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(8.0f, 8.0f));
   ImGui::BeginChild("GraphToolbar", ImVec2(0, 36.0f), true,
                     ImGuiWindowFlags_NoScrollbar);
+
+  // Tool to instantiate a brand new JSON graph from scratch
+  if (ImGui::Button(ICON_FA_FILE " New")) {
+    m_ModelData = ProcModel::ModelDescriptor{};
+    m_ModelData.model_id = "new_model";
+    m_ModelData.model_name = "New Model";
+
+    // Set up a default root node so the editor is not blank
+    ProcModel::SelectionGroup root_group;
+    root_group.group_id = "_BASE_";
+    root_group.required = true;
+
+    ProcModel::PartDescriptor default_part;
+    default_part.id = "BASE_A";
+    default_part.name = "Default Style";
+    default_part.weight = 1.0f;
+
+    root_group.parts.push_back(default_part);
+    m_ModelData.selection_groups.push_back(root_group);
+
+    m_CurrentFilePath = "";
+    m_NeedsAutoLayout = true;
+  }
+  ImGui::SameLine();
 
   if (ImGui::Button(ICON_FA_FOLDER_OPEN " Load")) {
     IGFD::FileDialogConfig cfg{};
@@ -226,7 +286,7 @@ void AssetGraphEditor::Render() {
                                              "Select Descriptor", ".json", cfg);
   }
 
-  // Handle file dialog completion
+  // Handle file load dialog results
   if (IGFD::FileDialog::Instance()->Display("GraphLoadDlg",
                                             ImGuiWindowFlags_NoCollapse,
                                             ImVec2(700.0f, 500.0f))) {
@@ -237,8 +297,60 @@ void AssetGraphEditor::Render() {
   }
 
   ImGui::SameLine();
+
+  // Save current changes (Triggers Save As if the file has never been saved
+  // before)
   if (ImGui::Button(ICON_FA_FLOPPY_DISK " Save")) {
-    SaveGraph(m_CurrentFilePath);
+    if (m_CurrentFilePath.empty()) {
+      IGFD::FileDialogConfig cfg{};
+      cfg.path = std::filesystem::current_path().string();
+      IGFD::FileDialog::Instance()->OpenDialog(
+          "GraphSaveAsDlg", "Save Descriptor As", ".json", cfg);
+    } else {
+      SaveGraph(m_CurrentFilePath);
+    }
+  }
+
+  ImGui::SameLine();
+
+  if (ImGui::Button(ICON_FA_FLOPPY_DISK " Save As")) {
+    IGFD::FileDialogConfig cfg{};
+    cfg.path = std::filesystem::current_path().string();
+    IGFD::FileDialog::Instance()->OpenDialog(
+        "GraphSaveAsDlg", "Save Descriptor As", ".json", cfg);
+  }
+
+  // Handle file save as dialog results
+  if (IGFD::FileDialog::Instance()->Display("GraphSaveAsDlg",
+                                            ImGuiWindowFlags_NoCollapse,
+                                            ImVec2(700.0f, 500.0f))) {
+    if (IGFD::FileDialog::Instance()->IsOk()) {
+      m_CurrentFilePath = IGFD::FileDialog::Instance()->GetFilePathName();
+
+      // Update model metadata internally to match the new filename
+      std::string filename = std::filesystem::path(m_CurrentFilePath)
+                                 .make_preferred()
+                                 .stem()
+                                 .string();
+      if (m_ModelData.model_id == "new_model" || m_ModelData.model_id.empty()) {
+        m_ModelData.model_id = filename;
+        m_ModelData.model_name = filename;
+      }
+
+      SaveGraph(m_CurrentFilePath);
+    }
+    IGFD::FileDialog::Instance()->Close();
+  }
+
+  // Handle the file dialog for selecting the 3D model scene path
+  // (.glb/.gltf)
+  if (IGFD::FileDialog::Instance()->Display("ModelPathDlg",
+                                            ImGuiWindowFlags_NoCollapse,
+                                            ImVec2(700.0f, 500.0f))) {
+    if (IGFD::FileDialog::Instance()->IsOk()) {
+      m_ModelData.path = IGFD::FileDialog::Instance()->GetFilePathName();
+    }
+    IGFD::FileDialog::Instance()->Close();
   }
 
   ImGui::SameLine();
@@ -252,6 +364,17 @@ void AssetGraphEditor::Render() {
     m_ModelData.selection_groups.push_back(new_group);
   }
 
+  // Add dummy buttons for unimplemented features to prevent crashes and guide
+  // users
+  ImGui::SameLine();
+  if (ImGui::Button(ICON_FA_SLIDERS " Constraints")) {
+    s_show_not_implemented_popup = true;
+  }
+  ImGui::SameLine();
+  if (ImGui::Button(ICON_FA_SLIDERS " Bindings")) {
+    s_show_not_implemented_popup = true;
+  }
+
   ImGui::SameLine();
   std::string display_name =
       m_CurrentFilePath.empty() ? "Unsaved File" : m_ModelData.model_name;
@@ -260,6 +383,39 @@ void AssetGraphEditor::Render() {
 
   ImGui::EndChild();
   ImGui::PopStyleVar();
+
+  // Safety Dialogue Modals to gracefully handle unfinished features or file
+  // errors
+  if (s_show_not_implemented_popup) {
+    ImGui::OpenPopup("Feature Under Development");
+    s_show_not_implemented_popup = false;
+  }
+  if (ImGui::BeginPopupModal("Feature Under Development", NULL,
+                             ImGuiWindowFlags_AlwaysAutoResize)) {
+    ImGui::Text("This feature is currently under active development.");
+    ImGui::Text("Please check back in a future engine update.");
+    ImGui::Dummy(ImVec2(0, 10));
+    if (ImGui::Button("OK", ImVec2(120, 0))) {
+      ImGui::CloseCurrentPopup();
+    }
+    ImGui::EndPopup();
+  }
+
+  if (s_show_error_popup) {
+    ImGui::OpenPopup("Error Alert");
+    s_show_error_popup = false;
+  }
+  if (ImGui::BeginPopupModal("Error Alert", NULL,
+                             ImGuiWindowFlags_AlwaysAutoResize)) {
+    ImGui::TextColored(ImVec4(1.0f, 0.2f, 0.2f, 1.0f),
+                       "%s Error Detected:", ICON_FA_EXCLAMATION_TRIANGLE);
+    ImGui::Text("%s", s_error_message.c_str());
+    ImGui::Dummy(ImVec2(0, 10));
+    if (ImGui::Button("OK", ImVec2(120, 0))) {
+      ImGui::CloseCurrentPopup();
+    }
+    ImGui::EndPopup();
+  }
 
   // Render the actual node graph workspace
   RenderNodeGraph();
@@ -381,8 +537,11 @@ void AssetGraphEditor::RenderNodeGraph() {
   m_PinIdToString.clear();
   m_PinIdToGroup.clear();
 
-  const float nodeWidth = 260.0f;
+  const float nodeWidth =
+      300.0f;  // Wider node to accommodate safely padded input fields
 
+  int group_index =
+      0;  // Ensures ImGui text input fields stay stable across updates
   for (auto& group : m_ModelData.selection_groups) {
     // Tighten node padding horizontally so pins can sit nicely on the outer
     // edges
@@ -395,10 +554,8 @@ void AssetGraphEditor::RenderNodeGraph() {
     ImVec2 cursorPos = ImGui::GetCursorScreenPos();
 
     // Calculate header dimensions safely
-    float headerHeight = ImGui::GetTextLineHeight() + 12.0f;
-    ImVec2 headerMin =
-        ImVec2(cursorPos.x - 4.0f,
-               cursorPos.y - 8.0f);  // account for the 4px padding we set above
+    float headerHeight = ImGui::GetTextLineHeight() + 14.0f;
+    ImVec2 headerMin = ImVec2(cursorPos.x - 4.0f, cursorPos.y - 8.0f);
     ImVec2 headerMax =
         ImVec2(headerMin.x + nodeWidth + 8.0f, headerMin.y + headerHeight);
 
@@ -407,15 +564,41 @@ void AssetGraphEditor::RenderNodeGraph() {
         headerMin, headerMax, GenerateGroupHeaderColor(group.group_id),
         ed::GetStyle().NodeRounding, ImDrawFlags_RoundCornersTop);
 
-    // Position the text perfectly inside the drawn header box
+    // Position the text perfectly inside the drawn header box (fixes leaking)
     ImGui::SetCursorScreenPos(ImVec2(headerMin.x + 8.0f, headerMin.y + 6.0f));
-    ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 255, 255, 255));
-    ImGui::TextUnformatted(group.group_id.c_str());
+
+    // Prevent the _BASE_ node from being renamed, as it is the mandatory root.
+    if (group.group_id == "_BASE_") {
+      ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 255, 255, 255));
+      ImGui::TextUnformatted(group.group_id.c_str());
+      ImGui::PopStyleColor();
+    } else {
+      // Editable Group ID for all other nodes
+      char group_id_buf[128] = {0};
+      strncpy(group_id_buf, group.group_id.c_str(), sizeof(group_id_buf) - 1);
+
+      ImGui::PushStyleColor(ImGuiCol_FrameBg, IM_COL32(0, 0, 0, 50));
+      ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 255, 255, 255));
+      ImGui::SetNextItemWidth(nodeWidth - 60.0f);
+
+      if (ImGui::InputText(("##groupid_" + std::to_string(group_index)).c_str(),
+                           group_id_buf, sizeof(group_id_buf))) {
+        std::string new_id = group_id_buf;
+        if (new_id != group.group_id && !new_id.empty()) {
+          // Transfer current node position to the renamed hash-id
+          ed::NodeId old_id = HashString(group.group_id);
+          ed::NodeId new_id_hash = HashString(new_id);
+          ed::SetNodePosition(new_id_hash, ed::GetNodePosition(old_id));
+          group.group_id = new_id;
+        }
+      }
+      ImGui::PopStyleColor(2);
+    }
+
     if (group.required) {
       ImGui::SameLine();
       ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "(Req)");
     }
-    ImGui::PopStyleColor();
 
     // Push the cursor down beneath the header so the rest of the node content
     // renders correctly
@@ -424,23 +607,69 @@ void AssetGraphEditor::RenderNodeGraph() {
     // Force the node to expand to our desired fixed width
     ImGui::Dummy(ImVec2(nodeWidth, 0.0f));
 
-    // Draw the activation input pin on the left side
-    ed::PinId inputPinId = HashString(group.group_id + "_IN");
-    m_PinIdToGroup[inputPinId.Get()] = &group;
+    // Only draw the "Activate" input pin for non-root nodes
+    if (group.group_id != "_BASE_") {
+      ed::PinId inputPinId = HashString(group.group_id + "_IN");
+      m_PinIdToGroup[inputPinId.Get()] = &group;
 
-    ed::BeginPin(inputPinId, ed::PinKind::Input);
-    ImVec2 posIn = ImGui::GetCursorScreenPos();
-    ImGui::Dummy(ImVec2(12, 12));
-    ImGui::GetWindowDrawList()->AddCircleFilled(
-        ImVec2(posIn.x + 6, posIn.y + 6), 5.0f, IM_COL32(220, 180, 50, 255));
-    ImGui::GetWindowDrawList()->AddCircle(ImVec2(posIn.x + 6, posIn.y + 6),
-                                          5.0f, IM_COL32(30, 30, 30, 255), 12,
-                                          1.5f);
-    ed::EndPin();
+      ed::BeginPin(inputPinId, ed::PinKind::Input);
+      ImVec2 posIn = ImGui::GetCursorScreenPos();
+      ImGui::Dummy(ImVec2(12, 12));
+      ImGui::GetWindowDrawList()->AddCircleFilled(
+          ImVec2(posIn.x + 6, posIn.y + 6), 5.0f, IM_COL32(220, 180, 50, 255));
+      ImGui::GetWindowDrawList()->AddCircle(ImVec2(posIn.x + 6, posIn.y + 6),
+                                            5.0f, IM_COL32(30, 30, 30, 255), 12,
+                                            1.5f);
+      ed::EndPin();
 
-    ImGui::SameLine();
-    ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 1.0f);
-    ImGui::Text("Activate");
+      ImGui::SameLine();
+      ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 1.0f);
+      ImGui::Text("Activate");
+    } else {
+      // Label specifically for the root base node
+      ImGui::Dummy(ImVec2(0, 4));
+      ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 12.0f);
+      ImGui::TextColored(ImVec4(0.4f, 0.8f, 0.4f, 1.0f), "Root Node");
+
+      // Let the user define the global model .glb path via a text field and
+      // File Picker button
+      ImGui::Dummy(ImVec2(0, 8));  // Padding before
+
+      ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 12.0f);
+      ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.6f, 0.6f, 0.6f, 1.0f));
+      ImGui::Text("Scene File Path (.glb, .gltf):");
+      ImGui::PopStyleColor();
+
+      ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 12.0f);
+
+      // Calculate widths for the input text and the folder button
+      float folderBtnWidth = 28.0f;
+      ImGui::SetNextItemWidth(nodeWidth - 24.0f - folderBtnWidth - 4.0f);
+
+      char path_buf[512] = {0};
+      strncpy(path_buf, m_ModelData.path.c_str(), sizeof(path_buf) - 1);
+
+      ImGui::PushStyleColor(ImGuiCol_FrameBg, IM_COL32(20, 20, 20, 255));
+      if (ImGui::InputText(
+              ("##model_path_" + std::to_string(group_index)).c_str(), path_buf,
+              sizeof(path_buf))) {
+        m_ModelData.path = path_buf;
+      }
+      ImGui::PopStyleColor();
+
+      // Add File Picker Button right next to the text input
+      ImGui::SameLine();
+      if (ImGui::Button(ICON_FA_FOLDER_OPEN "##pick_model",
+                        ImVec2(folderBtnWidth, 0))) {
+        IGFD::FileDialogConfig cfg{};
+        cfg.path = std::filesystem::current_path().string();
+        // Open a file dialog restricted to 3D model formats
+        IGFD::FileDialog::Instance()->OpenDialog(
+            "ModelPathDlg", "Select Scene File", ".glb,.gltf", cfg);
+      }
+
+      ImGui::Dummy(ImVec2(0, 8));  // Padding after
+    }
 
     // Display attachment summaries if available
     if (!group.attach_to.empty()) {
@@ -467,6 +696,7 @@ void AssetGraphEditor::RenderNodeGraph() {
     ImGui::Dummy(ImVec2(0, 4));
 
     // Render individual parts as output pins
+    int part_index = 0;
     for (auto& part : group.parts) {
       ed::PinId outputPinId = HashString(part.id);
       m_PinIdToString[outputPinId.Get()] = part.id;
@@ -474,15 +704,41 @@ void AssetGraphEditor::RenderNodeGraph() {
       ImGui::PushID(part.id.c_str());
 
       ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 8.0f);
-      ImGui::PushItemWidth(90.0f);
+      ImGui::PushItemWidth(70.0f);
       ImGui::SliderFloat("##w", &part.weight, 0.0f, 5.0f, "W: %.1f");
       ImGui::PopItemWidth();
 
       ImGui::SameLine();
-      ImGui::TextUnformatted(part.name.c_str());
 
-      // Align the output pin to the far right edge of the node
-      ImGui::SameLine(nodeWidth - 12.0f);
+      // Editable Part ID
+      char part_id_buf[128] = {0};
+      strncpy(part_id_buf, part.id.c_str(), sizeof(part_id_buf) - 1);
+
+      // Strict constraint on text box width to guarantee horizontal clearance
+      // for the output pin
+      ImGui::SetNextItemWidth(nodeWidth - 130.0f);
+      ImGui::PushStyleColor(ImGuiCol_FrameBg,
+                            IM_COL32(20, 20, 20, 255));  // darker input box
+
+      std::string part_ui_id = "##partid_" + std::to_string(group_index) + "_" +
+                               std::to_string(part_index);
+      if (ImGui::InputText(part_ui_id.c_str(), part_id_buf,
+                           sizeof(part_id_buf))) {
+        std::string new_part_id = part_id_buf;
+        if (new_part_id != part.id && !new_part_id.empty()) {
+          // Safely update all graph connections pointing to the old name
+          for (auto& g : m_ModelData.selection_groups) {
+            if (g.activated_by == part.id)
+              g.activated_by = new_part_id;
+          }
+          part.id = new_part_id;
+          part.name = new_part_id;
+        }
+      }
+      ImGui::PopStyleColor();
+
+      // Align the output pin exactly to the far right margin
+      ImGui::SameLine(nodeWidth - 16.0f);
       ed::BeginPin(outputPinId, ed::PinKind::Output);
       ImVec2 posOut = ImGui::GetCursorScreenPos();
       ImGui::Dummy(ImVec2(12, 12));
@@ -495,6 +751,7 @@ void AssetGraphEditor::RenderNodeGraph() {
       ed::EndPin();
 
       ImGui::PopID();
+      part_index++;
     }
 
     // Button to append new parts to this group
@@ -504,8 +761,9 @@ void AssetGraphEditor::RenderNodeGraph() {
     ImGui::PushID(group.group_id.c_str());
     if (ImGui::Button("+ Add Part", ImVec2(nodeWidth - 16.0f, 0))) {
       ProcModel::PartDescriptor new_part;
-      new_part.id = group.group_id + "_NEW_PART";
-      new_part.name = "New Part";
+      new_part.id =
+          group.group_id + "_NEW_PART_" + std::to_string(group.parts.size());
+      new_part.name = new_part.id;
       new_part.weight = 1.0f;
       group.parts.push_back(new_part);
     }
@@ -513,6 +771,8 @@ void AssetGraphEditor::RenderNodeGraph() {
 
     ed::EndNode();
     ed::PopStyleVar();
+
+    group_index++;
   }
 
   // Render all active connections between nodes
