@@ -9,18 +9,20 @@ DescriptorResolver::ResolveResult DescriptorResolver::Resolve(
   ResolveResult result;
 
   bool groups_ok = MapSelectionGroups(graph, descriptor, result.errors);
-  bool ranges_ok = MapParameterRanges(graph, descriptor, result.errors);
+  bool ranges_ok = MapTransformRanges(graph, descriptor, result.errors);
   bool bindings_ok = MapParameterBindings(graph, descriptor, result.errors);
+  bool deforms_ok = MapDeformationRanges(graph, descriptor, result.errors);
 
   for (const auto& [name, node_ptr] : graph.node_lookup) {
     if (node_ptr->group_ids.empty() && node_ptr->transform_ranges.empty() &&
-        !node_ptr->is_fixed && !node_ptr->is_attach_point) {
+        node_ptr->deformation_ranges.empty() && !node_ptr->is_fixed &&
+        !node_ptr->is_attach_point) {
       result.warnings.push_back("Node '" + name +
                                 "' not referenced by any descriptor entry");
     }
   }
 
-  result.success = groups_ok && ranges_ok && bindings_ok;
+  result.success = groups_ok && ranges_ok && bindings_ok && deforms_ok;
 
   if (!result.success) {
     for (const auto& error : result.errors) {
@@ -84,7 +86,7 @@ bool DescriptorResolver::MapSelectionGroups(ModelGraph& graph,
   return all_ok;
 }
 
-bool DescriptorResolver::MapParameterRanges(ModelGraph& graph,
+bool DescriptorResolver::MapTransformRanges(ModelGraph& graph,
                                             const ModelDescriptor& descriptor,
                                             std::vector<std::string>& errors) {
   bool all_ok = true;
@@ -99,6 +101,26 @@ bool DescriptorResolver::MapParameterRanges(ModelGraph& graph,
     }
 
     it->second->transform_ranges.push_back(&range);
+  }
+
+  return all_ok;
+}
+
+bool DescriptorResolver::MapDeformationRanges(
+    ModelGraph& graph, const ModelDescriptor& descriptor,
+    std::vector<std::string>& errors) {
+  bool all_ok = true;
+
+  for (const auto& range : descriptor.deformation_ranges) {
+    auto it = graph.node_lookup.find(range.part_id);
+    if (it == graph.node_lookup.end()) {
+      errors.push_back("DeformationRange references unknown part '" +
+                       range.part_id + "'");
+      all_ok = false;
+      continue;
+    }
+
+    it->second->deformation_ranges.push_back(&range);
   }
 
   return all_ok;

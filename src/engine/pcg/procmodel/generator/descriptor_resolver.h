@@ -22,11 +22,15 @@ private:
                                  const ModelDescriptor& descriptor,
                                  std::vector<std::string>& errors);
 
-  static bool MapParameterRanges(ModelGraph& graph,
+  static bool MapTransformRanges(ModelGraph& graph,
                                  const ModelDescriptor& descriptor,
                                  std::vector<std::string>& errors);
 
   static bool MapParameterBindings(ModelGraph& graph,
+                                   const ModelDescriptor& descriptor,
+                                   std::vector<std::string>& errors);
+
+  static bool MapDeformationRanges(ModelGraph& graph,
                                    const ModelDescriptor& descriptor,
                                    std::vector<std::string>& errors);
 };
