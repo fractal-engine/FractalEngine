@@ -111,14 +111,14 @@ std::vector<Geometry::MeshData> MeshLoader::Load(const std::string& path) {
     return {};
   }
 
-  std::vector<Geometry::MeshData> meshes;
-  ProcessNode(scene->mRootNode, scene, meshes);
+  std::vector<Geometry::MeshData> mesh_data;
+  ProcessNode(scene->mRootNode, scene, mesh_data);
 
   Logger::getInstance().Log(LogLevel::Debug, "[MeshLoader] Loaded " +
-                                                 std::to_string(meshes.size()) +
-                                                 " meshes from " + path);
+                                                 std::to_string(mesh_data.size()) +
+                                                 " mesh_data from " + path);
 
-  return meshes;
+  return mesh_data;
 }
 
 SceneData MeshLoader::LoadScene(const std::string& path) {
@@ -144,12 +144,12 @@ SceneData MeshLoader::LoadScene(const std::string& path) {
 
   SceneData data;
 
-  data.root = ProcessNodeHierarchy(scene->mRootNode, scene, data.meshes);
+  data.root = ProcessNodeHierarchy(scene->mRootNode, scene, data.mesh_data);
 
   Logger::getInstance().Log(LogLevel::Debug,
                             "[MeshLoader] Loaded scene with " +
-                                std::to_string(data.meshes.size()) +
-                                " meshes from " + path);
+                                std::to_string(data.mesh_data.size()) +
+                                " mesh_data from " + path);
 
   return data;
 }

@@ -59,7 +59,7 @@ void ModelPreview::LoadDescriptor(const std::string& path) {
   auto resource = resource_mgr.GetResourceAs<ProcModel::ProcModelResource>(
       data_->archetype_id);
   if (resource) {
-    data_->model = Model::FromMeshData(resource->GetGraph().meshes,
+    data_->model = Model::FromMeshData(resource->GetGraph().mesh_data,
                                        resource->GetGraph().materials);
   }
 }

@@ -267,10 +267,10 @@ static void ComputeBounds(const ResolvedModel& resolved,
   for (const auto& d : resolved.descriptors) {
     AABB part_box;
     for (int mesh_idx : d.mesh_indices) {
-      if (mesh_idx < 0 || mesh_idx >= static_cast<int>(graph.meshes.size()))
+      if (mesh_idx < 0 || mesh_idx >= static_cast<int>(graph.mesh_data.size()))
         continue;
       AABB mesh_box =
-          ComputeMeshAABB(graph.meshes[mesh_idx], d.local_transform);
+          ComputeMeshAABB(graph.mesh_data[mesh_idx], d.local_transform);
       MergeAABB(part_box, mesh_box);
     }
 

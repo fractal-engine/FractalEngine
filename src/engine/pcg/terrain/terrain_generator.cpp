@@ -3,8 +3,8 @@
 #include <FastNoise/FastNoise.h>
 
 #include "../constraints/biome_presets.h"
-#include "../noise/OpenSimplex2S.hpp"
-#include "engine/core/types/geometry_data.h"  // ! should be removed
+#include "engine/core/types/geometry_data.h"
+#include "engine/math/noise/OpenSimplex2S.hpp"
 
 #include <algorithm>
 #include <fstream>

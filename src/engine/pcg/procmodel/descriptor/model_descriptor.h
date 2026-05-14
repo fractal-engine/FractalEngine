@@ -12,7 +12,7 @@ namespace ProcModel {
 struct PartDescriptor {
   std::string id;
   std::string name;
-  float weight = 1.0f;
+  float weight;
 };
 
 struct SelectionGroup {
@@ -34,6 +34,22 @@ struct TransformRange {
   std::optional<glm::vec3> scale_max;
   std::optional<glm::vec3> rotation_min;
   std::optional<glm::vec3> rotation_max;
+};
+
+struct DeformationRange {
+  std::string part_id;
+
+  std::optional<float> taper_factor_min;
+  std::optional<float> taper_factor_max;
+
+  std::optional<float> twist_angle_min;
+  std::optional<float> twist_angle_max;
+
+  std::optional<float> bend_angle_min;
+  std::optional<float> bend_angle_max;
+
+  std::optional<float> noise_amplitude_min;
+  std::optional<float> noise_amplitude_max;
 };
 
 struct ConstraintRule {
@@ -62,6 +78,7 @@ struct ModelDescriptor {
 
   std::vector<SelectionGroup> selection_groups;
   std::vector<TransformRange> transform_ranges;
+  std::vector<DeformationRange> deformation_ranges;
   std::vector<ConstraintRule> constraints;
   std::vector<ParameterBinding> parameter_bindings;
 

@@ -1,4 +1,4 @@
-#include "engine/pcg/noise/OpenSimplex2S.hpp"
+#include "engine/math/noise/OpenSimplex2S.hpp"
 #include "engine/pcg/terrain/terrain_generator.h"
 
 #include <algorithm>

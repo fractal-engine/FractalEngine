@@ -15,7 +15,7 @@ Model::~Model() {
 }
 
 std::shared_ptr<Model> Model::Load(const std::string& file) {
-  // Get cached meshes
+  // Get cached mesh_data
   const auto& mesh_list = Content::MeshCache::Instance().Get(file);
 
   // Get cached materials
@@ -23,7 +23,7 @@ std::shared_ptr<Model> Model::Load(const std::string& file) {
 
   if (mesh_list.empty() && materials.empty()) {
     Logger::getInstance().Log(
-        LogLevel::Error, "[Model::Load] No meshes or materials in: " + file);
+        LogLevel::Error, "[Model::Load] No mesh_data or materials in: " + file);
     return nullptr;
   }
 
@@ -36,31 +36,32 @@ std::shared_ptr<Model> Model::Load(const std::string& file) {
 
   Logger::getInstance().Log(
       LogLevel::Debug,
-      "[Model] Loaded " + std::to_string(out->NLoadedMeshes()) + " meshes, " +
-          std::to_string(out->materials_.size()) + " materials");
+      "[Model] Loaded " + std::to_string(out->NLoadedMeshes()) +
+          " mesh_data, " + std::to_string(out->materials_.size()) +
+          " materials");
 
   return out;
 }
 
 bool Model::LoadData() {
-  auto meshes = Content::MeshLoader::Load(source_path_);
+  auto mesh_data = Content::MeshLoader::Load(source_path_);
 
-  if (meshes.empty()) {
+  if (mesh_data.empty()) {
     Logger::getInstance().Log(
         LogLevel::Error,
-        "[Model::LoadData] failed - no meshes in " + source_path_);
+        "[Model::LoadData] failed - no mesh_data in " + source_path_);
     return false;
   }
 
   // Compute metrics while CPU data is available
-  metrics_ = ComputeMetrics(meshes);
+  metrics_ = ComputeMetrics(mesh_data);
 
   // Store for upload phase
-  mesh_data_ = std::move(meshes);
+  mesh_data_ = std::move(mesh_data);
 
   Logger::getInstance().Log(
       LogLevel::Debug, "[Model] Data loaded: " + source_path_ +
-                           ", meshes: " + std::to_string(mesh_data_.size()));
+                           ", mesh_data: " + std::to_string(mesh_data_.size()));
   return true;
 }
 

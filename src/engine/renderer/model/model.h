@@ -61,7 +61,7 @@ public:
       const std::vector<Geometry::MeshData>& mesh_data,
       const std::vector<Content::MaterialData>& materials);
 
-  // Computes metrics for a filtered subset of meshes
+  // Computes metrics for a filtered subset of mesh_data
   Metrics ComputeFilteredMetrics(
       const std::vector<uint32_t>& mesh_filter) const;
 
@@ -87,7 +87,7 @@ private:
   std::vector<Geometry::MeshData> mesh_data_;
   std::vector<Content::MaterialData> materials_;
 
-  // Final GPU meshes
+  // Final GPU mesh_data
   std::vector<std::unique_ptr<Mesh>> meshes_;
 };
 

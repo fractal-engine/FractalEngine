@@ -64,7 +64,7 @@ ModelGraph ModelGraphBuilder::Build(const Content::SceneData& scene,
                                     const std::string& source_path) {
   ModelGraph graph;
   graph.source_path = source_path;
-  graph.meshes = scene.meshes;
+  graph.mesh_data = scene.mesh_data;
   graph.materials = scene.materials;
   graph.root = ConvertNode(scene.root, glm::mat4(1.0f));
 

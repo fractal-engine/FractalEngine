@@ -121,9 +121,8 @@ void ModelViewer::RenderViewport() {
     last_instance = current_instance;
   }
 
- 
   // --- Camera Controls ---
-  
+
   ImGui::InvisibleButton("##ModelInteract", size);
   bool is_hovered = ImGui::IsItemHovered();
 
@@ -144,7 +143,6 @@ void ModelViewer::RenderViewport() {
     if (ImGui::IsKeyDown(ImGuiKey_D))
       camera_pan_x_ += wasd_speed;
   }
-
 
   // TRACKPAD
 
@@ -238,10 +236,14 @@ void ModelViewer::RenderViewport() {
         glm::vec4 persp;
         glm::decompose(desc.local_transform, scale, rot, pos, skew, persp);
 
+        // Apply pipeline deformation from resolved descriptor
+        const glm::quat jitter_rot =
+            glm::quat(glm::radians(desc.applied_rotation));
+
         TransformComponent transform_component;
         transform_component.position_ = pos * norm_scale;
-        transform_component.rotation_ = rot;
-        transform_component.scale_ = scale * norm_scale;
+        transform_component.rotation_ = glm::normalize(rot * jitter_rot);
+        transform_component.scale_ = scale * norm_scale * desc.applied_scale;
         inst.mesh_transforms[idx] = transform_component;
       }
       // Orbit camera around focal point

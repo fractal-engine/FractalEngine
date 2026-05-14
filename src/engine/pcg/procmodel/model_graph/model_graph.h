@@ -18,7 +18,7 @@ namespace ProcModel {
 struct ModelGraph {
   std::string source_path;
   ModelGraphNode root;
-  std::vector<Geometry::MeshData> meshes;
+  std::vector<Geometry::MeshData> mesh_data;
   std::vector<Content::MaterialData> materials;
 
   // Flat lookup for DescriptorResolver
