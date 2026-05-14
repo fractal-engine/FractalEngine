@@ -37,6 +37,7 @@ SceneViewPipeline::SceneViewPipeline()
       selected_entities_(),
       show_grid_(true),
       selection_program_(BGFX_INVALID_HANDLE),
+      shadow_program_(BGFX_INVALID_HANDLE),
       grid_mesh_(nullptr) {
   // TODO: Initialize other members e.g. profile, viewport, passes, etc.
   // Check reference project for details
@@ -59,6 +60,8 @@ void SceneViewPipeline::Create() {
       "selection", "vs_selection.bin", "fs_selection.bin");
   debug_program_ = Runtime::Shader()->LoadProgram("debug", "vs_grid_plane.bin",
                                                   "fs_grid_plane.bin");
+  shadow_program_ = Runtime::Shader()->LoadProgram("shadow", "vs_shadow.bin",
+                                                   "fs_shadow.bin");
 
   BuildReferenceGrid(glm::mat4(1.0f));
   RegisterNodes();
@@ -550,13 +553,7 @@ void SceneViewPipeline::RenderShadowNode(const Node::Context& context) {
   bgfx::setViewTransform(ViewID::SHADOW_PASS, light_view_arr, light_proj_arr);
 
   // Load shadow shader
-  static bgfx::ProgramHandle shadow_program = BGFX_INVALID_HANDLE;
-  if (!bgfx::isValid(shadow_program)) {
-    shadow_program = Runtime::Shader()->LoadProgram("shadow", "vs_shadow.bin",
-                                                    "fs_shadow.bin");
-  }
-
-  if (!bgfx::isValid(shadow_program)) {
+  if (!bgfx::isValid(shadow_program_)) {
     Logger::getInstance().Log(LogLevel::Error, "Shadow shader failed to load");
     return;
   }
@@ -574,7 +571,7 @@ void SceneViewPipeline::RenderShadowNode(const Node::Context& context) {
     // write depth, cull front faces
     bgfx::setState(BGFX_STATE_WRITE_Z | BGFX_STATE_DEPTH_TEST_LESS |
                    BGFX_STATE_CULL_CW);
-    bgfx::submit(ViewID::SHADOW_PASS, shadow_program);
+    bgfx::submit(ViewID::SHADOW_PASS, shadow_program_);
   }
 }
 

@@ -308,31 +308,20 @@ void GraphicsRenderer::ProcessEvents(bool& quit) {
 void GraphicsRenderer::Destroy() {
   Logger::getInstance().Log(LogLevel::Info, "Shutting down GraphicsRenderer");
 
-  // 1. Destroy framebuffer attachments first
-  if (bgfx::isValid(scene_color_texture_)) {
-    bgfx::destroy(scene_color_texture_);
-    scene_color_texture_ = BGFX_INVALID_HANDLE;
-  }
-
-  if (bgfx::isValid(scene_depth_texture_)) {
-    bgfx::destroy(scene_depth_texture_);
-    scene_depth_texture_ = BGFX_INVALID_HANDLE;
-  }
-
-  // 2. Then destroy the framebuffer
+  // Destroy the framebuffer
   if (bgfx::isValid(scene_framebuffer_)) {
     bgfx::destroy(scene_framebuffer_);
     scene_framebuffer_ = BGFX_INVALID_HANDLE;
   }
+  scene_color_texture_ = BGFX_INVALID_HANDLE;
+  scene_depth_texture_ = BGFX_INVALID_HANDLE;
+
   // Destroy reflection framebuffer and its textures
   if (bgfx::isValid(reflection_fb_)) {
     bgfx::destroy(reflection_fb_);
     reflection_fb_ = BGFX_INVALID_HANDLE;
   }
-  if (bgfx::isValid(reflection_color_tex_)) {
-    bgfx::destroy(reflection_color_tex_);
-    reflection_color_tex_ = BGFX_INVALID_HANDLE;
-  }
+  reflection_color_tex_ = BGFX_INVALID_HANDLE;
 
   // Destroy uniforms
   if (bgfx::isValid(u_viewPos))

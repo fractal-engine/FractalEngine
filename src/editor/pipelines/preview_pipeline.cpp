@@ -35,12 +35,17 @@ void PreviewPipeline::Create() {
 void PreviewPipeline::Destroy() {
   // Destroy all outputs
   for (auto& output : outputs_) {
-    if (bgfx::isValid(output.framebuffer)) {
+    if (bgfx::isValid(output.framebuffer))
       bgfx::destroy(output.framebuffer);
-    }
-    // ? Textures created with destroyOnDestroy=true are handled by the FBO
+    if (bgfx::isValid(output.color_texture))
+      bgfx::destroy(output.color_texture);
+    if (bgfx::isValid(output.depth_texture))
+      bgfx::destroy(output.depth_texture);
   }
   outputs_.clear();
+
+  if (bgfx::isValid(u_mesh_color_))
+    bgfx::destroy(u_mesh_color_);
 
   Logger::getInstance().Log(LogLevel::Debug, "PreviewPipeline: Destroyed");
 }
