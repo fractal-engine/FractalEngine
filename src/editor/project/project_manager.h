@@ -8,37 +8,39 @@
 
 struct Project {
   std::filesystem::path path_;
+
+  struct Config {
+    std::string name = "Unnamed Project";
+  } config;
 };
 
 class ProjectManager {
 public:
+  ProjectManager();
 
-ProjectManager();
+  // Poll for file system events
+  void PollEvents();
 
-// Poll for file system events
-void PollEvents();
+  // Load project from specified directory
+  bool Load(const std::filesystem::path& directory);
 
-// Load project from specified directory
-bool Load(const std::filesystem::path& directory);
+  // Accessors
+  const Project& GetProject() const;
+  ProjectObserver& GetObserver();
+  ProjectAssets& Assets();
 
-// Accessors
-const Project& GetProject() const;
-ProjectObserver& GetObserver();
-ProjectAssets& Assets();
+  // Resolve path relative to project root
+  std::filesystem::path AbsolutePath(const std::filesystem::path& path);
 
-// Resolve path relative to project root
-std::filesystem::path AbsolutePath(const std::filesystem::path& path);
-
-std::string ProjectName() const;
+  std::string ProjectName() const;
 
 private:
+  // Ensure project configuration exists
+  bool EnsureConfig();
 
-// Ensure project configuration exists
-bool EnsureConfig();
-
-Project project_;
-ProjectObserver observer_;
-ProjectAssets assets_;
+  Project project_;
+  ProjectObserver observer_;
+  ProjectAssets assets_;
 };
 
 #endif  // PROJECT_MANAGER_H
