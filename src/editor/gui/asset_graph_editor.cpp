@@ -531,6 +531,11 @@ void AssetGraphEditor::RenderNodeGraph() {
   ImVec2 editor_pos = ImGui::GetCursorScreenPos();
   ImVec2 editor_size = ImGui::GetContentRegionAvail();
 
+  // ! Patch until RenderNodeGraph is refactored
+  // Skip rendering if canvas is not yet valid
+  if (editor_size.x < 10.0f || editor_size.y < 10.0f)
+    return;
+
   ed::SetCurrentEditor(m_EditorContext);
   ed::Begin("PCG_Node_Editor");
 
