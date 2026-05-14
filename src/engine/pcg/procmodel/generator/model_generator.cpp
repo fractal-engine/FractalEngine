@@ -202,7 +202,7 @@ std::optional<ResolvedModel> ModelGenerator::Generate(
 
     // Run pipeline operations on resolved model
     {
-      ModelContext ctx(descriptor, result, rng);
+      ModelContext ctx(descriptor, graph, result, rng);
       pipeline.Run(ctx);
     }
 
