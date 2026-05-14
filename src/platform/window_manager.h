@@ -5,22 +5,21 @@
 
 #include <functional>
 #include <vector>
-#include "engine/core/singleton.hpp"  // ! remove engine dependency
+#include "engine/core/singleton.hpp"  // ! remove engine dependency?
 
 class WindowManager : public Singleton<WindowManager> {
 private:
   SDL_Window* window_;
   int width_;
   int height_;
-  float dpiScale_;  // retina scale factor
-  std::vector<std::function<void(int, int)>> resizeCallbacks_;
+  float dpi_scale_;  // retina scale factor
+  std::vector<std::function<void(int, int)>> resize_callbacks_;
 
-  // void Initialize();
   bool SetFullscreen(bool enable);
 
 public:
   WindowManager()
-      : window_(nullptr), width_(1280), height_(720), dpiScale_(1.0f) {}
+      : window_(nullptr), width_(1280), height_(720), dpi_scale_(1.0f) {}
   ~WindowManager();
 
   // Prevent copying
@@ -54,13 +53,14 @@ public:
   static bool IsFullscreen();
   static bool SetBorderlessFullscreen(bool enable);
 
-  // ───── TRACK WINDOW STATE ─────
-  static SDL_Rect windowedBounds;
+  // Track window state
+  static SDL_Rect windowed_bounds;
   static bool minimized;
-  static bool fullscreen_;
+  static bool fullscreen;
+  static bool quit_requested;
 
-  // ───── WINDOW UTILS ─────
-  static bool WindowShouldClose() { return SDL_QuitRequested(); }
+  static void Quit();
+  static bool ShouldQuit();
 };
 
 #endif  // SDL_PLATFORM_H

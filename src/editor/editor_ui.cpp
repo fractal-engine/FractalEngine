@@ -152,6 +152,7 @@ void EditorUI::Run() {
 
       if (event.type == SDL_QUIT) {
         quit_ = true;
+        WindowManager::Quit();
         EditorEvents::editor_exit_pressed();
       }
     }  // end PollEvent loop
@@ -226,6 +227,7 @@ void EditorUI::HandleInput(Key key) {
   switch (key) {
     case Key::DIGIT_0:
       quit_ = true;
+      WindowManager::Quit();
       EditorEvents::editor_exit_pressed();
       return;
     case Key::DIGIT_1:
@@ -290,6 +292,7 @@ void EditorUI::DockSpace() {
           EditorEvents::game_end_pressed();
         }
         this->quit_ = true;
+        WindowManager::Quit();
         EditorEvents::editor_exit_pressed();
       },
       debug_highlight_ids_, debug_show_metrics_, debug_show_log_,
@@ -365,6 +368,7 @@ void EditorUI::RenderUI() {
       EditorEvents::game_end_pressed();
     }
     this->quit_ = true;
+    WindowManager::Quit();
     EditorEvents::editor_exit_pressed();
   };
 

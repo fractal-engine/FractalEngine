@@ -11,7 +11,7 @@
  *  - SubsystemList hot-reload registry (dynamic_registry)
  *
  * Initializes / coordinates (not owned):
- *  - WindowManager (Initialize, WindowShouldClose)
+ *  - WindowManager (Initialize, ShouldQuit)
  *  - ECS (entt::locator<ECS>::emplace)
  *  - SoundManager (Instance().init / Instance().terminate)
  *
@@ -92,7 +92,7 @@ bool Init() {
 }
 
 bool Running() {
-  return !WindowManager::WindowShouldClose();
+  return !WindowManager::ShouldQuit();
 }
 
 void NextFrame() {

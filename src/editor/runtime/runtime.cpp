@@ -319,7 +319,6 @@ int TERMINATE() {
   // Stop game logic
   if (g_game_manager) {
     g_game_manager->Destroy();
-    g_game_manager->Terminate();
     g_game_manager.reset();
   }
 

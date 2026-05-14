@@ -115,7 +115,9 @@ void GraphicsRenderer::PrepareFrame() {
   const uint16_t fbw = canvasViewportW ? canvasViewportW : 1;
   const uint16_t fbh = canvasViewportH ? canvasViewportH : 1;
 
-  if (fbw != last_framebuffer_width_ || fbh != last_framebuffer_height_)
+  // Avoid resizing to placeholder dimensions
+  if (fbw > 1 && fbh > 1 &&
+      (fbw != last_framebuffer_width_ || fbh != last_framebuffer_height_))
     CreateFramebuffers(fbw, fbh);
 
   // Common clear for the scene_framebuffer_ (done by the first view using it)
@@ -194,13 +196,12 @@ void GraphicsRenderer::CreateFramebuffers(uint16_t w, uint16_t h) {
                                    : "INVALID"));
   Logger::getInstance().Log(LogLevel::Debug, log_buffer);
 
-  // --- REFLECTION framebuffer ---
+  // Reflection framebuffer
   if (bgfx::isValid(reflection_fb_)) {
     bgfx::destroy(reflection_fb_);
-    bgfx::destroy(reflection_color_tex_);
     reflection_fb_ = BGFX_INVALID_HANDLE;
-    reflection_color_tex_ = BGFX_INVALID_HANDLE;
   }
+  reflection_color_tex_ = BGFX_INVALID_HANDLE;
 
   // Create a color-only reflection texture
   reflection_color_tex_ = bgfx::createTexture2D(
@@ -310,7 +311,14 @@ void GraphicsRenderer::Destroy() {
 
   // Destroy the framebuffer
   if (bgfx::isValid(scene_framebuffer_)) {
+    Logger::getInstance().Log(LogLevel::Debug,
+                              "Destroying old scene_framebuffer_ (handle " +
+                                  std::to_string(scene_framebuffer_.idx) +
+                                  ") and its textures.");
     bgfx::destroy(scene_framebuffer_);
+    Logger::getInstance().Log(LogLevel::Debug,
+                              "Old framebuffer destroyed successfully.");
+
     scene_framebuffer_ = BGFX_INVALID_HANDLE;
   }
   scene_color_texture_ = BGFX_INVALID_HANDLE;
