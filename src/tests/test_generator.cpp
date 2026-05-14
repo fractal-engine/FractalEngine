@@ -1,17 +1,17 @@
-#define _USE_MATH_DEFINES
 #include "engine/pcg/noise/OpenSimplex2S.hpp"
 #include "engine/pcg/terrain/terrain_generator.h"
 
+#include <algorithm>
+#include <array>
 #include <cassert>
+#include <chrono>
 #include <cmath>
 #include <iomanip>
 #include <iostream>
-#include <chrono> 
-#include <algorithm>
-#include <array>
-#include <limits> 
-#include <memory>     
-#include <vector> 
+#include <limits>
+#include <memory>
+#include <numbers>
+#include <vector>
 
 #define RESET "\033[0m"
 #define BLACK "\033[30m"              /* Black */
@@ -135,7 +135,7 @@ void TestGeneratorDerivatives() {
   config.octaves = 4;
   config.amplitude = 50.0f;
 
-  PCG::Generator gen(config);
+  PCG::TerrainGenerator gen(config);
 
   // Sample terrain at multiple points
   float test_x[] = {0.0f, 10.0f, 50.0f, 100.0f};
@@ -229,6 +229,7 @@ void TestPerformance() {
   std::cout << "  (Sums: " << sum_analytical << " vs " << sum_finite << ")"
             << std::endl;
 
+  // ! Performance assertions belong in benchmarks, not in correctness tests
   assert(speedup > 1.5 && "Analytical should be at least 1.5x faster!");
 
   std::cout << GREEN << "✓ Performance test PASSED!\n" << RESET << std::endl;
@@ -292,7 +293,7 @@ void TestExpressiveRange() {
   config.ridge_erosion = 0.6f;
   config.slope_erosion = 0.4f;
 
-  PCG::Generator gen(config);
+  PCG::TerrainGenerator gen(config);
 
   // Generate small heightmap for analysis
   const int SIZE = 512;
@@ -394,7 +395,7 @@ void TestSpectralAnalysis() {
   config.amplitude = 60.0f;
   config.octaves = 6;
 
-  PCG::Generator gen(config);
+  PCG::TerrainGenerator gen(config);
 
   // Generate 1D slice for spectral analysis
   const int SIZE = 256;
@@ -419,7 +420,7 @@ void TestSpectralAnalysis() {
   for (int k = 0; k < SIZE / 2; ++k) {
     double real = 0.0, imag = 0.0;
     for (int n = 0; n < SIZE; ++n) {
-      double angle = 2.0 * M_PI * k * n / SIZE;
+      double angle = 2.0 * std::numbers::pi * k * n / SIZE;
       real += signal[n] * std::cos(angle);
       imag += signal[n] * std::sin(angle);
     }

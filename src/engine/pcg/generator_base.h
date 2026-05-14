@@ -28,30 +28,41 @@ inline const char* GetGeneratorTypeName(GeneratorType type) {
 }
 
 //
-// GeneratorBase Interface
+// Generator Interface
 //
-class GeneratorBase {
+class Generator {
 public:
-  virtual ~GeneratorBase() = default;
+  virtual ~Generator() = default;
 
-  virtual GeneratorType GetType() = 0;
-  virtual std::string GetDisplayName() = 0;
-
-  // Point evaluation
-  virtual Sample Eval(float x, float y) = 0;
+  virtual GeneratorType GetType() const = 0;
+  virtual std::string GetDisplayName() const = 0;
 
   // Graph access
   virtual ProgramGraph* GetGraph() { return nullptr; }
   virtual const ProgramGraph* GetGraph() const { return nullptr; }
 
   // Clone for copy operations
-  virtual std::unique_ptr<GeneratorBase> Clone() const;
+  virtual std::unique_ptr<Generator> Clone() const;
+};
+
+class FieldGenerator : public Generator {
+public:
+  // Point evaluation
+  virtual Sample Eval(float x, float y) const = 0;
+};
+
+class InstanceGenerator : public Generator {
+public:
+  // TODO: concrete signature TBD when ProcModel is wired up
+  // Possibilities:
+  //   virtual ResolvedModel Generate(uint64_t seed) = 0;
+  //   virtual InstantiateResult Instantiate(uint64_t seed, Entity parent) = 0;
 };
 
 //
 // Factory
 //
-std::unique_ptr<GeneratorBase> CreateGenerator(GeneratorType type);
+std::unique_ptr<FieldGenerator> CreateGenerator(GeneratorType type);
 
 }  // namespace PCG
 

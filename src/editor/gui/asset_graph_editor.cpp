@@ -6,12 +6,12 @@
 #include <functional>
 #include <unordered_set>  // Needed for cycle protection
 
+#include "engine/content/io/json.h"
 #include "engine/context/engine_context.h"
 #include "engine/core/logger.h"
 #include "engine/pcg/pcg_engine.h"
 
 #include <cctype>
-#include <fstream>
 #include <iostream>
 #include <map>
 
@@ -47,7 +47,8 @@ static bool s_show_not_implemented_popup = false;
 static bool s_show_error_popup = false;
 static std::string s_error_message = "";
 
-// Set up json serialization overloads so nlohmann can save our custom engine structs
+// Set up json serialization overloads so nlohmann can save our custom engine
+// structs
 namespace glm {
 void to_json(nlohmann::json& j, const vec3& v) {
   j = nlohmann::json::array({v.x, v.y, v.z});
@@ -85,7 +86,7 @@ void to_json(nlohmann::json& j, const SelectionGroup& g) {
     j["attach_to"] = g.attach_to;
 }
 
-// Serialization of TransformRange 
+// Serialization of TransformRange
 void to_json(nlohmann::json& j, const TransformRange& p) {
   j = nlohmann::json{{"part_id", p.part_id}};
   if (p.scale_min)
@@ -174,7 +175,7 @@ static ImU32 GenerateGroupHeaderColor(const std::string& group_id) {
   int g = (hash & 0x00FF00) >> 8;
   int b = (hash & 0x0000FF);
 
-  // Mix the random color with a dark base 
+  // Mix the random color with a dark base
   r = (r + 40) / 2;
   g = (g + 40) / 2;
   b = (b + 80) / 2;
@@ -206,16 +207,23 @@ AssetGraphEditor::~AssetGraphEditor() {
 // Loads a PCG graph file using the engine's built-in parser
 void AssetGraphEditor::LoadGraph(const std::string& filepath) {
   m_ModelData = ProcModel::ModelDescriptor{};
-  if (ProcModel::DescriptorParser::LoadFromFile(filepath, m_ModelData)) {
+
+  auto json_opt = Content::ReadJsonFile(filepath);
+  if (!json_opt.has_value()) {
+    Logger::getInstance().Log(LogLevel::Error,
+                              "[AssetGraphEditor] Failed to read: " + filepath);
+    return;
+  }
+
+  if (ProcModel::ModelDescriptorParser::FromJson(json_opt.value(),
+                                                 m_ModelData)) {
     m_CurrentFilePath = filepath;
     m_NeedsAutoLayout = true;
     Logger::getInstance().Log(LogLevel::Info,
                               "[AssetGraphEditor] Loaded: " + filepath);
   } else {
-    // Intercept loading failure and raise an error dialogue safely
-    s_error_message = "Failed to parse JSON file:\n" + filepath +
-                      "\nCheck console for details.";
-    s_show_error_popup = true;
+    Logger::getInstance().Log(
+        LogLevel::Error, "[AssetGraphEditor] Failed to parse: " + filepath);
   }
 }
 
@@ -233,7 +241,7 @@ void AssetGraphEditor::SaveGraph(const std::string& filepath) {
 
     // Sync changes to the ModelPreview window in real-time
     if (data_) {
-      auto& pcg = EngineContext::Generator();
+      auto& pcg = EngineContext::PCG().GetProcModel();
       data_->archetype_id = pcg.LoadArchetype(filepath);
       data_->instances.clear();
     }

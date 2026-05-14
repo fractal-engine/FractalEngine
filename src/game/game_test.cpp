@@ -127,7 +127,7 @@ GameTest::GameTest()
       _s_grassORMUniform(BGFX_INVALID_HANDLE),
       _s_grassNormalUniform(BGFX_INVALID_HANDLE),
       _u_slopeBlendParamsUniform(BGFX_INVALID_HANDLE),
-      generator_(PCG::Config{}) {
+      generator_(std::make_unique<PCG::TerrainGenerator>(PCG::Config{})) {
   bx::mtxIdentity(world_matrix);  // Initialize world matrix to identity
 }
 
@@ -286,7 +286,7 @@ void GameTest::Init() {
   shadowMapFB = bgfx::createFrameBuffer(1, &shadowMapTexture, true); */
 
   // ── Procmodel vertical slice test ──
-  auto& pcg = EngineContext::Generator();
+  auto& pcg = EngineContext::PCG().GetProcModel();
   auto result = pcg.RequestInstance(
       "/Users/louismercier/Projects/FractalEngine/build/macosx/x86_64/release/"
       "examples/example-project/test_model.json",

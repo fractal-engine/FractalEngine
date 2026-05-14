@@ -7,9 +7,8 @@
 #include <unordered_set>
 
 #include "engine/pcg/graph/program_graph.h"
-#include "engine/pcg/procmodel/instantiator/model_instantiator.h"
-#include "engine/pcg/procmodel/procmodel_resource.h"
-#include "engine/pcg/procmodel/validation/validation_logger.h"
+#include "engine/pcg/procmodel/procmodel.h"
+
 struct GenerationRequest {
   uint32_t volume_id;  // Entity ID (VolumeComponent lookup)
   uint8_t priority;    // Higher = sooner
@@ -17,8 +16,10 @@ struct GenerationRequest {
 
 class PCGEngine {
 public:
+  PCGEngine() = default;
+  ~PCGEngine();
+
   void Create();
-  void Destroy();
 
   //
   // GENERATION QUEUE
@@ -34,26 +35,22 @@ public:
   // ? Called from EngineContext::NextFrame()
   void ProcessQueued();
 
-  ProcModel::ModelInstantiator::InstantiateResult RequestInstance(
-      const std::string& descriptor_path, uint64_t seed,
-      Entity parent = entt::null);
+  ProcModel::Subsystem& GetProcModel() { return procmodel_; }
+  const ProcModel::Subsystem& GetProcModel() const { return procmodel_; }
 
-  ResourceID LoadArchetype(const std::string& descriptor_path);
-
-  // Validation logger (one per session)
-  ProcModel::ValidationLogger& ValidationLog() {
-    if (!validation_logger_)
-      validation_logger_ = std::make_unique<ProcModel::ValidationLogger>();
-    return *validation_logger_;
-  }
+  // TODO:
+  // ProcTerrain::Subsystem& GetTerrain() { return terrain_; }
+  // ProcTextures::Subsystem& GetTextures() { return textures_; }
 
 private:
   std::queue<GenerationRequest> pending_requests_;
   std::unordered_set<uint32_t> cancelled_;
 
-  std::unordered_map<std::string, ResourceID> procmodel_cache_;
+  ProcModel::Subsystem procmodel_;
 
-  std::unique_ptr<ProcModel::ValidationLogger> validation_logger_;
+  // TODO:
+  // ProcTerrain::Subsystem terrain_;
+  // ProcTextures::Subsystem textures_;
 };
 
 #endif  // PCG_ENGINE_H

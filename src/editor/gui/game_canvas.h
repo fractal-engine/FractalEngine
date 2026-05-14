@@ -23,7 +23,7 @@
 #include "engine/renderer/material/material_registry.h"
 #include "engine/renderer/model/model.h"
 
-#include "engine/resources/file_system_utils.h"
+#include "engine/core/file_system_utils.h"
 
 // TODO: rename window to scene_view_window
 

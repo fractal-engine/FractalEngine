@@ -42,6 +42,7 @@ add_files(
 	-- content files
 	"content/cache/*.cpp",
 	"content/loaders/*.cpp",
+	"content/io/*.cpp",
 
 	-- resources files
 	"resources/*.cpp",
@@ -53,11 +54,14 @@ add_files(
 	"pcg/terrain/*.cpp",
 	"pcg/noise/OpenSimplex2S.cpp",
 	"pcg/graph/*.cpp",
+	"pcg/procmodel/*.cpp",
 	"pcg/procmodel/descriptor/*.cpp",
 	"pcg/procmodel/model_graph/*.cpp",
 	"pcg/procmodel/generator/*.cpp",
+	"pcg/procmodel/generator/operations/*.cpp",
 	"pcg/procmodel/instantiator/*.cpp",
-	"pcg/procmodel/validation/*.cpp"
+	"pcg/procmodel/validation/*.cpp",
+	"pcg/pipeline/*.cpp"
 )
 
 -- HEADER FILES -------
@@ -90,8 +94,9 @@ add_headerfiles(
 	"geometry/projection/*.h",
 
 	-- content files
-	"content/cache/*.cpp",
-	"content/loaders/*.cpp",
+	"content/cache/*.h",
+	"content/loaders/*.h",
+	"content/io/*.h",
 
 	-- resource files
 	"resources/*.h",
@@ -101,9 +106,11 @@ add_headerfiles(
 	"pcg/procmodel/*.h",
 	"pcg/procmodel/descriptor/*.h",
 	"pcg/procmodel/generator/*.h",
+	"pcg/procmodel/generator/operations/*.h",
 	"pcg/procmodel/instantiator/*.h",
 	"pcg/procmodel/model_graph/*.h",
-	"pcg/procmodel/validation/*.h"
+	"pcg/procmodel/validation/*.h",
+	"pcg/pipeline/*.h"
 )
 
 add_rules("shaderc.build")

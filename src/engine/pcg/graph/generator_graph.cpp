@@ -119,11 +119,11 @@ void GeneratorGraph::GenerateGrid(glm::vec2 origin, glm::vec2 size,
   }
 }
 
-Sample GeneratorGraph::Eval(float x, float y) {
+Sample GeneratorGraph::Eval(float x, float y) const {
   return GenerateSingle({x, y});
 }
 
-std::unique_ptr<GeneratorBase> GeneratorGraph::Clone() const {
+std::unique_ptr<Generator> GeneratorGraph::Clone() const {
   auto clone = std::make_unique<GeneratorGraph>();
 
   // Copy graph structure

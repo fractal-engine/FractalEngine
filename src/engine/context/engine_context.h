@@ -30,7 +30,7 @@ RendererBase& Renderer();
 Input& InputDevice();
 ShaderManager& Shader();
 ResourceManager& resourceManager();
-PCGEngine& Generator();
+PCGEngine& PCG();
 
 }  // namespace EngineContext
 #endif  // ENGINE_CONTEXT_H

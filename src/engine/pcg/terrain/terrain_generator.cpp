@@ -42,7 +42,7 @@ float ComputeFalloff(float distance, float radius) {
 namespace PCG {
 
 // Constructor
-Generator::Generator(const Config& config) : config_(config) {
+TerrainGenerator::TerrainGenerator(const Config& config) : config_(config) {
 
   // ============================================
   // UBER NOISE PIPELINE (Node Graph)
@@ -94,11 +94,21 @@ Generator::Generator(const Config& config) : config_(config) {
       std::make_unique<UberFBM>(domain_warp_fractal, simplex_deriv_.get());
 }
 
-void Generator::UpdateConfig(const Config& config) {
+void TerrainGenerator::UpdateConfig(const Config& config) {
   config_ = config;
 }
 
-Sample Generator::Eval(float x, float y) const {
+std::string TerrainGenerator::GetDisplayName() const {
+  return "Terrain Generator";
+}
+
+GeneratorType TerrainGenerator::GetType() const {
+
+  // TODO: check generator type
+  return GeneratorType::Preset;
+}
+
+Sample TerrainGenerator::Eval(float x, float y) const {
   Sample result;
   result.curvature = 0.0f;  // Stub for now
 
@@ -452,14 +462,15 @@ size); output.rgba_encoded.resize(size * size);
 }
 */
 
-float Generator::ApplyPipeline(float x, float y,
-                               glm::vec2& out_gradient) const {
+float TerrainGenerator::ApplyPipeline(float x, float y,
+                                      glm::vec2& out_gradient) const {
   Sample s = Eval(x, y);
   out_gradient = s.gradient;
   return s.height;
 }
 
-Sample Generator::EvalStaged(float x, float y, PipelineStage stage) const {
+Sample TerrainGenerator::EvalStaged(float x, float y,
+                                    PipelineStage stage) const {
   Sample result;
   result.curvature = 0.0f;
 

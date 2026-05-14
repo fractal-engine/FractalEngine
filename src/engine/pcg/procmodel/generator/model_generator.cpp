@@ -4,6 +4,9 @@
 #include <queue>
 #include <random>
 
+#include "engine/pcg/pipeline/linear_pipeline.h"
+#include "engine/pcg/procmodel/generator/model_context.h"
+
 #include "engine/core/logger.h"
 
 namespace ProcModel {
@@ -60,8 +63,9 @@ static const PartDescriptor* WeightedSelect(
 }
 
 std::optional<ResolvedModel> ModelGenerator::Generate(
-    const ModelGraph& graph, const ModelDescriptor& descriptor, uint64_t seed,
-    int max_retries, ValidationLogger* validator_logger) {
+    const ModelGraph& graph, const ModelDescriptor& descriptor,
+    const PCG::LinearPipeline& pipeline, uint64_t seed, int max_retries,
+    ValidationLogger* validator_logger) {
 
   for (int attempt = 0; attempt < max_retries; ++attempt) {
     pcg32 rng(seed + attempt);
@@ -189,15 +193,21 @@ std::optional<ResolvedModel> ModelGenerator::Generate(
     // Apply parameter bindings across resolved descriptors
     ApplyParameterBindings(resolved_descriptors, descriptor.parameter_bindings);
 
+    ResolvedModel result;
+    result.model_id = descriptor.model_id;
+    result.seed = seed + attempt;
+    result.descriptors = std::move(resolved_descriptors);
+    result.model_scale =
+        glm::vec3(1.0f);  // TODO: sample from descriptor scale range
+
+    // Run pipeline operations on resolved model
+    {
+      ModelContext ctx(descriptor, result, rng);
+      pipeline.Run(ctx);
+    }
+
     // Final constraint check
     if (ValidateConstraints(selected_ids, descriptor.constraints)) {
-      ResolvedModel result;
-      result.model_id = descriptor.model_id;
-      result.seed = seed + attempt;
-      result.descriptors = std::move(resolved_descriptors);
-      result.model_scale =
-          glm::vec3(1.0f);  // TODO: sample from descriptor scale range
-
       // Post-generation validation
       if (validator_logger) {
         ValidationResult vr =

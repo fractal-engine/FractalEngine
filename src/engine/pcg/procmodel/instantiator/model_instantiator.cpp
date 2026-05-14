@@ -1,5 +1,7 @@
 #include "model_instantiator.h"
 
+#include <unordered_map>
+
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtx/matrix_decompose.hpp>
@@ -32,9 +34,21 @@ ModelInstantiator::InstantiateResult ModelInstantiator::Instantiate(
     transform.modified_ = true;
   }
 
-  // Create entity for each resolved descriptor
+  std::unordered_map<std::string, Entity> entity_by_descriptor_id;
+
   for (const auto& descriptor : resolved.descriptors) {
-    Entity entity = CreatePartEntity(descriptor, graph, result.root);
+    Entity parent_entity = result.root;
+
+    if (!descriptor.activator_id.empty()) {
+      auto it = entity_by_descriptor_id.find(descriptor.activator_id);
+      if (it != entity_by_descriptor_id.end()) {
+        parent_entity = it->second;
+      }
+      // If activator isn't found, fall back to root.
+    }
+
+    Entity entity = CreatePartEntity(descriptor, graph, parent_entity);
+    entity_by_descriptor_id[descriptor.descriptor_id] = entity;
     result.part_entities.push_back(entity);
   }
 

@@ -5,8 +5,10 @@
 
 #include "engine/memory/resource.h"
 
+#include "engine/pcg/pipeline/linear_pipeline.h"
+#include "engine/pcg/pipeline/pipeline_descriptor.h"
+
 #include "engine/pcg/procmodel/descriptor/model_descriptor.h"
-#include "engine/pcg/procmodel/generator/model_pipeline.h"
 #include "engine/pcg/procmodel/generator/resolved_model.h"
 #include "engine/pcg/procmodel/model_graph/model_graph.h"
 
@@ -23,8 +25,15 @@ public:
   ModelDescriptor& GetDescriptor() { return descriptor_; }
   const ModelDescriptor& GetDescriptor() const { return descriptor_; }
 
-  ModelPipeline& GetPipeline() { return pipeline_; }
-  const ModelPipeline& GetPipeline() const { return pipeline_; }
+  PCG::PipelineDescriptor& GetPipelineDescriptor() {
+    return pipeline_descriptor_;
+  }
+  const PCG::PipelineDescriptor& GetPipelineDescriptor() const {
+    return pipeline_descriptor_;
+  }
+
+  PCG::LinearPipeline& GetPipeline() { return pipeline_; }
+  const PCG::LinearPipeline& GetPipeline() const { return pipeline_; }
 
   bool IsResolved() const { return resolved_; }
   void SetResolved(bool value) { resolved_ = value; }
@@ -32,6 +41,7 @@ public:
   void Destroy() override {
     graph_ = {};
     descriptor_ = {};
+    pipeline_descriptor_ = {};
     pipeline_ = {};
     resolved_ = false;
   }
@@ -43,7 +53,8 @@ private:
   ModelDescriptor descriptor_;
   bool resolved_ = false;
 
-  ModelPipeline pipeline_;
+  PCG::PipelineDescriptor pipeline_descriptor_;
+  PCG::LinearPipeline pipeline_;
 };
 
 }  // namespace ProcModel

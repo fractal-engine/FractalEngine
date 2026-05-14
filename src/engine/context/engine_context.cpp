@@ -74,6 +74,7 @@ bool Init() {
   resource_manager_ = std::make_unique<ResourceManager>();
 
   pcg_engine_ = std::make_unique<PCGEngine>();
+  pcg_engine_->Create();
 
   // Initialize ECS singleton
   entt::locator<ECS>::emplace();
@@ -153,7 +154,7 @@ ResourceManager& resourceManager() {
   return *resource_manager_;
 }
 
-PCGEngine& Generator() {
+PCGEngine& PCG() {
   return *pcg_engine_;
 }
 

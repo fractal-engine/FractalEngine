@@ -10,8 +10,8 @@
 #include <sstream>
 #include <string>
 
+#include "engine/core/file_system_utils.h"
 #include "engine/core/logger.h"
-#include "engine/resources/file_system_utils.h"
 #include "engine/resources/guid.h"
 
 // Global persistent asset identifier
@@ -80,8 +80,9 @@ std::optional<T> Deserialize(const std::filesystem::path& path) {
     return std::nullopt;
 
   try {
-    const T obj = rfl::json::read<T>(source).value(); // try to parse json to Result<T>
-    return obj; 
+    const T obj =
+        rfl::json::read<T>(source).value();  // try to parse json to Result<T>
+    return obj;
 
   } catch (const std::exception& e) {
     Logger::getInstance().Log(

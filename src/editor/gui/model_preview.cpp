@@ -45,7 +45,7 @@ void ModelPreview::LoadDescriptor(const std::string& path) {
   images_generated_ = 0;
   images_submitted_ = 0;
 
-  auto& pcg = EngineContext::Generator();
+  auto& pcg = EngineContext::PCG().GetProcModel();
   data_->archetype_id = pcg.LoadArchetype(descriptor_path_);
 
   if (data_->archetype_id == 0) {
@@ -81,8 +81,8 @@ void ModelPreview::TickGenerate() {
   while (budget-- > 0 && images_generated_ < total_instances_) {
     auto resolved = ProcModel::ModelGenerator::Generate(
         resource->GetGraph(), resource->GetDescriptor(),
-        current_seed_ + images_generated_, 10,
-        &EngineContext::Generator().ValidationLog());
+        resource->GetPipeline(), current_seed_ + images_generated_, 10,
+        &EngineContext::PCG().GetProcModel().ValidationLog());
     if (resolved) {
       data_->instances.push_back(std::move(*resolved));
     }
@@ -292,6 +292,13 @@ void ModelPreview::SubmitViews() {
         transform_component.position_ = pos;
         transform_component.rotation_ = rot;
         transform_component.scale_ = scale;
+
+        // Apply pipeline deformation from resolved descriptor
+        const glm::quat jitter_rot =
+            glm::quat(glm::radians(desc.applied_rotation));
+        transform_component.rotation_ = glm::normalize(rot * jitter_rot);
+        transform_component.scale_ = scale * desc.applied_scale;
+
         inst.mesh_transforms[mesh_idx] = transform_component;
 
         inst.camera_transform.position_ = glm::vec3(0.0f, 15.0f, -60.0f);

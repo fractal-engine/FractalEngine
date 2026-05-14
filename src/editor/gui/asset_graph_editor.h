@@ -6,12 +6,12 @@
 #include <string>
 #include <unordered_map>
 
-#include "engine/pcg/procmodel/descriptor/descriptor_parser.h"
 #include "engine/pcg/procmodel/descriptor/model_descriptor.h"
+#include "engine/pcg/procmodel/descriptor/model_descriptor_parser.h"
 
 // Includes needed for engine syncing
-#include "editor/gui/window_base.h" 
-#include "model_preview.h"    // To access PreviewData
+#include "editor/gui/window_base.h"
+#include "model_preview.h"  // To access PreviewData
 
 class AssetGraphEditor : public WindowBase {
 public:
