@@ -2,8 +2,8 @@
 
 #include <FastNoise/FastNoise.h>
 
-#include "../../noise/OpenSimplex2S.hpp"
 #include "../../operators/fbm.h"
+#include "engine/math/noise/OpenSimplex2S.hpp"
 
 namespace PCG {
 // TODO: add domain warp, fastnoise gradient 2d, fastnoise 3d, fastnoise 2d,

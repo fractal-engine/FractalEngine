@@ -39,6 +39,10 @@ add_files(
 	"renderer/shadows/*.cpp",
 	"renderer/material/*.cpp",
 
+	-- Math files
+	"math/noise/OpenSimplex2S.cpp",
+	"math/noise/perlin.cpp",
+
 	-- content files
 	"content/cache/*.cpp",
 	"content/loaders/*.cpp",
@@ -52,7 +56,6 @@ add_files(
 	"pcg/operators/*.cpp",
 	"pcg/constraints/constraint_system.cpp",
 	"pcg/terrain/*.cpp",
-	"pcg/noise/OpenSimplex2S.cpp",
 	"pcg/graph/*.cpp",
 	"pcg/procmodel/*.cpp",
 	"pcg/procmodel/descriptor/*.cpp",
@@ -88,6 +91,10 @@ add_headerfiles(
 	"renderer/gizmos/*.h",
 	"renderer/shadows/*.h",
 	"renderer/material/*.h",
+
+	-- math files
+	"math/noise/stb_perlin.h",
+	"math/noise/perlin.h",
 
 	-- geometry files
 	"geometry/meshing/*.h",
