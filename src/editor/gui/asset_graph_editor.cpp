@@ -15,6 +15,11 @@
 #include <iostream>
 #include <map>
 
+// TODO:
+// - Separate JSON serialization structs into dedicated file
+// - Split RenderNodeGraph into smaller functions
+// - Move graph state out of editor class
+
 // Fallback definitions for icons if they are not provided by the engine's
 // global icon header. Each macro has its own block to prevent compilation
 // errors if some icons are partially defined.
@@ -227,30 +232,26 @@ void AssetGraphEditor::LoadGraph(const std::string& filepath) {
   }
 }
 
-// Saves the PCG graph out to a clean formatted JSON file
 void AssetGraphEditor::SaveGraph(const std::string& filepath) {
   if (filepath.empty())
     return;
 
   nlohmann::json j = m_ModelData;
-  std::ofstream file(filepath);
-  if (file.is_open()) {
-    file << j.dump(2);
-    Logger::getInstance().Log(LogLevel::Info,
-                              "[AssetGraphEditor] Saved: " + filepath);
-
-    // Sync changes to the ModelPreview window in real-time
-    if (data_) {
-      auto& pcg = EngineContext::PCG().GetProcModel();
-      data_->archetype_id = pcg.LoadArchetype(filepath);
-      data_->instances.clear();
-    }
-  } else {
-    // Intercept save failure and raise a warning dialogue safely
+  if (!Content::WriteJsonFile(filepath, j, 2)) {
     s_error_message = "Failed to write to file:\n" + filepath;
     s_show_error_popup = true;
     Logger::getInstance().Log(LogLevel::Error,
                               "[AssetGraphEditor] Failed to save: " + filepath);
+    return;
+  }
+
+  Logger::getInstance().Log(LogLevel::Info,
+                            "[AssetGraphEditor] Saved: " + filepath);
+
+  if (data_) {
+    auto& pcg = EngineContext::PCG().GetProcModel();
+    data_->archetype_id = pcg.LoadArchetype(filepath);
+    data_->instances.clear();
   }
 }
 
