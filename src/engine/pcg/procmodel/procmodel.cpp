@@ -146,7 +146,7 @@ ProcModel::ModelInstantiator::InstantiateResult Subsystem::RequestInstance(
 
   // Instantiate into ECS
   return ProcModel::ModelInstantiator::Instantiate(
-      *resolved, resource->GetGraph(), parent);
+      resolved->model, resource->GetGraph(), parent);
 }
 
 // Validation logger (one per session)

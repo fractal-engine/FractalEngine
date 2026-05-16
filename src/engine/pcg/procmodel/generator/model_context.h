@@ -3,7 +3,7 @@
 
 #include <pcg_random.hpp>
 
-#include "engine/core/types/geometry_data.h"
+#include "engine/pcg/procmodel/generator/resolved_model.h"
 
 #include "engine/pcg/pipeline/operation_context.h"
 
@@ -12,12 +12,7 @@
 namespace ProcModel {
 
 struct ModelDescriptor;
-struct ResolvedModel;
-
-struct InstanceGeometry {
-  std::string descriptor_id;
-  std::vector<Geometry::MeshData> mesh_data;
-};
+struct InstanceModel;
 
 // Concrete operation context for ProcModel pipelines.
 // References the descriptor (read-only inputs), the resolved model (mutable
@@ -25,13 +20,13 @@ struct InstanceGeometry {
 struct ModelContext : public PCG::OperationContext {
   const ModelDescriptor& descriptor;
   const ModelGraph& graph;
-  ResolvedModel& model;
+  InstanceModel& model;
   pcg32& rng;
 
   // Per-descriptor geometry produced by vertex deformation operations.
   std::vector<InstanceGeometry> instance_geometry;
 
-  ModelContext(const ModelDescriptor& d, const ModelGraph& g, ResolvedModel& m,
+  ModelContext(const ModelDescriptor& d, const ModelGraph& g, InstanceModel& m,
                pcg32& r)
       : descriptor(d), graph(g), model(m), rng(r) {}
 };

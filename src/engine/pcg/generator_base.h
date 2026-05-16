@@ -55,7 +55,7 @@ class InstanceGenerator : public Generator {
 public:
   // TODO: concrete signature TBD when ProcModel is wired up
   // Possibilities:
-  //   virtual ResolvedModel Generate(uint64_t seed) = 0;
+  //   virtual InstanceModel Generate(uint64_t seed) = 0;
   //   virtual InstantiateResult Instantiate(uint64_t seed, Entity parent) = 0;
 };
 

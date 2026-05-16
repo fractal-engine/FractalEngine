@@ -111,7 +111,7 @@ bool DescriptorResolver::MapDeformationRanges(
     std::vector<std::string>& errors) {
   bool all_ok = true;
 
-  for (const auto& range : descriptor.deformation_ranges) {
+  for (const auto& range : descriptor.part_deformation_ranges) {
     auto it = graph.node_lookup.find(range.part_id);
     if (it == graph.node_lookup.end()) {
       errors.push_back("DeformationRange references unknown part '" +

@@ -14,7 +14,7 @@ namespace ProcModel {
 
 // Post-generation validator for ProcModel instances.
 //
-// Runs a fixed set of structural and geometric checks over a ResolvedModel.
+// Runs a fixed set of structural and geometric checks over a InstanceModel.
 // Each check may produce Diagnostic entries in the returned
 // ValidationResult. Overall pass/fail is determined by whether any
 // Severity::Error diagnostic was emitted.
@@ -26,7 +26,7 @@ namespace ProcModel {
 // ValidationResult per call. No caching, no configuration.
 class ProcModelValidator {
 public:
-  static ValidationResult Validate(const ResolvedModel& resolved,
+  static ValidationResult Validate(const InstanceModel& resolved,
                                    const ModelGraph& graph,
                                    const ModelDescriptor& descriptor,
                                    int attempt_index);

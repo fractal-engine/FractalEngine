@@ -1,6 +1,6 @@
 #include "model_generator.h"
 
-#include <pcg_random.hpp>
+// #include <pcg_random.hpp>
 #include <queue>
 #include <random>
 
@@ -10,7 +10,6 @@
 #include "engine/core/logger.h"
 
 namespace ProcModel {
-
 // Final matrix is composed in ModelInstantiator
 static void ApplyParameterRanges(ResolvedDescriptor& resolved,
                                  const ModelGraphNode& node, pcg32& rng) {
@@ -62,7 +61,7 @@ static const PartDescriptor* WeightedSelect(
   return candidates.back();
 }
 
-std::optional<ResolvedModel> ModelGenerator::Generate(
+std::optional<InstanceData> ModelGenerator::Generate(
     const ModelGraph& graph, const ModelDescriptor& descriptor,
     const PCG::LinearPipeline& pipeline, uint64_t seed, int max_retries,
     ValidationLogger* validator_logger) {
@@ -193,7 +192,7 @@ std::optional<ResolvedModel> ModelGenerator::Generate(
     // Apply parameter bindings across resolved descriptors
     ApplyParameterBindings(resolved_descriptors, descriptor.parameter_bindings);
 
-    ResolvedModel result;
+    InstanceModel result;
     result.model_id = descriptor.model_id;
     result.seed = seed + attempt;
     result.descriptors = std::move(resolved_descriptors);
@@ -204,21 +203,24 @@ std::optional<ResolvedModel> ModelGenerator::Generate(
     {
       ModelContext ctx(descriptor, graph, result, rng);
       pipeline.Run(ctx);
-    }
 
-    // Final constraint check
-    if (ValidateConstraints(selected_ids, descriptor.constraints)) {
-      // Post-generation validation
-      if (validator_logger) {
-        ValidationResult vr =
-            ProcModelValidator::Validate(result, graph, descriptor, attempt);
-        validator_logger->Write(vr);
-        if (!vr.passed) {
-          continue;  // Retry with next seed
+      // Final constraint check
+      if (ValidateConstraints(selected_ids, descriptor.constraints)) {
+        // Post-generation validation
+        if (validator_logger) {
+          ValidationResult vr =
+              ProcModelValidator::Validate(result, graph, descriptor, attempt);
+          validator_logger->Write(vr);
+          if (!vr.passed) {
+            continue;  // Retry with next seed
+          }
         }
-      }
 
-      return result;
+        InstanceData out;
+        out.model = std::move(result);
+        out.instance_geometry = std::move(ctx.instance_geometry);
+        return out;
+      }
     }
   }
 

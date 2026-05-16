@@ -299,17 +299,19 @@ static std::shared_ptr<PCG::OperationData> ParsePartDeform(
   return data;
 }
 
-// Looks up the DeformationRange annotation for a given part on the graph node.
-// Returns nullptr if the part has no deformation range authored.
+// Looks up DeformationRange annotation for given part on graph node
+// Return nullptr if part has no deformation range authored
 static const DeformationRange* FindDeformationRange(
-    const ModelGraphNode& node) {
-  if (node.deformation_ranges.empty())
-    return nullptr;
-  return node.deformation_ranges.front();
+    const ModelGraphNode& node, const ModelDescriptor& descriptor) {
+  if (!node.deformation_ranges.empty())
+    return node.deformation_ranges.front();
+  if (descriptor.model_deformation_range)
+    return &(*descriptor.model_deformation_range);
+  return nullptr;
 }
 
 // Samples a single float from an optional [min,max] pair.
-// Returns std::nullopt if either bound is missing.
+// Return std::nullopt if either bound is missing.
 static std::optional<float> SampleRange(const std::optional<float>& lo,
                                         const std::optional<float>& hi,
                                         pcg32& rng) {
@@ -333,7 +335,7 @@ static void ApplyPartDeform(const PCG::OperationData& base_data,
       continue;
     const ModelGraphNode* node = it->second;
 
-    const DeformationRange* range = FindDeformationRange(*node);
+    const DeformationRange* range = FindDeformationRange(*node, ctx.descriptor);
     if (!range)
       continue;  // no deformation authored for this part
 
@@ -440,9 +442,9 @@ static std::shared_ptr<PCG::OperationData> ParseInstanceDeform(
   if (params.contains("taper_factor"))
     data->taper_factor = params["taper_factor"].get<float>();
   if (params.contains("twist_angle"))
-    data->twist_angle = params["twist_angle"].get<float>();
+    data->twist_angle = glm::radians(params["twist_angle"].get<float>());
   if (params.contains("bend_angle"))
-    data->bend_angle = params["bend_angle"].get<float>();
+    data->bend_angle = glm::radians(params["bend_angle"].get<float>());
 
   if (!data->apply_taper && !data->apply_twist && !data->apply_bend) {
     Logger::getInstance().Log(

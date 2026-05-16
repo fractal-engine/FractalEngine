@@ -32,12 +32,6 @@ private:
   float camera_distance_ = 5.0f;
   glm::vec3 target_center_ = glm::vec3(0.0f);
 
-  // Cached metrics
-  uint32_t vert_count_ = 0;
-  uint32_t tri_count_ = 0;
-  uint32_t material_slots_ = 0;
-  float lod_bias_ = 1.0f;
-
   bool initialized_ = false;
 };
 

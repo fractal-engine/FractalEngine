@@ -13,9 +13,10 @@
 #include "engine/context/engine_context.h"
 #include "engine/ecs/components/transform_component.h"
 #include "engine/memory/resource_manager.h"
+#include "engine/renderer/model/model.h"
+
 #include "engine/pcg/procmodel/generator/model_generator.h"
 #include "engine/pcg/procmodel/procmodel_resource.h"
-#include "engine/renderer/model/model.h"
 
 ModelPreview::ModelPreview(PreviewData* data) : data_(data) {}
 
@@ -42,6 +43,7 @@ void ModelPreview::LoadDescriptor(const std::string& path) {
   descriptor_path_ = path;
 
   data_->instances.clear();
+  data_->instance_model_data.clear();
   images_generated_ = 0;
   images_submitted_ = 0;
 
@@ -79,12 +81,41 @@ void ModelPreview::TickGenerate() {
 
   int budget = images_per_frame_;
   while (budget-- > 0 && images_generated_ < total_instances_) {
-    auto resolved = ProcModel::ModelGenerator::Generate(
+    auto output = ProcModel::ModelGenerator::Generate(
         resource->GetGraph(), resource->GetDescriptor(),
         resource->GetPipeline(), current_seed_ + images_generated_, 10,
         &EngineContext::PCG().GetProcModel().ValidationLog());
-    if (resolved) {
-      data_->instances.push_back(std::move(*resolved));
+    if (output) {
+      // Build a Model whose meshes are the deformed copies where they exist,
+      // and copies of the source meshes where they don't.
+      const auto& graph = resource->GetGraph();
+      std::vector<Geometry::MeshData> per_instance_meshes =
+          graph.mesh_data;  // start from source
+
+      for (const auto& ig : output->instance_geometry) {
+        // Look up which mesh indices this descriptor's geometry corresponds to.
+        const auto& descs = output->model.descriptors;
+        auto desc_it = std::find_if(
+            descs.begin(), descs.end(),
+            [&](const auto& d) { return d.descriptor_id == ig.descriptor_id; });
+        if (desc_it == descs.end())
+          continue;
+
+        for (size_t slot = 0;
+             slot < ig.mesh_data.size() && slot < desc_it->mesh_indices.size();
+             ++slot) {
+          int mesh_idx = desc_it->mesh_indices[slot];
+          if (mesh_idx >= 0 &&
+              mesh_idx < static_cast<int>(per_instance_meshes.size())) {
+            per_instance_meshes[mesh_idx] = ig.mesh_data[slot];
+          }
+        }
+      }
+
+      auto instance_model =
+          Model::FromMeshData(per_instance_meshes, graph.materials);
+      data_->instance_model_data.push_back(std::move(instance_model));
+      data_->instances.push_back(std::move(output->model));
     }
     ++images_generated_;
   }
@@ -140,6 +171,7 @@ void ModelPreview::RenderToolbar(ImDrawList* draw_list) {
   if (ImGui::Button(ICON_FA_ROTATE " Generate")) {
     current_seed_ = static_cast<uint32_t>(Time::Now() * 1000.0);
     data_->instances.clear();
+    data_->instance_model_data.clear();
     images_generated_ = 0;
     images_submitted_ = 0;
   }
@@ -276,7 +308,12 @@ void ModelPreview::SubmitViews() {
         PreviewRenderInstruction inst;
         inst.output_index = out_idx;
         inst.background_color = glm::vec4(0.35f, 0.35f, 0.35f, 1.0f);
-        inst.model = data_->model.get();
+
+        inst.model = (i < static_cast<int>(data_->instance_model_data.size()) &&
+                      data_->instance_model_data[i])
+                         ? data_->instance_model_data[i].get()
+                         : data_->model.get();
+
         inst.clear_output = on_first_draw;
         on_first_draw = false;
 

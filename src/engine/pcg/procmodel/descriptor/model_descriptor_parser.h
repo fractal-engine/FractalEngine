@@ -15,6 +15,8 @@ public:
 private:
   static bool ParseSelectionGroup(const nlohmann::json& j, SelectionGroup& out);
   static bool ParseTransformRange(const nlohmann::json& j, TransformRange& out);
+  static bool ParseDeformationRange(const nlohmann::json& j,
+                                    DeformationRange& out);
   static bool ParseConstraintRule(const nlohmann::json& j, ConstraintRule& out);
   static bool ParseParameterBinding(const nlohmann::json& j,
                                     ParameterBinding& out);

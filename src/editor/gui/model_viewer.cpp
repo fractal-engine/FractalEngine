@@ -214,11 +214,19 @@ void ModelViewer::RenderViewport() {
     const auto& resolved = data_->instances[current_instance];
     bool on_first_draw = true;
 
+    const Model* render_model = data_->model.get();
+    if (current_instance >= 0 &&
+        current_instance <
+            static_cast<int>(data_->instance_model_data.size()) &&
+        data_->instance_model_data[current_instance]) {
+      render_model = data_->instance_model_data[current_instance].get();
+    }
+
     for (const auto& desc : resolved.descriptors) {
       PreviewRenderInstruction inst;
       inst.output_index = viewport_output_;
       inst.background_color = glm::vec4(0.35f, 0.35f, 0.35f, 1.0f);
-      inst.model = data_->model.get();
+      inst.model = const_cast<Model*>(render_model);
       inst.clear_output = on_first_draw;
       on_first_draw = false;
 

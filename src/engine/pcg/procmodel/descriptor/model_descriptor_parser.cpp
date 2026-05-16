@@ -1,9 +1,9 @@
 #include "model_descriptor_parser.h"
 
+#include <glm/glm.hpp>
 #include "glm/ext/vector_float3.hpp"
 
 #include "engine/core/logger.h"
-
 #include "engine/pcg/procmodel/descriptor/model_descriptor.h"
 
 namespace ProcModel {
@@ -89,6 +89,42 @@ bool ModelDescriptorParser::ParseParameterBinding(const nlohmann::json& j,
   return true;
 }
 
+bool ModelDescriptorParser::ParseDeformationRange(const nlohmann::json& j,
+                                                  DeformationRange& out) {
+  // part_id is optional here: empty for the default, populated for overrides.
+  out.part_id = j.value("part_id", std::string(""));
+
+  auto parse_float_range = [&](const std::string& kmin, const std::string& kmax,
+                               std::optional<float>& dst_min,
+                               std::optional<float>& dst_max) {
+    if (j.contains(kmin))
+      dst_min = j[kmin].get<float>();
+    if (j.contains(kmax))
+      dst_max = j[kmax].get<float>();
+  };
+
+  parse_float_range("taper_factor_min", "taper_factor_max",
+                    out.taper_factor_min, out.taper_factor_max);
+  parse_float_range("twist_angle_min", "twist_angle_max", out.twist_angle_min,
+                    out.twist_angle_max);
+  parse_float_range("bend_angle_min", "bend_angle_max", out.bend_angle_min,
+                    out.bend_angle_max);
+  parse_float_range("noise_amplitude_min", "noise_amplitude_max",
+                    out.noise_amplitude_min, out.noise_amplitude_max);
+
+  // Convert angle ranges from degrees to radians
+  if (out.twist_angle_min)
+    out.twist_angle_min = glm::radians(*out.twist_angle_min);
+  if (out.twist_angle_max)
+    out.twist_angle_max = glm::radians(*out.twist_angle_max);
+  if (out.bend_angle_min)
+    out.bend_angle_min = glm::radians(*out.bend_angle_min);
+  if (out.bend_angle_max)
+    out.bend_angle_max = glm::radians(*out.bend_angle_max);
+
+  return true;
+}
+
 bool ModelDescriptorParser::FromJson(const nlohmann::json& j,
                                      ModelDescriptor& out) {
   if (!j.contains("model_id")) {
@@ -161,6 +197,26 @@ bool ModelDescriptorParser::FromJson(const nlohmann::json& j,
         Logger::getInstance().Log(
             LogLevel::Warning,
             "[ModelDescriptorParser] Failed to parse parameter binding");
+      }
+    }
+  }
+
+  if (j.contains("model_deformation_range")) {
+    DeformationRange dr;
+    if (ParseDeformationRange(j["model_deformation_range"], dr)) {
+      out.model_deformation_range = std::move(dr);
+    }
+  }
+
+  if (j.contains("part_deformation_ranges")) {
+    for (const auto& range_json : j["part_deformation_ranges"]) {
+      DeformationRange range;
+      if (ParseDeformationRange(range_json, range)) {
+        out.part_deformation_ranges.push_back(std::move(range));
+      } else {
+        Logger::getInstance().Log(
+            LogLevel::Warning,
+            "[ModelDescriptorParser] Failed to parse part deformation range");
       }
     }
   }

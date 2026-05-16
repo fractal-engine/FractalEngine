@@ -68,7 +68,7 @@ static AABB ComputeMeshAABB(const Geometry::MeshData& mesh,
 // Check: constraint re-verification
 //   Catches solver bugs and confirms final selection satisfies all rules.
 // ---------------------------------------------------------------------------
-static void CheckConstraints(const ResolvedModel& resolved,
+static void CheckConstraints(const InstanceModel& resolved,
                              const ModelDescriptor& descriptor,
                              ValidationResult& out) {
   std::unordered_set<std::string> selected;
@@ -115,7 +115,7 @@ static void CheckConstraints(const ResolvedModel& resolved,
 //   Dangling attach_to means the group references an attachment node that
 //   doesn't exist in the graph.
 // ---------------------------------------------------------------------------
-static void CheckAttachments(const ResolvedModel& resolved,
+static void CheckAttachments(const InstanceModel& resolved,
                              const ModelGraph& graph, ValidationResult& out) {
   // Map attach-node-id -> list of descriptors landing there.
   std::unordered_map<std::string, std::vector<std::string>> attach_occupants;
@@ -162,7 +162,7 @@ static void CheckAttachments(const ResolvedModel& resolved,
 // Check: required groups activated
 //   Any group marked required must have contributed at least one selection.
 // ---------------------------------------------------------------------------
-static void CheckGroupActivation(const ResolvedModel& resolved,
+static void CheckGroupActivation(const InstanceModel& resolved,
                                  const ModelDescriptor& descriptor,
                                  ValidationResult& out) {
   std::unordered_set<std::string> active_groups;
@@ -262,7 +262,7 @@ static void CheckForwardAxisConsistency(const ModelGraph& graph,
 //  Fills per-part, per-group, and full-model AABBs. Accumulate per authored
 //  part
 // ---------------------------------------------------------------------------
-static void ComputeBounds(const ResolvedModel& resolved,
+static void ComputeBounds(const InstanceModel& resolved,
                           const ModelGraph& graph, ValidationResult& out) {
   for (const auto& d : resolved.descriptors) {
     AABB part_box;
@@ -289,7 +289,7 @@ static void ComputeBounds(const ResolvedModel& resolved,
 // ---------------------------------------------------------------------------
 // Populate raw selection/parameter data on the result.
 // ---------------------------------------------------------------------------
-static void RecordRawData(const ResolvedModel& resolved,
+static void RecordRawData(const InstanceModel& resolved,
                           ValidationResult& out) {
   // Collapse attachment-expanded descriptors back to their authored part
   // Generator produces one ResolvedDescriptor per attach_to node
@@ -329,7 +329,7 @@ static void RecordRawData(const ResolvedModel& resolved,
 // ---------------------------------------------------------------------------
 // Public entry point
 // ---------------------------------------------------------------------------
-ValidationResult ProcModelValidator::Validate(const ResolvedModel& resolved,
+ValidationResult ProcModelValidator::Validate(const InstanceModel& resolved,
                                               const ModelGraph& graph,
                                               const ModelDescriptor& descriptor,
                                               int attempt_index) {

@@ -14,7 +14,7 @@
 namespace ProcModel {
 
 ModelInstantiator::InstantiateResult ModelInstantiator::Instantiate(
-    const ResolvedModel& resolved, const ModelGraph& graph, Entity parent) {
+    const InstanceModel& resolved, const ModelGraph& graph, Entity parent) {
   InstantiateResult result;
   auto& ecs = ECS::Main();
 

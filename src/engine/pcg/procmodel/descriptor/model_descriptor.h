@@ -78,9 +78,10 @@ struct ModelDescriptor {
 
   std::vector<SelectionGroup> selection_groups;
   std::vector<TransformRange> transform_ranges;
-  std::vector<DeformationRange> deformation_ranges;
   std::vector<ConstraintRule> constraints;
   std::vector<ParameterBinding> parameter_bindings;
+  std::vector<DeformationRange> part_deformation_ranges;
+  std::optional<DeformationRange> model_deformation_range;
 
   // Archetype-level attributes
   std::optional<glm::vec3> scale_min;  // model scale range
