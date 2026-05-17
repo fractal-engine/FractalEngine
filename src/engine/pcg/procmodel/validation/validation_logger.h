@@ -6,11 +6,11 @@
 #include <mutex>
 #include <string>
 
-#include "validation_result.h"
+#include "procmodel_analysis.h"
 
 namespace ProcModel {
 
-// Append-only JSONL writer for ValidationResult records.
+// Append-only JSONL writer for ProcModelSample records.
 //
 // One logger per session, owned by PCGEngine. Opens the file lazily on
 // first Write() call; closes it in the destructor. Flushes after every
@@ -30,8 +30,10 @@ public:
   // the existing file is closed and a new one opened on next Write().
   void SetPath(const std::filesystem::path& path);
 
+  const std::vector<ProcModelSample>& GetSamples() const { return samples_; }
+
   // Write one record as a single JSON line. Returns false on I/O failure.
-  bool Write(const ValidationResult& result);
+  bool Write(const ProcModelSample& result);
 
   // Default path: "<cwd>/logs/procmodel/variation_log.jsonl".
   // Intended to resolve to build/<platform>/<arch>/release/logs/procmodel/
@@ -45,6 +47,8 @@ private:
   std::ofstream stream_;
   std::mutex mutex_;
   bool open_attempted_ = false;
+
+  std::vector<ProcModelSample> samples_;
 };
 
 }  // namespace ProcModel

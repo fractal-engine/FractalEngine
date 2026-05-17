@@ -1,5 +1,7 @@
 #include "procmodel.h"
 
+#include <filesystem>
+
 #include "engine/core/logger.h"
 
 #include "engine/content/io/json.h"
@@ -14,6 +16,7 @@
 #include "engine/pcg/procmodel/generator/model_generator.h"
 #include "engine/pcg/procmodel/model_graph/model_graph_builder.h"
 #include "engine/pcg/procmodel/procmodel_resource.h"
+#include "engine/pcg/procmodel/validation/procmodel_evaluation.h"
 
 namespace ProcModel {
 
@@ -157,8 +160,31 @@ ValidationLogger& Subsystem::ValidationLog() {
 }
 
 void Subsystem::Shutdown() {
-  // registry is destroyed when the subsystem is destroyed
-  // nothing to clean up
+
+  // Generate ERA metrics at shutdown
+  // Only captures metrics for the current session
+  // ! Should call one function instead of exposing the log logic here
+  if (!validation_logger_)
+    return;
+
+  const auto& samples = validation_logger_->GetSamples();
+  if (samples.empty())
+    return;
+
+  ProcModelERA era = ProcModelEval::Compute(samples);
+
+  std::string report_path = (std::filesystem::current_path() / "logs" /
+                             "procmodel" / "era_metric.json")
+                                .string();
+
+  if (!ProcModelEval::WriteReport(era, report_path)) {
+    Logger::getInstance().Log(
+        LogLevel::Error, "[ProcModel::Subsystem] Failed to write ERA report");
+  } else {
+    Logger::getInstance().Log(
+        LogLevel::Info,
+        "[ProcModel::Subsystem] ERA report written to " + report_path);
+  }
 }
 
 }  // namespace ProcModel

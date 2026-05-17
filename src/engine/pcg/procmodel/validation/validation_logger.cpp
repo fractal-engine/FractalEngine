@@ -32,8 +32,8 @@ static nlohmann::json SerializeDiagnostic(const Diagnostic& d) {
   return j;
 }
 
-static nlohmann::json SerializeResolvedEntry(
-    const ValidationResult::ResolvedEntry& e) {
+static nlohmann::json SerializePartSample(
+    const ProcModelSample::PartSample& e) {
   nlohmann::json j;
   j["descriptor_id"] = e.descriptor_id;
   j["group_id"] = e.group_id;
@@ -45,7 +45,7 @@ static nlohmann::json SerializeResolvedEntry(
   return j;
 }
 
-static nlohmann::json SerializeResult(const ValidationResult& r) {
+static nlohmann::json SerializeResult(const ProcModelSample& r) {
   nlohmann::json j;
 
   // Identity
@@ -69,10 +69,10 @@ static nlohmann::json SerializeResult(const ValidationResult& r) {
 
   // Raw parameter data
   nlohmann::json entries = nlohmann::json::array();
-  for (const auto& e : r.resolved_entries) {
-    entries.push_back(SerializeResolvedEntry(e));
+  for (const auto& e : r.part_samples) {
+    entries.push_back(SerializePartSample(e));
   }
-  j["resolved_entries"] = std::move(entries);
+  j["part_samples"] = std::move(entries);
 
   // Geometry
   j["model_bounds"] = SerializeAABB(r.model_bounds);
@@ -155,7 +155,7 @@ bool ValidationLogger::EnsureOpen() {
   return true;
 }
 
-bool ValidationLogger::Write(const ValidationResult& result) {
+bool ValidationLogger::Write(const ProcModelSample& result) {
   std::scoped_lock lock(mutex_);
   if (!EnsureOpen())
     return false;
@@ -172,6 +172,7 @@ bool ValidationLogger::Write(const ValidationResult& result) {
   try {
     stream_ << SerializeResult(result).dump() << '\n';
     stream_.flush();
+    samples_.push_back(result);
     return stream_.good();
   } catch (const std::exception& e) {
     Logger::getInstance().Log(

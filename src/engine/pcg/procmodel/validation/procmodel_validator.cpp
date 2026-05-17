@@ -70,7 +70,7 @@ static AABB ComputeMeshAABB(const Geometry::MeshData& mesh,
 // ---------------------------------------------------------------------------
 static void CheckConstraints(const InstanceModel& resolved,
                              const ModelDescriptor& descriptor,
-                             ValidationResult& out) {
+                             ProcModelSample& out) {
   std::unordered_set<std::string> selected;
   for (const auto& d : resolved.descriptors) {
     // Strip "_at_<node>" suffix produced by multi-attachment expansion so
@@ -116,7 +116,7 @@ static void CheckConstraints(const InstanceModel& resolved,
 //   doesn't exist in the graph.
 // ---------------------------------------------------------------------------
 static void CheckAttachments(const InstanceModel& resolved,
-                             const ModelGraph& graph, ValidationResult& out) {
+                             const ModelGraph& graph, ProcModelSample& out) {
   // Map attach-node-id -> list of descriptors landing there.
   std::unordered_map<std::string, std::vector<std::string>> attach_occupants;
 
@@ -164,7 +164,7 @@ static void CheckAttachments(const InstanceModel& resolved,
 // ---------------------------------------------------------------------------
 static void CheckGroupActivation(const InstanceModel& resolved,
                                  const ModelDescriptor& descriptor,
-                                 ValidationResult& out) {
+                                 ProcModelSample& out) {
   std::unordered_set<std::string> active_groups;
   for (const auto& d : resolved.descriptors) {
     active_groups.insert(d.group_id);
@@ -214,7 +214,7 @@ static void CheckGroupActivation(const InstanceModel& resolved,
 // ---------------------------------------------------------------------------
 static void CheckForwardAxisConsistency(const ModelGraph& graph,
                                         const ModelDescriptor& descriptor,
-                                        ValidationResult& out) {
+                                        ProcModelSample& out) {
   for (const auto& group : descriptor.selection_groups) {
     if (group.attach_to.size() < 2)
       continue;
@@ -263,7 +263,7 @@ static void CheckForwardAxisConsistency(const ModelGraph& graph,
 //  part
 // ---------------------------------------------------------------------------
 static void ComputeBounds(const InstanceModel& resolved,
-                          const ModelGraph& graph, ValidationResult& out) {
+                          const ModelGraph& graph, ProcModelSample& out) {
   for (const auto& d : resolved.descriptors) {
     AABB part_box;
     for (int mesh_idx : d.mesh_indices) {
@@ -289,12 +289,11 @@ static void ComputeBounds(const InstanceModel& resolved,
 // ---------------------------------------------------------------------------
 // Populate raw selection/parameter data on the result.
 // ---------------------------------------------------------------------------
-static void RecordRawData(const InstanceModel& resolved,
-                          ValidationResult& out) {
+static void RecordRawData(const InstanceModel& resolved, ProcModelSample& out) {
   // Collapse attachment-expanded descriptors back to their authored part
   // Generator produces one ResolvedDescriptor per attach_to node
   // Amounts to one entry per authored selection
-  std::unordered_map<std::string, ValidationResult::ResolvedEntry> by_part;
+  std::unordered_map<std::string, ProcModelSample::PartSample> by_part;
   std::unordered_set<std::string> unique_parts;
 
   for (const auto& d : resolved.descriptors) {
@@ -305,7 +304,7 @@ static void RecordRawData(const InstanceModel& resolved,
 
     auto it = by_part.find(part_id);
     if (it == by_part.end()) {
-      ValidationResult::ResolvedEntry entry;
+      ProcModelSample::PartSample entry;
       entry.descriptor_id = part_id;
       entry.group_id = d.group_id;
       entry.applied_rotation = d.applied_rotation;
@@ -317,9 +316,9 @@ static void RecordRawData(const InstanceModel& resolved,
     }
   }
 
-  out.resolved_entries.reserve(by_part.size());
+  out.part_samples.reserve(by_part.size());
   for (auto& [_, entry] : by_part) {
-    out.resolved_entries.push_back(std::move(entry));
+    out.part_samples.push_back(std::move(entry));
   }
 
   out.selected_part_ids.assign(unique_parts.begin(), unique_parts.end());
@@ -329,12 +328,12 @@ static void RecordRawData(const InstanceModel& resolved,
 // ---------------------------------------------------------------------------
 // Public entry point
 // ---------------------------------------------------------------------------
-ValidationResult ProcModelValidator::Validate(const InstanceModel& resolved,
-                                              const ModelGraph& graph,
-                                              const ModelDescriptor& descriptor,
-                                              int attempt_index) {
+ProcModelSample ProcModelValidator::Validate(const InstanceModel& resolved,
+                                             const ModelGraph& graph,
+                                             const ModelDescriptor& descriptor,
+                                             int attempt_index) {
 
-  ValidationResult out;
+  ProcModelSample out;
   out.model_id = resolved.model_id;
   out.seed = resolved.seed;
   out.attempt_index = attempt_index;

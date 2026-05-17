@@ -208,7 +208,7 @@ std::optional<InstanceData> ModelGenerator::Generate(
       if (ValidateConstraints(selected_ids, descriptor.constraints)) {
         // Post-generation validation
         if (validator_logger) {
-          ValidationResult vr =
+          ProcModelSample vr =
               ProcModelValidator::Validate(result, graph, descriptor, attempt);
           validator_logger->Write(vr);
           if (!vr.passed) {
