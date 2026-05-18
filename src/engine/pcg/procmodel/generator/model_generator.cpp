@@ -151,16 +151,55 @@ std::optional<InstanceData> ModelGenerator::Generate(
       if (group->attach_to.empty()) {
         resolved_descriptors.push_back(std::move(resolved));
       } else {
+        // Pick once up front if uniform selection is wanted
+        const PartDescriptor* uniform_pick =
+            !group->select_per_attachment ? chosen : nullptr;
+
         for (const auto& attach_id : group->attach_to) {
           auto attach_it = graph.node_lookup.find(attach_id);
           if (attach_it == graph.node_lookup.end())
             continue;
 
-          ResolvedDescriptor attached = resolved;
+          const PartDescriptor* per_attach = group->select_per_attachment
+                                                 ? WeightedSelect(valid, rng)
+                                                 : uniform_pick;
 
+          auto graph_it = graph.node_lookup.find(per_attach->id);
+          if (graph_it == graph.node_lookup.end())
+            continue;
+          ModelGraphNode* per_attach_node = graph_it->second;
+
+          // Build the attached descriptor from per_attach (not chosen), so each
+          // attachment carries its own picked part's mesh and ID.
+          ResolvedDescriptor attached;
+          attached.descriptor_id =
+              std::string(per_attach->id) + "_at_" + attach_id;
+          attached.group_id = group->group_id;
+          attached.mesh_indices = per_attach_node->mesh_indices;
           attached.local_transform = attach_it->second->world_transform;
-          attached.descriptor_id = resolved.descriptor_id + "_at_" + attach_id;
+          attached.attach_to = group->attach_to;
+          attached.activator_id = chosen->id;
+
+          // Sample parameter ranges for THIS attachment, so each attached copy
+          // gets independent rotation/scale jitter.
+          ApplyParameterRanges(attached, *per_attach_node, rng);
+
+          // Per-attachment rotation jitter: each attached instance picks an
+          // independent rotation perturbation, so identical-mesh attachments
+          // stick out in different directions.
+          const glm::vec3& j = group->rotation_jitter;
+          if (j.x > 0.0f || j.y > 0.0f || j.z > 0.0f) {
+            std::uniform_real_distribution<float> dx(-j.x, j.x);
+            std::uniform_real_distribution<float> dy(-j.y, j.y);
+            std::uniform_real_distribution<float> dz(-j.z, j.z);
+            attached.applied_rotation += glm::vec3(dx(rng), dy(rng), dz(rng));
+          }
+
           resolved_descriptors.push_back(std::move(attached));
+
+          // Track the picked part for constraint validation (only when varying)
+          if (group->select_per_attachment)
+            selected_ids.insert(per_attach->id);
         }
       }
       // Activate dependent groups

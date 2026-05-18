@@ -15,6 +15,7 @@ bool ModelDescriptorParser::ParseSelectionGroup(const nlohmann::json& j,
 
   out.group_id = j["group_id"].get<std::string>();
   out.required = j.value("required", true);
+  out.select_per_attachment = j.value("select_per_attachment", false);
   out.activated_by = j.value("activated_by", std::string(""));
 
   if (j.contains("attach_to")) {
@@ -29,6 +30,11 @@ bool ModelDescriptorParser::ParseSelectionGroup(const nlohmann::json& j,
     part.name = part_json.value("name", part.id);
     part.weight = part_json.value("weight", 1.0f);
     out.parts.push_back(std::move(part));
+  }
+
+  if (j.contains("rotation_jitter")) {
+    const auto& r = j["rotation_jitter"];
+    out.rotation_jitter = glm::radians(glm::vec3(r[0], r[1], r[2]));
   }
 
   return !out.parts.empty();
@@ -91,8 +97,8 @@ bool ModelDescriptorParser::ParseParameterBinding(const nlohmann::json& j,
 
 bool ModelDescriptorParser::ParseDeformationRange(const nlohmann::json& j,
                                                   DeformationRange& out) {
-  // part_id is optional here: empty for the default, populated for overrides.
-  out.part_id = j.value("part_id", std::string(""));
+  // group_id is optional here: empty for the default, populated for overrides.
+  out.group_id = j.value("group_id", std::string(""));
 
   auto parse_float_range = [&](const std::string& kmin, const std::string& kmax,
                                std::optional<float>& dst_min,

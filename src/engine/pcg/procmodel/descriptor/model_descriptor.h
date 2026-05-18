@@ -21,6 +21,24 @@ struct SelectionGroup {
   bool required = true;
   std::string activated_by;            // Empty = root group
   std::vector<std::string> attach_to;  // attachment slots
+
+  // Scale inherited from the activator (parent). If unset, no inheritance.
+  // A value of 0.6 means: this group's parts are 60% the size of their parent.
+  std::optional<float> hierarchy_scale_factor;
+  std::optional<float> hierarchy_scale_jitter;  // ± randomness on the factor
+
+  // If true: each attach point in attach_to re-runs WeightedSelect, allowing
+  // different parts at different attachments (organic variation - branches,
+  // leaves). If false (default): one part is selected for the group and
+  // duplicated to every attachment (uniform assembly — columns, pillars).
+  bool select_per_attachment = false;
+
+  // Per-attachment rotation jitter. When non-zero, each attached instance
+  // receives an independent random rotation perturbation drawn uniformly
+  // from [-jitter, +jitter] on each axis (radians at runtime, degrees in
+  // JSON). Default zero: no jitter, attachments inherit the activator's
+  // base rotation unchanged.
+  glm::vec3 rotation_jitter = glm::vec3(0.0f);
 };
 
 //
@@ -37,7 +55,7 @@ struct TransformRange {
 };
 
 struct DeformationRange {
-  std::string part_id;
+  std::string group_id;
 
   std::optional<float> taper_factor_min;
   std::optional<float> taper_factor_max;

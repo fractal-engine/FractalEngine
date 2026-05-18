@@ -299,12 +299,14 @@ static std::shared_ptr<PCG::OperationData> ParsePartDeform(
   return data;
 }
 
-// Looks up DeformationRange annotation for given part on graph node
-// Return nullptr if part has no deformation range authored
+// Looks up DeformationRange annotation for given group on graph node
+// Return nullptr if group has no deformation range authored
 static const DeformationRange* FindDeformationRange(
-    const ModelGraphNode& node, const ModelDescriptor& descriptor) {
-  if (!node.deformation_ranges.empty())
-    return node.deformation_ranges.front();
+    const std::string& group_id, const ModelDescriptor& descriptor) {
+  for (const auto& range : descriptor.part_deformation_ranges) {
+    if (range.group_id == group_id)
+      return &range;
+  }
   if (descriptor.model_deformation_range)
     return &(*descriptor.model_deformation_range);
   return nullptr;
@@ -329,13 +331,11 @@ static void ApplyPartDeform(const PCG::OperationData& base_data,
   const auto& source_mesh_data = ctx.graph.mesh_data;
 
   for (auto& d : ctx.model.descriptors) {
-    // Look up the part's DeformationRange annotation via the graph node.
-    auto it = ctx.graph.node_lookup.find(d.descriptor_id);
-    if (it == ctx.graph.node_lookup.end())
-      continue;
-    const ModelGraphNode* node = it->second;
-
-    const DeformationRange* range = FindDeformationRange(*node, ctx.descriptor);
+    // Look up the part's DeformationRange annotation via graph node.
+    // Find deformation range matching this part's group, falling back
+    // to model-wide range if no group-specific override exists.
+    const DeformationRange* range =
+        FindDeformationRange(d.group_id, ctx.descriptor);
     if (!range)
       continue;  // no deformation authored for this part
 

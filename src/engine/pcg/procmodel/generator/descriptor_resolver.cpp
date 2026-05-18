@@ -112,14 +112,13 @@ bool DescriptorResolver::MapDeformationRanges(
   bool all_ok = true;
 
   for (const auto& range : descriptor.part_deformation_ranges) {
-    auto it = graph.node_lookup.find(range.part_id);
+    auto it = graph.node_lookup.find(range.group_id);
     if (it == graph.node_lookup.end()) {
-      errors.push_back("DeformationRange references unknown part '" +
-                       range.part_id + "'");
+      errors.push_back("DeformationRange references unknown group '" +
+                       range.group_id + "'");
       all_ok = false;
       continue;
     }
-
     it->second->deformation_ranges.push_back(&range);
   }
 
