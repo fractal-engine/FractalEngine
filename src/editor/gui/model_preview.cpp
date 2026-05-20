@@ -76,8 +76,14 @@ void ModelPreview::TickGenerate() {
   auto& resource_mgr = EngineContext::resourceManager();
   auto resource = resource_mgr.GetResourceAs<ProcModel::ProcModelResource>(
       data_->archetype_id);
-  if (!resource || !resource->IsResolved())
+
+  if (!resource || !resource->IsResolved()) {
+    Logger::getInstance().Log(
+        LogLevel::Warning,
+        "[ModelPreview] TickGenerate: resource not resolved, stalling at " +
+            std::to_string(images_generated_));
     return;
+  }
 
   int budget = images_per_frame_;
   while (budget-- > 0 && images_generated_ < total_instances_) {
@@ -86,35 +92,40 @@ void ModelPreview::TickGenerate() {
         resource->GetPipeline(), current_seed_ + images_generated_, 10,
         &EngineContext::PCG().GetProcModel().ValidationLog());
     if (output) {
-      // Build a Model whose meshes are the deformed copies where they exist,
-      // and copies of the source meshes where they don't.
-      const auto& graph = resource->GetGraph();
-      std::vector<Geometry::MeshData> per_instance_meshes =
-          graph.mesh_data;  // start from source
+      // Only build a per-instance Model if pipeline produces deformed
+      // geometry; else reuse source model (no buffer allocation)
+      // TODO: allocate buffers only for deformed mesh slots, not all 87
+      // This TODO is tied with the implementation of the pcg pipelie
+      if (!output->instance_geometry.empty()) {
+        const auto& graph = resource->GetGraph();
+        std::vector<Geometry::MeshData> per_instance_meshes = graph.mesh_data;
 
-      for (const auto& ig : output->instance_geometry) {
-        // Look up which mesh indices this descriptor's geometry corresponds to.
-        const auto& descs = output->model.descriptors;
-        auto desc_it = std::find_if(
-            descs.begin(), descs.end(),
-            [&](const auto& d) { return d.descriptor_id == ig.descriptor_id; });
-        if (desc_it == descs.end())
-          continue;
+        for (const auto& ig : output->instance_geometry) {
+          const auto& descs = output->model.descriptors;
+          auto desc_it =
+              std::find_if(descs.begin(), descs.end(), [&](const auto& d) {
+                return d.descriptor_id == ig.descriptor_id;
+              });
+          if (desc_it == descs.end())
+            continue;
 
-        for (size_t slot = 0;
-             slot < ig.mesh_data.size() && slot < desc_it->mesh_indices.size();
-             ++slot) {
-          int mesh_idx = desc_it->mesh_indices[slot];
-          if (mesh_idx >= 0 &&
-              mesh_idx < static_cast<int>(per_instance_meshes.size())) {
-            per_instance_meshes[mesh_idx] = ig.mesh_data[slot];
+          for (size_t slot = 0; slot < ig.mesh_data.size() &&
+                                slot < desc_it->mesh_indices.size();
+               ++slot) {
+            int mesh_idx = desc_it->mesh_indices[slot];
+            if (mesh_idx >= 0 &&
+                mesh_idx < static_cast<int>(per_instance_meshes.size())) {
+              per_instance_meshes[mesh_idx] = ig.mesh_data[slot];
+            }
           }
         }
-      }
 
-      auto instance_model =
-          Model::FromMeshData(per_instance_meshes, graph.materials);
-      data_->instance_model_data.push_back(std::move(instance_model));
+        auto instance_model =
+            Model::FromMeshData(per_instance_meshes, graph.materials);
+        data_->instance_model_data.push_back(std::move(instance_model));
+      } else {
+        data_->instance_model_data.push_back(nullptr);
+      }
       data_->instances.push_back(std::move(output->model));
     }
     ++images_generated_;

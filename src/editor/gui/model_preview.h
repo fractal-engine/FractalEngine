@@ -48,7 +48,7 @@ private:
   // bool regenerate_ = false;
 
   // Render state
-  int images_per_frame_ = 2;
+  int images_per_frame_ = 10;
   int images_generated_ = 0;
   int images_submitted_ = 0;
 };
