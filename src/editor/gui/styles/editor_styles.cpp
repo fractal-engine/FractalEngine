@@ -1,5 +1,7 @@
 #include "editor_styles.h"
 
+#include "platform/paths.h"
+
 namespace EditorStyles {
 
 static const ImWchar icon_ranges[] = {ICON_MIN_FA, ICON_MAX_FA, 0};
@@ -21,10 +23,18 @@ void _MergeIcons(ImGuiIO& io, float icon_size) {
   icons_config.GlyphMinAdvanceX = icons_font_size;
 
   g_fonts.icons = io.Fonts->AddFontFromFileTTF(
-      EditorFontPath::icons, icons_font_size, &icons_config, icon_ranges);
+      Platform::ResolvePath(EditorFontPath::icons).c_str(), icons_font_size,
+      &icons_config, icon_ranges);
 }
 
 void LoadFonts(ImGuiIO& io) {
+
+  // Resolve font paths against the executable directory
+  auto load_font = [&io](const char* relative, float size,
+                         const ImFontConfig* cfg) -> ImFont* {
+    return io.Fonts->AddFontFromFileTTF(Platform::ResolvePath(relative).c_str(),
+                                        size, cfg);
+  };
 
   // Global font config
   ImFontConfig main_config;
@@ -34,49 +44,49 @@ void LoadFonts(ImGuiIO& io) {
   main_config.OversampleV = 2;
 
   // p (paragraph)
-  g_fonts.p = io.Fonts->AddFontFromFileTTF(
-      EditorFontPath::regular, EditorSizes::p_font_size, &main_config);
+  g_fonts.p = load_font(EditorFontPath::regular, EditorSizes::p_font_size,
+                        &main_config);
   _MergeIcons(io, EditorSizes::p_icon_size);
-  g_fonts.p_bold = io.Fonts->AddFontFromFileTTF(
-      EditorFontPath::bold, EditorSizes::p_font_size, &main_config);
+  g_fonts.p_bold =
+      load_font(EditorFontPath::bold, EditorSizes::p_font_size, &main_config);
   _MergeIcons(io, EditorSizes::p_bold_icon_size);
 
   // h1
-  g_fonts.h1 = io.Fonts->AddFontFromFileTTF(
-      EditorFontPath::regular, EditorSizes::h1_font_size, &main_config);
-  g_fonts.h1_bold = io.Fonts->AddFontFromFileTTF(
-      EditorFontPath::bold, EditorSizes::h1_font_size, &main_config);
+  g_fonts.h1 = load_font(EditorFontPath::regular, EditorSizes::h1_font_size,
+                         &main_config);
+  g_fonts.h1_bold =
+      load_font(EditorFontPath::bold, EditorSizes::h1_font_size, &main_config);
 
   // h2
-  g_fonts.h2 = io.Fonts->AddFontFromFileTTF(
-      EditorFontPath::regular, EditorSizes::h2_font_size, &main_config);
+  g_fonts.h2 = load_font(EditorFontPath::regular, EditorSizes::h2_font_size,
+                         &main_config);
   _MergeIcons(io, EditorSizes::h2_icon_size);
-  g_fonts.h2_bold = io.Fonts->AddFontFromFileTTF(
-      EditorFontPath::bold, EditorSizes::h2_font_size, &main_config);
+  g_fonts.h2_bold =
+      load_font(EditorFontPath::bold, EditorSizes::h2_font_size, &main_config);
   _MergeIcons(io, EditorSizes::h2_bold_icon_size);
 
   // h3
-  g_fonts.h3 = io.Fonts->AddFontFromFileTTF(
-      EditorFontPath::regular, EditorSizes::h3_font_size, &main_config);
+  g_fonts.h3 = load_font(EditorFontPath::regular, EditorSizes::h3_font_size,
+                         &main_config);
   _MergeIcons(io, EditorSizes::h2_icon_size);
-  g_fonts.h3_bold = io.Fonts->AddFontFromFileTTF(
-      EditorFontPath::bold, EditorSizes::h3_font_size, &main_config);
+  g_fonts.h3_bold =
+      load_font(EditorFontPath::bold, EditorSizes::h3_font_size, &main_config);
   _MergeIcons(io, EditorSizes::h2_icon_size);
 
   // h4
-  g_fonts.h4 = io.Fonts->AddFontFromFileTTF(
-      EditorFontPath::regular, EditorSizes::h4_font_size, &main_config);
+  g_fonts.h4 = load_font(EditorFontPath::regular, EditorSizes::h4_font_size,
+                         &main_config);
   _MergeIcons(io, EditorSizes::p_bold_icon_size);
-  g_fonts.h4_bold = io.Fonts->AddFontFromFileTTF(
-      EditorFontPath::bold, EditorSizes::h4_font_size, &main_config);
+  g_fonts.h4_bold =
+      load_font(EditorFontPath::bold, EditorSizes::h4_font_size, &main_config);
   _MergeIcons(io, EditorSizes::p_bold_icon_size);
 
   // s (small)
-  g_fonts.s = io.Fonts->AddFontFromFileTTF(
-      EditorFontPath::regular, EditorSizes::s_font_size, &main_config);
+  g_fonts.s = load_font(EditorFontPath::regular, EditorSizes::s_font_size,
+                        &main_config);
   _MergeIcons(io, EditorSizes::s_icon_size);
-  g_fonts.s_bold = io.Fonts->AddFontFromFileTTF(
-      EditorFontPath::bold, EditorSizes::s_font_size, &main_config);
+  g_fonts.s_bold =
+      load_font(EditorFontPath::bold, EditorSizes::s_font_size, &main_config);
   _MergeIcons(io, EditorSizes::s_bold_icon_size);
 
   // console font config
@@ -87,8 +97,8 @@ void LoadFonts(ImGuiIO& io) {
   console_config.RasterizerMultiply = 1.0f;
 
   // load font for console
-  g_fonts.console = io.Fonts->AddFontFromFileTTF(
-      EditorFontPath::console, EditorSizes::console_font_size, &console_config);
+  g_fonts.console = load_font(EditorFontPath::console,
+                              EditorSizes::console_font_size, &console_config);
 }
 
 void SetupStyle() {

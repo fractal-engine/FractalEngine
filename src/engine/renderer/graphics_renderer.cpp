@@ -130,16 +130,17 @@ void GraphicsRenderer::PrepareFrame() {
     bgfx::setViewFrameBuffer(vid, scene_framebuffer_);
   }
 
-  // ViewID::UI_BACKGROUND (ID 0) - Clears the actual window backbuffer
-  bgfx::setViewClear(
-      ViewID::UI_BACKGROUND,
-      BGFX_CLEAR_COLOR /* no depth clear needed if nothing 3D draws here */,
-      0x1e1e1eff, 1.0f, 0);
-  bgfx::setViewRect(ViewID::UI_BACKGROUND, 0, 0, fbw,
-                    fbh);  // Assuming fbw/fbh here match window size
-  bgfx::setViewFrameBuffer(
-      ViewID::UI_BACKGROUND,
-      BGFX_INVALID_HANDLE);  // Ensure it targets default backbuffer
+  // UI and backbuffer views must use drawable size
+  // TODO: avoid global inline state and keep viewport sizes
+  // in a single owner (e.g. GraphicsRenderer or WindowManager) with accessors
+  int win_w, win_h;
+  Platform::GetDrawableSize(window_, &win_w, &win_h);
+
+  bgfx::setViewClear(ViewID::UI_BACKGROUND, BGFX_CLEAR_COLOR, 0x1e1e1eff, 1.0f,
+                     0);
+  bgfx::setViewRect(ViewID::UI_BACKGROUND, 0, 0, static_cast<uint16_t>(win_w),
+                    static_cast<uint16_t>(win_h));
+  bgfx::setViewFrameBuffer(ViewID::UI_BACKGROUND, BGFX_INVALID_HANDLE);
 
   // Separate reflection pass framebuffer
   if (bgfx::isValid(reflection_fb_)) {

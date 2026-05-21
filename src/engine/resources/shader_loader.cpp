@@ -5,6 +5,8 @@
 
 #include "engine/core/logger.h"
 
+#include "platform/paths.h"
+
 #include "shader_utils.h"
 
 bgfx::ShaderHandle loadShader(const char* filePath) {
@@ -17,7 +19,7 @@ bgfx::ShaderHandle loadShader(const char* filePath) {
   const std::string folder = GetShaderFolder(rendererType);
 
   // Construct path based on detected backend
-  fullPath = "assets/shaders/" + folder + "/" + filePath;
+  fullPath = Platform::ResolvePath("assets/shaders/" + folder + "/" + filePath);
 
   Logger::getInstance().Log(LogLevel::Debug,
                             "Resolved shader path: " + fullPath);

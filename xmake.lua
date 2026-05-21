@@ -66,6 +66,11 @@ if is_plat("macosx") then
 	add_frameworks("Metal", "MetalKit", "QuartzCore")
 end
 
+-- ! Enforce arm64 on macOS
+if is_host("macosx") then
+    set_config("arch", "arm64")
+end
+
 ----------------------------------------------------------------
 --  per-module build scripts
 ----------------------------------------------------------------
