@@ -23,7 +23,6 @@ struct ResolvedDescriptor {
   glm::mat4 local_transform;
   glm::vec3 applied_scale = glm::vec3(1.0f);
   glm::vec3 applied_rotation = glm::vec3(0.0f);
-  std::vector<std::string> attach_to;
 
   std::string activator_id;  // empty for root descriptors
 };

@@ -66,6 +66,7 @@ NLOHMANN_JSON_SERIALIZE_ENUM(
      {ProcModel::ConstraintRule::Type::REQUIRES, "requires"}})
 
 namespace ProcModel {
+
 void to_json(nlohmann::json& j, const PartDescriptor& p) {
   j = nlohmann::json{{"id", p.id}, {"name", p.name}, {"weight", p.weight}};
 }
@@ -85,10 +86,14 @@ void to_json(nlohmann::json& j, const ParameterBinding& p) {
 void to_json(nlohmann::json& j, const SelectionGroup& g) {
   j = nlohmann::json{{"group_id", g.group_id},
                      {"required", g.required},
-                     {"activated_by", g.activated_by},
+                     {"parent", g.parent},
                      {"parts", g.parts}};
-  if (!g.attach_to.empty())
-    j["attach_to"] = g.attach_to;
+  if (g.sockets) {
+    j["sockets"] = *g.sockets;
+  }
+  if (g.select_per_socket) {
+    j["select_per_socket"] = g.select_per_socket;
+  }
 }
 
 // Serialization of TransformRange
@@ -128,13 +133,13 @@ static uintptr_t HashString(const std::string& str) {
   return std::hash<std::string>{}(str);
 }
 
-// Collapses lists of attachments (e.g. 620 entries) into a clean counted label
+// Collapses lists of sockets (e.g. 620 entries) into a clean counted label
 // in the UI
-static std::map<std::string, int> GroupAttachmentPoints(
-    const std::vector<std::string>& attachments) {
+static std::map<std::string, int> GroupSocketPoints(
+    const std::vector<std::string>& sockets) {
   std::map<std::string, int> grouped;
-  for (const auto& att : attachments) {
-    std::string base_name = att;
+  for (const auto& socket : sockets) {
+    std::string base_name = socket;
     while (!base_name.empty() && std::isdigit(base_name.back()))
       base_name.pop_back();
     while (!base_name.empty() &&
@@ -448,12 +453,16 @@ void AssetGraphEditor::AutoLayoutNodes() {
   std::unordered_map<std::string, std::vector<ProcModel::SelectionGroup*>> tree;
   std::vector<ProcModel::SelectionGroup*> roots;
 
-  // Build the hierarchical tree based on 'activated_by' links
+  // Build the hierarchical tree based on 'parent' links
   for (auto& group : m_ModelData.selection_groups) {
-    if (group.activated_by.empty()) {
+    if (group.parent.empty()) {
       roots.push_back(&group);
     } else {
-      std::string parentGroupId = partToGroup[group.activated_by];
+      // Attach to the first parent's group for layout purposes.
+      // Multi-parent groups will visually appear under one branch;
+      // the other connections still render as links.
+      const std::string& first_parent_part = group.parent.front();
+      std::string parentGroupId = partToGroup[first_parent_part];
       if (parentGroupId.empty()) {
         roots.push_back(&group);
       } else {
@@ -475,7 +484,13 @@ void AssetGraphEditor::AutoLayoutNodes() {
         visited.insert(node->group_id);
 
         float h = 100.0f + (node->parts.size() * 32.0f);
-        if (!node->attach_to.empty())
+
+        // Add height if any part in this group declares explicit sockets
+        // (auto-detected sockets aren't visible to the editor)
+        // ! Check if we should reveal auto-detected sockets
+        bool has_explicit_sockets =
+            node->sockets.has_value() && !node->sockets->empty();
+        if (has_explicit_sockets)
           h += 35.0f;
         nodeHeights[node->group_id] = h;
 
@@ -685,15 +700,21 @@ void AssetGraphEditor::RenderNodeGraph() {
       ImGui::Dummy(ImVec2(0, 8));  // Padding after
     }
 
-    // Display attachment summaries if available
-    if (!group.attach_to.empty()) {
+    // Display socket summaries if any part declares explicit sockets
+    std::vector<std::string> all_sockets;
+    for (const auto& part : group.parts) {
+      if (group.sockets) {
+        all_sockets = *group.sockets;
+      }
+    }
+    if (!all_sockets.empty()) {
       ImGui::Dummy(ImVec2(0, 4));
-      auto grouped_attachments = GroupAttachmentPoints(group.attach_to);
+      auto grouped_sockets = GroupSocketPoints(all_sockets);
 
       ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 8.0f);
       ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.6f, 0.6f, 0.6f, 1.0f));
-      ImGui::Text("Attachments:");
-      for (const auto& [base_name, count] : grouped_attachments) {
+      ImGui::Text("Sockets:");
+      for (const auto& [base_name, count] : grouped_sockets) {
         ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 8.0f);
         ImGui::Text(" %s %s (%d)", ICON_FA_LINK, base_name.c_str(), count);
       }
@@ -742,8 +763,10 @@ void AssetGraphEditor::RenderNodeGraph() {
         if (new_part_id != part.id && !new_part_id.empty()) {
           // Safely update all graph connections pointing to the old name
           for (auto& g : m_ModelData.selection_groups) {
-            if (g.activated_by == part.id)
-              g.activated_by = new_part_id;
+            for (auto& parent_id : g.parent) {
+              if (parent_id == part.id)
+                parent_id = new_part_id;
+            }
           }
           part.id = new_part_id;
           part.name = new_part_id;
@@ -792,9 +815,9 @@ void AssetGraphEditor::RenderNodeGraph() {
   // Render all active connections between nodes
   int link_id_counter = 1;
   for (const auto& group : m_ModelData.selection_groups) {
-    if (!group.activated_by.empty()) {
+    for (const auto& parent_id : group.parent) {
       ed::LinkId linkId = link_id_counter++;
-      ed::PinId outputPinId = HashString(group.activated_by);
+      ed::PinId outputPinId = HashString(parent_id);
       ed::PinId inputPinId = HashString(group.group_id + "_IN");
 
       ed::Link(linkId, outputPinId, inputPinId, ImVec4(0.3f, 0.7f, 0.9f, 1.0f),
@@ -822,7 +845,12 @@ void AssetGraphEditor::RenderNodeGraph() {
 
       if (targetGroup && !sourcePartId.empty()) {
         if (ed::AcceptNewItem(ImVec4(0.3f, 0.9f, 0.3f, 1.0f), 2.0f)) {
-          targetGroup->activated_by = sourcePartId;
+          // Append parent, multiple parents allowed
+          auto& parents = targetGroup->parent;
+          if (std::find(parents.begin(), parents.end(), sourcePartId) ==
+              parents.end()) {
+            parents.push_back(sourcePartId);
+          }
         }
       } else {
         ed::RejectNewItem(ImVec4(1, 0, 0, 1), 2.0f);
@@ -837,14 +865,20 @@ void AssetGraphEditor::RenderNodeGraph() {
     if (ed::QueryDeletedLink(&deletedLinkId)) {
       if (ed::AcceptDeletedItem()) {
         int link_idx = 1;
+        bool done = false;
         for (auto& group : m_ModelData.selection_groups) {
-          if (!group.activated_by.empty()) {
+          for (auto pit = group.parent.begin();
+               pit != group.parent.end() && !done;) {
             if (link_idx == deletedLinkId.Get()) {
-              group.activated_by = "";
-              break;
+              pit = group.parent.erase(pit);
+              done = true;
+            } else {
+              ++pit;
+              ++link_idx;
             }
-            link_idx++;
           }
+          if (done)
+            break;
         }
       }
     }

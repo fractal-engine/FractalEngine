@@ -15,16 +15,29 @@ std::string DescriptorBuilder::ExtractGroupPrefix(
   return node_name.substr(0, last_underscore + 1);
 }
 
+// Find or create a selection group by ID, and optionally record a parent ID.
+// - If the group is new and parent is non-empty, parent is stored.
+// - If the group exists, parent is appended only if not already present.
+// - Root groups should have an empty parent list (no empty-string entry).
 SelectionGroup* DescriptorBuilder::FindOrCreateGroup(
     std::unordered_map<std::string, SelectionGroup>& groups,
-    const std::string& group_id, const std::string& activated_by) {
+    const std::string& group_id, const std::string& parent) {
   auto it = groups.find(group_id);
   if (it == groups.end()) {
     SelectionGroup group;
     group.group_id = group_id;
-    group.activated_by = activated_by;
+    if (!parent.empty()) {
+      group.parent.push_back(parent);
+    }
     group.required = true;
     groups[group_id] = std::move(group);
+  } else if (!parent.empty()) {
+    // Append parent if not already listed
+    auto& existing_parents = it->second.parent;
+    if (std::find(existing_parents.begin(), existing_parents.end(), parent) ==
+        existing_parents.end()) {
+      existing_parents.push_back(parent);
+    }
   }
   return &groups[group_id];
 }
@@ -37,6 +50,13 @@ void DescriptorBuilder::TraverseAndBuildGroups(
       prefix_buckets;
 
   for (const auto& child : node.children) {
+    // Skip nodes that look like sockets (empty mesh nodes are locators,
+    // not parts). The builder only infers parts; sockets are handled by
+    // the resolver from the GLTF graph directly.
+    if (child.mesh_indices.empty()) {
+      continue;
+    }
+
     std::string prefix = ExtractGroupPrefix(child.name);
     if (!prefix.empty()) {
       prefix_buckets[prefix].push_back(&child);

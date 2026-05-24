@@ -15,13 +15,37 @@ bool ModelDescriptorParser::ParseSelectionGroup(const nlohmann::json& j,
 
   out.group_id = j["group_id"].get<std::string>();
   out.required = j.value("required", true);
-  out.select_per_attachment = j.value("select_per_attachment", false);
-  out.activated_by = j.value("activated_by", std::string(""));
+  out.select_per_socket = j.value("select_per_socket", false);
 
-  if (j.contains("attach_to")) {
-    for (const auto& id : j["attach_to"]) {
-      out.attach_to.push_back(id.get<std::string>());
+  // parent: accept array or omitted
+  if (j.contains("parent")) {
+    const auto& p = j["parent"];
+    if (p.is_array()) {
+      for (const auto& id : p) {
+        out.parent.push_back(id.get<std::string>());
+      }
+    } else if (p.is_string()) {
+      // backwards compat: single string -> wrap as one-element vector
+      out.parent.push_back(p.get<std::string>());
     }
+  }
+
+  out.scale_factor = j.value("scale_factor", 1.0f);
+  if (j.contains("scale_jitter")) {
+    out.scale_jitter = j["scale_jitter"].get<float>();
+  }
+
+  if (j.contains("rotation_jitter")) {
+    const auto& r = j["rotation_jitter"];
+    out.rotation_jitter = glm::radians(glm::vec3(r[0], r[1], r[2]));
+  }
+
+  if (j.contains("sockets")) {
+    std::vector<std::string> sockets;
+    for (const auto& s : j["sockets"]) {
+      sockets.push_back(s.get<std::string>());
+    }
+    out.sockets = std::move(sockets);
   }
 
   for (const auto& part_json : j["parts"]) {
@@ -31,12 +55,6 @@ bool ModelDescriptorParser::ParseSelectionGroup(const nlohmann::json& j,
     part.weight = part_json.value("weight", 1.0f);
     out.parts.push_back(std::move(part));
   }
-
-  if (j.contains("rotation_jitter")) {
-    const auto& r = j["rotation_jitter"];
-    out.rotation_jitter = glm::radians(glm::vec3(r[0], r[1], r[2]));
-  }
-
   return !out.parts.empty();
 }
 
@@ -49,11 +67,11 @@ bool ModelDescriptorParser::ParseTransformRange(const nlohmann::json& j,
 
   if (j.contains("rotation_min")) {
     auto& r = j["rotation_min"];
-    out.rotation_min = glm::vec3(r[0], r[1], r[2]);
+    out.rotation_min = glm::radians(glm::vec3(r[0], r[1], r[2]));
   }
   if (j.contains("rotation_max")) {
     auto& r = j["rotation_max"];
-    out.rotation_max = glm::vec3(r[0], r[1], r[2]);
+    out.rotation_max = glm::radians(glm::vec3(r[0], r[1], r[2]));
   }
 
   return true;

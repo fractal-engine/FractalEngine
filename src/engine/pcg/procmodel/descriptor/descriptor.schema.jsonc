@@ -1,0 +1,155 @@
+{
+  "model_id": "string (required) — unique identity for this archetype",
+  "model_name": "string (optional) — display name, defaults to model_id",
+  "domain": "string (optional) — e.g. 'vegetation', 'building'",
+  "path": "string (required) — path to the source .glb/.gltf",
+
+  "scale_min": [1.0, 1.0, 1.0],
+  "scale_max": [1.5, 1.5, 1.5],
+  // Optional whole-instance scale range. Sampled once per generated instance.
+  // If unset, model_scale = (1,1,1).
+
+  // TODO: "tags": ["vegetation", "tropical"],
+  // Optional. Free-form tags for filtering/grouping.
+
+  "selection_groups": [
+    {
+      "group_id": "string (required) — used in parent references and as the key for part_deformation_ranges",
+      "required": true,
+      // If true and no valid part can be selected, generation fails.
+
+      "parent": ["TRUNK_A", "TRUNK_B"],
+      // Array of part IDs whose selection activates this group.
+      // Empty or omitted = root group (always considered first).
+
+      "select_per_socket": false,
+      // If true, each socket re-samples a part style independently
+      // (organic content — branches, leaves). If false, one part is picked
+      // and duplicated to every socket (uniform — pillars, columns).
+
+      "rotation_jitter": [0, 45, 0],
+      // Per-socket rotation perturbation in DEGREES (converted to radians
+      // at parse). Each attached copy gets an independent uniform draw from
+      // [-jitter, +jitter] per axis. (0,0,0) = no perturbation.
+
+      "scale_factor": 0.6,
+      // Multiplicative scale inherited from the parent's applied_scale.
+      // 1.0 = no decay. 0.6 = 60% of parent. Compounds along the activation
+      // chain (trunk 1.0 → branches 0.6 → leaves 0.42).
+
+      "scale_jitter": 0.05,
+      // Optional ± random perturbation on scale_factor per socket.
+
+      "parts": [
+        {
+          "id": "string (required) — matches a node name in the GLTF",
+          "name": "string (optional) — display name, defaults to id",
+          "weight": 1.0,
+          // Relative selection weight in WeightedSelect.
+
+          "sockets": ["_ATTACH_A_01", "_ATTACH_A_02"]
+          // Optional. Explicit list of socket node names this part owns.
+          // When unset, sockets are auto-detected (any child node of this
+          // part in the GLTF graph that is not itself a declared part).
+          // When set, only the listed sockets are used; the resolver
+          // validates that each one exists in the graph.
+        }
+      ]
+    }
+  ],
+
+  "transform_ranges": [
+    {
+      "part_id": "string — matches a part by id",
+      "rotation_min": [0, 0, 0],
+      "rotation_max": [0, 360, 0]
+      // Optional rotation jitter range (degrees, additive).
+      // Sampled once per resolved descriptor.
+    }
+  ],
+
+  "model_deformation_range": {
+    "taper_factor_min": 0.7, "taper_factor_max": 0.9,
+    "twist_angle_min": 0,    "twist_angle_max": 10,
+    "bend_angle_min": 5,     "bend_angle_max": 15,
+    "noise_amplitude_min": 0.0, "noise_amplitude_max": 0.05
+  },
+  // Optional fallback range used by part_deform when no per-group override
+  // exists. Angles in DEGREES (converted to radians at parse). Taper is
+  // unitless; noise is mesh-units.
+
+  "part_deformation_ranges": [
+    {
+      "group_id": "string — matches SelectionGroup::group_id",
+      "taper_factor_min": 0.5, "taper_factor_max": 0.7,
+      "twist_angle_min": 5,    "twist_angle_max": 25,
+      "bend_angle_min": 20,    "bend_angle_max": 45,
+      "noise_amplitude_min": 0.02, "noise_amplitude_max": 0.08
+      // All fields optional. Missing fields fall through to nothing
+      // (operation has no effect for that part).
+    }
+  ],
+
+  "constraints": [
+    {
+      "id": "string — unique rule identifier",
+      "type": "excludes | requires",
+      "part_a": "PART_X",
+      "part_b": "PART_Y"
+      // EXCLUDES: rejects selections where both A and B were chosen.
+      // REQUIRES: rejects selections where one was chosen without the other.
+    }
+  ],
+
+  "parameter_bindings": [
+    {
+      "source_part": "PART_X",
+      "source_param": "rotation",
+      "target_part": "PART_Y",
+      "target_param": "rotation",
+      "ratio": 1.0
+      // Currently supports rotation→rotation binding.
+      // target.applied_rotation = source.applied_rotation * ratio
+    }
+  ],
+
+  // pipeline configuration lives at the root JSON level alongside
+  // model_id, processed separately from the model descriptor
+  "pipeline": [
+    {
+      "kind": "per_part_deform",
+      "params": {
+        "apply_taper": true,
+        "apply_twist": true,
+        "apply_bend":  true,
+        "apply_noise": true,
+        "taper_axis": "y",
+        "twist_axis": "y",
+        "bend_axis":  "y",
+        "noise_frequency": 3.0
+      }
+    },
+    {
+      "kind": "instance_deform",
+      "params": {
+        "apply_bend":  true,
+        "bend_axis":   "y",
+        "bend_angle":  8,
+        "apply_taper": false,
+        "apply_twist": false
+      }
+    },
+    {
+      "kind": "duplicate_instances",
+      "params": {
+        "target_group_id": "",
+        // group whose descriptors should be duplicated. Empty = all.
+        "min_count": 1,
+        "max_count": 3
+        // Total count including original. Duplicates share the
+        // original's local_transform — without subsequent jitter
+        // (e.g. rotation_jitter sampled per-instance) they will overlap.
+      }
+    }
+  ]
+}

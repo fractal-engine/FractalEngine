@@ -342,8 +342,7 @@ void ModelPreview::SubmitViews() {
         transform_component.scale_ = scale;
 
         // Apply pipeline deformation from resolved descriptor
-        const glm::quat jitter_rot =
-            glm::quat(glm::radians(desc.applied_rotation));
+        const glm::quat jitter_rot = glm::quat(desc.applied_rotation);
         transform_component.rotation_ = glm::normalize(rot * jitter_rot);
         transform_component.scale_ = scale * desc.applied_scale;
 

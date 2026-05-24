@@ -291,8 +291,7 @@ static std::shared_ptr<PCG::OperationData> ParsePartDeform(
   if (!data->apply_taper && !data->apply_twist && !data->apply_bend &&
       !data->apply_noise) {
     Logger::getInstance().Log(
-        LogLevel::Warning,
-        "[PartDeform] no operations enabled — entry is a no-op");
+        LogLevel::Warning, "[Deform] no operations enabled — entry is a no-op");
     return nullptr;
   }
 
@@ -359,6 +358,13 @@ static void ApplyPartDeform(const PCG::OperationData& base_data,
       bend_angle =
           SampleRange(range->bend_angle_min, range->bend_angle_max, ctx.rng);
     }
+
+    // DEBUG
+    Logger::getInstance().Log(
+        LogLevel::Debug,
+        "[PartDeform] " + d.descriptor_id +
+            " bend=" + (bend_angle ? std::to_string(*bend_angle) : "none"));
+
     if (data.apply_noise) {
       noise_amplitude = SampleRange(range->noise_amplitude_min,
                                     range->noise_amplitude_max, ctx.rng);
@@ -624,7 +630,7 @@ static void ApplyInstanceDeform(const PCG::OperationData& base_data,
 // REGISTER OPERATIONS
 //
 void RegisterVertexDeformOperation(PCG::OperationRegistry& registry) {
-  registry.Register("part_deform", &ParsePartDeform, &ApplyPartDeform);
+  registry.Register("per_part_deform", &ParsePartDeform, &ApplyPartDeform);
   registry.Register("instance_deform", &ParseInstanceDeform,
                     &ApplyInstanceDeform);
 }

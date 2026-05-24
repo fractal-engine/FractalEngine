@@ -70,6 +70,11 @@ ModelGraph ModelGraphBuilder::Build(const Content::SceneData& scene,
 
   BuildLookup(graph.root, graph.node_lookup);
 
+  for (const auto& [name, node] : graph.node_lookup) {
+    Logger::getInstance().Log(LogLevel::Debug,
+                              "[GraphBuilder] Node in lookup: '" + name + "'");
+  }
+
   return graph;
 }
 

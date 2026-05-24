@@ -41,7 +41,7 @@ static nlohmann::json SerializePartSample(
                            e.applied_rotation.z};
   j["applied_scale"] = {e.applied_scale.x, e.applied_scale.y,
                         e.applied_scale.z};
-  j["attach_to"] = e.attach_to;
+  j["sockets"] = e.sockets;
   return j;
 }
 

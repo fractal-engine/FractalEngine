@@ -21,7 +21,7 @@ private:
 
   static SelectionGroup* FindOrCreateGroup(
       std::unordered_map<std::string, SelectionGroup>& groups,
-      const std::string& group_id, const std::string& activated_by);
+      const std::string& group_id, const std::string& parent);
 
   static void TraverseAndBuildGroups(
       const ModelGraphNode& node, const std::string& parent_part_id,

@@ -245,8 +245,7 @@ void ModelViewer::RenderViewport() {
         glm::decompose(desc.local_transform, scale, rot, pos, skew, persp);
 
         // Apply pipeline deformation from resolved descriptor
-        const glm::quat jitter_rot =
-            glm::quat(glm::radians(desc.applied_rotation));
+        const glm::quat jitter_rot = glm::quat(desc.applied_rotation);
 
         TransformComponent transform_component;
         transform_component.position_ = pos * norm_scale;

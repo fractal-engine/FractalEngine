@@ -19,14 +19,13 @@ struct Diagnostic {
   // added without touching every call site; analysis scripts can filter
   // on these directly.
   // Current codes:
-  //   "constraint.excludes"        - two mutually-excluded parts both selected
-  //   "constraint.requires"        - REQUIRES rule unsatisfied
-  //   "attachment.duplicate"       - more than one part resolved to same attach
-  //   node "attachment.dangling"        - attach_to references a node that
-  //   doesn't exist "attachment.orphaned"        - part attached but its parent
-  //   base wasn't selected "group.missing_activation"   - required group failed
-  //   to activate "group.forward_misaligned"   - attachment forward axes
-  //   diverge within a group
+  //   "constraint.excludes": two mutually-excluded parts both selected
+  //   "constraint.requires": REQUIRES rule unsatisfied
+  //   "socket.duplicate": more than one part resolved to same socket
+  //   "socket.dangling": socket references a node that doesn't exist
+  //   "socket.orphaned": part attached but its parent base wasn't selected
+  //   "group.missing_activation": required group failed to activate
+  //   "group.forward_misaligned": socket forward axes diverge within a group
   std::string code;
   Severity severity = Severity::Error;
 
@@ -72,7 +71,7 @@ struct ProcModelSample {
     std::string group_id;
     glm::vec3 applied_rotation{0.0f};
     glm::vec3 applied_scale{1.0f};
-    std::vector<std::string> attach_to;
+    std::vector<std::string> sockets;
   };
   std::vector<PartSample> part_samples;
 

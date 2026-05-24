@@ -10,6 +10,17 @@
 #include "engine/core/logger.h"
 
 namespace ProcModel {
+namespace {
+
+struct PendingActivation {
+  const SelectionGroup* group;
+  std::string activator_instance_id;
+  std::string activator_part_id;
+  glm::mat4 activator_world_transform;
+};
+
+}  // namespace
+
 // Final matrix is composed in ModelInstantiator
 static void ApplyParameterRanges(ResolvedDescriptor& resolved,
                                  const ModelGraphNode& node, pcg32& rng) {
@@ -74,10 +85,10 @@ std::optional<InstanceData> ModelGenerator::Generate(
     bool failed = false;
 
     // Collect root groups
-    std::queue<const SelectionGroup*> pending;
+    std::queue<PendingActivation> pending;
     for (const auto& group : descriptor.selection_groups) {
-      if (group.activated_by.empty()) {
-        pending.push(&group);
+      if (group.parent.empty()) {
+        pending.push({&group, "", "", glm::mat4(1.0f)});
       }
     }
 
@@ -106,9 +117,11 @@ std::optional<InstanceData> ModelGenerator::Generate(
         break;
       }  // DEBUG
 
-      const SelectionGroup* group = pending.front();
+      const PendingActivation pa = pending.front();
       pending.pop();
       ++groups_processed;  // DEBUG
+
+      const SelectionGroup* group = pa.group;
 
       // Filter parts by constraints
       std::vector<const PartDescriptor*> valid;
@@ -138,55 +151,128 @@ std::optional<InstanceData> ModelGenerator::Generate(
 
       ModelGraphNode* node = it->second;
 
-      ResolvedDescriptor resolved;
-      resolved.descriptor_id = chosen->id;
-      resolved.group_id = group->group_id;
-      resolved.mesh_indices = node->mesh_indices;
-      resolved.local_transform = node->world_transform;
-      resolved.attach_to = group->attach_to;
+      // Sockets live on the group, not the activator node
+      const std::vector<std::string>* sockets_to_fill =
+          group->sockets.has_value() ? &*group->sockets : nullptr;
 
-      // Sample parameter ranges from annotations
-      ApplyParameterRanges(resolved, *node, rng);
+      // Authored activator world — shared by both branches below.
+      // We use this to extract each socket's *local* offset from the activator
+      // as it sits in the GLTF (authored_inverse * socket->world_transform),
+      // then re-apply that offset from the actual placed instance's world
+      // transform (activator_world_transform * socket_local). This correctly
+      // repositions sockets per-instance without baking any authored position.
+      glm::mat4 authored_activator_world(1.0f);
+      if (!pa.activator_part_id.empty()) {
+        auto act_it = graph.node_lookup.find(pa.activator_part_id);
+        if (act_it != graph.node_lookup.end()) {
+          authored_activator_world = act_it->second->world_transform;
+        }
+      }
+      glm::mat4 authored_inverse = glm::inverse(authored_activator_world);
 
-      if (group->attach_to.empty()) {
-        resolved_descriptors.push_back(std::move(resolved));
+      std::vector<ResolvedDescriptor> newly_added;
+
+      // Variant-only groups fire once per activating instance: each gets a
+      // unique descriptor_id via '_under_<activator>' suffix.
+      // local_transform is rebased from the activator instance's world
+      // transform, so children on instanced parents are correctly positioned
+      // per-parent rather than at the GLTF-authored position.
+      if (!sockets_to_fill || sockets_to_fill->empty()) {
+        // Variant-only: re-base onto activator instance world transform
+        glm::mat4 local_offset = authored_inverse * node->world_transform;
+        glm::mat4 instance_world = pa.activator_world_transform * local_offset;
+
+        ResolvedDescriptor resolved;
+        resolved.descriptor_id = chosen->id;
+        resolved.group_id = group->group_id;
+        resolved.mesh_indices = node->mesh_indices;
+        resolved.local_transform = instance_world;
+        resolved.activator_id = pa.activator_instance_id;
+
+        // Sample parameter ranges from annotations
+        ApplyParameterRanges(resolved, *node, rng);
+
+        newly_added.push_back(std::move(resolved));
       } else {
-        // Pick once up front if uniform selection is wanted
+        // Socket-based: one instance per socket, world-positioned per instance
         const PartDescriptor* uniform_pick =
-            !group->select_per_attachment ? chosen : nullptr;
+            !group->select_per_socket ? chosen : nullptr;
 
-        for (const auto& attach_id : group->attach_to) {
-          auto attach_it = graph.node_lookup.find(attach_id);
-          if (attach_it == graph.node_lookup.end())
+        // Parent scale — match by activator instance id
+        glm::vec3 parent_scale(1.0f);
+        if (!pa.activator_instance_id.empty()) {
+          for (const auto& prev : resolved_descriptors) {
+            if (prev.descriptor_id == pa.activator_instance_id) {
+              parent_scale = prev.applied_scale;
+              break;
+            }
+          }
+        }
+
+        for (const auto& socket_id : *sockets_to_fill) {
+          auto sock_it = graph.node_lookup.find(socket_id);
+          if (sock_it == graph.node_lookup.end())
             continue;
 
-          const PartDescriptor* per_attach = group->select_per_attachment
+          const PartDescriptor* per_attach = group->select_per_socket
                                                  ? WeightedSelect(valid, rng)
                                                  : uniform_pick;
 
           auto graph_it = graph.node_lookup.find(per_attach->id);
           if (graph_it == graph.node_lookup.end())
             continue;
-          ModelGraphNode* per_attach_node = graph_it->second;
 
-          // Build the attached descriptor from per_attach (not chosen), so each
-          // attachment carries its own picked part's mesh and ID.
+          ModelGraphNode* per_socket_node = graph_it->second;
+
+          // socket_local: offset of this socket from its authored activator
+          // socket_world: same offset re-applied from the instance position
+          glm::mat4 socket_local =
+              authored_inverse * sock_it->second->world_transform;
+          glm::mat4 socket_world = pa.activator_world_transform * socket_local;
+
+          // DEBUG
+          glm::vec3 sw(socket_world[3]);
+          Logger::getInstance().Log(
+              LogLevel::Debug, "[Generator] socket=" + socket_id +
+                                   " world_xz=(" + std::to_string(sw.x) + ", " +
+                                   std::to_string(sw.z) + ")");
+
+          // DEBUG
+          glm::vec3 fwd_world = glm::vec3(socket_world * glm::vec4(0, 0, 1, 0));
+          Logger::getInstance().Log(
+              LogLevel::Debug, "[Generator] socket=" + socket_id + " pos=(" +
+                                   std::to_string(sw.x) + "," +
+                                   std::to_string(sw.z) + ")" + " fwd=(" +
+                                   std::to_string(fwd_world.x) + "," +
+                                   std::to_string(fwd_world.z) + ")");
+
           ResolvedDescriptor attached;
           attached.descriptor_id =
-              std::string(per_attach->id) + "_at_" + attach_id;
+              std::string(per_attach->id) + "_at_" + socket_id;
+          if (!pa.activator_instance_id.empty()) {
+            attached.descriptor_id += "_under_" + pa.activator_instance_id;
+          }
           attached.group_id = group->group_id;
-          attached.mesh_indices = per_attach_node->mesh_indices;
-          attached.local_transform = attach_it->second->world_transform;
-          attached.attach_to = group->attach_to;
-          attached.activator_id = chosen->id;
+          attached.mesh_indices = per_socket_node->mesh_indices;
+          attached.local_transform = socket_world;
+          attached.activator_id = pa.activator_instance_id;
 
-          // Sample parameter ranges for THIS attachment, so each attached copy
-          // gets independent rotation/scale jitter.
-          ApplyParameterRanges(attached, *per_attach_node, rng);
+          // Sample scale factor with optional jitter
+          float factor = group->scale_factor;
+          if (group->scale_jitter) {
+            std::uniform_real_distribution<float> jdist(-*group->scale_jitter,
+                                                        *group->scale_jitter);
+            factor += jdist(rng);
+          }
+          attached.applied_scale = parent_scale * factor;
+
+          // Sample parameter ranges for THIS attachment, so each attached
+          // copy gets independent rotation/scale jitter.
+          ApplyParameterRanges(attached, *per_socket_node, rng);
 
           // Per-attachment rotation jitter: each attached instance picks an
-          // independent rotation perturbation, so identical-mesh attachments
-          // stick out in different directions.
+          // independent rotation perturbation, so identical-mesh
+          // attachments stick out in different directions.
           const glm::vec3& j = group->rotation_jitter;
           if (j.x > 0.0f || j.y > 0.0f || j.z > 0.0f) {
             std::uniform_real_distribution<float> dx(-j.x, j.x);
@@ -195,22 +281,30 @@ std::optional<InstanceData> ModelGenerator::Generate(
             attached.applied_rotation += glm::vec3(dx(rng), dy(rng), dz(rng));
           }
 
-          resolved_descriptors.push_back(std::move(attached));
-
-          // Track the picked part for constraint validation (only when varying)
-          if (group->select_per_attachment)
+          // Track the picked part for constraint validation (only when
+          // varying)
+          if (group->select_per_socket)
             selected_ids.insert(per_attach->id);
+
+          newly_added.push_back(std::move(attached));
         }
       }
-      // Activate dependent groups
-      for (const auto& g : descriptor.selection_groups) {
-        if (g.activated_by == chosen->id) {
-          pending.push(&g);
-
-          // DEBUG
-          ++groups_enqueued;
-          max_pending_size = std::max(max_pending_size, pending.size());
+      // Activate child groups PER PLACED INSTANCE
+      for (const auto& new_desc : newly_added) {
+        for (const auto& g : descriptor.selection_groups) {
+          for (const auto& parent_id : g.parent) {
+            if (parent_id == chosen->id) {
+              pending.push({&g, new_desc.descriptor_id, chosen->id,
+                            new_desc.local_transform});
+              ++groups_enqueued;
+              max_pending_size = std::max(max_pending_size, pending.size());
+              break;
+            }
+          }
         }
+      }
+      for (auto& nd : newly_added) {
+        resolved_descriptors.push_back(std::move(nd));
       }
     }
 
@@ -235,8 +329,19 @@ std::optional<InstanceData> ModelGenerator::Generate(
     result.model_id = descriptor.model_id;
     result.seed = seed + attempt;
     result.descriptors = std::move(resolved_descriptors);
-    result.model_scale =
-        glm::vec3(1.0f);  // TODO: sample from descriptor scale range
+
+    // TODO: revise the if condition here
+    if (descriptor.scale_min && descriptor.scale_max) {
+      std::uniform_real_distribution<float> dx(descriptor.scale_min->x,
+                                               descriptor.scale_max->x);
+      std::uniform_real_distribution<float> dy(descriptor.scale_min->y,
+                                               descriptor.scale_max->y);
+      std::uniform_real_distribution<float> dz(descriptor.scale_min->z,
+                                               descriptor.scale_max->z);
+      result.model_scale = glm::vec3(dx(rng), dy(rng), dz(rng));
+    } else {
+      result.model_scale = glm::vec3(1.0f);
+    }
 
     // Run pipeline operations on resolved model
     {
@@ -250,6 +355,10 @@ std::optional<InstanceData> ModelGenerator::Generate(
           ProcModelSample vr =
               ProcModelValidator::Validate(result, graph, descriptor, attempt);
           validator_logger->Write(vr);
+          Logger::getInstance().Log(
+              LogLevel::Debug,
+              "[Generator] Validation: passed=" + std::to_string(vr.passed) +
+                  " diagnostics=" + std::to_string(vr.diagnostics.size()));
           if (!vr.passed) {
             continue;  // Retry with next seed
           }
@@ -258,6 +367,14 @@ std::optional<InstanceData> ModelGenerator::Generate(
         InstanceData out;
         out.model = std::move(result);
         out.instance_geometry = std::move(ctx.instance_geometry);
+
+        Logger::getInstance().Log(
+            LogLevel::Debug,
+            "[Generator] Returning InstanceData: descriptors=" +
+                std::to_string(out.model.descriptors.size()) +
+                " geometry_count=" +
+                std::to_string(out.instance_geometry.size()));
+
         return out;
       }
     }
@@ -282,7 +399,8 @@ bool ModelGenerator::IsValidSelection(
       // If this part requires another that hasn't been selected yet,
       // skip — it may be selected later. Only reject if the required
       // part was already excluded by group processing.
-      // For now, REQUIRES is checked in ValidateConstraints post-generation.
+      // For now, REQUIRES is checked in ValidateConstraints
+      // post-generation.
     }
   }
   return true;

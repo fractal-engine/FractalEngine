@@ -5,6 +5,7 @@
 #include <glm/vec3.hpp>
 #include <optional>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 namespace ProcModel {
@@ -19,19 +20,16 @@ struct SelectionGroup {
   std::string group_id;
   std::vector<PartDescriptor> parts;
   bool required = true;
-  std::string activated_by;            // Empty = root group
-  std::vector<std::string> attach_to;  // attachment slots
+  std::vector<std::string> parent;  // Empty = root group
 
-  // Scale inherited from the activator (parent). If unset, no inheritance.
-  // A value of 0.6 means: this group's parts are 60% the size of their parent.
-  std::optional<float> hierarchy_scale_factor;
-  std::optional<float> hierarchy_scale_jitter;  // ± randomness on the factor
+  // Attachment points; if unset = variant-only
+  std::optional<std::vector<std::string>> sockets;
 
-  // If true: each attach point in attach_to re-runs WeightedSelect, allowing
+  // If true: each attach point in sockets re-runs WeightedSelect, allowing
   // different parts at different attachments (organic variation - branches,
   // leaves). If false (default): one part is selected for the group and
   // duplicated to every attachment (uniform assembly — columns, pillars).
-  bool select_per_attachment = false;
+  bool select_per_socket = false;
 
   // Per-attachment rotation jitter. When non-zero, each attached instance
   // receives an independent random rotation perturbation drawn uniformly
@@ -39,6 +37,13 @@ struct SelectionGroup {
   // JSON). Default zero: no jitter, attachments inherit the activator's
   // base rotation unchanged.
   glm::vec3 rotation_jitter = glm::vec3(0.0f);
+
+  // Scale inherited multiplicatively from this group's activator. A value of
+  // 0.6 means: parts in this group are 60% the size of their parent's scale.
+  // Combined with parent's already-scaled value: leaves attached to a branch
+  // (scale 0.6) of a trunk (scale 1.0) end up at 0.6 × 0.6 = 0.36 of root.
+  float scale_factor = 1.0f;
+  std::optional<float> scale_jitter;  // ± random perturbation
 };
 
 //
