@@ -48,6 +48,21 @@ bool ModelDescriptorParser::ParseSelectionGroup(const nlohmann::json& j,
     out.sockets = std::move(sockets);
   }
 
+  if (j.contains("socket_modifiers")) {
+    for (const auto& mod_json : j["socket_modifiers"]) {
+      if (!mod_json.contains("kind")) {
+        Logger::getInstance().Log(
+            LogLevel::Warning,
+            "[ModelDescriptorParser] socket_modifier missing 'kind', skipping");
+        continue;
+      }
+      PCG::PipelineEntry entry;
+      entry.kind = mod_json["kind"].get<std::string>();
+      entry.params = mod_json.value("params", nlohmann::json::object());
+      out.socket_modifiers.push_back(std::move(entry));
+    }
+  }
+
   for (const auto& part_json : j["parts"]) {
     PartDescriptor part;
     part.id = part_json["id"].get<std::string>();

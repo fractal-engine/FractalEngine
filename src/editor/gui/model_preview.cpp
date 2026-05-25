@@ -87,10 +87,11 @@ void ModelPreview::TickGenerate() {
 
   int budget = images_per_frame_;
   while (budget-- > 0 && images_generated_ < total_instances_) {
+    auto& procmodel = EngineContext::PCG().GetProcModel();
     auto output = ProcModel::ModelGenerator::Generate(
         resource->GetGraph(), resource->GetDescriptor(),
-        resource->GetPipeline(), current_seed_ + images_generated_, 10,
-        &EngineContext::PCG().GetProcModel().ValidationLog());
+        resource->GetPipeline(), procmodel.GetOperationRegistry(),
+        current_seed_ + images_generated_, 10, &procmodel.ValidationLog());
     if (output) {
       // Only build a per-instance Model if pipeline produces deformed
       // geometry; else reuse source model (no buffer allocation)

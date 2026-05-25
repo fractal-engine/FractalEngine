@@ -74,8 +74,9 @@ static const PartDescriptor* WeightedSelect(
 
 std::optional<InstanceData> ModelGenerator::Generate(
     const ModelGraph& graph, const ModelDescriptor& descriptor,
-    const PCG::LinearPipeline& pipeline, uint64_t seed, int max_retries,
-    ValidationLogger* validator_logger) {
+    const PCG::LinearPipeline& pipeline,
+    const PCG::OperationRegistry& operation_registry, uint64_t seed,
+    int max_retries, ValidationLogger* validator_logger) {
 
   for (int attempt = 0; attempt < max_retries; ++attempt) {
     pcg32 rng(seed + attempt);
@@ -209,6 +210,26 @@ std::optional<InstanceData> ModelGenerator::Generate(
           }
         }
 
+        // Compile this group's socket modifiers once per activation.
+        // Compiled handlers are stateless
+        std::vector<std::pair<PCG::OperationRegistry::Handler,
+                              std::shared_ptr<PCG::OperationData>>>
+            compiled_modifiers;
+        compiled_modifiers.reserve(group->socket_modifiers.size());
+        for (const auto& mod : group->socket_modifiers) {
+          auto data = operation_registry.Parse(mod.kind, mod.params);
+          auto handler = operation_registry.GetHandler(mod.kind);
+          if (!data || !handler) {
+            Logger::getInstance().Log(
+                LogLevel::Warning,
+                "[Generator] Unknown or unparseable socket modifier '" +
+                    mod.kind + "' in group '" + group->group_id +
+                    "'; skipping");
+            continue;
+          }
+          compiled_modifiers.emplace_back(std::move(handler), std::move(data));
+        }
+
         for (const auto& socket_id : *sockets_to_fill) {
           auto sock_it = graph.node_lookup.find(socket_id);
           if (sock_it == graph.node_lookup.end())
@@ -229,6 +250,15 @@ std::optional<InstanceData> ModelGenerator::Generate(
           glm::mat4 socket_local =
               authored_inverse * sock_it->second->world_transform;
           glm::mat4 socket_world = pa.activator_world_transform * socket_local;
+
+          // Run authored socket modifiers (radial_align, jitter, etc)
+          if (!compiled_modifiers.empty()) {
+            SocketContext sock_ctx(socket_world, pa.activator_world_transform,
+                                   socket_id, rng);
+            for (const auto& [handler, data] : compiled_modifiers) {
+              handler(*data, sock_ctx);
+            }
+          }
 
           // DEBUG
           glm::vec3 sw(socket_world[3]);

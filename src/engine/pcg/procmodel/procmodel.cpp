@@ -138,7 +138,7 @@ ProcModel::ModelInstantiator::InstantiateResult Subsystem::RequestInstance(
   // Generate instance
   auto resolved = ProcModel::ModelGenerator::Generate(
       resource->GetGraph(), resource->GetDescriptor(), resource->GetPipeline(),
-      seed, 10, &ValidationLog());
+      operation_registry_, seed, 10, &ValidationLog());
   if (!resolved) {
     Logger::getInstance().Log(LogLevel::Warning,
                               "[ProcModel::Subsystem] Generation failed after "

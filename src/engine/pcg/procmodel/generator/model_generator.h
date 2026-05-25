@@ -13,6 +13,7 @@
 
 #include "engine/pcg/procmodel/generator/model_context.h"
 #include "engine/pcg/procmodel/generator/resolved_model.h"
+#include "engine/pcg/procmodel/generator/socket_context.h"
 
 #include "engine/pcg/procmodel/model_graph/model_graph.h"
 
@@ -30,8 +31,9 @@ class ModelGenerator {
 public:
   static std::optional<InstanceData> Generate(
       const ModelGraph& graph, const ModelDescriptor& descriptor,
-      const PCG::LinearPipeline& pipeline, uint64_t seed, int max_retries = 10,
-      ValidationLogger* validator_logger = nullptr);
+      const PCG::LinearPipeline& pipeline,
+      const PCG::OperationRegistry& operation_registry, uint64_t seed,
+      int max_retries = 10, ValidationLogger* validator_logger = nullptr);
 
 private:
   static bool IsValidSelection(

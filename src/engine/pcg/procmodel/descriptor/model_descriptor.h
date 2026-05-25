@@ -8,6 +8,8 @@
 #include <unordered_map>
 #include <vector>
 
+#include "engine/pcg/pipeline/pipeline_descriptor.h"
+
 namespace ProcModel {
 
 struct PartDescriptor {
@@ -40,10 +42,15 @@ struct SelectionGroup {
 
   // Scale inherited multiplicatively from this group's activator. A value of
   // 0.6 means: parts in this group are 60% the size of their parent's scale.
-  // Combined with parent's already-scaled value: leaves attached to a branch
-  // (scale 0.6) of a trunk (scale 1.0) end up at 0.6 × 0.6 = 0.36 of root.
+  // Combined with parent's already-scaled value: part attached to parent
+  // (scale 0.6) of a BASE (scale 1.0) end up at 0.6 × 0.6 = 0.36 of root.
   float scale_factor = 1.0f;
   std::optional<float> scale_jitter;  // ± random perturbation
+
+  // Socket modifiers: declarative transformations applied to each socket's
+  // world frame before a part is placed. Authored as a list of
+  // (kind, params) entries.
+  std::vector<PCG::PipelineEntry> socket_modifiers;
 };
 
 //
