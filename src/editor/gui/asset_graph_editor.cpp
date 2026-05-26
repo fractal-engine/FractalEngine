@@ -44,6 +44,9 @@
 #ifndef ICON_FA_FILE
 #define ICON_FA_FILE "New"
 #endif
+#ifndef ICON_FA_WRENCH
+#define ICON_FA_WRENCH "W"
+#endif
 
 namespace ed = ax::NodeEditor;
 
@@ -52,8 +55,12 @@ static bool s_show_not_implemented_popup = false;
 static bool s_show_error_popup = false;
 static std::string s_error_message = "";
 
-// Set up json serialization overloads so nlohmann can save our custom engine
-// structs
+// Raw JSON cache to preserve extra data (like deformations and pipeline)
+// that isn't strictly defined in the ModelDescriptor C++ struct.
+static nlohmann::json s_RawJsonCache;
+
+// --- JSON serialization definitions ---
+
 namespace glm {
 void to_json(nlohmann::json& j, const vec3& v) {
   j = nlohmann::json::array({v.x, v.y, v.z});
@@ -127,14 +134,14 @@ void to_json(nlohmann::json& j, const ModelDescriptor& m) {
 }
 }  // namespace ProcModel
 
-// Utility function to convert strings to unique numerical IDs for ImGui context
-// tracking
+// --- Utility Helpers ---
+
+// Converts strings to unique numerical IDs for ImGui context tracking
 static uintptr_t HashString(const std::string& str) {
   return std::hash<std::string>{}(str);
 }
 
-// Collapses lists of sockets (e.g. 620 entries) into a clean counted label
-// in the UI
+// Collapses lists of sockets into a clean counted label in the UI
 static std::map<std::string, int> GroupSocketPoints(
     const std::vector<std::string>& sockets) {
   std::map<std::string, int> grouped;
@@ -150,17 +157,14 @@ static std::map<std::string, int> GroupSocketPoints(
   return grouped;
 }
 
-// Extracts the parent category from a node's group ID (e.g., "_WINDOW_A"
-// becomes "WINDOW")
+// Extracts the parent category from a node's group ID
 static std::string ExtractCategoryName(const std::string& group_id) {
   std::string category = group_id;
 
-  // Strip leading underscores
   while (!category.empty() && category.front() == '_') {
     category.erase(0, 1);
   }
 
-  // Keep everything up to the next underscore
   size_t pos = category.find('_');
   if (pos != std::string::npos) {
     category = category.substr(0, pos);
@@ -169,23 +173,19 @@ static std::string ExtractCategoryName(const std::string& group_id) {
   return category;
 }
 
-// Generates a consistent, dark-pastel color for the node header based on its
-// category
+// Generates a consistent, dark-pastel color for the node header
 static ImU32 GenerateGroupHeaderColor(const std::string& group_id) {
   std::string category = ExtractCategoryName(group_id);
 
-  // Provide a neutral dark gray for the root base node
-  if (category == "BASE") {
+  if (category == "BASE" || category == "TRUNK") {
     return IM_COL32(70, 70, 70, 255);
   }
 
-  // Hash the category string to generate a deterministic rgb color
   size_t hash = std::hash<std::string>{}(category);
   int r = (hash & 0xFF0000) >> 16;
   int g = (hash & 0x00FF00) >> 8;
   int b = (hash & 0x0000FF);
 
-  // Mix the random color with a dark base
   r = (r + 40) / 2;
   g = (g + 40) / 2;
   b = (b + 80) / 2;
@@ -193,14 +193,27 @@ static ImU32 GenerateGroupHeaderColor(const std::string& group_id) {
   return IM_COL32(r, g, b, 255);
 }
 
-// Constructor: Initializes context and applies Unreal-style colors to
-// background grid
+// Retrieves or initializes deformation data for a given group ID from the cache
+static nlohmann::json& GetDeformationData(const std::string& group_id) {
+  if (!s_RawJsonCache.contains("part_deformation_ranges")) {
+    s_RawJsonCache["part_deformation_ranges"] = nlohmann::json::array();
+  }
+  for (auto& def : s_RawJsonCache["part_deformation_ranges"]) {
+    if (def.value("group_id", "") == group_id) {
+      return def;
+    }
+  }
+  s_RawJsonCache["part_deformation_ranges"].push_back({{"group_id", group_id}});
+  return s_RawJsonCache["part_deformation_ranges"].back();
+}
+
+// --- Editor Implementation ---
+
 AssetGraphEditor::AssetGraphEditor(PreviewData* data) : data_(data) {
   ed::Config config;
   config.SettingsFile = "AssetGraphEditor.json";
   m_EditorContext = ed::CreateEditor(&config);
 
-  // Set Unreal Engine style dark background and grid colors
   ed::SetCurrentEditor(m_EditorContext);
   ed::Style& style = ed::GetStyle();
   style.Colors[ed::StyleColor_Bg] =
@@ -214,7 +227,6 @@ AssetGraphEditor::~AssetGraphEditor() {
   ed::DestroyEditor(m_EditorContext);
 }
 
-// Loads a PCG graph file using the engine's built-in parser
 void AssetGraphEditor::LoadGraph(const std::string& filepath) {
   m_ModelData = ProcModel::ModelDescriptor{};
 
@@ -225,8 +237,11 @@ void AssetGraphEditor::LoadGraph(const std::string& filepath) {
     return;
   }
 
-  if (ProcModel::ModelDescriptorParser::FromJson(json_opt.value(),
-                                                 m_ModelData)) {
+  // Store the raw JSON to preserve deformation settings and unknown schemas
+  // safely
+  s_RawJsonCache = json_opt.value();
+
+  if (ProcModel::ModelDescriptorParser::FromJson(s_RawJsonCache, m_ModelData)) {
     m_CurrentFilePath = filepath;
     m_NeedsAutoLayout = true;
     Logger::getInstance().Log(LogLevel::Info,
@@ -241,8 +256,17 @@ void AssetGraphEditor::SaveGraph(const std::string& filepath) {
   if (filepath.empty())
     return;
 
+  // Convert the known struct data to JSON
   nlohmann::json j = m_ModelData;
-  if (!Content::WriteJsonFile(filepath, j, 2)) {
+
+  // Merge the known struct data back into the raw cache
+  // This updates topology but preserves 'pipeline' and
+  // 'part_deformation_ranges'
+  for (auto& el : j.items()) {
+    s_RawJsonCache[el.key()] = el.value();
+  }
+
+  if (!Content::WriteJsonFile(filepath, s_RawJsonCache, 2)) {
     s_error_message = "Failed to write to file:\n" + filepath;
     s_show_error_popup = true;
     Logger::getInstance().Log(LogLevel::Error,
@@ -264,18 +288,18 @@ void AssetGraphEditor::Render() {
   ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
   ImGui::Begin("Asset Graph", nullptr);
 
-  // Toolbar area rendering
+  // Toolbar area
   ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(8.0f, 8.0f));
   ImGui::BeginChild("GraphToolbar", ImVec2(0, 36.0f), true,
                     ImGuiWindowFlags_NoScrollbar);
 
-  // Tool to instantiate a brand new JSON graph from scratch
   if (ImGui::Button(ICON_FA_FILE " New")) {
     m_ModelData = ProcModel::ModelDescriptor{};
     m_ModelData.model_id = "new_model";
     m_ModelData.model_name = "New Model";
 
-    // Set up a default root node so the editor is not blank
+    s_RawJsonCache = nlohmann::json::object();
+
     ProcModel::SelectionGroup root_group;
     root_group.group_id = "_BASE_";
     root_group.required = true;
@@ -300,7 +324,6 @@ void AssetGraphEditor::Render() {
                                              "Select Descriptor", ".json", cfg);
   }
 
-  // Handle file load dialog results
   if (IGFD::FileDialog::Instance()->Display("GraphLoadDlg",
                                             ImGuiWindowFlags_NoCollapse,
                                             ImVec2(700.0f, 500.0f))) {
@@ -312,8 +335,6 @@ void AssetGraphEditor::Render() {
 
   ImGui::SameLine();
 
-  // Save current changes (Triggers Save As if the file has never been saved
-  // before)
   if (ImGui::Button(ICON_FA_FLOPPY_DISK " Save")) {
     if (m_CurrentFilePath.empty()) {
       IGFD::FileDialogConfig cfg{};
@@ -334,14 +355,12 @@ void AssetGraphEditor::Render() {
         "GraphSaveAsDlg", "Save Descriptor As", ".json", cfg);
   }
 
-  // Handle file save as dialog results
   if (IGFD::FileDialog::Instance()->Display("GraphSaveAsDlg",
                                             ImGuiWindowFlags_NoCollapse,
                                             ImVec2(700.0f, 500.0f))) {
     if (IGFD::FileDialog::Instance()->IsOk()) {
       m_CurrentFilePath = IGFD::FileDialog::Instance()->GetFilePathName();
 
-      // Update model metadata internally to match the new filename
       std::string filename = std::filesystem::path(m_CurrentFilePath)
                                  .make_preferred()
                                  .stem()
@@ -356,8 +375,6 @@ void AssetGraphEditor::Render() {
     IGFD::FileDialog::Instance()->Close();
   }
 
-  // Handle the file dialog for selecting the 3D model scene path
-  // (.glb/.gltf)
   if (IGFD::FileDialog::Instance()->Display("ModelPathDlg",
                                             ImGuiWindowFlags_NoCollapse,
                                             ImVec2(700.0f, 500.0f))) {
@@ -378,8 +395,6 @@ void AssetGraphEditor::Render() {
     m_ModelData.selection_groups.push_back(new_group);
   }
 
-  // Add dummy buttons for unimplemented features to prevent crashes and guide
-  // users
   ImGui::SameLine();
   if (ImGui::Button(ICON_FA_SLIDERS " Constraints")) {
     s_show_not_implemented_popup = true;
@@ -398,8 +413,7 @@ void AssetGraphEditor::Render() {
   ImGui::EndChild();
   ImGui::PopStyleVar();
 
-  // Safety Dialogue Modals to gracefully handle unfinished features or file
-  // errors
+  // Safety dialogue modals
   if (s_show_not_implemented_popup) {
     ImGui::OpenPopup("Feature Under Development");
     s_show_not_implemented_popup = false;
@@ -431,123 +445,140 @@ void AssetGraphEditor::Render() {
     ImGui::EndPopup();
   }
 
-  // Render the actual node graph workspace
   RenderNodeGraph();
 
   ImGui::End();
   ImGui::PopStyleVar();
 }
 
+// --- Layout algorithm ---
 // Automatically organizes nodes into a clean horizontal tree structure
 void AssetGraphEditor::AutoLayoutNodes() {
   if (m_ModelData.selection_groups.empty())
     return;
 
-  std::unordered_map<std::string, std::string> partToGroup;
-  for (const auto& group : m_ModelData.selection_groups) {
-    for (const auto& part : group.parts) {
-      partToGroup[part.id] = group.group_id;
+  // Map parts to their parent group index to avoid identical group_id conflicts
+  std::unordered_map<std::string, int> partToGroupIdx;
+  for (int i = 0; i < m_ModelData.selection_groups.size(); ++i) {
+    for (const auto& part : m_ModelData.selection_groups[i].parts) {
+      partToGroupIdx[part.id] = i;
     }
   }
 
-  std::unordered_map<std::string, std::vector<ProcModel::SelectionGroup*>> tree;
-  std::vector<ProcModel::SelectionGroup*> roots;
+  std::unordered_map<int, std::vector<int>> tree;
+  std::vector<int> roots;
 
   // Build the hierarchical tree based on 'parent' links
-  for (auto& group : m_ModelData.selection_groups) {
+  for (int i = 0; i < m_ModelData.selection_groups.size(); ++i) {
+    auto& group = m_ModelData.selection_groups[i];
     if (group.parent.empty()) {
-      roots.push_back(&group);
+      roots.push_back(i);
     } else {
       // Attach to the first parent's group for layout purposes.
       // Multi-parent groups will visually appear under one branch;
       // the other connections still render as links.
       const std::string& first_parent_part = group.parent.front();
-      std::string parentGroupId = partToGroup[first_parent_part];
-      if (parentGroupId.empty()) {
-        roots.push_back(&group);
+      if (partToGroupIdx.count(first_parent_part) == 0) {
+        roots.push_back(i);
       } else {
-        tree[parentGroupId].push_back(&group);
+        tree[partToGroupIdx[first_parent_part]].push_back(i);
       }
     }
   }
 
-  std::unordered_map<std::string, float> nodeHeights;
-  std::unordered_map<std::string, float> subtreeHeights;
-  std::unordered_set<std::string> visited;
+  std::unordered_map<int, float> nodeHeights;
+  std::unordered_map<int, float> subtreeHeights;
+  std::unordered_set<int> visited;
 
   // First pass: compute the total height required by each branch to avoid
   // overlapping
-  std::function<float(ProcModel::SelectionGroup*)> computeHeight =
-      [&](ProcModel::SelectionGroup* node) {
-        if (visited.count(node->group_id))
-          return 0.0f;
-        visited.insert(node->group_id);
+  std::function<float(int)> computeHeight = [&](int node_idx) {
+    if (visited.count(node_idx))
+      return 0.0f;
+    visited.insert(node_idx);
 
-        float h = 100.0f + (node->parts.size() * 32.0f);
+    auto& node = m_ModelData.selection_groups[node_idx];
+    float h = 100.0f + (node.parts.size() * 32.0f);
 
-        // Add height if any part in this group declares explicit sockets
-        // (auto-detected sockets aren't visible to the editor)
-        // ! Check if we should reveal auto-detected sockets
-        bool has_explicit_sockets =
-            node->sockets.has_value() && !node->sockets->empty();
-        if (has_explicit_sockets)
-          h += 35.0f;
-        nodeHeights[node->group_id] = h;
+    bool has_explicit_sockets =
+        node.sockets.has_value() && !node.sockets->empty();
+    if (has_explicit_sockets)
+      h += 35.0f;
 
-        float childrenH = 0.0f;
-        if (tree.count(node->group_id)) {
-          for (auto* child : tree[node->group_id]) {
-            childrenH += computeHeight(child) + 40.0f;
+    // Dynamically calculate height if deformation settings exist for this group
+    bool has_deformations = false;
+    if (s_RawJsonCache.contains("part_deformation_ranges")) {
+      for (auto& def : s_RawJsonCache["part_deformation_ranges"]) {
+        if (def.value("group_id", "") == node.group_id) {
+          has_deformations = true;
+          // Add height for each numeric slider dynamically mapped
+          for (auto& el : def.items()) {
+            if (el.value().is_number())
+              h += 30.0f;
           }
-          if (childrenH > 0)
-            childrenH -= 40.0f;
+          break;
         }
-        subtreeHeights[node->group_id] = std::max(h, childrenH);
-        return subtreeHeights[node->group_id];
-      };
+      }
+    }
+    if (has_deformations)
+      h += 40.0f;  // Padding for the folder toggle
 
-  for (auto* root : roots)
+    nodeHeights[node_idx] = h;
+
+    float childrenH = 0.0f;
+    if (tree.count(node_idx)) {
+      for (int child_idx : tree[node_idx]) {
+        childrenH += computeHeight(child_idx) + 40.0f;
+      }
+      if (childrenH > 0)
+        childrenH -= 40.0f;
+    }
+    subtreeHeights[node_idx] = std::max(h, childrenH);
+    return subtreeHeights[node_idx];
+  };
+
+  for (int root : roots)
     computeHeight(root);
 
   // Second pass: physically assign positions based on the heights calculated
   visited.clear();
-  std::function<void(ProcModel::SelectionGroup*, int, float)> placeNode =
-      [&](ProcModel::SelectionGroup* node, int depth, float startY) {
-        if (visited.count(node->group_id))
-          return;
-        visited.insert(node->group_id);
+  std::function<void(int, int, float)> placeNode = [&](int node_idx, int depth,
+                                                       float startY) {
+    if (visited.count(node_idx))
+      return;
+    visited.insert(node_idx);
 
-        ed::NodeId id = HashString(node->group_id);
-        float x = depth * 420.0f;
+    auto& node = m_ModelData.selection_groups[node_idx];
+    // Create highly unique ID combining group ID and array index
+    ed::NodeId id = HashString(node.group_id + "_" + std::to_string(node_idx));
 
-        // Center the parent node vertically relative to its children
-        float y = startY + (subtreeHeights[node->group_id] -
-                            nodeHeights[node->group_id]) *
-                               0.5f;
-        ed::SetNodePosition(id, ImVec2(x, y));
+    float x = depth * 420.0f;
+    float y =
+        startY + (subtreeHeights[node_idx] - nodeHeights[node_idx]) * 0.5f;
+    ed::SetNodePosition(id, ImVec2(x, y));
 
-        if (tree.count(node->group_id)) {
-          float childY = startY;
-          for (auto* child : tree[node->group_id]) {
-            placeNode(child, depth + 1, childY);
-            childY += subtreeHeights[child->group_id] + 40.0f;
-          }
-        }
-      };
+    if (tree.count(node_idx)) {
+      float childY = startY;
+      for (int child_idx : tree[node_idx]) {
+        placeNode(child_idx, depth + 1, childY);
+        childY += subtreeHeights[child_idx] + 40.0f;
+      }
+    }
+  };
 
   float currentRootY = 0.0f;
-  for (auto* root : roots) {
+  for (int root : roots) {
     placeNode(root, 0, currentRootY);
-    currentRootY += subtreeHeights[root->group_id] + 80.0f;
+    currentRootY += subtreeHeights[root] + 80.0f;
   }
 }
 
+// --- Node Graph Loop ---
 void AssetGraphEditor::RenderNodeGraph() {
   // Capture the editor's screen space coordinates before starting it
   ImVec2 editor_pos = ImGui::GetCursorScreenPos();
   ImVec2 editor_size = ImGui::GetContentRegionAvail();
 
-  // ! Patch until RenderNodeGraph is refactored
   // Skip rendering if canvas is not yet valid
   if (editor_size.x < 10.0f || editor_size.y < 10.0f)
     return;
@@ -565,18 +596,19 @@ void AssetGraphEditor::RenderNodeGraph() {
 
   m_PinIdToString.clear();
   m_PinIdToGroup.clear();
+  std::unordered_map<uintptr_t, int> m_InputPinToGroupIdx;
 
-  const float nodeWidth =
-      300.0f;  // Wider node to accommodate safely padded input fields
+  const float nodeWidth = 300.0f;
 
-  int group_index =
-      0;  // Ensures ImGui text input fields stay stable across updates
+  int group_index = 0;
   for (auto& group : m_ModelData.selection_groups) {
     // Tighten node padding horizontally so pins can sit nicely on the outer
     // edges
     ed::PushStyleVar(ed::StyleVar_NodePadding, ImVec4(4.0f, 8.0f, 4.0f, 8.0f));
 
-    ed::NodeId nodeId = HashString(group.group_id);
+    // Guarantee unique IDs for identical group_ids
+    ed::NodeId nodeId =
+        HashString(group.group_id + "_" + std::to_string(group_index));
     ed::BeginNode(nodeId);
 
     // Capture the exact top-left coordinate of the node's content area
@@ -615,8 +647,10 @@ void AssetGraphEditor::RenderNodeGraph() {
         std::string new_id = group_id_buf;
         if (new_id != group.group_id && !new_id.empty()) {
           // Transfer current node position to the renamed hash-id
-          ed::NodeId old_id = HashString(group.group_id);
-          ed::NodeId new_id_hash = HashString(new_id);
+          ed::NodeId old_id =
+              HashString(group.group_id + "_" + std::to_string(group_index));
+          ed::NodeId new_id_hash =
+              HashString(new_id + "_" + std::to_string(group_index));
           ed::SetNodePosition(new_id_hash, ed::GetNodePosition(old_id));
           group.group_id = new_id;
         }
@@ -638,8 +672,9 @@ void AssetGraphEditor::RenderNodeGraph() {
 
     // Only draw the "Activate" input pin for non-root nodes
     if (group.group_id != "_BASE_") {
-      ed::PinId inputPinId = HashString(group.group_id + "_IN");
-      m_PinIdToGroup[inputPinId.Get()] = &group;
+      ed::PinId inputPinId =
+          HashString(group.group_id + "_IN_" + std::to_string(group_index));
+      m_InputPinToGroupIdx[inputPinId.Get()] = group_index;
 
       ed::BeginPin(inputPinId, ed::PinKind::Input);
       ImVec2 posIn = ImGui::GetCursorScreenPos();
@@ -661,8 +696,8 @@ void AssetGraphEditor::RenderNodeGraph() {
       ImGui::TextColored(ImVec4(0.4f, 0.8f, 0.4f, 1.0f), "Root Node");
 
       // Let the user define the global model .glb path via a text field and
-      // File Picker button
-      ImGui::Dummy(ImVec2(0, 8));  // Padding before
+      // file picker button
+      ImGui::Dummy(ImVec2(0, 8));
 
       ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 12.0f);
       ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.6f, 0.6f, 0.6f, 1.0f));
@@ -688,8 +723,10 @@ void AssetGraphEditor::RenderNodeGraph() {
 
       // Add File Picker Button right next to the text input
       ImGui::SameLine();
-      if (ImGui::Button(ICON_FA_FOLDER_OPEN "##pick_model",
-                        ImVec2(folderBtnWidth, 0))) {
+      if (ImGui::Button(
+              (ICON_FA_FOLDER_OPEN "##pick_model" + std::to_string(group_index))
+                  .c_str(),
+              ImVec2(folderBtnWidth, 0))) {
         IGFD::FileDialogConfig cfg{};
         cfg.path = std::filesystem::current_path().string();
         // Open a file dialog restricted to 3D model formats
@@ -697,16 +734,14 @@ void AssetGraphEditor::RenderNodeGraph() {
             "ModelPathDlg", "Select Scene File", ".glb,.gltf", cfg);
       }
 
-      ImGui::Dummy(ImVec2(0, 8));  // Padding after
+      ImGui::Dummy(ImVec2(0, 8));
     }
 
     // Display socket summaries if any part declares explicit sockets
     std::vector<std::string> all_sockets;
-    for (const auto& part : group.parts) {
-      if (group.sockets) {
-        all_sockets = *group.sockets;
-      }
-    }
+    if (group.sockets)
+      all_sockets = *group.sockets;
+
     if (!all_sockets.empty()) {
       ImGui::Dummy(ImVec2(0, 4));
       auto grouped_sockets = GroupSocketPoints(all_sockets);
@@ -720,6 +755,92 @@ void AssetGraphEditor::RenderNodeGraph() {
       }
       ImGui::PopStyleColor();
       ImGui::Dummy(ImVec2(0, 4));
+    }
+
+    // --- Dynamic deformation settings toggle ---
+    nlohmann::json* def_data_ptr = nullptr;
+    if (s_RawJsonCache.contains("part_deformation_ranges")) {
+      for (auto& def : s_RawJsonCache["part_deformation_ranges"]) {
+        if (def.value("group_id", "") == group.group_id) {
+          def_data_ptr = &def;
+          break;
+        }
+      }
+    }
+
+    // Only render the deformation settings if they explicitly exist for this
+    // group
+    if (def_data_ptr != nullptr) {
+      ImGui::Dummy(ImVec2(0, 4));
+      ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 8.0f);
+
+      // Fetch open state safely using ImGui storage
+      ImGuiID deform_id =
+          ImGui::GetID(("deform_" + std::to_string(group_index)).c_str());
+      bool deform_open = ImGui::GetStateStorage()->GetInt(deform_id, 0);
+
+      ImVec2 start_pos = ImGui::GetCursorScreenPos();
+      ImVec2 btn_size =
+          ImVec2(nodeWidth - 16.0f, ImGui::GetTextLineHeight() + 8.0f);
+
+      // Invisible button replaces TreeNode to fix the infinite width highlight
+      // bug inside NodeEditor
+      bool clicked = ImGui::InvisibleButton(
+          ("##def_toggle_" + std::to_string(group_index)).c_str(), btn_size);
+      bool hovered = ImGui::IsItemHovered();
+
+      if (clicked) {
+        deform_open = !deform_open;
+        ImGui::GetStateStorage()->SetInt(deform_id, deform_open);
+      }
+
+      // Draw subtle background highlight if hovered
+      if (hovered) {
+        ImGui::GetWindowDrawList()->AddRectFilled(
+            start_pos,
+            ImVec2(start_pos.x + btn_size.x, start_pos.y + btn_size.y),
+            IM_COL32(255, 255, 255, 25), 4.0f);
+      }
+
+      // Draw text on top of the invisible button area
+      ImGui::SetCursorScreenPos(ImVec2(start_pos.x + 8.0f, start_pos.y + 4.0f));
+      ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.8f, 0.6f, 0.9f, 1.0f));
+      std::string deform_label =
+          (deform_open ? "- " : "+ ") + std::string("Deformation Settings");
+      ImGui::TextUnformatted(deform_label.c_str());
+      ImGui::PopStyleColor();
+
+      // Move cursor below the button for the next elements
+      ImGui::SetCursorScreenPos(
+          ImVec2(start_pos.x - 8.0f, start_pos.y + btn_size.y + 4.0f));
+
+      if (deform_open) {
+        // Dynamically iterate over all keys in the deformation json object
+        // This prevents hardcoding schemas and scales automatically
+        for (auto& el : def_data_ptr->items()) {
+          if (el.key() == "group_id")
+            continue;  // Skip the identifier string
+
+          if (el.value().is_number()) {
+            float val = el.value().get<float>();
+            ImGui::SetCursorPosX(ImGui::GetCursorPosX() +
+                                 16.0f);  // Extra indent for children
+            ImGui::TextDisabled("%s", el.key().c_str());
+
+            ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 16.0f);
+            ImGui::SetNextItemWidth(nodeWidth -
+                                    48.0f);  // Adjust width for indent
+
+            // Unique slider ID mapping
+            if (ImGui::DragFloat(
+                    ("##" + el.key() + std::to_string(group_index)).c_str(),
+                    &val, 0.01f)) {
+              el.value() = val;  // Write the float back to the json object
+            }
+          }
+        }
+        ImGui::Dummy(ImVec2(0, 4));
+      }
     }
 
     // Draw a horizontal line separating the settings from the output styles
@@ -752,8 +873,7 @@ void AssetGraphEditor::RenderNodeGraph() {
       // Strict constraint on text box width to guarantee horizontal clearance
       // for the output pin
       ImGui::SetNextItemWidth(nodeWidth - 130.0f);
-      ImGui::PushStyleColor(ImGuiCol_FrameBg,
-                            IM_COL32(20, 20, 20, 255));  // darker input box
+      ImGui::PushStyleColor(ImGuiCol_FrameBg, IM_COL32(20, 20, 20, 255));
 
       std::string part_ui_id = "##partid_" + std::to_string(group_index) + "_" +
                                std::to_string(part_index);
@@ -795,7 +915,9 @@ void AssetGraphEditor::RenderNodeGraph() {
     ImGui::Dummy(ImVec2(0, 5));
     ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 8.0f);
 
-    ImGui::PushID(group.group_id.c_str());
+    // Using group_index guarantees the ImGui context remains unique across
+    // groups with identical IDs
+    ImGui::PushID(group_index);
     if (ImGui::Button("+ Add Part", ImVec2(nodeWidth - 16.0f, 0))) {
       ProcModel::PartDescriptor new_part;
       new_part.id =
@@ -812,41 +934,49 @@ void AssetGraphEditor::RenderNodeGraph() {
     group_index++;
   }
 
-  // Render all active connections between nodes
+  // --- Render links ---
   int link_id_counter = 1;
+  int target_group_idx = 0;
+  std::unordered_map<uintptr_t, std::pair<int, std::string>> m_LinkIdToData;
+
   for (const auto& group : m_ModelData.selection_groups) {
     for (const auto& parent_id : group.parent) {
-      ed::LinkId linkId = link_id_counter++;
+      int current_link_id = link_id_counter++;
+      ed::LinkId linkId = current_link_id;
+
       ed::PinId outputPinId = HashString(parent_id);
-      ed::PinId inputPinId = HashString(group.group_id + "_IN");
+      ed::PinId inputPinId = HashString(group.group_id + "_IN_" +
+                                        std::to_string(target_group_idx));
 
       ed::Link(linkId, outputPinId, inputPinId, ImVec4(0.3f, 0.7f, 0.9f, 1.0f),
                2.0f);
+      m_LinkIdToData[current_link_id] = {target_group_idx, parent_id};
     }
+    target_group_idx++;
   }
 
-  // Process user interactions for creating new links
+  // --- Process user interactions for creating new links ---
   if (ed::BeginCreate()) {
     ed::PinId inputPinId, outputPinId;
     if (ed::QueryNewLink(&inputPinId, &outputPinId)) {
-      ProcModel::SelectionGroup* targetGroup = nullptr;
+      int target_idx = -1;
       std::string sourcePartId = "";
 
       // Ensure connection flows from an output pin to an input pin
-      if (m_PinIdToGroup.count(inputPinId.Get()) &&
+      if (m_InputPinToGroupIdx.count(inputPinId.Get()) &&
           m_PinIdToString.count(outputPinId.Get())) {
-        targetGroup = m_PinIdToGroup[inputPinId.Get()];
+        target_idx = m_InputPinToGroupIdx[inputPinId.Get()];
         sourcePartId = m_PinIdToString[outputPinId.Get()];
-      } else if (m_PinIdToGroup.count(outputPinId.Get()) &&
+      } else if (m_InputPinToGroupIdx.count(outputPinId.Get()) &&
                  m_PinIdToString.count(inputPinId.Get())) {
-        targetGroup = m_PinIdToGroup[outputPinId.Get()];
+        target_idx = m_InputPinToGroupIdx[outputPinId.Get()];
         sourcePartId = m_PinIdToString[inputPinId.Get()];
       }
 
-      if (targetGroup && !sourcePartId.empty()) {
+      if (target_idx != -1 && !sourcePartId.empty()) {
         if (ed::AcceptNewItem(ImVec4(0.3f, 0.9f, 0.3f, 1.0f), 2.0f)) {
           // Append parent, multiple parents allowed
-          auto& parents = targetGroup->parent;
+          auto& parents = m_ModelData.selection_groups[target_idx].parent;
           if (std::find(parents.begin(), parents.end(), sourcePartId) ==
               parents.end()) {
             parents.push_back(sourcePartId);
@@ -859,26 +989,21 @@ void AssetGraphEditor::RenderNodeGraph() {
   }
   ed::EndCreate();
 
-  // Process user interactions for deleting existing links
+  // --- Process user interactions for deleting existing links ---
   if (ed::BeginDelete()) {
     ed::LinkId deletedLinkId;
     if (ed::QueryDeletedLink(&deletedLinkId)) {
       if (ed::AcceptDeletedItem()) {
-        int link_idx = 1;
-        bool done = false;
-        for (auto& group : m_ModelData.selection_groups) {
-          for (auto pit = group.parent.begin();
-               pit != group.parent.end() && !done;) {
-            if (link_idx == deletedLinkId.Get()) {
-              pit = group.parent.erase(pit);
-              done = true;
-            } else {
-              ++pit;
-              ++link_idx;
+        if (m_LinkIdToData.count(deletedLinkId.Get())) {
+          auto data = m_LinkIdToData[deletedLinkId.Get()];
+          auto& parents = m_ModelData.selection_groups[data.first].parent;
+
+          for (auto it = parents.begin(); it != parents.end(); ++it) {
+            if (*it == data.second) {
+              parents.erase(it);
+              break;
             }
           }
-          if (done)
-            break;
         }
       }
     }
@@ -892,7 +1017,8 @@ void AssetGraphEditor::RenderNodeGraph() {
 
   ed::End();
 
-  // Get the current zoom level from the node editor
+  // --- Draw the text overlay floating in the top-right corner of the canvas
+  // view ---
   float zoom = ed::GetCurrentZoom();
   std::string zoom_text;
   if (std::abs(zoom - 1.0f) < 0.01f) {
@@ -903,12 +1029,10 @@ void AssetGraphEditor::RenderNodeGraph() {
                 "%";
   }
 
-  // Draw the text overlay floating in the top-right corner of the canvas view
   ImVec2 text_size = ImGui::CalcTextSize(zoom_text.c_str());
   ImVec2 text_pos = ImVec2(editor_pos.x + editor_size.x - text_size.x - 16.0f,
                            editor_pos.y + 16.0f);
 
-  // Use GetWindowDrawList so the text sits permanently on top of the node grid
   ImGui::GetWindowDrawList()->AddText(text_pos, IM_COL32(180, 180, 180, 255),
                                       zoom_text.c_str());
 
