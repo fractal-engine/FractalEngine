@@ -29,6 +29,14 @@ private:
   void AutoLayoutNodes();
   bool m_NeedsAutoLayout = false;
 
+  // Safe JSON mapping for Drag & Drop Interactions
+  std::unordered_map<uintptr_t, std::string>
+      m_OutputPinToPartId;  // Output Pin -> Part String ID
+  std::unordered_map<uintptr_t, int>
+      m_InputPinToGroupIdx;  // Input Pin -> Target Group Index
+  std::unordered_map<uintptr_t, std::pair<int, std::string>>
+      m_LinkIdToData;  // Link ID -> {TargetIdx, SourcePart}
+
   ax::NodeEditor::EditorContext* m_EditorContext = nullptr;
   PreviewData* data_ = nullptr;
 
