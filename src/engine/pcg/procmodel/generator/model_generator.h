@@ -18,14 +18,8 @@
 #include "engine/pcg/procmodel/model_graph/model_graph.h"
 
 #include "engine/pcg/procmodel/validation/procmodel_validator.h"
-#include "engine/pcg/procmodel/validation/validation_logger.h"
 
 namespace ProcModel {
-
-struct InstanceData {
-  InstanceModel model;
-  std::vector<InstanceGeometry> instance_geometry;
-};
 
 class ModelGenerator {
 public:
@@ -33,7 +27,8 @@ public:
       const ModelGraph& graph, const ModelDescriptor& descriptor,
       const PCG::LinearPipeline& pipeline,
       const PCG::OperationRegistry& operation_registry, uint64_t seed,
-      int max_retries = 10, ValidationLogger* validator_logger = nullptr);
+      int max_retries = 10,
+      std::vector<ProcModelSample>* out_samples = nullptr);
 
 private:
   static bool IsValidSelection(

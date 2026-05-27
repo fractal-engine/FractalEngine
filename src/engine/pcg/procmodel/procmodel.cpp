@@ -116,10 +116,53 @@ ResourceID Subsystem::LoadArchetype(const std::string& descriptor_path) {
   return id;
 }
 
+std::optional<ProcModel::InstanceData> Subsystem::GenerateInstance(
+    const std::string& descriptor_path, uint64_t seed) {
+  ResourceID resource_id = LoadArchetype(descriptor_path);
+  if (resource_id == 0)
+    return std::nullopt;
+
+  auto& resource_mgr = EngineContext::resourceManager();
+  auto resource =
+      resource_mgr.GetResourceAs<ProcModel::ProcModelResource>(resource_id);
+  if (!resource || !resource->IsResolved()) {
+    Logger::getInstance().Log(LogLevel::Error,
+                              "[ProcModel::Subsystem] Resource not ready");
+    return std::nullopt;
+  }
+
+  std::vector<ProcModelSample> attempt_samples;
+  auto output = ProcModel::ModelGenerator::Generate(
+      resource->GetGraph(), resource->GetDescriptor(), resource->GetPipeline(),
+      operation_registry_, seed, 10, &attempt_samples);
+
+  // Route samples to log + ERA buffer
+  for (const auto& s : attempt_samples) {
+    ValidationLog().Write(s);
+  }
+  samples_.insert(samples_.end(),
+                  std::make_move_iterator(attempt_samples.begin()),
+                  std::make_move_iterator(attempt_samples.end()));
+
+  if (!output) {
+    Logger::getInstance().Log(LogLevel::Warning,
+                              "[ProcModel::Subsystem] Generation failed after "
+                              "max retries for seed: " +
+                                  std::to_string(seed));
+    return std::nullopt;
+  }
+
+  return output;
+}
+
 // TODO: move load/build/resolve steps into a background ResourcePipe task,
 // and the GPU upload into a UseRenderThread task. This will be needed
 // so the pipeline doesn't block the frame
-ProcModel::ModelInstantiator::InstantiateResult Subsystem::RequestInstance(
+// TODO: Instantiate() currently ignores InstanceData::instance_geometry,
+// so ECS-instantiated entities render undeformed source meshes.
+// We need to wire instance_geometry through Instantiate when scene placement
+// UX is needed. No need to refactor Editor preview path
+ProcModel::ModelInstantiator::InstantiateResult Subsystem::SpawnInstance(
     const std::string& descriptor_path, uint64_t seed, Entity parent) {
 
   ResourceID resource_id = LoadArchetype(descriptor_path);
@@ -136,9 +179,19 @@ ProcModel::ModelInstantiator::InstantiateResult Subsystem::RequestInstance(
   }
 
   // Generate instance
+  std::vector<ProcModelSample> attempt_samples;
   auto resolved = ProcModel::ModelGenerator::Generate(
       resource->GetGraph(), resource->GetDescriptor(), resource->GetPipeline(),
-      operation_registry_, seed, 10, &ValidationLog());
+      operation_registry_, seed, 10, &attempt_samples);
+
+  // Log every sample produced by this request, accumulate for ERA
+  for (const auto& s : attempt_samples) {
+    ValidationLog().Write(s);
+  }
+  samples_.insert(samples_.end(),
+                  std::make_move_iterator(attempt_samples.begin()),
+                  std::make_move_iterator(attempt_samples.end()));
+
   if (!resolved) {
     Logger::getInstance().Log(LogLevel::Warning,
                               "[ProcModel::Subsystem] Generation failed after "
@@ -159,6 +212,13 @@ ValidationLogger& Subsystem::ValidationLog() {
   return *validation_logger_;
 }
 
+void Subsystem::ResetSamples() {
+  samples_.clear();
+  if (validation_logger_) {
+    validation_logger_.reset();
+  }
+}
+
 void Subsystem::Shutdown() {
 
   // Generate ERA metrics at shutdown
@@ -167,7 +227,7 @@ void Subsystem::Shutdown() {
   if (!validation_logger_)
     return;
 
-  const auto& samples = validation_logger_->GetSamples();
+  const auto& samples = samples_;
   if (samples.empty())
     return;
 

@@ -287,7 +287,7 @@ void GameTest::Init() {
 
   // ── Procmodel vertical slice test ──
   auto& pcg = EngineContext::PCG().GetProcModel();
-  auto result = pcg.RequestInstance(
+  auto result = pcg.SpawnInstance(
       "/Users/louismercier/Projects/FractalEngine/build/macosx/x86_64/release/"
       "examples/example-project/test_model.json",
       3);

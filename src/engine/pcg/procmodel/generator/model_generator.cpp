@@ -6,6 +6,7 @@
 
 #include "engine/pcg/pipeline/linear_pipeline.h"
 #include "engine/pcg/procmodel/generator/model_context.h"
+#include "engine/pcg/procmodel/generator/model_generator.h"
 
 #include "engine/core/logger.h"
 
@@ -76,7 +77,7 @@ std::optional<InstanceData> ModelGenerator::Generate(
     const ModelGraph& graph, const ModelDescriptor& descriptor,
     const PCG::LinearPipeline& pipeline,
     const PCG::OperationRegistry& operation_registry, uint64_t seed,
-    int max_retries, ValidationLogger* validator_logger) {
+    int max_retries, std::vector<ProcModelSample>* out_samples) {
 
   for (int attempt = 0; attempt < max_retries; ++attempt) {
     pcg32 rng(seed + attempt);
@@ -381,17 +382,31 @@ std::optional<InstanceData> ModelGenerator::Generate(
       // Final constraint check
       if (ValidateConstraints(selected_ids, descriptor.constraints)) {
         // Post-generation validation
-        if (validator_logger) {
+        if (out_samples) {
           ProcModelSample vr =
               ProcModelValidator::Validate(result, graph, descriptor, attempt);
-          validator_logger->Write(vr);
-          Logger::getInstance().Log(
-              LogLevel::Debug,
-              "[Generator] Validation: passed=" + std::to_string(vr.passed) +
-                  " diagnostics=" + std::to_string(vr.diagnostics.size()));
+
+          out_samples->push_back(vr);
           if (!vr.passed) {
+            std::string reason = "unknown";
+            for (const auto& d : vr.diagnostics) {
+              if (d.severity == Diagnostic::Severity::Error) {
+                reason = d.code;
+                break;
+              }
+            }
+            Logger::getInstance().Log(
+                LogLevel::Warning,
+                "[Generator] Attempt " + std::to_string(attempt) +
+                    " rejected: " + reason +
+                    " (seed=" + std::to_string(seed + attempt) + ")");
             continue;  // Retry with next seed
           }
+
+          Logger::getInstance().Log(
+              LogLevel::Debug,
+              "[Generator] Attempt " + std::to_string(attempt) +
+                  " accepted (seed=" + std::to_string(seed + attempt) + ")");
         }
 
         InstanceData out;

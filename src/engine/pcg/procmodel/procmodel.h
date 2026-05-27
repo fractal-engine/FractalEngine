@@ -6,6 +6,7 @@
 #include "engine/pcg/pipeline/operation_registry.h"
 
 #include "engine/pcg/procmodel/generator/operations.h"
+#include "engine/pcg/procmodel/generator/resolved_model.h"
 #include "engine/pcg/procmodel/instantiator/model_instantiator.h"
 #include "engine/pcg/procmodel/validation/validation_logger.h"
 
@@ -18,24 +19,31 @@ public:
 
   void Init();
   void Shutdown();
+  void ResetSamples();
 
-  ResourceID LoadArchetype(const std::string& descriptor_path);
+  std::optional<ProcModel::InstanceData> GenerateInstance(
+      const std::string& descriptor_path, uint64_t seed);
 
-  ModelInstantiator::InstantiateResult RequestInstance(
+  // TODO: Add logic to instantiate deformation (missing)
+  ModelInstantiator::InstantiateResult SpawnInstance(
       const std::string& descriptor_path, uint64_t seed,
       Entity parent = entt::null);
-
-  ValidationLogger& ValidationLog();
 
   PCG::OperationRegistry& GetOperationRegistry() { return operation_registry_; }
   const PCG::OperationRegistry& GetOperationRegistry() const {
     return operation_registry_;
   }
 
+  ValidationLogger& ValidationLog();
+
+  ResourceID LoadArchetype(const std::string& descriptor_path);
+
 private:
   PCG::OperationRegistry operation_registry_;
   std::unique_ptr<ValidationLogger> validation_logger_;
   std::unordered_map<std::string, ResourceID> procmodel_cache_;
+
+  std::vector<ProcModelSample> samples_;
 };
 
 }  // namespace ProcModel

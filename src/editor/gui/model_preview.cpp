@@ -5,6 +5,7 @@
 #define GLM_ENABLE_EXPERIMENTAL
 #include <algorithm>
 #include <glm/gtx/matrix_decompose.hpp>
+#include <string>
 
 #include <ImGuiFileDialog/ImGuiFileDialog.h>
 
@@ -15,7 +16,6 @@
 #include "engine/memory/resource_manager.h"
 #include "engine/renderer/model/model.h"
 
-#include "engine/pcg/procmodel/generator/model_generator.h"
 #include "engine/pcg/procmodel/procmodel_resource.h"
 
 ModelPreview::ModelPreview(PreviewData* data) : data_(data) {}
@@ -66,6 +66,9 @@ void ModelPreview::LoadDescriptor(const std::string& path) {
   }
 }
 
+// TODO: Move per-instance Model construction out of editor
+// - Implement a 'BuildRenderModel' for it (instantiator?)
+// - do not implement the TODO into the procmodel subsystem
 void ModelPreview::TickGenerate() {
   if (images_generated_ >= total_instances_)
     return;
@@ -73,31 +76,24 @@ void ModelPreview::TickGenerate() {
   if (data_->archetype_id == 0)
     return;
 
-  auto& resource_mgr = EngineContext::resourceManager();
-  auto resource = resource_mgr.GetResourceAs<ProcModel::ProcModelResource>(
-      data_->archetype_id);
-
-  if (!resource || !resource->IsResolved()) {
-    Logger::getInstance().Log(
-        LogLevel::Warning,
-        "[ModelPreview] TickGenerate: resource not resolved, stalling at " +
-            std::to_string(images_generated_));
-    return;
-  }
+  auto& procmodel = EngineContext::PCG().GetProcModel();
 
   int budget = images_per_frame_;
   while (budget-- > 0 && images_generated_ < total_instances_) {
-    auto& procmodel = EngineContext::PCG().GetProcModel();
-    auto output = ProcModel::ModelGenerator::Generate(
-        resource->GetGraph(), resource->GetDescriptor(),
-        resource->GetPipeline(), procmodel.GetOperationRegistry(),
-        current_seed_ + images_generated_, 10, &procmodel.ValidationLog());
+    auto output = procmodel.GenerateInstance(descriptor_path_,
+                                             current_seed_ + images_generated_);
+
     if (output) {
       // Only build a per-instance Model if pipeline produces deformed
       // geometry; else reuse source model (no buffer allocation)
       // TODO: allocate buffers only for deformed mesh slots, not all 87
       // This TODO is tied with the implementation of the pcg pipelie
       if (!output->instance_geometry.empty()) {
+        auto& resource_mgr = EngineContext::resourceManager();
+        auto resource =
+            resource_mgr.GetResourceAs<ProcModel::ProcModelResource>(
+                data_->archetype_id);
+
         const auto& graph = resource->GetGraph();
         std::vector<Geometry::MeshData> per_instance_meshes = graph.mesh_data;
 

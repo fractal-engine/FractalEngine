@@ -7,6 +7,7 @@
 #include <string>
 
 #include "procmodel_analysis.h"
+#include "sample_serializer.h"
 
 namespace ProcModel {
 
@@ -30,8 +31,6 @@ public:
   // the existing file is closed and a new one opened on next Write().
   void SetPath(const std::filesystem::path& path);
 
-  const std::vector<ProcModelSample>& GetSamples() const { return samples_; }
-
   // Write one record as a single JSON line. Returns false on I/O failure.
   bool Write(const ProcModelSample& result);
 
@@ -47,8 +46,6 @@ private:
   std::ofstream stream_;
   std::mutex mutex_;
   bool open_attempted_ = false;
-
-  std::vector<ProcModelSample> samples_;
 };
 
 }  // namespace ProcModel

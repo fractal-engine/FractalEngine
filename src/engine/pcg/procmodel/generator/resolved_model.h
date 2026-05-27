@@ -11,11 +11,6 @@
 
 namespace ProcModel {
 
-struct InstanceGeometry {
-  std::string descriptor_id;
-  std::vector<Geometry::MeshData> mesh_data;
-};
-
 struct ResolvedDescriptor {
   std::string descriptor_id;
   std::string group_id;  // Which PartSlot this came from
@@ -35,6 +30,17 @@ struct InstanceModel {
   std::vector<ResolvedDescriptor> descriptors;
   glm::vec3 model_scale;  // Whole-model scale if descriptor defines a range
 };
+
+struct InstanceGeometry {
+  std::string descriptor_id;
+  std::vector<Geometry::MeshData> mesh_data;
+};
+
+struct InstanceData {
+  InstanceModel model;
+  std::vector<InstanceGeometry> instance_geometry;
+};
+
 }  // namespace ProcModel
 
 #endif  // RESOLVED_MODEL_H
