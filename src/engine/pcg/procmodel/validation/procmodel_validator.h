@@ -4,6 +4,7 @@
 #include "engine/pcg/procmodel/descriptor/model_descriptor.h"
 #include "engine/pcg/procmodel/generator/resolved_model.h"
 #include "engine/pcg/procmodel/model_graph/model_graph.h"
+#include "engine/pcg/procmodel/validation/parameter_sampler.h"
 
 #include "procmodel_analysis.h"
 
@@ -26,10 +27,10 @@ namespace ProcModel {
 // ProcModelSample per call. No caching, no configuration.
 class ProcModelValidator {
 public:
-  static ProcModelSample Validate(const InstanceModel& resolved,
+  static ProcModelSample Validate(const InstanceModel& result,
                                   const ModelGraph& graph,
                                   const ModelDescriptor& descriptor,
-                                  int attempt_index);
+                                  int attempt_index, ParameterSampler& sampler);
 };
 
 }  // namespace ProcModel

@@ -13,12 +13,12 @@ namespace ProcModel {
 
 namespace {
 // Descriptor IDs follow the format:
-// part_id>[_at_<socket>][_under_<activator_instance>]
+// part_id>[_at_<locator>][_under_<activator_instance>]
 // where the _under_ suffix may itself contain _at_/_under_
 // from nested activators.
 struct ParsedDescriptorId {
   std::string part_id;
-  std::string socket;  // empty if variant-only
+  std::string locator;  // empty if variant-only
 };
 
 ParsedDescriptorId ParseDescriptorId(const std::string& id) {
@@ -29,11 +29,11 @@ ParsedDescriptorId ParseDescriptorId(const std::string& id) {
     return out;
   }
   out.part_id = id.substr(0, at);
-  size_t socket_start = at + 4;
-  size_t under = id.find("_under_", socket_start);
-  out.socket = (under == std::string::npos)
-                   ? id.substr(socket_start)
-                   : id.substr(socket_start, under - socket_start);
+  size_t locator_start = at + 4;
+  size_t under = id.find("_under_", locator_start);
+  out.locator = (under == std::string::npos)
+                    ? id.substr(locator_start)
+                    : id.substr(locator_start, under - locator_start);
   return out;
 }
 
@@ -96,11 +96,11 @@ static AABB ComputeMeshAABB(const Geometry::MeshData& mesh,
 // CHECK: constraint re-verification
 //    Catches solver bugs and confirms final selection satisfies all rules.
 //
-static void CheckConstraints(const InstanceModel& resolved,
+static void CheckConstraints(const InstanceModel& result,
                              const ModelDescriptor& descriptor,
                              ProcModelSample& out) {
   std::unordered_set<std::string> selected;
-  for (const auto& d : resolved.descriptors) {
+  for (const auto& d : result.descriptors) {
     auto parsed = ParseDescriptorId(d.descriptor_id);
     selected.insert(parsed.part_id);
   }
@@ -140,45 +140,45 @@ static void CheckConstraints(const InstanceModel& resolved,
 //    Dangling attach_to means the group references an attachment node that
 //    doesn't exist in the graph.
 //
-static void CheckSockets(const InstanceModel& resolved, const ModelGraph& graph,
-                         ProcModelSample& out) {
-  for (const auto& d : resolved.descriptors) {
+static void CheckLocators(const InstanceModel& result, const ModelGraph& graph,
+                          ProcModelSample& out) {
+  for (const auto& d : result.descriptors) {
     Logger::getInstance().Log(
         LogLevel::Debug,
-        "[CheckSockets] descriptor_id: '" + d.descriptor_id + "'");
+        "[CheckLocators] descriptor_id: '" + d.descriptor_id + "'");
   }
 
-  std::unordered_map<std::string, std::vector<std::string>> socket_occupants;
+  std::unordered_map<std::string, std::vector<std::string>> locator_occupants;
 
-  for (const auto& d : resolved.descriptors) {
+  for (const auto& d : result.descriptors) {
     auto parsed = ParseDescriptorId(d.descriptor_id);
-    if (parsed.socket.empty())
+    if (parsed.locator.empty())
       continue;
 
-    if (graph.node_lookup.find(parsed.socket) == graph.node_lookup.end()) {
+    if (graph.node_lookup.find(parsed.locator) == graph.node_lookup.end()) {
       Diagnostic diag;
-      diag.code = "socket.dangling";
+      diag.code = "locator.dangling";
       diag.severity = Diagnostic::Severity::Error;
       diag.part_ids = {parsed.part_id};
-      diag.message = "Socket references non-existent node: " + parsed.socket;
+      diag.message = "Locator references non-existent node: " + parsed.locator;
       out.diagnostics.push_back(std::move(diag));
       continue;
     }
 
-    // Scope uniqueness to the activator instance — same socket name is
+    // Scope uniqueness to the activator instance — same locator name is
     // legitimately reused across different parent instances (e.g. leaves
-    // on different branches share socket node names by GLTF construction).
-    std::string occupant_key = d.activator_id + "::" + parsed.socket;
-    socket_occupants[occupant_key].push_back(parsed.part_id);
+    // on different branches share locator node names by GLTF construction).
+    std::string occupant_key = d.activator_id + "::" + parsed.locator;
+    locator_occupants[occupant_key].push_back(parsed.part_id);
   }
 
-  for (const auto& [key, occupants] : socket_occupants) {
+  for (const auto& [key, occupants] : locator_occupants) {
     if (occupants.size() > 1) {
       Diagnostic diag;
-      diag.code = "socket.duplicate";
+      diag.code = "locator.duplicate";
       diag.severity = Diagnostic::Severity::Error;
       diag.part_ids = occupants;
-      diag.message = "Multiple parts resolved to socket '" + key +
+      diag.message = "Multiple parts resolved to locator '" + key +
                      "' under same activator";
       out.diagnostics.push_back(std::move(diag));
     }
@@ -189,11 +189,11 @@ static void CheckSockets(const InstanceModel& resolved, const ModelGraph& graph,
 // CHECK: required groups activated
 //    Any group marked required must have contributed at least one selection.
 //
-static void CheckGroupActivation(const InstanceModel& resolved,
+static void CheckGroupActivation(const InstanceModel& result,
                                  const ModelDescriptor& descriptor,
                                  ProcModelSample& out) {
   std::unordered_set<std::string> active_groups;
-  for (const auto& d : resolved.descriptors) {
+  for (const auto& d : result.descriptors) {
     active_groups.insert(d.group_id);
   }
   for (const std::string& g : active_groups) {
@@ -204,7 +204,7 @@ static void CheckGroupActivation(const InstanceModel& resolved,
   // parent part was never selected is not a violation — its
   // activation is conditional by design.
   std::unordered_set<std::string> selected_parts;
-  for (const auto& d : resolved.descriptors) {
+  for (const auto& d : result.descriptors) {
     auto parsed = ParseDescriptorId(d.descriptor_id);
     selected_parts.insert(parsed.part_id);
   }
@@ -242,31 +242,31 @@ static void CheckGroupActivation(const InstanceModel& resolved,
 //
 // CHECK: forward axis consistency within a group
 //    For each selection group, collect the world-space forward vectors of
-//    its sockets; warn if any pair diverges beyond threshold.
+//    its locators; warn if any pair diverges beyond threshold.
 //    Engine convention: +Z is forward (left-handed).
 //
 static void CheckForwardAxisConsistency(const ModelGraph& graph,
                                         const ModelDescriptor& descriptor,
                                         ProcModelSample& out) {
   for (const auto& group : descriptor.selection_groups) {
-    // ! checks sockets exposed by parts in group rather than
-    // ! sockets the group fills
+    // ! checks locators exposed by parts in group rather than
+    // ! locators the group fills
     // TODO: refactor code to walk activator relationships
     // for better misalignment detection
 
-    // Collect sockets from the group's own socket list
-    std::vector<std::string> group_sockets;
-    if (group.sockets) {
-      group_sockets = *group.sockets;
+    // Collect locators from the group's own locator list
+    std::vector<std::string> group_locators;
+    if (group.locators) {
+      group_locators = *group.locators;
     }
-    if (group_sockets.size() < 2)
+    if (group_locators.size() < 2)
       continue;
 
     std::vector<glm::vec3> forwards;
-    forwards.reserve(group_sockets.size());
+    forwards.reserve(group_locators.size());
 
-    for (const std::string& socket_id : group_sockets) {
-      auto it = graph.node_lookup.find(socket_id);
+    for (const std::string& locator_id : group_locators) {
+      auto it = graph.node_lookup.find(locator_id);
       if (it == graph.node_lookup.end())
         continue;
 
@@ -291,7 +291,7 @@ static void CheckForwardAxisConsistency(const ModelGraph& graph,
         diag.code = "group.forward_misaligned";
         diag.severity = Diagnostic::Severity::Warning;
         diag.group_id = group.group_id;
-        diag.message = "Socket forward axes diverge within group";
+        diag.message = "Locator forward axes diverge within group";
         out.diagnostics.push_back(std::move(diag));
         break;
       }
@@ -304,9 +304,9 @@ static void CheckForwardAxisConsistency(const ModelGraph& graph,
 //    Fills per-part, per-group, and full-model AABBs. Accumulate
 //    per authored part
 //
-static void ComputeBounds(const InstanceModel& resolved,
-                          const ModelGraph& graph, ProcModelSample& out) {
-  for (const auto& d : resolved.descriptors) {
+static void ComputeBounds(const InstanceModel& result, const ModelGraph& graph,
+                          ProcModelSample& out) {
+  for (const auto& d : result.descriptors) {
     AABB part_box;
     for (int mesh_idx : d.mesh_indices) {
       if (mesh_idx < 0 || mesh_idx >= static_cast<int>(graph.mesh_data.size()))
@@ -329,16 +329,18 @@ static void ComputeBounds(const InstanceModel& resolved,
 //
 // Populate raw selection/parameter data on the result.
 //
-static void RecordRawData(const InstanceModel& resolved, ProcModelSample& out) {
-  // Collapse socket-expanded descriptors back to their authored part.
-  // Generator produces one ResolvedDescriptor per resolved socket, so a
+static void RecordRawData(const InstanceModel& result,
+                          const ParameterSampler& sampler,
+                          ProcModelSample& out) {
+  // Collapse locator-expanded descriptors back to their authored part.
+  // Generator produces one ResolvedDescriptor per resolved locator, so a
   // single authored part can appear multiple times in resolved.descriptors
-  // (once per "_at_<socket>" suffix). We merge them into one PartSample
-  // and accumulate the socket list.
+  // (once per "_at_<locator>" suffix). We merge them into one PartSample
+  // and accumulate the locator list.
   std::unordered_map<std::string, ProcModelSample::PartSample> by_part;
   std::unordered_set<std::string> unique_parts;
 
-  for (const auto& d : resolved.descriptors) {
+  for (const auto& d : result.descriptors) {
     auto parsed = ParseDescriptorId(d.descriptor_id);
     unique_parts.insert(parsed.part_id);
 
@@ -350,13 +352,23 @@ static void RecordRawData(const InstanceModel& resolved, ProcModelSample& out) {
       entry.applied_rotation = d.applied_rotation;
       entry.applied_scale = d.applied_scale;
 
-      if (!parsed.socket.empty())
-        entry.sockets.push_back(parsed.socket);
+      if (!parsed.locator.empty())
+        entry.locators.push_back(parsed.locator);
+
+      auto sit = sampler.ByDescriptor().find(d.descriptor_id);
+      if (sit != sampler.ByDescriptor().end())
+        entry.parameter_samples = sit->second;
+
       by_part.emplace(parsed.part_id, std::move(entry));
     } else {
-      // Accumulate additional sockets for the same authored part
-      if (!parsed.socket.empty()) {
-        it->second.sockets.push_back(parsed.socket);
+      // Accumulate additional locators for the same authored part
+      if (!parsed.locator.empty())
+        it->second.locators.push_back(parsed.locator);
+
+      auto sit = sampler.ByDescriptor().find(d.descriptor_id);
+      if (sit != sampler.ByDescriptor().end()) {
+        for (const auto& p : sit->second)
+          it->second.parameter_samples.push_back(p);
       }
     }
   }
@@ -373,24 +385,26 @@ static void RecordRawData(const InstanceModel& resolved, ProcModelSample& out) {
 //
 // Public entry point
 //
-ProcModelSample ProcModelValidator::Validate(const InstanceModel& resolved,
+ProcModelSample ProcModelValidator::Validate(const InstanceModel& result,
                                              const ModelGraph& graph,
                                              const ModelDescriptor& descriptor,
-                                             int attempt_index) {
+                                             int attempt_index,
+                                             ParameterSampler& sampler) {
 
   ProcModelSample out;
-  out.model_id = resolved.model_id;
-  out.seed = resolved.seed;
+  out.model_id = result.model_id;
+  out.seed = result.seed;
   out.attempt_index = attempt_index;
   out.timestamp_ms = NowMs();
 
-  RecordRawData(resolved, out);
+  RecordRawData(result, sampler, out);
+  out.model_samples = sampler.Instance();
 
-  CheckConstraints(resolved, descriptor, out);
-  CheckSockets(resolved, graph, out);
-  CheckGroupActivation(resolved, descriptor, out);
+  CheckConstraints(result, descriptor, out);
+  CheckLocators(result, graph, out);
+  CheckGroupActivation(result, descriptor, out);
   CheckForwardAxisConsistency(graph, descriptor, out);
-  ComputeBounds(resolved, graph, out);
+  ComputeBounds(result, graph, out);
 
   // Overall pass = no Error-severity diagnostics
   out.passed = std::none_of(out.diagnostics.begin(), out.diagnostics.end(),

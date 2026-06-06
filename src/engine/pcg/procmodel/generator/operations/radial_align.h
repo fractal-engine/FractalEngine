@@ -6,9 +6,9 @@
 
 namespace ProcModel {
 
-// Rebuilds a socket's rotation so its outward axis points from the
-// activator's origin to the socket's position. Position is preserved.
-// Useful for radially symmetric structures (trunks, towers) where sockets
+// Rebuilds a locator's rotation so its outward axis points from the
+// activator's origin to the locator's position. Position is preserved.
+// Useful for radially symmetric structures (trunks, towers) where locators
 // were authored at correct positions but with uniform local rotation.
 struct RadialAlignData : public PCG::OperationData {};
 

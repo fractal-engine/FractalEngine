@@ -36,7 +36,20 @@ static nlohmann::json SerializePartSample(
                            e.applied_rotation.z};
   j["applied_scale"] = {e.applied_scale.x, e.applied_scale.y,
                         e.applied_scale.z};
-  j["sockets"] = e.sockets;
+  j["locators"] = e.locators;
+
+  nlohmann::json params = nlohmann::json::array();
+  for (const auto& p : e.parameter_samples) {
+    params.push_back({
+        {"op_kind", p.op_kind},
+        {"axis", p.axis},
+        {"sampled", p.sampled},
+        {"range_min", p.range_min},
+        {"range_max", p.range_max},
+    });
+  }
+  j["parameter_samples"] = std::move(params);
+
   return j;
 }
 
@@ -96,6 +109,18 @@ nlohmann::json SerializeSample(const ProcModelSample& r) {
     per_group[id] = SerializeAABB(box);
   }
   j["per_group_bounds"] = std::move(per_group);
+
+  nlohmann::json instance_params = nlohmann::json::array();
+  for (const auto& p : r.model_samples) {
+    instance_params.push_back({
+        {"op_kind", p.op_kind},
+        {"axis", p.axis},
+        {"sampled", p.sampled},
+        {"range_min", p.range_min},
+        {"range_max", p.range_max},
+    });
+  }
+  j["model_samples"] = std::move(instance_params);
 
   return j;
 }

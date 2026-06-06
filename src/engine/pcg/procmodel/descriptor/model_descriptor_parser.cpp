@@ -15,7 +15,7 @@ bool ModelDescriptorParser::ParseSelectionGroup(const nlohmann::json& j,
 
   out.group_id = j["group_id"].get<std::string>();
   out.required = j.value("required", true);
-  out.select_per_socket = j.value("select_per_socket", false);
+  out.unique_per_locator = j.value("unique_per_locator", false);
 
   // parent: accept array or omitted
   if (j.contains("parent")) {
@@ -40,27 +40,12 @@ bool ModelDescriptorParser::ParseSelectionGroup(const nlohmann::json& j,
     out.rotation_jitter = glm::radians(glm::vec3(r[0], r[1], r[2]));
   }
 
-  if (j.contains("sockets")) {
-    std::vector<std::string> sockets;
-    for (const auto& s : j["sockets"]) {
-      sockets.push_back(s.get<std::string>());
+  if (j.contains("locators")) {
+    std::vector<std::string> locators;
+    for (const auto& s : j["locators"]) {
+      locators.push_back(s.get<std::string>());
     }
-    out.sockets = std::move(sockets);
-  }
-
-  if (j.contains("socket_modifiers")) {
-    for (const auto& mod_json : j["socket_modifiers"]) {
-      if (!mod_json.contains("kind")) {
-        Logger::getInstance().Log(
-            LogLevel::Warning,
-            "[ModelDescriptorParser] socket_modifier missing 'kind', skipping");
-        continue;
-      }
-      PCG::PipelineEntry entry;
-      entry.kind = mod_json["kind"].get<std::string>();
-      entry.params = mod_json.value("params", nlohmann::json::object());
-      out.socket_modifiers.push_back(std::move(entry));
-    }
+    out.locators = std::move(locators);
   }
 
   for (const auto& part_json : j["parts"]) {
@@ -198,6 +183,22 @@ bool ModelDescriptorParser::FromJson(const nlohmann::json& j,
             LogLevel::Warning,
             "[ModelDescriptorParser] Failed to parse selection group");
       }
+    }
+  }
+
+  if (j.contains("locator_operations")) {
+    for (const auto& mod_json : j["locator_operations"]) {
+      if (!mod_json.contains("kind")) {
+        Logger::getInstance().Log(LogLevel::Warning,
+                                  "[ModelDescriptorParser] locator_modifier "
+                                  "missing 'kind', skipping");
+        continue;
+      }
+      LocatorOperation sm;
+      sm.target_group_id = mod_json.value("target_group_id", std::string(""));
+      sm.entry.kind = mod_json["kind"].get<std::string>();
+      sm.entry.params = mod_json.value("params", nlohmann::json::object());
+      out.locator_operations.push_back(std::move(sm));
     }
   }
 

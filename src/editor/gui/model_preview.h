@@ -41,7 +41,7 @@ private:
   bool clear_output = false;
 
   // UI States
-  uint32_t current_seed_ = 0;  // seed is only defined in procmodel, remove this
+  uint32_t current_seed_;  // seed is only defined in procmodel, remove this
   float thumbnail_size_ = 120.0f;
   int total_instances_ = 50;
   bool initialized_ = false;

@@ -50,8 +50,8 @@ void DescriptorBuilder::TraverseAndBuildGroups(
       prefix_buckets;
 
   for (const auto& child : node.children) {
-    // Skip nodes that look like sockets (empty mesh nodes are locators,
-    // not parts). The builder only infers parts; sockets are handled by
+    // Skip nodes that look like locators (empty mesh nodes are locators,
+    // not parts). The builder only infers parts; locators are handled by
     // the resolver from the GLTF graph directly.
     if (child.mesh_indices.empty()) {
       continue;

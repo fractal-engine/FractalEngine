@@ -13,7 +13,7 @@ void RegisterModelOperations(PCG::OperationRegistry& registry) {
   RegisterDuplicateInstancesOperation(registry);
   RegisterVertexDeformOperation(registry);
   RegisterRadialAlignOperation(registry);
-  RegisterSocketRotationJitterOperation(registry);
+  RegisterLocatorRotationJitterOperation(registry);
 }
 
 }  // namespace ProcModel

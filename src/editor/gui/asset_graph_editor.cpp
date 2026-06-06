@@ -95,11 +95,11 @@ void to_json(nlohmann::json& j, const SelectionGroup& g) {
                      {"required", g.required},
                      {"parent", g.parent},
                      {"parts", g.parts}};
-  if (g.sockets) {
-    j["sockets"] = *g.sockets;
+  if (g.locators) {
+    j["locators"] = *g.locators;
   }
-  if (g.select_per_socket) {
-    j["select_per_socket"] = g.select_per_socket;
+  if (g.unique_per_locator) {
+    j["unique_per_locator"] = g.unique_per_locator;
   }
 }
 
@@ -116,6 +116,12 @@ void to_json(nlohmann::json& j, const TransformRange& p) {
     j["rotation_max"] = *p.rotation_max;
 }
 
+void to_json(nlohmann::json& j, const LocatorOperation& sm) {
+  j = nlohmann::json{{"kind", sm.entry.kind}, {"params", sm.entry.params}};
+  if (!sm.target_group_id.empty())
+    j["target_group_id"] = sm.target_group_id;
+}
+
 void to_json(nlohmann::json& j, const ModelDescriptor& m) {
   j = nlohmann::json{{"model_id", m.model_id},
                      {"model_name", m.model_name},
@@ -125,6 +131,8 @@ void to_json(nlohmann::json& j, const ModelDescriptor& m) {
                      {"transform_ranges", m.transform_ranges},
                      {"constraints", m.constraints},
                      {"parameter_bindings", m.parameter_bindings}};
+  if (!m.locator_operations.empty())
+    j["locator_operations"] = m.locator_operations;
   if (m.scale_min)
     j["scale_min"] = *m.scale_min;
   if (m.scale_max)
@@ -132,6 +140,7 @@ void to_json(nlohmann::json& j, const ModelDescriptor& m) {
   if (!m.tags.empty())
     j["tags"] = m.tags;
 }
+
 }  // namespace ProcModel
 
 // --- Utility Helpers ---
@@ -141,12 +150,12 @@ static uintptr_t HashString(const std::string& str) {
   return std::hash<std::string>{}(str);
 }
 
-// Collapses lists of sockets into a clean counted label in the UI
-static std::map<std::string, int> GroupSocketPoints(
-    const std::vector<std::string>& sockets) {
+// Collapses lists of locators into a clean counted label in the UI
+static std::map<std::string, int> GroupLocatorPoints(
+    const std::vector<std::string>& locators) {
   std::map<std::string, int> grouped;
-  for (const auto& socket : sockets) {
-    std::string base_name = socket;
+  for (const auto& locator : locators) {
+    std::string base_name = locator;
     while (!base_name.empty() && std::isdigit(base_name.back()))
       base_name.pop_back();
     while (!base_name.empty() &&
@@ -500,10 +509,21 @@ void AssetGraphEditor::AutoLayoutNodes() {
     auto& node = m_ModelData.selection_groups[node_idx];
     float h = 100.0f + (node.parts.size() * 32.0f);
 
-    bool has_explicit_sockets =
-        node.sockets.has_value() && !node.sockets->empty();
-    if (has_explicit_sockets)
+    bool has_explicit_locators =
+        node.locators.has_value() && !node.locators->empty();
+    if (has_explicit_locators)
       h += 35.0f;
+
+    // Account for locator modifiers section header height
+    bool has_locator_operations =
+        std::any_of(m_ModelData.locator_operations.begin(),
+                    m_ModelData.locator_operations.end(),
+                    [&](const ProcModel::LocatorOperation& sm) {
+                      return sm.target_group_id.empty() ||
+                             sm.target_group_id == node.group_id;
+                    });
+    if (has_locator_operations)
+      h += 30.0f;
 
     // Dynamically calculate height if deformation settings exist for this group
     bool has_deformations = false;
@@ -737,24 +757,72 @@ void AssetGraphEditor::RenderNodeGraph() {
       ImGui::Dummy(ImVec2(0, 8));
     }
 
-    // Display socket summaries if any part declares explicit sockets
-    std::vector<std::string> all_sockets;
-    if (group.sockets)
-      all_sockets = *group.sockets;
+    // Display locator summaries if any part declares explicit locators
+    std::vector<std::string> all_locators;
+    if (group.locators)
+      all_locators = *group.locators;
 
-    if (!all_sockets.empty()) {
+    if (!all_locators.empty()) {
       ImGui::Dummy(ImVec2(0, 4));
-      auto grouped_sockets = GroupSocketPoints(all_sockets);
+      auto grouped_locators = GroupLocatorPoints(all_locators);
 
       ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 8.0f);
       ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.6f, 0.6f, 0.6f, 1.0f));
-      ImGui::Text("Sockets:");
-      for (const auto& [base_name, count] : grouped_sockets) {
+      ImGui::Text("Locators:");
+      for (const auto& [base_name, count] : grouped_locators) {
         ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 8.0f);
         ImGui::Text(" %s %s (%d)", ICON_FA_LINK, base_name.c_str(), count);
       }
       ImGui::PopStyleColor();
       ImGui::Dummy(ImVec2(0, 4));
+    }
+
+    {
+      ImGui::Dummy(ImVec2(0, 4));
+      ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 8.0f);
+
+      ImGuiID mod_id =
+          ImGui::GetID(("mods_" + std::to_string(group_index)).c_str());
+      // ? NOTE: locator_operations are on descriptor, not group, needs to
+      // filter by group_id Collect modifiers targeting this group
+      std::vector<int> matching_mod_indices;
+      for (int mi = 0; mi < (int)m_ModelData.locator_operations.size(); ++mi) {
+        const auto& sm = m_ModelData.locator_operations[mi];
+        if (sm.target_group_id.empty() || sm.target_group_id == group.group_id)
+          matching_mod_indices.push_back(mi);
+      }
+
+      bool mods_open = ImGui::GetStateStorage()->GetInt(mod_id, 0);
+      ImVec2 start_pos = ImGui::GetCursorScreenPos();
+      ImVec2 btn_size =
+          ImVec2(nodeWidth - 16.0f, ImGui::GetTextLineHeight() + 8.0f);
+
+      if (ImGui::InvisibleButton(
+              ("##mod_toggle_" + std::to_string(group_index)).c_str(),
+              btn_size)) {
+        mods_open = !mods_open;
+        ImGui::GetStateStorage()->SetInt(mod_id, mods_open);
+      }
+
+      // Display locator modifier
+      ImGui::SetCursorScreenPos(ImVec2(start_pos.x + 8.0f, start_pos.y + 4.0f));
+      ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.5f, 0.9f, 0.7f, 1.0f));
+      ImGui::TextUnformatted(((mods_open ? "- " : "+ ") +
+                              std::string("Locator Modifiers (") +
+                              std::to_string(matching_mod_indices.size()) + ")")
+                                 .c_str());
+      ImGui::PopStyleColor();
+      ImGui::SetCursorScreenPos(
+          ImVec2(start_pos.x - 8.0f, start_pos.y + btn_size.y + 4.0f));
+
+      if (mods_open) {
+        for (int mi : matching_mod_indices) {
+          auto& sm = m_ModelData.locator_operations[mi];
+          ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 16.0f);
+          ImGui::TextDisabled("%s", sm.entry.kind.c_str());
+        }
+        ImGui::Dummy(ImVec2(0, 4));
+      }
     }
 
     // --- Dynamic deformation settings toggle ---

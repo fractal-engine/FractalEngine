@@ -8,41 +8,57 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtx/quaternion.hpp>
 
-#include "engine/pcg/procmodel/generator/socket_context.h"
+#include "engine/pcg/procmodel/generator/locator_context.h"
 
 namespace ProcModel {
 
-static std::shared_ptr<PCG::OperationData> ParseSocketRotationJitter(
+static std::shared_ptr<PCG::OperationData> ParseLocatorRotationJitter(
     const nlohmann::json& params) {
-  auto data = std::make_shared<SocketRotationJitterData>();
+  auto data = std::make_shared<LocatorRotationJitterData>();
 
-  const float pitch_deg = params.value("pitch", 0.0f);
-  const float yaw_deg = params.value("yaw", 0.0f);
-  const float roll_deg = params.value("roll", 0.0f);
+  // Per-axis range. Explicit "<axis>_min"/"<axis>_max" take precedence;
+  // shorthand "<axis>: N" expands to [-N, +N]. Missing axis = no jitter.
+  auto parse_axis = [&](const std::string& name, float& dst_min,
+                        float& dst_max) {
+    const std::string kmin = name + "_min";
+    const std::string kmax = name + "_max";
+    if (params.contains(kmin) || params.contains(kmax)) {
+      dst_min = params.value(kmin, 0.0f);
+      dst_max = params.value(kmax, 0.0f);
+    } else if (params.contains(name)) {
+      const float r = params.value(name, 0.0f);
+      dst_min = -r;
+      dst_max = r;
+    }
+  };
 
-  data->range = glm::radians(glm::vec3(pitch_deg, yaw_deg, roll_deg));
+  float pitch_min = 0.0f, pitch_max = 0.0f;
+  float yaw_min = 0.0f, yaw_max = 0.0f;
+  float roll_min = 0.0f, roll_max = 0.0f;
+  parse_axis("pitch", pitch_min, pitch_max);
+  parse_axis("yaw", yaw_min, yaw_max);
+  parse_axis("roll", roll_min, roll_max);
+
+  data->min = glm::radians(glm::vec3(pitch_min, yaw_min, roll_min));
+  data->max = glm::radians(glm::vec3(pitch_max, yaw_max, roll_max));
 
   return data;
 }
 
-static void ApplySocketRotationJitter(const PCG::OperationData& base_data,
-                                      PCG::OperationContext& base_ctx) {
-  const auto& data = PCG::OperationCast<SocketRotationJitterData>(base_data);
-  auto& ctx = PCG::OperationCast<SocketContext>(base_ctx);
+static void ApplyLocatorRotationJitter(const PCG::OperationData& base_data,
+                                       PCG::OperationContext& base_ctx) {
+  const auto& data = PCG::OperationCast<LocatorRotationJitterData>(base_data);
+  auto& ctx = PCG::OperationCast<LocatorContext>(base_ctx);
 
-  // Draw three independent uniform angles within the authored range.
-  auto draw = [&](float r) -> float {
-    if (r <= 0.0f)
-      return 0.0f;
-    std::uniform_real_distribution<float> dist(-r, r);
-    return dist(ctx.rng);
-  };
-  const float pitch = draw(data.range.x);
-  const float yaw = draw(data.range.y);
-  const float roll = draw(data.range.z);
+  const float pitch = ctx.sampler.Uniform("rotation_jitter", "x", data.min.x,
+                                          data.max.x, ctx.rng);
+  const float yaw = ctx.sampler.Uniform("rotation_jitter", "y", data.min.y,
+                                        data.max.y, ctx.rng);
+  const float roll = ctx.sampler.Uniform("rotation_jitter", "z", data.min.z,
+                                         data.max.z, ctx.rng);
 
   // Compose as pitch (X) → yaw (Y) → roll (Z) intrinsic rotations.
-  // Post-multiplied into socket_world so jitter applies in the socket's
+  // Post-multiplied into locator_world so jitter applies in the locator's
   // own local frame; pre-multiply would jitter in world space, which
   // would defeat radial_align if listed after it.
   glm::mat4 jitter(1.0f);
@@ -50,12 +66,12 @@ static void ApplySocketRotationJitter(const PCG::OperationData& base_data,
   jitter = glm::rotate(jitter, pitch, glm::vec3(1.0f, 0.0f, 0.0f));
   jitter = glm::rotate(jitter, roll, glm::vec3(0.0f, 0.0f, 1.0f));
 
-  ctx.socket_world = ctx.socket_world * jitter;
+  ctx.locator_world = ctx.locator_world * jitter;
 }
 
-void RegisterSocketRotationJitterOperation(PCG::OperationRegistry& registry) {
-  registry.Register("new_rotation_jitter", &ParseSocketRotationJitter,
-                    &ApplySocketRotationJitter);
+void RegisterLocatorRotationJitterOperation(PCG::OperationRegistry& registry) {
+  registry.Register("new_rotation_jitter", &ParseLocatorRotationJitter,
+                    &ApplyLocatorRotationJitter);
 }
 
 }  // namespace ProcModel

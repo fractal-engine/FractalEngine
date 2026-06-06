@@ -34,8 +34,8 @@ private:
                                    const ModelDescriptor& descriptor,
                                    std::vector<std::string>& errors);
 
-  static bool MapSockets(ModelGraph& graph, const ModelDescriptor& descriptor,
-                         std::vector<std::string>& errors);
+  static bool MapLocators(ModelGraph& graph, const ModelDescriptor& descriptor,
+                          std::vector<std::string>& errors);
 };
 
 }  // namespace ProcModel

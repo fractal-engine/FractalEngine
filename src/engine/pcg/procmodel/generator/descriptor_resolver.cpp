@@ -14,18 +14,18 @@ DescriptorResolver::ResolveResult DescriptorResolver::Resolve(
   bool ranges_ok = MapTransformRanges(graph, descriptor, result.errors);
   bool bindings_ok = MapParameterBindings(graph, descriptor, result.errors);
   bool deforms_ok = MapDeformationRanges(graph, descriptor, result.errors);
-  bool sockets_ok = MapSockets(graph, descriptor, result.errors);
+  bool locators_ok = MapLocators(graph, descriptor, result.errors);
 
   for (const auto& [name, node_ptr] : graph.node_lookup) {
     if (node_ptr->group_ids.empty() && node_ptr->transform_ranges.empty() &&
-        !node_ptr->is_fixed && !node_ptr->is_attach_point) {
+        !node_ptr->is_fixed && !node_ptr->is_locator) {
       result.warnings.push_back("Node '" + name +
                                 "' not referenced by any descriptor entry");
     }
   }
 
   result.success =
-      groups_ok && ranges_ok && bindings_ok && deforms_ok && sockets_ok;
+      groups_ok && ranges_ok && bindings_ok && deforms_ok && locators_ok;
 
   if (!result.success) {
     for (const auto& error : result.errors) {
@@ -148,36 +148,36 @@ bool DescriptorResolver::MapParameterBindings(
   return all_ok;
 }
 
-// Resolves sockets, validates them and marks them on the graph
-bool DescriptorResolver::MapSockets(ModelGraph& graph,
-                                    const ModelDescriptor& descriptor,
-                                    std::vector<std::string>& errors) {
+// Resolves locators, validates them and marks them on the graph
+bool DescriptorResolver::MapLocators(ModelGraph& graph,
+                                     const ModelDescriptor& descriptor,
+                                     std::vector<std::string>& errors) {
   bool all_ok = true;
 
   for (const auto& group : descriptor.selection_groups) {
-    if (!group.sockets)
+    if (!group.locators)
       continue;
 
-    for (const auto& socket_id : *group.sockets) {
-      auto sock_it = graph.node_lookup.find(socket_id);
+    for (const auto& locator_id : *group.locators) {
+      auto sock_it = graph.node_lookup.find(locator_id);
       if (sock_it == graph.node_lookup.end()) {
         errors.push_back("Group '" + group.group_id +
-                         "' references unknown socket '" + socket_id + "'");
+                         "' references unknown locator '" + locator_id + "'");
         all_ok = false;
         continue;
       }
       if (!sock_it->second->mesh_indices.empty()) {
-        errors.push_back("Group '" + group.group_id + "' lists '" + socket_id +
-                         "' as a socket but that node has mesh geometry");
+        errors.push_back("Group '" + group.group_id + "' lists '" + locator_id +
+                         "' as a locator but that node has mesh geometry");
         all_ok = false;
         continue;
       }
-      sock_it->second->is_attach_point = true;
+      sock_it->second->is_locator = true;
     }
   }
 
   for (const auto& group : descriptor.selection_groups) {
-    if (!group.sockets || group.parent.empty())
+    if (!group.locators || group.parent.empty())
       continue;
 
     // Build a set of nodes reachable as descendants of any parent part
@@ -204,10 +204,10 @@ bool DescriptorResolver::MapSockets(ModelGraph& graph,
           LogLevel::Debug, "[DescriptorResolver]   reachable: '" + r + "'");
     }
 
-    for (const auto& socket_id : *group.sockets) {
-      if (reachable.find(socket_id) == reachable.end()) {
-        errors.push_back("Group '" + group.group_id + "' lists socket '" +
-                         socket_id +
+    for (const auto& locator_id : *group.locators) {
+      if (reachable.find(locator_id) == reachable.end()) {
+        errors.push_back("Group '" + group.group_id + "' lists locator '" +
+                         locator_id +
                          "' which is not a descendant of any of "
                          "its parent parts");
         all_ok = false;

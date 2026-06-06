@@ -5,6 +5,7 @@
 
 #include "engine/pcg/procmodel/generator/resolved_model.h"
 #include "engine/pcg/procmodel/model_graph/model_graph.h"
+#include "engine/pcg/procmodel/validation/parameter_sampler.h"
 
 #include "engine/pcg/pipeline/operation_context.h"
 
@@ -21,13 +22,14 @@ struct ModelContext : public PCG::OperationContext {
   const ModelGraph& graph;
   InstanceModel& model;
   pcg32& rng;
+  ParameterSampler& sampler;
 
   // Per-descriptor geometry produced by vertex deformation operations.
   std::vector<InstanceGeometry> instance_geometry;
 
   ModelContext(const ModelDescriptor& d, const ModelGraph& g, InstanceModel& m,
-               pcg32& r)
-      : descriptor(d), graph(g), model(m), rng(r) {}
+               pcg32& r, ParameterSampler& s)
+      : descriptor(d), graph(g), model(m), rng(r), sampler(s) {}
 };
 
 }  // namespace ProcModel

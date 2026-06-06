@@ -22,15 +22,10 @@
       // Array of part IDs whose selection activates this group.
       // Empty or omitted = root group (always considered first).
 
-      "select_per_socket": false,
-      // If true, each socket re-samples a part style independently
+      "unique_per_locator": false,
+      // If true, each locator re-samples a part style independently
       // (organic content — branches, leaves). If false, one part is picked
-      // and duplicated to every socket (uniform — pillars, columns).
-
-      "rotation_jitter": [0, 45, 0],
-      // Per-socket rotation perturbation in DEGREES (converted to radians
-      // at parse). Each attached copy gets an independent uniform draw from
-      // [-jitter, +jitter] per axis. (0,0,0) = no perturbation.
+      // and duplicated to every locator (uniform — pillars, columns).
 
       "scale_factor": 0.6,
       // Multiplicative scale inherited from the parent's applied_scale.
@@ -38,33 +33,47 @@
       // chain (trunk 1.0 → branches 0.6 → leaves 0.42).
 
       "scale_jitter": 0.05,
-      // Optional ± random perturbation on scale_factor per socket.
+      // Optional ± random perturbation on scale_factor per locator.
+
+      "locators": ["_ATTACH_A_01", "_ATTACH_A_02"],
+          // Optional. Explicit list of locator node names the activator's
+          // resolved part exposes for this group's attachments. When unset,
+          // locators are auto-detected (any non-part child node of the
+          // activator's resolved part in the GLTF graph). When set, only
+          // the listed locators are used; the resolver validates that each
+          // one exists in the graph.
 
       "parts": [
         {
           "id": "string (required) — matches a node name in the GLTF",
           "name": "string (optional) — display name, defaults to id",
-          "weight": 1.0,
+          "weight": 1.0
           // Relative selection weight in WeightedSelect.
-
-          "sockets": ["_ATTACH_A_01", "_ATTACH_A_02"]
-          // Optional. Explicit list of socket node names this part owns.
-          // When unset, sockets are auto-detected (any child node of this
-          // part in the GLTF graph that is not itself a declared part).
-          // When set, only the listed sockets are used; the resolver
-          // validates that each one exists in the graph.
         }
       ]
+    }
+  ],
+
+  "locator_operations": [
+    { "kind": "radial_align", "params": {} },
+    { "kind": "new_rotation_jitter",
+      "params": {
+        "yaw_min": -10, "yaw_max": 10,
+        "pitch_min": -10, "pitch_max": 10,
+        "roll_min": -10, "roll_max": 10
+      }
     }
   ],
 
   "transform_ranges": [
     {
       "part_id": "string — matches a part by id",
+      "scale_min": [1.0, 1.0, 1.0],
+      "scale_max": [1.5, 1.5, 1.5],
+      // Optional scale jitter range. Sampled once per resolved descriptor.
       "rotation_min": [0, 0, 0],
       "rotation_max": [0, 360, 0]
       // Optional rotation jitter range (degrees, additive).
-      // Sampled once per resolved descriptor.
     }
   ],
 
@@ -114,7 +123,8 @@
   ],
 
   // pipeline configuration lives at the root JSON level alongside
-  // model_id, processed separately from the model descriptor
+  // model_id and configures runtime operations. Registered kinds:
+  // per_part_deform, instance_deform, duplicate_instances.
   "pipeline": [
     {
       "kind": "per_part_deform",

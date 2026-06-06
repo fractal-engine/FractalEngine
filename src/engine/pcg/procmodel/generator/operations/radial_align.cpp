@@ -5,7 +5,7 @@
 
 #include "engine/core/logger.h"
 
-#include "engine/pcg/procmodel/generator/socket_context.h"
+#include "engine/pcg/procmodel/generator/locator_context.h"
 
 namespace ProcModel {
 
@@ -18,19 +18,19 @@ static std::shared_ptr<PCG::OperationData> ParseRadialAlign(
 
 static void ApplyRadialAlign(const PCG::OperationData& /*data*/,
                              PCG::OperationContext& base_ctx) {
-  auto& ctx = PCG::OperationCast<SocketContext>(base_ctx);
+  auto& ctx = PCG::OperationCast<LocatorContext>(base_ctx);
 
-  const glm::vec3 socket_pos(ctx.socket_world[3]);
+  const glm::vec3 locator_pos(ctx.locator_world[3]);
   const glm::vec3 activator_pos(ctx.activator_world[3]);
 
-  // Outward direction is the horizontal vector from activator to socket.
-  // Projecting onto the XZ plane keeps the socket's vertical alignment
+  // Outward direction is the horizontal vector from activator to locator.
+  // Projecting onto the XZ plane keeps the locator's vertical alignment
   // independent of where it sits along the activator's vertical axis.
-  glm::vec3 outward = socket_pos - activator_pos;
+  glm::vec3 outward = locator_pos - activator_pos;
   outward.y = 0.0f;
   const float len = glm::length(outward);
   if (len < 1e-4f) {
-    // Socket sits on the activator's vertical axis; no defined outward.
+    // locator sits on the activator's vertical axis; no defined outward.
     // Leave the frame untouched rather than synthesize an arbitrary one.
     return;
   }
@@ -41,9 +41,9 @@ static void ApplyRadialAlign(const PCG::OperationData& /*data*/,
 
   // Rebuild the rotation: +X = right (tangent), +Y = up (vertical),
   // +Z = outward. Position (column 3) is preserved.
-  ctx.socket_world[0] = glm::vec4(right, 0.0f);
-  ctx.socket_world[1] = glm::vec4(up, 0.0f);
-  ctx.socket_world[2] = glm::vec4(outward, 0.0f);
+  ctx.locator_world[0] = glm::vec4(right, 0.0f);
+  ctx.locator_world[1] = glm::vec4(up, 0.0f);
+  ctx.locator_world[2] = glm::vec4(outward, 0.0f);
 }
 
 void RegisterRadialAlignOperation(PCG::OperationRegistry& registry) {

@@ -311,15 +311,16 @@ static const DeformationRange* FindDeformationRange(
   return nullptr;
 }
 
-// Samples a single float from an optional [min,max] pair.
-// Return std::nullopt if either bound is missing.
+// Samples a single float from an optional [min,max] pair
+// Return std::nullopt if either bound is missing
+// Calls the sampler internally
 static std::optional<float> SampleRange(const std::optional<float>& lo,
                                         const std::optional<float>& hi,
-                                        pcg32& rng) {
+                                        const std::string& op_kind,
+                                        ParameterSampler& sampler, pcg32& rng) {
   if (!lo || !hi)
     return std::nullopt;
-  std::uniform_real_distribution<float> dist(*lo, *hi);
-  return dist(rng);
+  return sampler.Uniform(op_kind, "", *lo, *hi, rng);
 }
 
 static void ApplyPartDeform(const PCG::OperationData& base_data,
@@ -347,16 +348,17 @@ static void ApplyPartDeform(const PCG::OperationData& base_data,
     std::optional<float> noise_amplitude;
 
     if (data.apply_taper) {
-      taper_factor = SampleRange(range->taper_factor_min,
-                                 range->taper_factor_max, ctx.rng);
+      taper_factor =
+          SampleRange(range->taper_factor_min, range->taper_factor_max, "taper",
+                      ctx.sampler, ctx.rng);
     }
     if (data.apply_twist) {
-      twist_angle =
-          SampleRange(range->twist_angle_min, range->twist_angle_max, ctx.rng);
+      twist_angle = SampleRange(range->twist_angle_min, range->twist_angle_max,
+                                "twist", ctx.sampler, ctx.rng);
     }
     if (data.apply_bend) {
-      bend_angle =
-          SampleRange(range->bend_angle_min, range->bend_angle_max, ctx.rng);
+      bend_angle = SampleRange(range->bend_angle_min, range->bend_angle_max,
+                               "bend", ctx.sampler, ctx.rng);
     }
 
     // DEBUG
@@ -366,8 +368,9 @@ static void ApplyPartDeform(const PCG::OperationData& base_data,
             " bend=" + (bend_angle ? std::to_string(*bend_angle) : "none"));
 
     if (data.apply_noise) {
-      noise_amplitude = SampleRange(range->noise_amplitude_min,
-                                    range->noise_amplitude_max, ctx.rng);
+      noise_amplitude =
+          SampleRange(range->noise_amplitude_min, range->noise_amplitude_max,
+                      "noise", ctx.sampler, ctx.rng);
     }
 
     InstanceGeometry instance_geometry;

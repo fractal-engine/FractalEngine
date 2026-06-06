@@ -18,27 +18,33 @@ struct PartDescriptor {
   float weight;
 };
 
+struct LocatorOperation {
+  std::string target_group_id;  // empty = all groups
+  PCG::PipelineEntry entry;
+};
+
 struct SelectionGroup {
   std::string group_id;
   std::vector<PartDescriptor> parts;
   bool required = true;
   std::vector<std::string> parent;  // Empty = root group
 
-  // Attachment points; if unset = variant-only
-  std::optional<std::vector<std::string>> sockets;
+  // transform nodes; if unset = variant-only
+  std::optional<std::vector<std::string>> locators;
 
-  // If true: each attach point in sockets re-runs WeightedSelect, allowing
+  // If true: each attach point in locators re-runs WeightedSelect, allowing
   // different parts at different attachments (organic variation - branches,
   // leaves). If false (default): one part is selected for the group and
   // duplicated to every attachment (uniform assembly — columns, pillars).
-  bool select_per_socket = false;
+  bool unique_per_locator = false;
 
   // Per-attachment rotation jitter. When non-zero, each attached instance
   // receives an independent random rotation perturbation drawn uniformly
   // from [-jitter, +jitter] on each axis (radians at runtime, degrees in
   // JSON). Default zero: no jitter, attachments inherit the activator's
   // base rotation unchanged.
-  glm::vec3 rotation_jitter = glm::vec3(0.0f);
+  glm::vec3 rotation_jitter =
+      glm::vec3(0.0f);  // ! SHOULD BE REMOVED (rotation per locator does this)
 
   // Scale inherited multiplicatively from this group's activator. A value of
   // 0.6 means: parts in this group are 60% the size of their parent's scale.
@@ -46,17 +52,12 @@ struct SelectionGroup {
   // (scale 0.6) of a BASE (scale 1.0) end up at 0.6 × 0.6 = 0.36 of root.
   float scale_factor = 1.0f;
   std::optional<float> scale_jitter;  // ± random perturbation
-
-  // Socket modifiers: declarative transformations applied to each socket's
-  // world frame before a part is placed. Authored as a list of
-  // (kind, params) entries.
-  std::vector<PCG::PipelineEntry> socket_modifiers;
 };
 
 //
 // TRANSFORM RANGE
 // used for per-part transforms
-//
+// TODO: revise whether this is redundant, if not, then rename
 struct TransformRange {
   std::string part_id;
 
@@ -117,6 +118,11 @@ struct ModelDescriptor {
   std::optional<glm::vec3> scale_min;  // model scale range
   std::optional<glm::vec3> scale_max;
   std::vector<std::string> tags;  // ex: "vegetation", "tropical"
+
+  // Locator modifiers: declarative transformations applied per-group
+  // to each locator's world frame before a part is placed.
+  // Authored as a list of (kind, params) entries.
+  std::vector<LocatorOperation> locator_operations;
 };
 
 }  // namespace ProcModel

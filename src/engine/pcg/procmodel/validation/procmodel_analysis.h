@@ -21,11 +21,11 @@ struct Diagnostic {
   // Current codes:
   //   "constraint.excludes": two mutually-excluded parts both selected
   //   "constraint.requires": REQUIRES rule unsatisfied
-  //   "socket.duplicate": more than one part resolved to same socket
-  //   "socket.dangling": socket references a node that doesn't exist
-  //   "socket.orphaned": part attached but its parent base wasn't selected
+  //   "locator.duplicate": more than one part resolved to same locator
+  //   "locator.dangling": locator references a node that doesn't exist
+  //   "locator.orphaned": part attached but its parent base wasn't selected
   //   "group.missing_activation": required group failed to activate
-  //   "group.forward_misaligned": socket forward axes diverge within a group
+  //   "group.forward_misaligned": locator forward axes diverge within a group
   std::string code;
   Severity severity = Severity::Error;
 
@@ -44,6 +44,15 @@ struct AABB {
   glm::vec3 min{0.0f};
   glm::vec3 max{0.0f};
   bool valid = false;  // false if no geometry contributed
+};
+
+struct ParameterSample {
+  std::string op_kind;  // "rotation_jitter", "scale_jitter", "taper",
+                        // "twist", "bend", "noise", "transform_rotation"
+  std::string axis;     // "x"/"y"/"z" for vec3 ops, "" for scalars
+  float sampled;
+  float range_min;
+  float range_max;
 };
 
 // Raw per-instance record. This is appended to variation_log.jsonl, one
@@ -71,9 +80,11 @@ struct ProcModelSample {
     std::string group_id;
     glm::vec3 applied_rotation{0.0f};
     glm::vec3 applied_scale{1.0f};
-    std::vector<std::string> sockets;
+    std::vector<std::string> locators;
+    std::vector<ParameterSample> parameter_samples;
   };
   std::vector<PartSample> part_samples;
+  std::vector<ParameterSample> model_samples;
 
   // Geometry
   AABB model_bounds;

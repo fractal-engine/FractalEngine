@@ -11,9 +11,9 @@
 
 #include "engine/pcg/procmodel/descriptor/model_descriptor.h"
 
+#include "engine/pcg/procmodel/generator/locator_context.h"
 #include "engine/pcg/procmodel/generator/model_context.h"
 #include "engine/pcg/procmodel/generator/resolved_model.h"
-#include "engine/pcg/procmodel/generator/socket_context.h"
 
 #include "engine/pcg/procmodel/model_graph/model_graph.h"
 

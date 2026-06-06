@@ -23,7 +23,7 @@ struct ModelGraphNode {
   std::vector<const TransformRange*> transform_ranges;
   std::vector<const ParameterBinding*> outgoing_bindings;
   bool is_fixed = false;  // True if node always present
-  bool is_attach_point = false;
+  bool is_locator = false;
 };
 
 }  // namespace ProcModel
