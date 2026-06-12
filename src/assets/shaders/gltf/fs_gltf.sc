@@ -1,9 +1,9 @@
-$input v_position, v_normal, v_texcoord0
+$input v_position , v_normal , v_texcoord0
 
 #include "common.sh"
 
-uniform vec4 u_meshColor;   // base_color fallback
-uniform vec4 u_AlbedoMap;   // x=1 if texture bound, 0 otherwise
+uniform vec4 u_meshColor; // base_color fallback
+uniform vec4 u_AlbedoMap; // x=1 if texture bound, 0 otherwise
 
 SAMPLER2D(s_albedo, 0);
 
@@ -12,8 +12,8 @@ void main()
     // Normalize the world-space normal
     vec3 normal = normalize(v_normal);
 
-    // Transform normal to VIEW SPACE. 
-    // This is the core trick for MatCaps and Blender's Solid view. 
+    // Transform normal to VIEW SPACE.
+    // This is the core trick for MatCaps and Blender's Solid view.
     // The lighting will now "stick" to the camera.
     vec3 viewNormal = normalize(mul(u_view, vec4(normal, 0.0)).xyz);
 
@@ -40,10 +40,10 @@ void main()
 
     // Combine the lights
     vec3 ambient = vec3_splat(0.15); // Base minimum light so nothing is pitch black
-    
-    vec3 diffuse = (keyIntensity * vec3(0.85, 0.85, 0.85)) + 
-                   (fillIntensity * vec3(0.25, 0.28, 0.35)) + 
-                   (rimIntensity  * vec3(0.15, 0.15, 0.15));
+
+    vec3 diffuse = (keyIntensity * vec3(1.0, 1.0, 1.0)) +
+            (fillIntensity * vec3(0.35, 0.38, 0.45)) +
+            (rimIntensity * vec3(0.20, 0.20, 0.20));
 
     vec3 final_color = base_color * (ambient + diffuse);
 

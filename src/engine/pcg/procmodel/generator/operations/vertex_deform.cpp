@@ -1,5 +1,6 @@
 #include "vertex_deform.h"
 
+#include <glm/gtc/constants.hpp>
 #include <nlohmann/json.hpp>
 #include <random>
 #include <string>
@@ -312,8 +313,6 @@ static const DeformationRange* FindDeformationRange(
 }
 
 // Samples a single float from an optional [min,max] pair
-// Return std::nullopt if either bound is missing
-// Calls the sampler internally
 static std::optional<float> SampleRange(const std::optional<float>& lo,
                                         const std::optional<float>& hi,
                                         const std::string& op_kind,
@@ -339,9 +338,12 @@ static void ApplyPartDeform(const PCG::OperationData& base_data,
     if (!range)
       continue;  // no deformation authored for this part
 
-    // Sample each enabled operation's parameter once per part instance.
-    // All meshes belonging to this part share the same sampled values to
-    // keep the part visually coherent (a branch's leaves bend with it).
+    ctx.sampler.Set(d.descriptor_id);
+
+    // Sample per-part deformation values from the resolved range above.
+    // Each part instance gets independent draws so identical-mesh parts
+    // bend/twist/taper differently. Draws are attributed to the current
+    // descriptor via the sampler cursor set above.
     std::optional<float> taper_factor;
     std::optional<float> twist_angle;
     std::optional<float> bend_angle;
@@ -360,13 +362,6 @@ static void ApplyPartDeform(const PCG::OperationData& base_data,
       bend_angle = SampleRange(range->bend_angle_min, range->bend_angle_max,
                                "bend", ctx.sampler, ctx.rng);
     }
-
-    // DEBUG
-    Logger::getInstance().Log(
-        LogLevel::Debug,
-        "[PartDeform] " + d.descriptor_id +
-            " bend=" + (bend_angle ? std::to_string(*bend_angle) : "none"));
-
     if (data.apply_noise) {
       noise_amplitude =
           SampleRange(range->noise_amplitude_min, range->noise_amplitude_max,
@@ -408,6 +403,20 @@ static void ApplyPartDeform(const PCG::OperationData& base_data,
         const glm::mat3 R = BasisToY(data.bend_axis);
         const glm::mat3 R_inv = glm::transpose(R);
         ApplyBasis(working, R);
+
+        // Random azimuth around Y so different part instances bend in
+        // different compass directions. Attributed to the current
+        // descriptor via the sampler cursor set above.
+        const float azimuth = ctx.sampler.Uniform(
+            "bend_azimuth", "", 0.0f, glm::two_pi<float>(), ctx.rng);
+        const float ca = std::cos(azimuth);
+        const float sa = std::sin(azimuth);
+        const glm::mat3 Yaw(glm::vec3(ca, 0.0f, -sa),
+                            glm::vec3(0.0f, 1.0f, 0.0f),
+                            glm::vec3(sa, 0.0f, ca));
+        const glm::mat3 Yaw_inv = glm::transpose(Yaw);
+        ApplyBasis(working, Yaw);
+
         float y_min, y_max;
         ComputeYBounds(working, y_min, y_max);
         // Convert total bend angle to Barr's k (rad per unit length).
@@ -417,6 +426,8 @@ static void ApplyPartDeform(const PCG::OperationData& base_data,
         const float k = (y_span > 1e-6f) ? (*bend_angle / y_span) : 0.0f;
         const float y_0 = y_min;
         ApplyBend(working, k, y_0, y_min, y_max);
+
+        ApplyBasis(working, Yaw_inv);
         ApplyBasis(working, R_inv);
       }
 
@@ -448,13 +459,6 @@ static std::shared_ptr<PCG::OperationData> ParseInstanceDeform(
   data->twist_axis = ParseAxis(params, "twist_axis", DeformAxis::Y);
   data->bend_axis = ParseAxis(params, "bend_axis", DeformAxis::Y);
 
-  if (params.contains("taper_factor"))
-    data->taper_factor = params["taper_factor"].get<float>();
-  if (params.contains("twist_angle"))
-    data->twist_angle = glm::radians(params["twist_angle"].get<float>());
-  if (params.contains("bend_angle"))
-    data->bend_angle = glm::radians(params["bend_angle"].get<float>());
-
   if (!data->apply_taper && !data->apply_twist && !data->apply_bend) {
     Logger::getInstance().Log(
         LogLevel::Warning,
@@ -474,6 +478,17 @@ static InstanceGeometry* FindInstanceGeometry(
       return &entry;
   }
   return nullptr;
+}
+
+// Used by ApplyInstanceDeform, instance bucket
+static std::optional<float> SampleRangeInstance(const std::optional<float>& lo,
+                                                const std::optional<float>& hi,
+                                                const std::string& op_kind,
+                                                ParameterSampler& sampler,
+                                                pcg32& rng) {
+  if (!lo || !hi)
+    return std::nullopt;
+  return sampler.UniformInstance(op_kind, "", *lo, *hi, rng);
 }
 
 static void ApplyInstanceDeform(const PCG::OperationData& base_data,
@@ -537,6 +552,29 @@ static void ApplyInstanceDeform(const PCG::OperationData& base_data,
   if (working.empty())
     return;
 
+  // Sample whole-instance parameters from model_deformation_range.
+  std::optional<float> taper_factor;
+  std::optional<float> twist_angle;
+  std::optional<float> bend_angle;
+
+  if (ctx.descriptor.model_deformation_range) {
+    const auto& mdr = *ctx.descriptor.model_deformation_range;
+    if (data.apply_taper) {
+      taper_factor =
+          SampleRangeInstance(mdr.taper_factor_min, mdr.taper_factor_max,
+                              "taper", ctx.sampler, ctx.rng);
+    }
+    if (data.apply_twist) {
+      twist_angle =
+          SampleRangeInstance(mdr.twist_angle_min, mdr.twist_angle_max, "twist",
+                              ctx.sampler, ctx.rng);
+    }
+    if (data.apply_bend) {
+      bend_angle = SampleRangeInstance(mdr.bend_angle_min, mdr.bend_angle_max,
+                                       "bend", ctx.sampler, ctx.rng);
+    }
+  }
+
   // Transform every working mesh into world space (in place).
   for (auto& wm : working) {
     for (auto& v : wm.entry->mesh_data[wm.mesh_slot].vertices) {
@@ -571,14 +609,14 @@ static void ApplyInstanceDeform(const PCG::OperationData& base_data,
   //
   // TAPER
   //
-  if (data.apply_taper && data.taper_factor) {
+  if (taper_factor) {
     const glm::mat3 R = BasisToY(data.taper_axis);
     const glm::mat3 R_inv = glm::transpose(R);
     apply_basis_all(R);
     float y_min, y_max;
     compute_global_bounds(glm::mat3(1.0f), y_min, y_max);
     for (auto& wm : working) {
-      ApplyTaper(wm.entry->mesh_data[wm.mesh_slot], *data.taper_factor, y_min,
+      ApplyTaper(wm.entry->mesh_data[wm.mesh_slot], *taper_factor, y_min,
                  y_max);
     }
     apply_basis_all(R_inv);
@@ -587,15 +625,14 @@ static void ApplyInstanceDeform(const PCG::OperationData& base_data,
   //
   // TWIST
   //
-  if (data.apply_twist && data.twist_angle) {
+  if (twist_angle) {
     const glm::mat3 R = BasisToY(data.twist_axis);
     const glm::mat3 R_inv = glm::transpose(R);
     apply_basis_all(R);
     float y_min, y_max;
     compute_global_bounds(glm::mat3(1.0f), y_min, y_max);
     for (auto& wm : working) {
-      ApplyTwist(wm.entry->mesh_data[wm.mesh_slot], *data.twist_angle, y_min,
-                 y_max);
+      ApplyTwist(wm.entry->mesh_data[wm.mesh_slot], *twist_angle, y_min, y_max);
     }
     apply_basis_all(R_inv);
   }
@@ -603,18 +640,32 @@ static void ApplyInstanceDeform(const PCG::OperationData& base_data,
   //
   // BEND
   //
-  if (data.apply_bend && data.bend_angle) {
+  if (bend_angle) {
     const glm::mat3 R = BasisToY(data.bend_axis);
     const glm::mat3 R_inv = glm::transpose(R);
     apply_basis_all(R);
+
+    // Random azimuth around Y so different instances bend in different
+    // compass directions. Sampled per-instance and recorded.
+    const float azimuth = ctx.sampler.UniformInstance(
+        "bend_azimuth", "", 0.0f, glm::two_pi<float>(), ctx.rng);
+    const float ca = std::cos(azimuth);
+    const float sa = std::sin(azimuth);
+    const glm::mat3 Yaw(glm::vec3(ca, 0.0f, -sa), glm::vec3(0.0f, 1.0f, 0.0f),
+                        glm::vec3(sa, 0.0f, ca));
+    const glm::mat3 Yaw_inv = glm::transpose(Yaw);
+    apply_basis_all(Yaw);
+
     float y_min, y_max;
     compute_global_bounds(glm::mat3(1.0f), y_min, y_max);
     const float y_span = y_max - y_min;
-    const float k = (y_span > 1e-6f) ? (*data.bend_angle / y_span) : 0.0f;
-    const float y_0 = y_min;  // pivot at base
+    const float k = (y_span > 1e-6f) ? (*bend_angle / y_span) : 0.0f;
+    const float y_0 = y_min;
     for (auto& wm : working) {
       ApplyBend(wm.entry->mesh_data[wm.mesh_slot], k, y_0, y_min, y_max);
     }
+
+    apply_basis_all(Yaw_inv);
     apply_basis_all(R_inv);
   }
 

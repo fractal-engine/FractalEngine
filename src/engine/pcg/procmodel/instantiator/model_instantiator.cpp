@@ -77,7 +77,8 @@ Entity ModelInstantiator::CreatePartEntity(const ResolvedDescriptor& descriptor,
 
   // Apply sampled rotation on top of base rotation
   glm::quat applied_rot = glm::quat(descriptor.applied_rotation);
-  transform.rotation_ = transform.rotation_ * applied_rot;
+  transform.rotation_ = glm::normalize(transform.rotation_ * applied_rot);
+  transform.scale_ *= descriptor.applied_scale;
 
   transform.euler_angles_ = glm::degrees(glm::eulerAngles(transform.rotation_));
   transform.modified_ = true;

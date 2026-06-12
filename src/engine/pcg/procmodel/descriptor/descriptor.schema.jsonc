@@ -57,6 +57,9 @@
   "locator_operations": [
     { "kind": "radial_align", "params": {} },
     { "kind": "new_rotation_jitter",
+      "target_group_id": "_GROUP_ID_",
+    // Optional. Restrict this operation to locators of one group
+    // Empty/omitted = applies to all groups
       "params": {
         "yaw_min": -10, "yaw_max": 10,
         "pitch_min": -10, "pitch_max": 10,
@@ -83,9 +86,11 @@
     "bend_angle_min": 5,     "bend_angle_max": 15,
     "noise_amplitude_min": 0.0, "noise_amplitude_max": 0.05
   },
-  // Optional fallback range used by part_deform when no per-group override
-  // exists. Angles in DEGREES (converted to radians at parse). Taper is
-  // unitless; noise is mesh-units.
+  // Whole-instance deformation range. Sampled once per generated instance
+  // by the instance_deform operation. Also serves as the fallback range
+  // used by per_part_deform when no per-group override exists in
+  // part_deformation_ranges. Angles in DEGREES (converted to radians at
+  // parse). Taper is unitless; noise is mesh-units.
 
   "part_deformation_ranges": [
     {
@@ -144,9 +149,11 @@
       "params": {
         "apply_bend":  true,
         "bend_axis":   "y",
-        "bend_angle":  8,
         "apply_taper": false,
         "apply_twist": false
+        // Sampled values come from model_deformation_range at runtime.
+        // No authored constants; the operation samples once per generated
+        // instance from the descriptor's model_deformation_range.
       }
     },
     {

@@ -225,7 +225,7 @@ void ModelViewer::RenderViewport() {
     for (const auto& desc : resolved.descriptors) {
       PreviewRenderInstruction inst;
       inst.output_index = viewport_output_;
-      inst.background_color = glm::vec4(0.35f, 0.35f, 0.35f, 1.0f);
+      inst.background_color = glm::vec4(0.80f, 0.80f, 0.80f, 1.0f);
       inst.model = const_cast<Model*>(render_model);
       inst.clear_output = on_first_draw;
       on_first_draw = false;

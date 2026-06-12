@@ -45,10 +45,6 @@ struct InstanceDeformData : public PCG::OperationData {
   DeformAxis taper_axis = DeformAxis::Y;
   DeformAxis twist_axis = DeformAxis::Y;
   DeformAxis bend_axis = DeformAxis::Y;
-
-  std::optional<float> taper_factor;
-  std::optional<float> twist_angle;
-  std::optional<float> bend_angle;
 };
 
 void RegisterVertexDeformOperation(PCG::OperationRegistry& registry);

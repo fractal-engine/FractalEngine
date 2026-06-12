@@ -27,7 +27,7 @@ namespace ProcModel {
 // ProcModelSample per call. No caching, no configuration.
 class ProcModelValidator {
 public:
-  static ProcModelSample Validate(const InstanceModel& result,
+  static ProcModelSample Validate(const InstanceData& data,
                                   const ModelGraph& graph,
                                   const ModelDescriptor& descriptor,
                                   int attempt_index, ParameterSampler& sampler);

@@ -203,7 +203,7 @@ std::optional<InstanceData> ModelGenerator::Generate(
             !group->unique_per_locator ? chosen : nullptr;
 
         // Parent scale — match by activator instance id
-        glm::vec3 parent_scale(1.0f);
+        /* glm::vec3 parent_scale(1.0f);
         if (!pa.activator_instance_id.empty()) {
           for (const auto& prev : resolved_descriptors) {
             if (prev.descriptor_id == pa.activator_instance_id) {
@@ -211,7 +211,7 @@ std::optional<InstanceData> ModelGenerator::Generate(
               break;
             }
           }
-        }
+        }*/
 
         // Compile locator modifiers for this group from descriptor-level
         // entries. Entries with empty target_group_id apply to all groups.
@@ -306,7 +306,7 @@ std::optional<InstanceData> ModelGenerator::Generate(
             factor += sampler.Uniform("scale_jitter", "", -*group->scale_jitter,
                                       *group->scale_jitter, rng);
           }
-          attached.applied_scale = parent_scale * factor;
+          attached.applied_scale = glm::vec3(factor);
 
           // Sample parameter ranges for this attachment, so each attached
           // copy gets independent rotation/scale jitter
@@ -396,10 +396,15 @@ std::optional<InstanceData> ModelGenerator::Generate(
 
       // Final constraint check
       if (ValidateConstraints(selected_ids, descriptor.constraints)) {
+
+        InstanceData out;
+        out.model = std::move(result);
+        out.instance_geometry = std::move(ctx.instance_geometry);
+
         // Post-generation validation
         if (out_samples) {
           ProcModelSample vr = ProcModelValidator::Validate(
-              result, graph, descriptor, attempt, sampler);
+              out, graph, descriptor, attempt, sampler);
 
           out_samples->push_back(vr);
           if (!vr.passed) {
@@ -423,10 +428,6 @@ std::optional<InstanceData> ModelGenerator::Generate(
               "[Generator] Attempt " + std::to_string(attempt) +
                   " accepted (seed=" + std::to_string(seed + attempt) + ")");
         }
-
-        InstanceData out;
-        out.model = std::move(result);
-        out.instance_geometry = std::move(ctx.instance_geometry);
 
         Logger::getInstance().Log(
             LogLevel::Debug,

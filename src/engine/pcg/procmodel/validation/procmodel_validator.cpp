@@ -6,6 +6,10 @@
 #include <unordered_map>
 #include <unordered_set>
 
+#define GLM_ENABLE_EXPERIMENTAL
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtx/matrix_decompose.hpp>
+
 #include "engine/core/logger.h"
 #include "engine/core/types/geometry_data.h"
 
@@ -304,22 +308,64 @@ static void CheckForwardAxisConsistency(const ModelGraph& graph,
 //    Fills per-part, per-group, and full-model AABBs. Accumulate
 //    per authored part
 //
-static void ComputeBounds(const InstanceModel& result, const ModelGraph& graph,
+static void ComputeBounds(const InstanceData& result, const ModelGraph& graph,
                           ProcModelSample& out) {
-  for (const auto& d : result.descriptors) {
+  // Whole-instance scale lives on the root entity; descendants inherit it.
+  const glm::mat4 M_inst =
+      glm::scale(glm::mat4(1.0f), result.model.model_scale);
+
+  for (const auto& d : result.model.descriptors) {
     AABB part_box;
-    for (int mesh_idx : d.mesh_indices) {
-      if (mesh_idx < 0 || mesh_idx >= static_cast<int>(graph.mesh_data.size()))
-        continue;
-      AABB mesh_box =
-          ComputeMeshAABB(graph.mesh_data[mesh_idx], d.local_transform);
-      MergeAABB(part_box, mesh_box);
+
+    // Decompose local_transform the same way ModelInstantiator does, then
+    // re-compose with applied_rotation as a quaternion multiplied onto the
+    // base rotation. applied_scale is intentionally NOT used here because
+    // ModelInstantiator doesn't use it either — match the renderer.
+    glm::vec3 position, scale, skew;
+    glm::quat rotation;
+    glm::vec4 perspective;
+    glm::decompose(d.local_transform, scale, rotation, position, skew,
+                   perspective);
+
+    const glm::quat applied_rot = glm::quat(d.applied_rotation);
+    const glm::quat final_rot = glm::normalize(rotation * applied_rot);
+    const glm::vec3 final_scale = scale * d.applied_scale;
+
+    const glm::mat4 T = glm::translate(glm::mat4(1.0f), position);
+    const glm::mat4 R = glm::mat4_cast(final_rot);
+    const glm::mat4 S = glm::scale(glm::mat4(1.0f), final_scale);
+    const glm::mat4 local_world = T * R * S;
+
+    // Apply whole-model scale
+    const glm::mat4 M_inst =
+        glm::scale(glm::mat4(1.0f), result.model.model_scale);
+    const glm::mat4 final_transform = M_inst * local_world;
+
+    const InstanceGeometry* inst_geom = nullptr;
+    for (const auto& ig : result.instance_geometry) {
+      if (ig.descriptor_id == d.descriptor_id) {
+        inst_geom = &ig;
+        break;
+      }
     }
 
-    // Accumulate into per-part and per-group bounds, keyed by authored
-    // part_id so attachment-expanded descriptors merge together
-    auto parsed = ParseDescriptorId(d.descriptor_id);
+    if (inst_geom) {
+      for (const auto& mesh : inst_geom->mesh_data) {
+        AABB mesh_box = ComputeMeshAABB(mesh, final_transform);
+        MergeAABB(part_box, mesh_box);
+      }
+    } else {
+      for (int mesh_idx : d.mesh_indices) {
+        if (mesh_idx < 0 ||
+            mesh_idx >= static_cast<int>(graph.mesh_data.size()))
+          continue;
+        AABB mesh_box =
+            ComputeMeshAABB(graph.mesh_data[mesh_idx], final_transform);
+        MergeAABB(part_box, mesh_box);
+      }
+    }
 
+    auto parsed = ParseDescriptorId(d.descriptor_id);
     MergeAABB(out.per_part_bounds[parsed.part_id], part_box);
     MergeAABB(out.per_group_bounds[d.group_id], part_box);
     MergeAABB(out.model_bounds, part_box);
@@ -385,26 +431,26 @@ static void RecordRawData(const InstanceModel& result,
 //
 // Public entry point
 //
-ProcModelSample ProcModelValidator::Validate(const InstanceModel& result,
+ProcModelSample ProcModelValidator::Validate(const InstanceData& data,
                                              const ModelGraph& graph,
                                              const ModelDescriptor& descriptor,
                                              int attempt_index,
                                              ParameterSampler& sampler) {
 
   ProcModelSample out;
-  out.model_id = result.model_id;
-  out.seed = result.seed;
+  out.model_id = data.model.model_id;
+  out.seed = data.model.seed;
   out.attempt_index = attempt_index;
   out.timestamp_ms = NowMs();
 
-  RecordRawData(result, sampler, out);
+  RecordRawData(data.model, sampler, out);
   out.model_samples = sampler.Instance();
 
-  CheckConstraints(result, descriptor, out);
-  CheckLocators(result, graph, out);
-  CheckGroupActivation(result, descriptor, out);
+  CheckConstraints(data.model, descriptor, out);
+  CheckLocators(data.model, graph, out);
+  CheckGroupActivation(data.model, descriptor, out);
   CheckForwardAxisConsistency(graph, descriptor, out);
-  ComputeBounds(result, graph, out);
+  ComputeBounds(data, graph, out);
 
   // Overall pass = no Error-severity diagnostics
   out.passed = std::none_of(out.diagnostics.begin(), out.diagnostics.end(),
