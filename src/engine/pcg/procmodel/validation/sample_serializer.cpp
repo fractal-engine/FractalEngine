@@ -1,10 +1,42 @@
 #include "sample_serializer.h"
 
 namespace ProcModel {
+
+static glm::vec3 SumByOpKind(const std::vector<ParameterSample>& samples,
+                             const std::string& op_kind) {
+  glm::vec3 out(0.0f);
+  for (const auto& p : samples) {
+    if (p.op_kind != op_kind)
+      continue;
+    if (p.axis == "x")
+      out.x += p.sampled;
+    else if (p.axis == "y")
+      out.y += p.sampled;
+    else if (p.axis == "z")
+      out.z += p.sampled;
+  }
+  return out;
+}
+
+static glm::vec3 ProductByOpKind(const std::vector<ParameterSample>& samples,
+                                 const std::string& op_kind) {
+  glm::vec3 out(1.0f);
+  for (const auto& p : samples) {
+    if (p.op_kind != op_kind)
+      continue;
+    if (p.axis == "x")
+      out.x *= p.sampled;
+    else if (p.axis == "y")
+      out.y *= p.sampled;
+    else if (p.axis == "z")
+      out.z *= p.sampled;
+  }
+  return out;
+}
+
 //
 // JSON serialization
 //
-
 static nlohmann::json SerializeAABB(const AABB& box) {
   nlohmann::json j;
   j["valid"] = box.valid;
@@ -32,10 +64,16 @@ static nlohmann::json SerializePartSample(
   nlohmann::json j;
   j["descriptor_id"] = e.descriptor_id;
   j["group_id"] = e.group_id;
-  j["applied_rotation"] = {e.applied_rotation.x, e.applied_rotation.y,
-                           e.applied_rotation.z};
-  j["applied_scale"] = {e.applied_scale.x, e.applied_scale.y,
-                        e.applied_scale.z};
+
+  const glm::vec3 applied_rotation =
+      SumByOpKind(e.parameter_samples, "rotation_jitter_legacy") +
+      SumByOpKind(e.parameter_samples, "transform_rotation");
+  const glm::vec3 applied_scale =
+      ProductByOpKind(e.parameter_samples, "transform_scale");
+
+  j["applied_rotation"] = {applied_rotation.x, applied_rotation.y,
+                           applied_rotation.z};
+  j["applied_scale"] = {applied_scale.x, applied_scale.y, applied_scale.z};
   j["locators"] = e.locators;
 
   nlohmann::json params = nlohmann::json::array();

@@ -367,6 +367,7 @@ void AssetBrowserPanel::RenderSideFolder(ImDrawList& draw_list,
   if (ImGui::IsItemClicked()) {
     // Select this folder
     SelectFolder(folder->id_);
+    // TODO: emit signal here?
 
     // Toggle expansion if clicking on a folder with children
     if (has_children) {

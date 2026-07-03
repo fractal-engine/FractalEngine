@@ -21,6 +21,8 @@ inline boost::signals2::signal<void()> close_graph_editor;
 inline boost::signals2::signal<void(Entity)> entity_selected;
 inline boost::signals2::signal<void()> selection_cleared;
 
+inline boost::signals2::signal<void(int)> item_selected;
+
 }  // namespace EditorEvents
 
 #endif  // EDITOR_EVENTS_H
