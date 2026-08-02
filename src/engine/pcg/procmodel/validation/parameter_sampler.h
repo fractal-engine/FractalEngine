@@ -1,9 +1,12 @@
 #ifndef PARAMETER_SAMPLER_H
 #define PARAMETER_SAMPLER_H
 
-#include <pcg_random.hpp>
+#include <optional>
 #include <string>
+#include <unordered_map>
 #include <vector>
+
+#include <pcg_random.hpp>
 
 #include "procmodel_analysis.h"
 
