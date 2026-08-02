@@ -124,7 +124,7 @@ private:
   struct IOListener : public efsw::FileWatchListener {
     void handleFileAction(efsw::WatchID watch_id, const std::string& directory,
                           const std::string& filename, efsw::Action action,
-                          std::string old_filename) override;
+                          const std::string& old_filename) override;
     ConcurrentQueue<std::unique_ptr<IOEvent>> event_queue_;
   };
 

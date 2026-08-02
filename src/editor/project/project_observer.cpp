@@ -269,11 +269,10 @@ std::shared_ptr<const ProjectObserver::Folder> ProjectObserver::FetchFolder(
   return nullptr;
 }
 
-void ProjectObserver::IOListener::handleFileAction(efsw::WatchID watch_id,
-                                                   const std::string& directory,
-                                                   const std::string& filename,
-                                                   efsw::Action action,
-                                                   std::string old_filename) {
+void ProjectObserver::IOListener::handleFileAction(
+    efsw::WatchID watch_id, const std::string& directory,
+    const std::string& filename, efsw::Action action,
+    const std::string& old_filename) {
   auto event =
       std::make_unique<IOEvent>(action, directory, filename, old_filename);
   bool success = event_queue_.try_enqueue(std::move(event));
