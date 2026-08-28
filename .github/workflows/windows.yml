@@ -16,19 +16,19 @@ jobs:
         with:
           fetch-depth: 1
           submodules: recursive
-      
+
       - name: Setup Xmake
         uses: xmake-io/github-action-setup-xmake@v1
 
       - name: Cache xmake packages
         uses: actions/cache@v5
         with:
-           path: |
-              ${{ env.LOCALAPPDATA }}\.xmake\packages
-              ${{ env.LOCALAPPDATA }}\.xmake\cache
-           key: windows-${{ matrix.arch }}-xmake-${{ hashFiles('xmake.lua', 'xmake/*.lua') }}
-           restore-keys: |
-              windows-${{ matrix.arch }}-xmake-
+          path: |
+            ${{ env.LOCALAPPDATA }}\.xmake\packages
+            ${{ env.LOCALAPPDATA }}\.xmake\cache
+          key: windows-${{ matrix.arch }}-xmake-${{ hashFiles('xmake.lua', 'xmake/*.lua') }}
+          restore-keys: |
+            windows-${{ matrix.arch }}-xmake-
 
       - name: Cache FastNoise2 build
         id: cache-fastnoise2
@@ -38,11 +38,11 @@ jobs:
           key: fastnoise2-${{ runner.os }}-${{ matrix.arch }}-${{ hashFiles('.gitmodules', 'thirdparty/FastNoise2/CMakeLists.txt') }}
           restore-keys: |
             fastnoise2-${{ runner.os }}-${{ matrix.arch }}-
-      
+
       - name: Configure
         shell: bash
-        run: xmake f -p windows --toolchain=${{ matrix.toolchain }} -a ${{ matrix.arch }} -y -v
-      
+        run: xmake f -p windows --toolchain=${{ matrix.toolchain }} --vs=2022 -a ${{ matrix.arch }} -y -v
+
       - name: Install dependencies
         shell: bash
         run: xmake require -y
@@ -51,7 +51,7 @@ jobs:
         if: steps.cache-fastnoise2.outputs.cache-hit != 'true'
         shell: bash
         run: xmake build FastNoise2
-      
+
       - name: Build
         shell: bash
         run: xmake build fractal
