@@ -2,7 +2,6 @@
 #include <SDL_syswm.h>
 
 #include <bgfx/bgfx.h>
-#include <bgfx/platform.h>
 
 #include "engine/core/logger.h"  // ! remove engine dependency
 #include "imgui.h"
