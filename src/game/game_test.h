@@ -46,7 +46,7 @@ public:
 
   // Generator functions
   void GenerateTerrain(const PCG::Config& gen_config, uint16_t gridSize);
-  PCG::Generator& GetGenerator() { return generator_; }
+  PCG::TerrainGenerator& GetGenerator() { return *generator_; }
 
 private:
   // ───── Terrain
@@ -147,7 +147,7 @@ private:
   Entity terrain_entity_ = entt::null;
   std::shared_ptr<Mesh> terrain_mesh_;
 
-  PCG::Generator generator_;
+  std::unique_ptr<PCG::TerrainGenerator> generator_;
 };
 
 #endif  // GAME_TEST_H

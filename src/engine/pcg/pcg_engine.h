@@ -2,12 +2,12 @@
 #define PCG_ENGINE_H
 
 #include <functional>
+#include <memory>
 #include <queue>
 #include <unordered_set>
 
 #include "engine/pcg/graph/program_graph.h"
-#include "engine/pcg/procmodel/instantiator/model_instantiator.h"
-#include "engine/pcg/procmodel/procmodel_resource.h"
+#include "engine/pcg/procmodel/procmodel.h"
 
 struct GenerationRequest {
   uint32_t volume_id;  // Entity ID (VolumeComponent lookup)
@@ -16,9 +16,14 @@ struct GenerationRequest {
 
 class PCGEngine {
 public:
-  // ─────────────────────────────────────────────────────────────
+  PCGEngine() = default;
+  ~PCGEngine();
+
+  void Create();
+
+  //
   // GENERATION QUEUE
-  // ─────────────────────────────────────────────────────────────
+  //
   void RequestGeneration(uint32_t volume_entity_id, uint8_t priority = 0) {
     pending_requests_.push({volume_entity_id, priority});
   }
@@ -30,15 +35,22 @@ public:
   // ? Called from EngineContext::NextFrame()
   void ProcessQueued();
 
-  ProcModel::ModelInstantiator::InstantiateResult RequestInstance(
-      const std::string& descriptor_path, uint64_t seed,
-      Entity parent = entt::null);
+  ProcModel::Subsystem& GetProcModel() { return procmodel_; }
+  const ProcModel::Subsystem& GetProcModel() const { return procmodel_; }
+
+  // TODO:
+  // ProcTerrain::Subsystem& GetTerrain() { return terrain_; }
+  // ProcTextures::Subsystem& GetTextures() { return textures_; }
 
 private:
   std::queue<GenerationRequest> pending_requests_;
   std::unordered_set<uint32_t> cancelled_;
 
-  std::unordered_map<std::string, ResourceID> procmodel_cache_;
+  ProcModel::Subsystem procmodel_;
+
+  // TODO:
+  // ProcTerrain::Subsystem terrain_;
+  // ProcTextures::Subsystem textures_;
 };
 
 #endif  // PCG_ENGINE_H

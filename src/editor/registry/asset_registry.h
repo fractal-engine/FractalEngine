@@ -9,7 +9,7 @@
 #include <vector>
 
 #include "editor/systems/editor_asset.h"
-#include "engine/resources/file_system_utils.h"
+#include "engine/core/file_system_utils.h"
 
 class EditorAsset;
 

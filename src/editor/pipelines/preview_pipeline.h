@@ -17,16 +17,24 @@ struct PreviewOutput {
   uint16_t width = 0;
   uint16_t height = 0;
   bool resize_pending = false;
-  bgfx::ViewId view_id = 0; // View ID tracker
+  bgfx::ViewId view_id = 0;  // View ID tracker
 };
 
 struct PreviewRenderInstruction {
   size_t output_index = 0;
   glm::vec4 background_color = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
   Model* model = nullptr;
+
+  // For selective mesh rendering
+  std::vector<uint32_t> mesh_filter;
+  std::unordered_map<uint32_t, TransformComponent> mesh_transforms;
+  std::unordered_map<uint32_t, glm::vec3> mesh_colors;  // ! remove this
+
   // ! add lighting?
   TransformComponent model_transform;
   TransformComponent camera_transform;
+
+  bool clear_output = true;
 };
 
 class PreviewPipeline {
@@ -44,7 +52,7 @@ public:
   // Return output by given index
   const PreviewOutput& GetOutput(size_t index) const;
 
-  // Get texture handle for ImGui rendering
+  // Get texture handle
   bgfx::TextureHandle GetOutputTexture(size_t index) const;
 
   // Resize output by given index
@@ -62,6 +70,9 @@ private:
 
   // Queued render instructions
   std::vector<PreviewRenderInstruction> render_instructions_;
+
+  // ! REMOVE THIS
+  bgfx::UniformHandle u_mesh_color_ = BGFX_INVALID_HANDLE;
 };
 
 #endif  // PREVIEW_PIPELINE_H

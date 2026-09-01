@@ -4,6 +4,8 @@
 #include <iomanip>
 #include <memory>
 
+#include "engine/pcg/generator_base.h"
+
 #include "../constraints/constraint_system.h"
 #include "../core/feature_descriptors.h"
 #include "../core/sample.h"
@@ -67,12 +69,15 @@ struct Config {
   PipelineStage debug_stage = PipelineStage::Complete;
 };
 
-class Generator {
+class TerrainGenerator : public FieldGenerator {
 public:
-  Generator(const Config& config);
+  explicit TerrainGenerator(const Config& config);
+
+  GeneratorType GetType() const override;
+  std::string GetDisplayName() const override;
 
   // Generate single sample
-  Sample Eval(float x, float y) const;
+  Sample Eval(float x, float y) const override;
 
   // Debug: stage evaluation
   Sample EvalStaged(float x, float y, PipelineStage stage) const;

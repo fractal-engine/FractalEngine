@@ -6,7 +6,7 @@
 #include <glm/glm.hpp>
 #include <memory>
 
-#include "../noise/OpenSimplex2S.hpp"
+#include "engine/math/noise/OpenSimplex2S.hpp"
 
 class OpenSimplex2S;
 

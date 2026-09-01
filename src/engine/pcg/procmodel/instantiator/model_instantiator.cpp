@@ -1,5 +1,7 @@
 #include "model_instantiator.h"
 
+#include <unordered_map>
+
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtx/matrix_decompose.hpp>
@@ -12,7 +14,7 @@
 namespace ProcModel {
 
 ModelInstantiator::InstantiateResult ModelInstantiator::Instantiate(
-    const ResolvedModel& resolved, const ModelGraph& graph, Entity parent) {
+    const InstanceModel& resolved, const ModelGraph& graph, Entity parent) {
   InstantiateResult result;
   auto& ecs = ECS::Main();
 
@@ -32,9 +34,21 @@ ModelInstantiator::InstantiateResult ModelInstantiator::Instantiate(
     transform.modified_ = true;
   }
 
-  // Create entity for each resolved descriptor
+  std::unordered_map<std::string, Entity> entity_by_descriptor_id;
+
   for (const auto& descriptor : resolved.descriptors) {
-    Entity entity = CreatePartEntity(descriptor, graph, result.root);
+    Entity parent_entity = result.root;
+
+    if (!descriptor.activator_id.empty()) {
+      auto it = entity_by_descriptor_id.find(descriptor.activator_id);
+      if (it != entity_by_descriptor_id.end()) {
+        parent_entity = it->second;
+      }
+      // If activator isn't found, fall back to root.
+    }
+
+    Entity entity = CreatePartEntity(descriptor, graph, parent_entity);
+    entity_by_descriptor_id[descriptor.descriptor_id] = entity;
     result.part_entities.push_back(entity);
   }
 
@@ -62,11 +76,15 @@ Entity ModelInstantiator::CreatePartEntity(const ResolvedDescriptor& descriptor,
   transform.scale_ = scale;
 
   // Apply sampled rotation on top of base rotation
-  glm::quat applied_rot = glm::quat(glm::radians(descriptor.applied_rotation));
-  transform.rotation_ = transform.rotation_ * applied_rot;
+  glm::quat applied_rot = glm::quat(descriptor.applied_rotation);
+  transform.rotation_ = glm::normalize(transform.rotation_ * applied_rot);
+  transform.scale_ *= descriptor.applied_scale;
 
   transform.euler_angles_ = glm::degrees(glm::eulerAngles(transform.rotation_));
   transform.modified_ = true;
+
+  // Get materials from graph for registration
+  const auto& materials = graph.GetMaterials();
 
   // Attach mesh renderers
   if (descriptor.mesh_indices.size() == 1) {
@@ -76,6 +94,15 @@ Entity ModelInstantiator::CreatePartEntity(const ResolvedDescriptor& descriptor,
       auto& renderer = ecs.Add<MeshRendererComponent>(entity);
       renderer.mesh_ = mesh;
       renderer.enabled_ = true;
+
+      // Register material and assign handle
+      uint32_t mat_idx = mesh->MaterialIndex();
+      if (mat_idx < materials.size()) {
+        renderer.material_ =
+            Renderer::MaterialRegistry::Instance().Register(materials[mat_idx]);
+      } else {
+        renderer.material_ = Renderer::INVALID_MATERIAL;
+      }
     }
   } else if (descriptor.mesh_indices.size() > 1) {
     // Multiple meshes — create child entity per mesh
@@ -94,6 +121,15 @@ Entity ModelInstantiator::CreatePartEntity(const ResolvedDescriptor& descriptor,
       auto& renderer = ecs.Add<MeshRendererComponent>(child);
       renderer.mesh_ = mesh;
       renderer.enabled_ = true;
+
+      // Register material and assign handle
+      uint32_t mat_idx = mesh->MaterialIndex();
+      if (mat_idx < materials.size()) {
+        renderer.material_ =
+            Renderer::MaterialRegistry::Instance().Register(materials[mat_idx]);
+      } else {
+        renderer.material_ = Renderer::INVALID_MATERIAL;
+      }
     }
   }
 

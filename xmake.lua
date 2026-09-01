@@ -8,6 +8,7 @@ if is_plat("windows") then
 	add_cxxflags("/Zc:__cplusplus", "/Zc:preprocessor")
 	add_defines("NOMINMAX")
 	add_defines("_CRT_SECURE_NO_WARNINGS")
+	set_config("vs", "2022")
 
 	-- use static CRT
 	set_runtimes(is_mode("debug") and "MTd" or "MT")
@@ -64,6 +65,11 @@ end
 -- macOS frameworks
 if is_plat("macosx") then
 	add_frameworks("Metal", "MetalKit", "QuartzCore")
+end
+
+-- ! Enforce arm64 on macOS
+if is_host("macosx") then
+    set_config("arch", "arm64")
 end
 
 ----------------------------------------------------------------

@@ -37,10 +37,16 @@ add_files(
 	"renderer/skybox/*.cpp",
 	"renderer/gizmos/*.cpp",
 	"renderer/shadows/*.cpp",
+	"renderer/material/*.cpp",
+
+	-- Math files
+	"math/noise/OpenSimplex2S.cpp",
+	"math/noise/perlin.cpp",
 
 	-- content files
 	"content/cache/*.cpp",
 	"content/loaders/*.cpp",
+	"content/io/*.cpp",
 
 	-- resources files
 	"resources/*.cpp",
@@ -50,12 +56,15 @@ add_files(
 	"pcg/operators/*.cpp",
 	"pcg/constraints/constraint_system.cpp",
 	"pcg/terrain/*.cpp",
-	"pcg/noise/OpenSimplex2S.cpp",
 	"pcg/graph/*.cpp",
+	"pcg/procmodel/*.cpp",
 	"pcg/procmodel/descriptor/*.cpp",
 	"pcg/procmodel/model_graph/*.cpp",
 	"pcg/procmodel/generator/*.cpp",
-	"pcg/procmodel/instantiator/*.cpp"
+	"pcg/procmodel/generator/operations/*.cpp",
+	"pcg/procmodel/instantiator/*.cpp",
+	"pcg/procmodel/validation/*.cpp",
+	"pcg/pipeline/*.cpp"
 )
 
 -- HEADER FILES -------
@@ -81,14 +90,20 @@ add_headerfiles(
 	"renderer/skybox/*.h",
 	"renderer/gizmos/*.h",
 	"renderer/shadows/*.h",
+	"renderer/material/*.h",
+
+	-- math files
+	"math/noise/stb_perlin.h",
+	"math/noise/perlin.h",
 
 	-- geometry files
 	"geometry/meshing/*.h",
 	"geometry/projection/*.h",
 
 	-- content files
-	"content/cache/*.cpp",
-	"content/loaders/*.cpp",
+	"content/cache/*.h",
+	"content/loaders/*.h",
+	"content/io/*.h",
 
 	-- resource files
 	"resources/*.h",
@@ -98,8 +113,11 @@ add_headerfiles(
 	"pcg/procmodel/*.h",
 	"pcg/procmodel/descriptor/*.h",
 	"pcg/procmodel/generator/*.h",
+	"pcg/procmodel/generator/operations/*.h",
 	"pcg/procmodel/instantiator/*.h",
-	"pcg/procmodel/model_graph/*.h"
+	"pcg/procmodel/model_graph/*.h",
+	"pcg/procmodel/validation/*.h",
+	"pcg/pipeline/*.h"
 )
 
 add_rules("shaderc.build")
@@ -198,6 +216,7 @@ before_buildcmd_file(function(target, batchcmds, shaderfile, opt)
 		default = "varying_default.def.sc",
 		debug = "varying_debug.def.sc",
 		materials = "varying_materials.def.sc",
+		selection = "varying_default.def.sc",
 	}
 
 	-- pick first key matching anywhere in relative path

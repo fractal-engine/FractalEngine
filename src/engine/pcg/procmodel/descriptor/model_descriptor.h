@@ -5,36 +5,84 @@
 #include <glm/vec3.hpp>
 #include <optional>
 #include <string>
+#include <unordered_map>
 #include <vector>
+
+#include "engine/pcg/pipeline/pipeline_descriptor.h"
 
 namespace ProcModel {
 
 struct PartDescriptor {
   std::string id;
   std::string name;
-  float weight = 1.0f;
+  float weight;
 };
 
-// used to be selection groups
+struct LocatorOperation {
+  std::string target_group_id;  // empty = all groups
+  PCG::PipelineEntry entry;
+};
+
 struct SelectionGroup {
   std::string group_id;
   std::vector<PartDescriptor> parts;
   bool required = true;
-  std::string activated_by;  // Empty = root group
+  std::vector<std::string> parent;  // Empty = root group
+
+  // transform nodes; if unset = variant-only
+  std::optional<std::vector<std::string>> locators;
+
+  // If true: each attach point in locators re-runs WeightedSelect, allowing
+  // different parts at different attachments (organic variation - branches,
+  // leaves). If false (default): one part is selected for the group and
+  // duplicated to every attachment (uniform assembly — columns, pillars).
+  bool unique_per_locator = false;
+
+  // Per-attachment rotation jitter. When non-zero, each attached instance
+  // receives an independent random rotation perturbation drawn uniformly
+  // from [-jitter, +jitter] on each axis (radians at runtime, degrees in
+  // JSON). Default zero: no jitter, attachments inherit the activator's
+  // base rotation unchanged.
+  glm::vec3 rotation_jitter =
+      glm::vec3(0.0f);  // ! SHOULD BE REMOVED (rotation per locator does this)
+
+  // Scale inherited multiplicatively from this group's activator. A value of
+  // 0.6 means: parts in this group are 60% the size of their parent's scale.
+  // Combined with parent's already-scaled value: part attached to parent
+  // (scale 0.6) of a BASE (scale 1.0) end up at 0.6 × 0.6 = 0.36 of root.
+  float scale_factor = 1.0f;
+  std::optional<float> scale_jitter;  // ± random perturbation
 };
 
-struct ParameterRange {
+//
+// TRANSFORM RANGE
+// used for per-part transforms
+// TODO: revise whether this is redundant, if not, then rename
+struct TransformRange {
   std::string part_id;
 
   std::optional<glm::vec3> scale_min;
   std::optional<glm::vec3> scale_max;
   std::optional<glm::vec3> rotation_min;
   std::optional<glm::vec3> rotation_max;
-
-  std::string activated_by;  // Empty = always applied to this node if selected
 };
 
-// used to be ConstraintRule
+struct DeformationRange {
+  std::string group_id;
+
+  std::optional<float> taper_factor_min;
+  std::optional<float> taper_factor_max;
+
+  std::optional<float> twist_angle_min;
+  std::optional<float> twist_angle_max;
+
+  std::optional<float> bend_angle_min;
+  std::optional<float> bend_angle_max;
+
+  std::optional<float> noise_amplitude_min;
+  std::optional<float> noise_amplitude_max;
+};
+
 struct ConstraintRule {
   enum class Type { EXCLUDES, REQUIRES };
 
@@ -60,14 +108,21 @@ struct ModelDescriptor {
   std::string domain;  // e.g. vegetation, building, etc
 
   std::vector<SelectionGroup> selection_groups;
-  std::vector<ParameterRange> parameter_ranges;
+  std::vector<TransformRange> transform_ranges;
   std::vector<ConstraintRule> constraints;
   std::vector<ParameterBinding> parameter_bindings;
+  std::vector<DeformationRange> part_deformation_ranges;
+  std::optional<DeformationRange> model_deformation_range;
 
   // Archetype-level attributes
   std::optional<glm::vec3> scale_min;  // model scale range
   std::optional<glm::vec3> scale_max;
   std::vector<std::string> tags;  // ex: "vegetation", "tropical"
+
+  // Locator modifiers: declarative transformations applied per-group
+  // to each locator's world frame before a part is placed.
+  // Authored as a list of (kind, params) entries.
+  std::vector<LocatorOperation> locator_operations;
 };
 
 }  // namespace ProcModel

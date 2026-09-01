@@ -101,6 +101,7 @@ private:
   bgfx::ProgramHandle default_program_;
   bgfx::ProgramHandle selection_program_;
   bgfx::ProgramHandle debug_program_;
+  bgfx::ProgramHandle shadow_program_;
 
   // Grid resources
   const Mesh* grid_mesh_;

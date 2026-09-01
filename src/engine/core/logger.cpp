@@ -1,24 +1,43 @@
 #include "engine/core/logger.h"
 #include <filesystem>
 
+/**
+ * CORE LOGGER
+ * Issues:
+ * ! - file on disk is unbounded
+ * ! - GetLogEntries returns a copy every frame, this should be changed
+ * ! - copy is O(n) in entries, but only happens when version_ changes
+ */
+
 Logger::Logger() : logfile_() {
 
-  // TODO: Improve logic here
-  // Logger only stores 2 consecutive iterations of log files
-  // overwrites old log with new one as a new session is started
   namespace fs = std::filesystem;
 
-  // --- log checker ----------------------------------
-  if (fs::exists("oldlog.txt"))
-    fs::remove("oldlog.txt");
-  if (fs::exists("enginelog.txt"))
-    fs::rename("enginelog.txt", "oldlog.txt");
-  // -----Open new log---------------------------------
-  logfile_.open("enginelog.txt", std::ios::trunc);
+  fs::path log_dir = fs::current_path() / "logs" / "engine";
+  std::error_code ec;
+  fs::create_directories(log_dir, ec);
+  if (ec) {
+    std::cerr << "Logger: failed to create log directory: " << ec.message()
+              << '\n';
+    return;
+  }
+
+  // Define two log paths (old and new)
+  const fs::path current_log = log_dir / "enginelog.txt";
+  const fs::path old_log = log_dir / "oldlog.txt";
+
+  // Discard oldest, promote current log to old, create new file for current log
+  if (fs::exists(old_log))
+    fs::remove(old_log);
+  if (fs::exists(current_log))
+    fs::rename(current_log, old_log);
+
+  logfile_.open(current_log, std::ios::trunc);
   if (!logfile_)
-    std::cerr << "Log File failed to open\n";
+    std::cerr << "Log File failed to open at " << current_log.string() << '\n';
   else
-    std::cerr << "Log File successfully opened at enginelog.txt\n";
+    std::cerr << "Log File successfully opened at " << current_log.string()
+              << '\n';
 }
 
 Logger::~Logger() {  // destructor to close logger class if it is still open
@@ -30,25 +49,28 @@ Logger::~Logger() {  // destructor to close logger class if it is still open
 std::string Logger::GetLogLevelName(LogLevel level) {
   return logLevelNames[level];  // Lookup the mapping for levels
 }
-std::vector<std::string> Logger::GetLogEntries() {
-  std::lock_guard<std::mutex> guard(mutex_);  // Lock to prevent overwriting
-  std::vector<std::string> log_entries;
-  std::ifstream logfile("enginelog.txt");
-  if (!logfile.is_open()) {
-    log_entries.emplace_back("Unable to open log file.");
-    return log_entries;
-  }
-  std::string line;
-  while (std::getline(logfile, line)) {
-    log_entries.emplace_back(line);
-  }
-  return log_entries;
+
+uint64_t Logger::GetVersion() {
+  std::lock_guard<std::mutex> guard(mutex_);
+  return version_;
+}
+
+const std::deque<std::string>& Logger::GetLogEntries() {
+  std::lock_guard<std::mutex> guard(mutex_);
+  return entries_;  // copy under lock - safe
 }
 
 void Logger::Log(LogLevel level, const std::string& message) {
-  std::lock_guard<std::mutex> guard(
-      mutex_);  // Lock to prevent overwriting; mutex gives multi-threading
-                // support
-  logfile_ << "[" << GetLogLevelName(level) << "] " << message << std::endl;
+  std::lock_guard<std::mutex> guard(mutex_);  // Prevent overwriting; mutex
+                                              // gives multi-threading support
+  std::string formatted = "[" + GetLogLevelName(level) + "] " + message;
+
+  entries_.push_back(formatted);
+  ++version_;
+
+  if (entries_.size() > MAX_ENTRIES)
+    entries_.pop_front();
+
+  logfile_ << formatted << std::endl;
   logfile_.flush();  // Ensure the message is written to the file
 }

@@ -58,7 +58,8 @@ add_packages(
 	"efsw",
 	"nlohmann_json",
 	"reflect-cpp",
-	"entt"
+	"entt",
+	"pcg-cpp"
 )
 
 -- copy all assets

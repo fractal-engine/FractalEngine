@@ -14,7 +14,8 @@ public:
                           const std::string& source_path);
 
 private:
-  static ModelGraphNode ConvertNode(const Content::SceneNode& scene_node);
+  static ModelGraphNode ConvertNode(const Content::SceneNode& scene_node,
+                                    const glm::mat4& parent_transform);
   static void BuildLookup(
       ModelGraphNode& node,
       std::unordered_map<std::string, ModelGraphNode*>& lookup);

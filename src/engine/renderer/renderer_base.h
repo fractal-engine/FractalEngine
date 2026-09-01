@@ -9,8 +9,6 @@
 #include <string>
 #include <vector>
 
-class RendererBase;
-
 class RendererBase {
 protected:
   int height_, width_;

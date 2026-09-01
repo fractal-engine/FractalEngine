@@ -2,7 +2,6 @@
 #include <SDL_syswm.h>
 
 #include <bgfx/bgfx.h>
-#include <bgfx/platform.h>
 
 #include "engine/core/logger.h"  // ! remove engine dependency
 #include "imgui.h"
@@ -11,9 +10,10 @@
 #include "window_manager.h"
 
 // Track window state
-bool WindowManager::fullscreen_ = false;
-SDL_Rect WindowManager::windowedBounds = {};
+bool WindowManager::fullscreen = false;
+SDL_Rect WindowManager::windowed_bounds = {};
 bool WindowManager::minimized = false;
+bool WindowManager::quit_requested = false;
 
 bool WindowManager::Initialize(const char* title, int width, int height) {
   WindowManager& instance = getInstance();
@@ -47,7 +47,7 @@ bool WindowManager::Initialize(const char* title, int width, int height) {
   // ------------------------------------------------
   //  Get display scale factor for Retina support
   // ------------------------------------------------
-  instance.dpiScale_ = Platform::GetDPIScale(instance.window_);
+  instance.dpi_scale_ = Platform::GetDPIScale(instance.window_);
 
   Platform::DisableTextInput();
 
@@ -87,12 +87,12 @@ SDL_Window* WindowManager::GetWindow() {
 }
 
 float WindowManager::GetDPIScale() {
-  return getInstance().dpiScale_;
+  return getInstance().dpi_scale_;
 }
 
 void WindowManager::RegisterResizeCallback(
     std::function<void(int, int)> callback) {
-  getInstance().resizeCallbacks_.push_back(callback);
+  getInstance().resize_callbacks_.push_back(callback);
 }
 
 void WindowManager::OnWindowResize(int width, int height) {
@@ -100,7 +100,7 @@ void WindowManager::OnWindowResize(int width, int height) {
   instance.width_ = width;
   instance.height_ = height;
 
-  if (fullscreen_ || minimized)  // ignore resize on fullscreen or minimized
+  if (fullscreen || minimized)  // ignore resize on fullscreen or minimized
     return;
 
   if (!Platform::InFullscreenSpace(instance.window_))
@@ -115,7 +115,7 @@ void WindowManager::OnWindowResize(int width, int height) {
                            std::to_string(height));
 
   // Notify all registered callbacks
-  for (auto& callback : instance.resizeCallbacks_) {
+  for (auto& callback : instance.resize_callbacks_) {
     callback(width, height);
   }
 }
@@ -137,23 +137,23 @@ bool WindowManager::SetBorderlessFullscreen(bool enable) {
     return true;
 
   Platform::ToggleBorderlessFullscreen(instance.window_, enable);
-  fullscreen_ = enable;
+  fullscreen = enable;
   return true;
 }
 
 void WindowManager::ToggleFullscreen() {
   WindowManager& inst = getInstance();
-  fullscreen_ = !fullscreen_;
+  fullscreen = !fullscreen;
 
-  if (fullscreen_) {  // ---> FULLSCREEN
-    SDL_GetWindowPosition(inst.window_, &windowedBounds.x, &windowedBounds.y);
-    SDL_GetWindowSize(inst.window_, &windowedBounds.w, &windowedBounds.h);
+  if (fullscreen) {  // ---> FULLSCREEN
+    SDL_GetWindowPosition(inst.window_, &windowed_bounds.x, &windowed_bounds.y);
+    SDL_GetWindowSize(inst.window_, &windowed_bounds.w, &windowed_bounds.h);
     SDL_SetWindowFullscreen(inst.window_, SDL_WINDOW_FULLSCREEN_DESKTOP);
   } else {  // ---> WINDOWED
     SDL_SetWindowFullscreen(inst.window_, 0);
     SDL_SetWindowBordered(inst.window_, SDL_TRUE);
-    SDL_SetWindowPosition(inst.window_, windowedBounds.x, windowedBounds.y);
-    SDL_SetWindowSize(inst.window_, windowedBounds.w, windowedBounds.h);
+    SDL_SetWindowPosition(inst.window_, windowed_bounds.x, windowed_bounds.y);
+    SDL_SetWindowSize(inst.window_, windowed_bounds.w, windowed_bounds.h);
   }
 
   // ---- NEW: refresh cached size, propagate, reset swap-chain -----------
@@ -163,14 +163,22 @@ void WindowManager::ToggleFullscreen() {
   inst.height_ = logicalH;
 
   // Graph­icsRenderer’s resize callback calls SetSize() → framebuffer rebuild
-  for (auto& cb : inst.resizeCallbacks_)
+  for (auto& cb : inst.resize_callbacks_)
     cb(logicalW, logicalH);
 
   Platform::RefreshFramebufferSize(inst.window_);
 }
 
 bool WindowManager::IsFullscreen() {
-  return fullscreen_;
+  return fullscreen;
+}
+
+void WindowManager::Quit() {
+  quit_requested = true;
+}
+
+bool WindowManager::ShouldQuit() {
+  return quit_requested;
 }
 
 void WindowManager::InitBGFXPlatformData(bgfx::Init& init) {

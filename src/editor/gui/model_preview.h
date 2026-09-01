@@ -5,43 +5,52 @@
 #include <string>
 #include <vector>
 
+#include "editor/gui/window_base.h"
 #include "editor/pipelines/preview_pipeline.h"
+#include "engine/memory/resource.h"
+#include "engine/pcg/procmodel/generator/resolved_model.h"
 #include "platform/window_manager.h"
 
 class Model;  // Forward declare model
 
-class ModelPreview {
+class ModelPreview : public WindowBase {
 public:
-  ModelPreview();
-  ~ModelPreview();
+  explicit ModelPreview(PreviewData* data);
+  ~ModelPreview() override;
 
-  void Init();
-  void Render();
-
-  // Global access to selection for the ModelViewer
-  static int GetSelectedVariant();
-
-  // Expose the loaded model so the Viewer doesn't have to reload it
-  static std::shared_ptr<Model> GetModel();
-  static float GetModelScale();  // Allows Viewer to match the grid scale
+  void Render() override;
 
 private:
+  void Init();
+
+  void LoadDescriptor(const std::string& path);
+  void TickGenerate();
+  void GenerateInstances();
+
   void RenderToolbar(ImDrawList* draw_list);
   void RenderGrid(ImDrawList* draw_list);
 
+  void SubmitViews();
+
   PreviewPipeline preview_pipeline_;
-  std::vector<size_t> variant_outputs_;
+  std::vector<size_t> instance_outputs_;
+  PreviewData* data_;
 
-  // The base procedural model being visualized
-  static std::shared_ptr<Model> model_;
+  // Procmodel state
+  std::string descriptor_path_;
+  bool clear_output = false;
 
-  // States
-  uint32_t current_seed_ = 42069;
+  // UI States
+  uint32_t current_seed_;  // seed is only defined in procmodel, remove this
   float thumbnail_size_ = 120.0f;
-  static int s_selected_variant_;
-  static float s_model_scale_;
-  int total_variants_ = 48;
+  int total_instances_ = 50;
   bool initialized_ = false;
+  // bool regenerate_ = false;
+
+  // Render state
+  int images_per_frame_ = 1;
+  int images_generated_ = 0;
+  int images_submitted_ = 0;
 };
 
 #endif  // MODEL_PREVIEW_H

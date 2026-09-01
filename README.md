@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://i.imgur.com/5Ssv6YY.png" alt="Fractal Logo"/>
+  <img src="https://i.imgur.com/dvVw7Le.png" alt="Fractal Logo"/>
 </p>
 
 <p align="center">
@@ -39,6 +39,10 @@
   <img alt="discord" src="https://img.shields.io/discord/1331206947495477328?label=discord&logo=discord&logoColor=white&color=7389D8&style=flat-square"/>
 </a>
 </p>
+
+## Goals
+
+## Project Status
 
 ## Contributing
 
@@ -83,10 +87,6 @@ Follow these steps to set up and run the project:
     ```bash
     xmake project -k vsxmake -m "debug"
     ```
-
-## Goals
-
-## Project Status
 
 ## Thirdparty Libraries
 

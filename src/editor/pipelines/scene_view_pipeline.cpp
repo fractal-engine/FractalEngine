@@ -4,6 +4,7 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
+#include "bgfx/defines.h"
 #include "editor/camera/camera_view.h"
 #include "editor/editor_ui.h"
 #include "editor/gizmos/component_gizmos.h"
@@ -36,6 +37,7 @@ SceneViewPipeline::SceneViewPipeline()
       selected_entities_(),
       show_grid_(true),
       selection_program_(BGFX_INVALID_HANDLE),
+      shadow_program_(BGFX_INVALID_HANDLE),
       grid_mesh_(nullptr) {
   // TODO: Initialize other members e.g. profile, viewport, passes, etc.
   // Check reference project for details
@@ -49,11 +51,17 @@ void SceneViewPipeline::Create() {
 
   // Load shared shaders
   default_program_ =
-      Runtime::Shader()->LoadProgram("materials", "vs_lit.bin", "fs_lit.bin");
+      // ! Check lighting shaders (not working)
+      // Runtime::Shader()->LoadProgram("materials", "vs_lit.bin",
+      // "fs_lit.bin");
+      // ! GLTF shaders are placeholders
+      Runtime::Shader()->LoadProgram("gltf", "vs_gltf.bin", "fs_gltf.bin");
   selection_program_ = Runtime::Shader()->LoadProgram(
       "selection", "vs_selection.bin", "fs_selection.bin");
   debug_program_ = Runtime::Shader()->LoadProgram("debug", "vs_grid_plane.bin",
                                                   "fs_grid_plane.bin");
+  shadow_program_ = Runtime::Shader()->LoadProgram("shadow", "vs_shadow.bin",
+                                                   "fs_shadow.bin");
 
   BuildReferenceGrid(glm::mat4(1.0f));
   RegisterNodes();
@@ -236,7 +244,8 @@ void SceneViewPipeline::RenderForwardNode(const Node::Context& context) {
   bgfx::setViewFrameBuffer(ViewID::SCENE_FORWARD,
                            renderer->GetSceneFramebuffer());
 
-  bgfx::setViewClear(ViewID::SCENE_FORWARD, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH,
+  bgfx::setViewClear(ViewID::SCENE_FORWARD,
+                     BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH | BGFX_CLEAR_STENCIL,
                      wireframe_ ? 0xffffffff : 0x303030ff, 1.0f, 0);
 
   // Get shadows
@@ -362,6 +371,30 @@ void SceneViewPipeline::RenderForwardNode(const Node::Context& context) {
     // Submit mesh
     bgfx::setTransform(glm::value_ptr(transform.model_));
     renderer_comp.mesh_->Bind();
+
+    // Set material uniforms via material registry
+    const Content::MaterialData* mat =
+        Renderer::MaterialRegistry::Instance().Get(renderer_comp.material_);
+
+    float has_albedo[4] = {0.0f, 0.0f, 0.0f, 0.0f};
+
+    if (mat && !mat->albedo_map.empty()) {
+      // ! texture upload not yet implemented - placeholder
+      // bgfx::setTexture(0, s_albedo_sampler, albedo_texture_handle);
+      // has_albedo[0] = 1.0f;
+    }
+
+    bgfx::setUniform(renderer->GetAlbedoUniform(), has_albedo);
+
+    if (mat) {
+      float mesh_color[4] = {mat->base_color.r, mat->base_color.g,
+                             mat->base_color.b, mat->base_color.a};
+      bgfx::setUniform(renderer->GetMeshColorUniform(), mesh_color);
+    } else {
+      // Fallback gray material
+      float default_color[4] = {0.8f, 0.8f, 0.8f, 1.0f};
+      bgfx::setUniform(renderer->GetMeshColorUniform(), default_color);
+    }
 
     // Set culling/state
     // ? Create a method for handling render states?
@@ -520,13 +553,7 @@ void SceneViewPipeline::RenderShadowNode(const Node::Context& context) {
   bgfx::setViewTransform(ViewID::SHADOW_PASS, light_view_arr, light_proj_arr);
 
   // Load shadow shader
-  static bgfx::ProgramHandle shadow_program = BGFX_INVALID_HANDLE;
-  if (!bgfx::isValid(shadow_program)) {
-    shadow_program = Runtime::Shader()->LoadProgram("shadow", "vs_shadow.bin",
-                                                    "fs_shadow.bin");
-  }
-
-  if (!bgfx::isValid(shadow_program)) {
+  if (!bgfx::isValid(shadow_program_)) {
     Logger::getInstance().Log(LogLevel::Error, "Shadow shader failed to load");
     return;
   }
@@ -544,7 +571,7 @@ void SceneViewPipeline::RenderShadowNode(const Node::Context& context) {
     // write depth, cull front faces
     bgfx::setState(BGFX_STATE_WRITE_Z | BGFX_STATE_DEPTH_TEST_LESS |
                    BGFX_STATE_CULL_CW);
-    bgfx::submit(ViewID::SHADOW_PASS, shadow_program);
+    bgfx::submit(ViewID::SHADOW_PASS, shadow_program_);
   }
 }
 
@@ -571,7 +598,7 @@ void SceneViewPipeline::RenderSelectedEntityOutline(
 
   // Placeholder transform component for outline
   TransformComponent outline_transform = transform;
-  float thickness = 0.038f;
+  float thickness = 0.02f;
   outline_transform.scale_ += glm::vec3(thickness);
 
   // Recompute model matrix for outline
@@ -589,9 +616,13 @@ void SceneViewPipeline::RenderSelectedEntityOutline(
   // Forward render entity's base mesh
   // TODO: Set shader uniforms (mvp, model, normal)
   // TODO: should use Shader and Material systems once implemented
+  bgfx::setStencil(
+      BGFX_STENCIL_TEST_ALWAYS | BGFX_STENCIL_FUNC_REF(1) |
+      BGFX_STENCIL_FUNC_RMASK(0xFF) | BGFX_STENCIL_OP_FAIL_S_REPLACE |
+      BGFX_STENCIL_OP_FAIL_Z_REPLACE | BGFX_STENCIL_OP_PASS_Z_REPLACE);
   bgfx::setTransform(glm::value_ptr(transform.model_));
   renderer.mesh_->Bind();
-  bgfx::setState(BGFX_STATE_DEFAULT);
+  bgfx::setState(BGFX_STATE_DEFAULT | BGFX_STATE_CULL_CW);
   bgfx::submit(ViewID::SCENE_FORWARD, default_program_);
 
   // Render outline of selected entity
@@ -603,13 +634,16 @@ void SceneViewPipeline::RenderSelectedEntityOutline(
   // Render mesh as outline
   // TODO: should use Shader and Material systems once implemented?
   // TODO: Use stencil test to only draw outline edges
+  bgfx::setStencil(BGFX_STENCIL_TEST_NOTEQUAL | BGFX_STENCIL_FUNC_REF(1) |
+                   BGFX_STENCIL_FUNC_RMASK(0xFF) | BGFX_STENCIL_OP_FAIL_S_KEEP |
+                   BGFX_STENCIL_OP_FAIL_Z_KEEP | BGFX_STENCIL_OP_PASS_Z_KEEP);
   bgfx::setTransform(glm::value_ptr(outline_transform.model_));
   renderer.mesh_->Bind();
-  // TODO: Use selection_material_ for outline shader
-  bgfx::setState(BGFX_STATE_DEFAULT | BGFX_STATE_BLEND_ALPHA |
-                 BGFX_STATE_CULL_CW);
-  bgfx::submit(ViewID::SCENE_FORWARD, selection_program_);
 
+  bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A |
+                 BGFX_STATE_DEPTH_TEST_LEQUAL | BGFX_STATE_CULL_CW);
+
+  bgfx::submit(ViewID::SCENE_FORWARD, selection_program_);
   // TODO: Reset BGFX blend and stencil state if needed
 }
 

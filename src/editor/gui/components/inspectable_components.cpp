@@ -403,6 +403,7 @@ void DrawVolumeComponent(Entity entity, VolumeComponent& volume) {
 // rigidbody); void DrawAudioListener(Entity entity, AudioListenerComponent&
 // listener); void DrawAudioSource(Entity entity, AudioSourceComponent&
 // source);
+// some PCG component? (generator, instancing, etc)
 
 // TODO: Post-processing inspectables
 // void DrawColor(PostProcessing::Color& color);

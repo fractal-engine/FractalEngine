@@ -1,8 +1,8 @@
 #include "graph_serializer.h"
 #include "node_types.h"
 
-#include <fstream>
-#include <iostream>
+#include "engine/content/io/json.h"
+#include "engine/core/logger.h"
 
 namespace PCG {
 
@@ -84,8 +84,9 @@ bool GraphSerializer::FromJson(const nlohmann::json& j,
       NodeTypeID type_id;
       if (!NodeTypeDB::Instance().TryGetId(type_name, type_id)) {
 
-        // ! CHANGE THIS:
-        std::cerr << "Unknown node type: " << type_name << std::endl;
+        Logger::getInstance().Log(
+            LogLevel::Error,
+            "[GraphSerializer::FromJson] Unknown node type: " + type_name);
         continue;
       }
 
@@ -175,33 +176,23 @@ bool GraphSerializer::FromJson(const nlohmann::json& j,
   return true;
 }
 
+bool GraphSerializer::LoadFromFile(const std::string& path,
+                                   ProgramGraph& out_graph) {
+  auto json_opt = Content::ReadJsonFile(path);
+  if (!json_opt.has_value()) {
+    return false;  // ReadJsonFile already logged
+  }
+  return FromJson(*json_opt, out_graph);
+}
+
 bool GraphSerializer::SaveToFile(const ProgramGraph& graph,
                                  const std::string& path) {
   try {
-    nlohmann::json j = ToJson(graph);
-    std::ofstream file(path);
-    if (!file.is_open()) {
-      return false;
-    }
-    file << j.dump(2);  // Pretty print with 2-space indent
-    return true;
+    return Content::WriteJsonFile(path, ToJson(graph));
   } catch (const std::exception& e) {
-    std::cerr << "Failed to save graph: " << e.what() << std::endl;
-    return false;
-  }
-}
-
-bool GraphSerializer::LoadFromFile(const std::string& path,
-                                   ProgramGraph& out_graph) {
-  try {
-    std::ifstream file(path);
-    if (!file.is_open()) {
-      return false;
-    }
-    nlohmann::json j = nlohmann::json::parse(file);
-    return FromJson(j, out_graph);
-  } catch (const std::exception& e) {
-    std::cerr << "Failed to load graph: " << e.what() << std::endl;
+    Logger::getInstance().Log(
+        LogLevel::Error,
+        std::string("[GraphSerializer::SaveToFile] ToJson error: ") + e.what());
     return false;
   }
 }

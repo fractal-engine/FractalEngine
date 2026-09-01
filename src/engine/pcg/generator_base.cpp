@@ -3,11 +3,11 @@
 
 namespace PCG {
 
-std::unique_ptr<GeneratorBase> GeneratorBase::Clone() const {
+std::unique_ptr<Generator> Generator::Clone() const {
   return nullptr;
 }
 
-std::unique_ptr<GeneratorBase> CreateGenerator(GeneratorType type) {
+std::unique_ptr<FieldGenerator> CreateGenerator(GeneratorType type) {
   switch (type) {
     case GeneratorType::Graph:
       return std::make_unique<GeneratorGraph>();

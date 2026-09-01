@@ -8,6 +8,13 @@
 #include "editor/gui/styles/editor_styles.h"
 #include "engine/core/logger.h"
 
+/**
+ * CONSOLE PANEL
+ * Issues:
+ * ! - ImGui::TextUnformatted in loop renders all logs each frame, even
+ * off-screen ones
+ */
+
 namespace Panels {
 
 inline void ConsolePanel() {
@@ -24,8 +31,15 @@ inline void ConsolePanel() {
   ImGui::PushFont(EditorStyles::GetFonts().console);  // Set console font
 
   // Display log
-  const auto& log_entries = Logger::getInstance().GetLogEntries();
-  for (const auto& line : log_entries) {
+  static uint64_t last_version = 0;
+  static std::deque<std::string> cached_entries;
+
+  uint64_t current = Logger::getInstance().GetVersion();
+  if (current != last_version) {
+    cached_entries = Logger::getInstance().GetLogEntries();
+    last_version = current;
+  }
+  for (const auto& line : cached_entries) {
     ImGui::TextUnformatted(line.c_str());
   }
 

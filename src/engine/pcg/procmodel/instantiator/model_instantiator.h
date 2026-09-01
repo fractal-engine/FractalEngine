@@ -17,7 +17,7 @@ public:
     std::vector<Entity> part_entities;
   };
 
-  static InstantiateResult Instantiate(const ResolvedModel& resolved,
+  static InstantiateResult Instantiate(const InstanceModel& resolved,
                                        const ModelGraph& graph,
                                        Entity parent = entt::null);
 

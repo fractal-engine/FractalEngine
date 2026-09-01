@@ -1,6 +1,6 @@
 #include "editor/editor_ui.h"
 #include "editor/events.h"
-#include "editor/gui/styles/editor_styles.h"  
+#include "editor/gui/styles/editor_styles.h"
 #include "editor/runtime/runtime.h"
 #include "engine/context/engine_context.h"
 #include "engine/core/engine_globals.h"
@@ -36,10 +36,7 @@
 
 #include <SDL.h>
 
-// --- Standalone instances for the procedural tools ---
-static ModelPreview g_model_preview;
-static ModelViewer g_model_viewer;
-static AssetGraphEditor g_asset_graph_editor;
+// static AssetGraphEditor g_asset_graph_editor;
 
 // Window base class
 std::vector<WindowBase*> g_windows_;
@@ -88,6 +85,9 @@ void EditorUI::Initialize() {
   _AddWindow<HierarchyPanel>();
   _AddWindow<PCGGraphEditorPanel>();
   _AddWindow<InspectorPanel>();
+  _AddWindow<ModelPreview>(&procmodel_data_);
+  _AddWindow<ModelViewer>(&procmodel_data_);
+  _AddWindow<AssetGraphEditor>(&procmodel_data_);
 
   // TODO: Refactor these panels to EditorBase:
   // _AddWindow<ConsolePanel>();
@@ -152,6 +152,7 @@ void EditorUI::Run() {
 
       if (event.type == SDL_QUIT) {
         quit_ = true;
+        WindowManager::Quit();
         EditorEvents::editor_exit_pressed();
       }
     }  // end PollEvent loop
@@ -226,6 +227,7 @@ void EditorUI::HandleInput(Key key) {
   switch (key) {
     case Key::DIGIT_0:
       quit_ = true;
+      WindowManager::Quit();
       EditorEvents::editor_exit_pressed();
       return;
     case Key::DIGIT_1:
@@ -290,6 +292,7 @@ void EditorUI::DockSpace() {
           EditorEvents::game_end_pressed();
         }
         this->quit_ = true;
+        WindowManager::Quit();
         EditorEvents::editor_exit_pressed();
       },
       debug_highlight_ids_, debug_show_metrics_, debug_show_log_,
@@ -365,6 +368,7 @@ void EditorUI::RenderUI() {
       EditorEvents::game_end_pressed();
     }
     this->quit_ = true;
+    WindowManager::Quit();
     EditorEvents::editor_exit_pressed();
   };
 
@@ -402,11 +406,6 @@ void EditorUI::RenderUI() {
   // Panels::FileExplorer();
   //------------------------- SEARCH POPUP --------------------------
   SearchPopup::Render();
-
-  // -------- PROCEDURAL GENERATION PANELS --------
-  g_model_preview.Render();
-  g_model_viewer.Render();
-  g_asset_graph_editor.Render();
 
   //------------------------- IMGUI DEBUG ---------------------------
   if (debug_show_metrics_) {
@@ -478,9 +477,9 @@ void EditorUI::UpdateMovement() {
 
   // Enable/disable text input
   if (input.scene_hovered) {
-    Platform::DisableTextInput();  
+    Platform::DisableTextInput();
   } else {
-    Platform::EnableTextInput();  
+    Platform::EnableTextInput();
   }
 
   input.right_mouse =

@@ -269,11 +269,10 @@ std::shared_ptr<const ProjectObserver::Folder> ProjectObserver::FetchFolder(
   return nullptr;
 }
 
-void ProjectObserver::IOListener::handleFileAction(efsw::WatchID watch_id,
-                                                   const std::string& directory,
-                                                   const std::string& filename,
-                                                   efsw::Action action,
-                                                   std::string old_filename) {
+void ProjectObserver::IOListener::handleFileAction(
+    efsw::WatchID watch_id, const std::string& directory,
+    const std::string& filename, efsw::Action action,
+    const std::string& old_filename) {
   auto event =
       std::make_unique<IOEvent>(action, directory, filename, old_filename);
   bool success = event_queue_.try_enqueue(std::move(event));
@@ -289,6 +288,8 @@ std::shared_ptr<ProjectObserver::Folder> ProjectObserver::CreateFolder(
   folder_registry_.emplace(root->id_, root);
 
   for (const auto& entry : std::filesystem::directory_iterator(path)) {
+    if (ShouldIgnore(entry.path(), entry.is_directory()))
+      continue;
     if (entry.is_directory())
       root->subfolders_.push_back(CreateFolder(entry.path(), root->id_));
     else if (entry.is_regular_file())
@@ -332,4 +333,32 @@ std::shared_ptr<ProjectObserver::Folder> ProjectObserver::FindFolder(
   Logger::getInstance().Log(
       LogLevel::Warning, "Project Observer: Some parent folder was not found");
   return nullptr;
+}
+
+bool ProjectObserver::ShouldIgnore(const FileSystem::Path& path,
+                                   bool is_directory) {
+  const std::string filename = path.filename().string();
+
+  // Handle exception: project config is hidden but we track it
+  if (filename == ".project")
+    return false;
+
+  // Hidden files/folders
+  if (!filename.empty() && filename[0] == '.')
+    return true;
+
+  // Windows OS-generated
+  if (filename == "Thumbs.db" || filename == "desktop.ini")
+    return true;
+
+  // Version control directories
+  if (is_directory &&
+      (filename == ".git" || filename == ".svn" || filename == ".hg"))
+    return true;  // redundant with the '.' rule but explicit for clarity
+
+  // Engine sidecar files
+  if (path.extension() == ".meta")
+    return true;
+
+  return false;
 }

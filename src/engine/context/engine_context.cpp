@@ -11,7 +11,7 @@
  *  - SubsystemList hot-reload registry (dynamic_registry)
  *
  * Initializes / coordinates (not owned):
- *  - WindowManager (Initialize, WindowShouldClose)
+ *  - WindowManager (Initialize, ShouldQuit)
  *  - ECS (entt::locator<ECS>::emplace)
  *  - SoundManager (Instance().init / Instance().terminate)
  *
@@ -74,6 +74,7 @@ bool Init() {
   resource_manager_ = std::make_unique<ResourceManager>();
 
   pcg_engine_ = std::make_unique<PCGEngine>();
+  pcg_engine_->Create();
 
   // Initialize ECS singleton
   entt::locator<ECS>::emplace();
@@ -91,7 +92,7 @@ bool Init() {
 }
 
 bool Running() {
-  return !WindowManager::WindowShouldClose();
+  return !WindowManager::ShouldQuit();
 }
 
 void NextFrame() {
@@ -153,7 +154,7 @@ ResourceManager& resourceManager() {
   return *resource_manager_;
 }
 
-PCGEngine& Generator() {
+PCGEngine& PCG() {
   return *pcg_engine_;
 }
 

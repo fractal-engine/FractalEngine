@@ -54,32 +54,35 @@ bool ProjectManager::EnsureConfig() {
   std::filesystem::path config_path = project_.path_ / ".project";
 
   // Check if config exists, or try to create it
-  if (std::filesystem::exists(config_path))
-    return true;
-
-  try {
-    std::ofstream config_file(config_path);
-    if (config_file.is_open()) {
-      config_file << "# Project configuration file" << std::endl;
-      config_file.close();
-      return true;
+  if (!std::filesystem::exists(config_path)) {
+    try {
+      std::ofstream config_file(config_path);
+      if (config_file.is_open()) {
+        config_file << "name=" << project_.path_.filename().string()
+                    << std::endl;
+        config_file.close();
+      }
+    } catch (const std::exception& e) {
+      Logger::getInstance().Log(
+          LogLevel::Error,
+          "Failed to create project configuration: " + std::string(e.what()));
+      return false;
     }
-  } catch (const std::exception& e) {
-    Logger::getInstance().Log(
-        LogLevel::Error,
-        "Failed to create project configuration: " + std::string(e.what()));
   }
 
-  Logger::getInstance().Log(
-      LogLevel::Error, "Could not locate or create project configuration at '" +
-                           config_path.string() + "'");
-  return false;
+  // Read config
+  std::ifstream config_file(config_path);
+  std::string line;
+  while (std::getline(config_file, line)) {
+    if (line.rfind("name=", 0) == 0)
+      project_.config.name = line.substr(5);
+  }
+
+  return true;
 }
 
 // TODO: rework function, project name and
 // folder name should be handled separetely
-std::string ProjectManager::ProjectName() const
-{
-    return project_.path_.filename().string();
+std::string ProjectManager::ProjectName() const {
+  return project_.config.name;
 }
-

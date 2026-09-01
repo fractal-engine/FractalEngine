@@ -2,7 +2,6 @@
 
 #include <bgfx/bgfx.h>
 #include <bimg/bimg.h>
-#include <bimg/decode.h>
 #include <bx/file.h>
 #include "engine/core/logger.h"
 
@@ -27,10 +26,12 @@ bgfx::TextureHandle LoadTexture(const std::string& filepath, bool srgb) {
   bx::read(&reader, mem->data, size, nullptr);
   bx::close(&reader);
 
+  bx::MemoryReader memReader(mem->data, mem->size);
+  bimg::ImageContainer image;
+  bx::Error err;
+
   // Use bimg to parse the image from memory
-  bimg::ImageContainer* image =
-      bimg::imageParse(&allocator, mem->data, mem->size);
-  if (!image) {
+  if (!bimg::imageParse(image, &memReader, &err)) {
     Logger::getInstance().Log(LogLevel::Error,
                               "bimg failed to parse texture: " + filepath);
     return BGFX_INVALID_HANDLE;
@@ -44,13 +45,13 @@ bgfx::TextureHandle LoadTexture(const std::string& filepath, bool srgb) {
 
   // Create the actual texture using bgfx
   bgfx::TextureHandle handle = bgfx::createTexture2D(
-      (uint16_t)image->m_width,   // Width
-      (uint16_t)image->m_height,  // Height
-      image->m_numMips > 1,       // Use mipmaps if available
-      image->m_numLayers,         // Number of layers (usually 1)
-      (bgfx::TextureFormat::Enum)image->m_format,  // Format decoded by bimg
-      flags,                                       // Texture flags
-      bgfx::copy(image->m_data, image->m_size)     // Copy the image data
+      (uint16_t)image.m_width,   // Width
+      (uint16_t)image.m_height,  // Height
+      image.m_numMips > 1,       // Use mipmaps if available
+      image.m_numLayers,         // Number of layers (usually 1)
+      (bgfx::TextureFormat::Enum)image.m_format,  // Format decoded by bimg
+      flags,                                      // Texture flags
+      bgfx::copy(image.m_data, image.m_size)      // Copy the image data
   );
 
   // Check for failure in texture creation
@@ -58,9 +59,6 @@ bgfx::TextureHandle LoadTexture(const std::string& filepath, bool srgb) {
     Logger::getInstance().Log(LogLevel::Error,
                               "Failed to create texture: " + filepath);
   }
-
-  // Clean up the parsed image structure
-  bimg::imageFree(image);
 
   return handle;
 }

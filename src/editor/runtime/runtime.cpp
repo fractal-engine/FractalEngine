@@ -55,6 +55,8 @@
 #include "engine/scene/scene_template.h"
 #include "engine/time/time.h"
 
+#include "platform/paths.h"
+
 #include "game/game_test.h"
 
 // ------------------ single-instance state -----------------
@@ -112,11 +114,13 @@ static void _LoadDependencies() {
   // TODO: create default textures
 
   // load icons
-  IconLoader::CreatePlaceholderIcon("./resources/icons/fallback/fallback.png");
-  IconLoader::LoadIcons("./resources/icons/shared");
-  IconLoader::LoadIconsAsync("./resources/icons/assets");
-  IconLoader::LoadIconsAsync("./resources/icons/components");
-  IconLoader::LoadIconsAsync("./resources/icons/scene");
+  IconLoader::CreatePlaceholderIcon(
+      Platform::ResolvePath("resources/icons/fallback/fallback.png"));
+  IconLoader::LoadIcons(Platform::ResolvePath("resources/icons/shared"));
+  IconLoader::LoadIconsAsync(Platform::ResolvePath("resources/icons/assets"));
+  IconLoader::LoadIconsAsync(
+      Platform::ResolvePath("resources/icons/components"));
+  IconLoader::LoadIconsAsync(Platform::ResolvePath("resources/icons/scene"));
 
   // Create default skybox
   g_default_skybox.Create(g_shader_manager);
@@ -319,7 +323,6 @@ int TERMINATE() {
   // Stop game logic
   if (g_game_manager) {
     g_game_manager->Destroy();
-    g_game_manager->Terminate();
     g_game_manager.reset();
   }
 

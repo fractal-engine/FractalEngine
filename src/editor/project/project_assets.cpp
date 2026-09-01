@@ -14,12 +14,8 @@ AssetSID ProjectAssets::Load(const FileSystem::Path& path) {
   // PREPARE ASSET
   // Try to fetch asset type info
   auto asset_info = AssetRegistry::FetchByPath(path);
-  if (!asset_info) {
-    Logger::getInstance().Log(
-        LogLevel::Warning,
-        "Failed to find asset type for path: " + path.string());
-    return 0;
-  }
+  if (!asset_info)
+    return 0;  // If unknown asset type, don't create fallback
 
   // Create asset instance
   AssetRef asset = asset_info->create_instance_();

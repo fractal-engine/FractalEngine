@@ -20,15 +20,15 @@ target("FastNoise2")
 
     add_links("FastNoise", {public = true})
     
-    on_build(function (target)
+    on_load(function (target)
         local lib
         if os.host() == "windows" then
             lib = path.join("$(projectdir)", "thirdparty/FastNoise2/build/src/Release/FastNoise.lib")
         else
             lib = path.join("$(projectdir)", "thirdparty/FastNoise2/build/src/libFastNoise.a")
         end
-        if os.isfile(lib) then return end
 
+        if os.isfile(lib) then return end
         import("lib.detect.find_tool")
         import("core.project.config")
         
@@ -51,10 +51,22 @@ target("FastNoise2")
                 table.insert(cmake_args, "-DCMAKE_POLICY_DEFAULT_CMP0091=NEW")
                 table.insert(cmake_args, "-DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded")
             end
+            if is_host("macosx") then
+                table.insert(cmake_args, "-DCMAKE_OSX_ARCHITECTURES=" .. (target:arch() or os.arch()))
+            end
             
             os.execv(cmake.program, cmake_args)
             os.execv(cmake.program, {"--build", "build", "--config", "Release"})
         end
+        target:add("includedirs", "FastNoise2/include", {public = true})
+        target:add("includedirs", "FastNoise2/build/_deps/fastsimd-src/include", {public = true})
+        
+        if is_plat("windows") then
+            target:add("linkdirs", "FastNoise2/build/src/Release", {public = true})
+        else
+            target:add("linkdirs", "FastNoise2/build/src", {public = true})
+        end
+        target:add("links", "FastNoise", {public = true})
     end)
 target_end()
 

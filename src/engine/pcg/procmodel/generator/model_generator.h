@@ -3,34 +3,38 @@
 
 #include <cstdint>
 #include <optional>
-#include <pcg_random.hpp>
 #include <string>
 #include <unordered_set>
 #include <vector>
 
+#include "engine/pcg/pipeline/linear_pipeline.h"
+
 #include "engine/pcg/procmodel/descriptor/model_descriptor.h"
+
+#include "engine/pcg/procmodel/generator/locator_context.h"
+#include "engine/pcg/procmodel/generator/model_context.h"
 #include "engine/pcg/procmodel/generator/resolved_model.h"
+
 #include "engine/pcg/procmodel/model_graph/model_graph.h"
+
+#include "engine/pcg/procmodel/validation/procmodel_validator.h"
 
 namespace ProcModel {
 
 class ModelGenerator {
 public:
-  static std::optional<ResolvedModel> Generate(
-      const ModelGraph& graph, const ModelDescriptor& descriptor, uint64_t seed,
-      int max_retries = 10);
+  static std::optional<InstanceData> Generate(
+      const ModelGraph& graph, const ModelDescriptor& descriptor,
+      const PCG::LinearPipeline& pipeline,
+      const PCG::OperationRegistry& operation_registry, uint64_t seed,
+      int max_retries = 10,
+      std::vector<ProcModelSample>* out_samples = nullptr);
 
 private:
-  static const PartDescriptor* WeightedSelect(
-      const std::vector<const PartDescriptor*>& candidates, pcg32& rng);
-
   static bool IsValidSelection(
       const std::string& part_id,
       const std::unordered_set<std::string>& selected_ids,
       const std::vector<ConstraintRule>& constraints);
-
-  static void ApplyParameterRanges(ResolvedDescriptor& resolved,
-                                   const ModelGraphNode& node, pcg32& rng);
 
   static void ApplyParameterBindings(
       std::vector<ResolvedDescriptor>& descriptors,

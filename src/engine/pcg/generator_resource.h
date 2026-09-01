@@ -9,12 +9,31 @@ class GeneratorResource : public Resource {
 public:
   GeneratorResource() = default;
 
-  void SetGenerator(std::unique_ptr<GeneratorBase> generator) {
+  void SetGenerator(std::unique_ptr<Generator> generator) {
     generator_ = std::move(generator);
   }
 
-  GeneratorBase* Get() { return generator_.get(); }
-  const GeneratorBase* Get() const { return generator_.get(); }
+  Generator* Get() { return generator_.get(); }
+  const Generator* Get() const { return generator_.get(); }
+
+  GeneratorType GetGeneratorType() const {
+    return generator_ ? generator_->GetType() : GeneratorType::Preset;
+  }
+
+  // Accessors
+  FieldGenerator* GetAsField() {
+    return dynamic_cast<FieldGenerator*>(generator_.get());
+  }
+  const FieldGenerator* GetAsField() const {
+    return dynamic_cast<const FieldGenerator*>(generator_.get());
+  }
+
+  InstanceGenerator* GetAsInstance() {
+    return dynamic_cast<InstanceGenerator*>(generator_.get());
+  }
+  const InstanceGenerator* GetAsInstance() const {
+    return dynamic_cast<const InstanceGenerator*>(generator_.get());
+  }
 
   // Resource interface
   void Destroy() override { generator_.reset(); }
@@ -23,7 +42,7 @@ public:
   }
 
 private:
-  std::unique_ptr<GeneratorBase> generator_;
+  std::unique_ptr<Generator> generator_;
 };
 
 }  // namespace PCG

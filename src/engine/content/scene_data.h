@@ -6,6 +6,12 @@
 #include <vector>
 
 #include "engine/core/types/geometry_data.h"
+#include "engine/core/types/material_data.h"
+
+//
+// SCENE_DATA_H
+// Data container for hierarchal imports
+//
 
 namespace Content {
 
@@ -17,11 +23,11 @@ struct SceneNode {
 };
 
 struct SceneData {
-  std::vector<Geometry::MeshData> meshes;
   SceneNode root;
+  std::vector<Geometry::MeshData> mesh_data;
+  std::vector<Content::MaterialData> materials;
 };
 
 }  // namespace Content
 
-
-#endif // SCENE_DATA_H
+#endif  // SCENE_DATA_H

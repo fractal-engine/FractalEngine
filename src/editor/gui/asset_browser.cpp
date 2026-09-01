@@ -25,28 +25,28 @@ std::string AssetBrowserPanel::Filename(
 
 AssetBrowserPanel::NodeUIData AssetBrowserPanel::NodeUIData::CreateFor(
     const std::string& name, float scale) {
-  // crop long names
-  std::string label = name;
-  constexpr uint32_t max_chars = 12;
-  if (label.length() > max_chars + 3)
-    label = label.substr(0, max_chars) + "...";
 
-  // Calculate layout metrics
   ImFont* font = ImGui::GetFont();
 
-  ImVec2 padding{14.0f * scale, 10.0f * scale};
-  ImVec2 icon_size{30.0f * scale, 30.0f * scale};
+  ImVec2 padding{12.0f * scale, 10.0f * scale};
+  ImVec2 icon_size{40.0f * scale, 40.0f * scale};
 
-  // Measure text dimensions at current font size
+  // Fixed card width based on scale to ensure consistent grid layout
+  const float total_w = 110.0f * scale;
+
+  // Calculate wrap width (card width minus padding)
+  const float wrap_width = total_w - (padding.x * 1.5f);
+
+  // Measure text dimensions natively accounting for word wrapping!
   ImVec2 text_size =
-      font->CalcTextSizeA(font->FontSize, FLT_MAX, 0.0f, label.c_str());
+      font->CalcTextSizeA(font->FontSize, FLT_MAX, wrap_width, name.c_str());
 
-  // Calculate total cell dimensions with padding
-  const float total_w = icon_size.x + padding.x * 2.0f + 13.0f;
+  // Calculate total cell dimensions.
+  // text_size.y will automatically expand the card height for multi-line text!
   const float total_h =
-      icon_size.y + padding.y * 2.0f + text_size.y + padding.y;
+      icon_size.y + padding.y * 2.5f + text_size.y + padding.y;
 
-  return NodeUIData(label, font, padding, icon_size, text_size,
+  return NodeUIData(name, font, padding, icon_size, text_size,
                     ImVec2(total_w, total_h));
 }
 
@@ -72,9 +72,6 @@ void AssetBrowserPanel::Draw() {
   // Render components
   ImVec2 nav_size = RenderBreadcrumbBar(draw_list, position);
   position.y += nav_size.y;
-
-  // ImGui::SetCursorScreenPos(ImVec2(position.x, position.y));
-  // ImGui::Separator();
 
   ImVec2 folder_size = RenderSideFolders(draw_list, position);
   position.x += folder_size.x;
@@ -248,7 +245,11 @@ ImVec2 AssetBrowserPanel::RenderBreadcrumbBar(ImDrawList& draw_list,
 
   draw_list.AddText(
       f, big, ImVec2(position.x + padding, position.y + (height - big) * 0.5f),
-      IM_COL32(255, 255, 255, 255), path_text.c_str());
+      IM_COL32(230, 230, 230, 255), path_text.c_str());
+
+  // Subtle separator line under the breadcrumb bar (UE style)
+  draw_list.AddLine(ImVec2(p0.x, p1.y), ImVec2(p1.x, p1.y),
+                    IM_COL32(30, 30, 30, 255), 2.0f);
 
   return size;
 }
@@ -256,7 +257,7 @@ ImVec2 AssetBrowserPanel::RenderBreadcrumbBar(ImDrawList& draw_list,
 // --------------------- LEFT CONTAINER ---------------------
 ImVec2 AssetBrowserPanel::RenderSideFolders(ImDrawList& draw_list,
                                             ImVec2 position) {
-  const float width = 200.0f;
+  const float width = 220.0f;  // slightly wider for deep trees
 
   ImVec2 size = ImVec2(width, ImGui::GetContentRegionAvail().y);
   ImVec2 p0 = position;
@@ -270,8 +271,12 @@ ImVec2 AssetBrowserPanel::RenderSideFolders(ImDrawList& draw_list,
 
   ImDrawList& tree_draw = *ImGui::GetWindowDrawList();
 
-  // background color
-  tree_draw.AddRectFilled(p0, p1, IM_COL32(25, 26, 28, 255), 4.0f);
+  // background color (UE5 outliner dark gray)
+  tree_draw.AddRectFilled(p0, p1, IM_COL32(20, 20, 20, 255));
+
+  // Right border separator
+  tree_draw.AddLine(ImVec2(p1.x, p0.y), ImVec2(p1.x, p1.y),
+                    IM_COL32(30, 30, 30, 255), 2.0f);
 
   ImGui::Dummy(ImVec2(0, 8));
 
@@ -293,38 +298,41 @@ void AssetBrowserPanel::RenderSideFolder(ImDrawList& draw_list,
     return;
 
   // Calculate indentation offset
-  const float indent_width = 20.0f;
-  const float item_height = ImGui::GetFrameHeight();
+  const float indent_width = 16.0f;
+  const float item_height =
+      ImGui::GetFrameHeight() + 4.0f;  // More breathing room
   const float text_padding = 4.0f;
 
   // Get current cursor position
   ImVec2 cursor_pos = ImGui::GetCursorScreenPos();
-  cursor_pos.x += indent_width * indentation;
+  cursor_pos.x += indent_width * indentation + 4.0f;  // slight left padding
 
   // Item properties
   const bool has_children = !folder->subfolders_.empty();
   const bool selected = folder->id_ == selected_folder_id_;
-  ImVec2 item_size =
-      ImVec2(ImGui::GetContentRegionAvail().x - indent_width * indentation,
-             item_height);
+  ImVec2 item_size = ImVec2(
+      ImGui::GetContentRegionAvail().x - indent_width * indentation - 8.0f,
+      item_height);
 
-  // Draw item background
-  ImU32 bg_color = selected ? IM_COL32(65, 85, 160, 180) : IM_COL32(0, 0, 0, 0);
+  // Draw item background with UE5 colors and rounded corners
+  ImU32 bg_color = selected ? IM_COL32(0, 112, 224, 200) : IM_COL32(0, 0, 0, 0);
   if (ImGui::IsMouseHoveringRect(
           cursor_pos,
           ImVec2(cursor_pos.x + item_size.x, cursor_pos.y + item_size.y)) &&
       !selected) {
-    bg_color = IM_COL32(60, 60, 60, 80);
+    bg_color = IM_COL32(50, 50, 50, 150);
   }
 
   draw_list.AddRectFilled(
       cursor_pos,
-      ImVec2(cursor_pos.x + item_size.x, cursor_pos.y + item_size.y), bg_color);
+      ImVec2(cursor_pos.x + item_size.x, cursor_pos.y + item_size.y), bg_color,
+      4.0f);
 
   // Draw folder icon
-  float icon_size = item_height * 0.7f;
-  ImVec2 icon_pos = ImVec2(cursor_pos.x + text_padding,
-                           cursor_pos.y + (item_height - icon_size) * 0.5f);
+  float icon_size = item_height * 0.6f;
+  ImVec2 icon_pos =
+      ImVec2(cursor_pos.x + text_padding + 16.0f,  // shift right for caret
+             cursor_pos.y + (item_height - icon_size) * 0.5f);
 
   // Use IconLoader for folder icon
   uint32_t icon_handle = IconLoader::GetIconHandle("folder");
@@ -336,15 +344,20 @@ void AssetBrowserPanel::RenderSideFolder(ImDrawList& draw_list,
       ImVec2(icon_pos.x + icon_size + 8.0f,
              cursor_pos.y + (item_height - ImGui::GetTextLineHeight()) * 0.5f);
 
-  // Evaluate and set icon
-  const char* icon = has_children
-                         ? (folder->expanded_ ? ICON_FA_CARET_DOWN " "
-                                              : ICON_FA_CARET_RIGHT " ")
-                         : "";
-  std::string folder_text = std::string(icon) + folder->name_;
+  // Evaluate and set icon caret
+  const char* caret = has_children ? (folder->expanded_ ? ICON_FA_CARET_DOWN
+                                                        : ICON_FA_CARET_RIGHT)
+                                   : "";
 
-  draw_list.AddText(text_pos, IM_COL32(220, 220, 220, 255),
-                    folder_text.c_str());
+  if (has_children) {
+    draw_list.AddText(ImVec2(cursor_pos.x + 4.0f, text_pos.y),
+                      IM_COL32(180, 180, 180, 255), caret);
+  }
+
+  draw_list.AddText(
+      text_pos,
+      selected ? IM_COL32(255, 255, 255, 255) : IM_COL32(200, 200, 200, 255),
+      folder->name_.c_str());
 
   // Handle interactions
   ImGui::SetCursorScreenPos(cursor_pos);
@@ -354,6 +367,7 @@ void AssetBrowserPanel::RenderSideFolder(ImDrawList& draw_list,
   if (ImGui::IsItemClicked()) {
     // Select this folder
     SelectFolder(folder->id_);
+    // TODO: emit signal here?
 
     // Toggle expansion if clicking on a folder with children
     if (has_children) {
@@ -368,8 +382,9 @@ void AssetBrowserPanel::RenderSideFolder(ImDrawList& draw_list,
   }
 
   // Advance cursor for next item
-  ImGui::SetCursorScreenPos(ImVec2(cursor_pos.x - indent_width * indentation,
-                                   cursor_pos.y + item_height));
+  ImGui::SetCursorScreenPos(
+      ImVec2(cursor_pos.x - indent_width * indentation - 4.0f,
+             cursor_pos.y + item_height));
 
   // Render subfolders if expanded
   if (has_children && folder->expanded_) {
@@ -392,8 +407,8 @@ void AssetBrowserPanel::RenderNodes(ImDrawList& draw_list, ImVec2 position,
   ImGui::BeginChild("ContentArea", size, false);
 
   // Setup grid layout
-  const ImVec2 padding(12.0f, 12.0f);
-  const ImVec2 spacing(8.0f, 8.0f);
+  const ImVec2 padding(16.0f, 16.0f);
+  const ImVec2 spacing(12.0f, 12.0f);
 
   // Start position with padding
   ImVec2 cursor_pos = ImGui::GetCursorPos();
@@ -401,44 +416,52 @@ void AssetBrowserPanel::RenderNodes(ImDrawList& draw_list, ImVec2 position,
   cursor_pos.y += padding.y;
   ImVec2 grid_max = ImVec2(size.x - padding.x, 0);  // max width
 
+  // Because multi-line text makes cards dynamic heights, we track the tallest
+  // item in the current row to ensure the next row aligns cleanly below it
+  float current_row_height = 0.0f;
+
   // Render all folders first
   for (const auto& subfolder : folder->subfolders_) {
-    // Create UI data for this node
     NodeUIData ui_data = MakeNodeUI(subfolder->name_);
 
     // Check if we need to wrap to next row
-    if (cursor_pos.x + ui_data.total_size.x > grid_max.x) {
+    if (cursor_pos.x > padding.x &&
+        cursor_pos.x + ui_data.total_size.x > grid_max.x) {
       cursor_pos.x = padding.x;
-      cursor_pos.y += ui_data.total_size.y + spacing.y;
+      cursor_pos.y += current_row_height + spacing.y;
+      current_row_height = 0.0f;  // Reset height for new row
     }
+
+    current_row_height = std::max(current_row_height, ui_data.total_size.y);
 
     // Set cursor and render node
     ImGui::SetCursorPos(cursor_pos);
     ImVec2 screen_pos = ImGui::GetCursorScreenPos();
 
     if (RenderNode(draw_list, subfolder, ui_data, screen_pos)) {
-      // If rendered successfully, advance cursor
       cursor_pos.x += ui_data.total_size.x + spacing.x;
     }
   }
 
   // Then render all files
   for (const auto& file : folder->files_) {
-    // Create UI data for this node
     NodeUIData ui_data = MakeNodeUI(file->name_);
 
     // Check if we need to wrap to next row
-    if (cursor_pos.x + ui_data.total_size.x > grid_max.x) {
+    if (cursor_pos.x > padding.x &&
+        cursor_pos.x + ui_data.total_size.x > grid_max.x) {
       cursor_pos.x = padding.x;
-      cursor_pos.y += ui_data.total_size.y + spacing.y;
+      cursor_pos.y += current_row_height + spacing.y;
+      current_row_height = 0.0f;  // Reset height for new row
     }
+
+    current_row_height = std::max(current_row_height, ui_data.total_size.y);
 
     // Set cursor and render node
     ImGui::SetCursorPos(cursor_pos);
     ImVec2 screen_pos = ImGui::GetCursorScreenPos();
 
     if (RenderNode(draw_list, file, ui_data, screen_pos)) {
-      // If rendered successfully, advance cursor
       cursor_pos.x += ui_data.total_size.x + spacing.x;
     }
   }
@@ -452,13 +475,13 @@ bool AssetBrowserPanel::RenderNode(ImDrawList& draw_list, NodeRef node,
     return false;
 
   // Skip file nodes without assets
-  /* if (!node->IsFolder()) {
+  if (!node->IsFolder()) {
     auto file = std::static_pointer_cast<const ProjectObserver::File>(node);
     if (!file->asset_id_)
       return false;
-  }*/
+  }
 
-  // Interactive area
+  // Interactive area bounds
   ImVec2 p0 = position;
   ImVec2 p1 = ImVec2(position.x + ui_data.total_size.x,
                      position.y + ui_data.total_size.y);
@@ -474,19 +497,60 @@ bool AssetBrowserPanel::RenderNode(ImDrawList& draw_list, NodeRef node,
   bool selected = node->id_ == selected_node_id_;
   bool is_folder = node->IsFolder();
 
-  // visual highligting
-  ImU32 bg_color = IM_COL32(0, 0, 0, 0);
-  if (selected)
-    bg_color = IM_COL32(65, 85, 160, 180);
-  else if (hovered)
-    bg_color = IM_COL32(60, 60, 60, 80);
+  // visual highligting (UE5 style cards)
+  ImU32 card_bg_color =
+      hovered ? IM_COL32(60, 60, 60, 255) : IM_COL32(35, 35, 35, 255);
+  float rounding = 6.0f;
 
-  draw_list.AddRectFilled(p0, p1, bg_color, 4.0f);
+  // Draw base card background
+  draw_list.AddRectFilled(p0, p1, card_bg_color, rounding);
+
+  // Draw text area footer background (darker)
+  float text_bg_height = ui_data.text_size.y + ui_data.padding.y * 1.5f;
+  ImVec2 text_bg_p0 = ImVec2(p0.x, p1.y - text_bg_height);
+  draw_list.AddRectFilled(text_bg_p0, p1, IM_COL32(22, 22, 22, 255), rounding,
+                          ImDrawFlags_RoundCornersBottom);
+
+  // Asset type color strip
+  ImU32 strip_color = IM_COL32(100, 100, 100, 255);  // Default dark gray
+  if (!is_folder) {
+    std::string ext = node->path_.extension().string();
+    std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
+
+    // Assign UE5-inspired colors to extensions
+    if (ext == ".gltf" || ext == ".glb" || ext == ".fbx" || ext == ".obj") {
+      strip_color = IM_COL32(45, 180, 200, 255);  // Cyan (Static Meshes)
+    } else if (ext == ".json") {
+      strip_color = IM_COL32(200, 180, 45, 255);  // Yellow (Data/JSON)
+    } else if (ext == ".png" || ext == ".jpg" || ext == ".jpeg" ||
+               ext == ".tga") {
+      strip_color = IM_COL32(180, 45, 45, 255);  // Red (Textures)
+    } else if (ext == ".mat" || ext == ".material") {
+      strip_color = IM_COL32(45, 200, 45, 255);  // Green (Materials)
+    }
+  } else {
+    strip_color = IM_COL32(60, 60, 60, 255);  // Subtle gray for folders
+  }
+
+  // Draw the 2px color strip above the text background
+  draw_list.AddRectFilled(ImVec2(p0.x, text_bg_p0.y),
+                          ImVec2(p1.x, text_bg_p0.y + 2.0f), strip_color);
+
+  // Draw Outline (Selection / Hover Border)
+  if (selected) {
+    // UE5 Blue outline for selected items
+    draw_list.AddRect(p0, p1, IM_COL32(0, 112, 224, 255), rounding, 0, 2.0f);
+  } else if (hovered) {
+    // Subtle gray outline for hover
+    draw_list.AddRect(p0, p1, IM_COL32(100, 100, 100, 255), rounding, 0, 1.0f);
+  }
 
   // icon rendering
+  // Center the icon strictly in the top section of the card
+  float upper_height = p1.y - p0.y - text_bg_height;
   ImVec2 icon_pos =
       ImVec2(position.x + (ui_data.total_size.x - ui_data.icon_size.x) * 0.5f,
-             position.y + ui_data.padding.y);
+             position.y + (upper_height - ui_data.icon_size.y) * 0.5f);
 
   // Get appropriate icon
   uint32_t icon_handle;
@@ -512,19 +576,23 @@ bool AssetBrowserPanel::RenderNode(ImDrawList& draw_list, NodeRef node,
 
   // Draw icon with white color
   ImU32 icon_color =
-      is_loading ? IM_COL32(255, 255, 255, 180) : IM_COL32(255, 255, 255, 255);
+      is_loading ? IM_COL32(255, 255, 255, 120) : IM_COL32(255, 255, 255, 255);
   draw_list.AddImage((ImTextureID)(intptr_t)icon_handle, icon_pos,
                      ImVec2(icon_pos.x + ui_data.icon_size.x,
                             icon_pos.y + ui_data.icon_size.y),
                      ImVec2(0, 0), ImVec2(1, 1), icon_color);
 
-  // label rendering
-  ImVec2 text_pos = ImVec2(
-      position.x + (ui_data.total_size.x - ui_data.text_size.x) * 0.5f,
-      position.y + ui_data.padding.y + ui_data.icon_size.y + ui_data.padding.y);
+  // label rendering (Centered in the footer background)
+  float wrap_width = ui_data.total_size.x - (ui_data.padding.x * 1.5f);
 
+  ImVec2 text_pos =
+      ImVec2(position.x + (ui_data.total_size.x - ui_data.text_size.x) * 0.5f,
+             text_bg_p0.y + (text_bg_height - ui_data.text_size.y) * 0.5f);
+
+  // Pass wrap_width to AddText so it naturally splits the lines!
   draw_list.AddText(ui_data.font, ui_data.font->FontSize, text_pos,
-                    IM_COL32(220, 220, 220, 255), ui_data.text.c_str());
+                    IM_COL32(230, 230, 230, 255), ui_data.text.c_str(), nullptr,
+                    wrap_width);
 
   // Handle interactions
   if (clicked) {

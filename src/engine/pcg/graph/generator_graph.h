@@ -25,7 +25,7 @@ namespace PCG {
 
 class NodeTypeDB;
 
-class GeneratorGraph : public GeneratorBase {
+class GeneratorGraph : public FieldGenerator {
 public:
   GeneratorGraph();
   ~GeneratorGraph();
@@ -61,14 +61,14 @@ public:
                     std::vector<Sample>& out_samples) const;
 
   //
-  // GeneratorBase Interface
+  // Generator Interface
   //
-  GeneratorType GetType() override { return GeneratorType::Graph; }
-  std::string GetDisplayName() override { return "Generator Graph"; }
-  Sample Eval(float x, float y) override;
+  GeneratorType GetType() const override { return GeneratorType::Graph; }
+  std::string GetDisplayName() const override { return "Generator Graph"; }
+  Sample Eval(float x, float y) const override;
 
   // Clone for thread-local usage
-  std::unique_ptr<GeneratorBase> Clone() const override;
+  std::unique_ptr<Generator> Clone() const override;
 
 private:
   // Cache for runtime state

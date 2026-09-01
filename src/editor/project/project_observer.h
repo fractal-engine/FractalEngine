@@ -11,9 +11,9 @@
 #include <vector>
 
 #include "editor/systems/editor_asset.h"
+#include "engine/core/file_system_utils.h"
 #include "engine/core/logger.h"
 #include "engine/resources/concurrent_queue.h"
-#include "engine/resources/file_system_utils.h"
 
 class ProjectObserver {
 public:
@@ -67,7 +67,7 @@ public:
           subfolders_(),
           parent_id_(parent_id),
           expanded_(false) {}
-          
+
     ~Folder() override {}
 
     bool IsFolder() override { return true; }
@@ -124,7 +124,7 @@ private:
   struct IOListener : public efsw::FileWatchListener {
     void handleFileAction(efsw::WatchID watch_id, const std::string& directory,
                           const std::string& filename, efsw::Action action,
-                          std::string old_filename) override;
+                          const std::string& old_filename) override;
     ConcurrentQueue<std::unique_ptr<IOEvent>> event_queue_;
   };
 
@@ -136,6 +136,9 @@ private:
   std::shared_ptr<ProjectObserver::Folder> FindFolder(
       const FileSystem::Path& relative_path,
       const std::shared_ptr<Folder>& current_folder);
+
+  // Set hidden files
+  bool ShouldIgnore(const FileSystem::Path& path, bool is_directory);
 
   // Project root path being observed
   FileSystem::Path target_;

@@ -4,6 +4,8 @@
 #include <imgui.h>
 #include <imgui_internal.h>
 
+#include "editor/runtime/runtime.h"
+
 namespace Panels {
 
 void StatusBar() {
@@ -19,8 +21,9 @@ void StatusBar() {
                                   height, window_flags)) {
     if (ImGui::BeginMenuBar()) {
       ImGui::Text(
-          "Project: [Placeholder] | Branch: [Placeholder] | Status: "
-          "[Placeholder]");
+          "%s | Branch: [Placeholder] | Status: "
+          "[Placeholder]",
+          Runtime::Project().ProjectName().c_str());
       ImGui::EndMenuBar();
     }
     ImGui::End();

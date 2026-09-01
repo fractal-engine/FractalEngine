@@ -1,5 +1,6 @@
 #include "mesh_loader.h"
 
+#include <assimp/DefaultIOSystem.h>
 #include <assimp/postprocess.h>
 #include <assimp/scene.h>
 #include <assimp/Importer.hpp>
@@ -61,7 +62,7 @@ void ProcessNode(const aiNode* node, const aiScene* scene,
   }
 }
 
-// Build SceneNode tree 
+// Build SceneNode tree
 SceneNode ProcessNodeHierarchy(const aiNode* node, const aiScene* scene,
                                std::vector<Geometry::MeshData>& out_meshes) {
   SceneNode result;
@@ -69,11 +70,9 @@ SceneNode ProcessNodeHierarchy(const aiNode* node, const aiScene* scene,
 
   // Convert Assimp's row-major 4x4 to glm column-major
   const auto& m = node->mTransformation;
-  result.local_transform = glm::mat4(
-      m.a1, m.b1, m.c1, m.d1,
-      m.a2, m.b2, m.c2, m.d2,
-      m.a3, m.b3, m.c3, m.d3,
-      m.a4, m.b4, m.c4, m.d4);
+  result.local_transform =
+      glm::mat4(m.a1, m.b1, m.c1, m.d1, m.a2, m.b2, m.c2, m.d2, m.a3, m.b3,
+                m.c3, m.d3, m.a4, m.b4, m.c4, m.d4);
 
   for (unsigned int i = 0; i < node->mNumMeshes; ++i) {
     const aiMesh* mesh = scene->mMeshes[node->mMeshes[i]];
@@ -93,6 +92,10 @@ SceneNode ProcessNodeHierarchy(const aiNode* node, const aiScene* scene,
 std::vector<Geometry::MeshData> MeshLoader::Load(const std::string& path) {
   Assimp::Importer importer;
 
+  std::string base_dir = path.substr(0, path.find_last_of("/\\") + 1);
+  Logger::getInstance().Log(LogLevel::Debug,
+                            "[MeshLoader] Loading from base_dir: " + base_dir);
+
   const aiScene* scene = importer.ReadFile(
       path, aiProcess_Triangulate | aiProcess_GenSmoothNormals |
                 aiProcess_JoinIdenticalVertices |
@@ -108,46 +111,52 @@ std::vector<Geometry::MeshData> MeshLoader::Load(const std::string& path) {
     return {};
   }
 
-  std::vector<Geometry::MeshData> meshes;
-  ProcessNode(scene->mRootNode, scene, meshes);
+  std::vector<Geometry::MeshData> mesh_data;
+  ProcessNode(scene->mRootNode, scene, mesh_data);
 
   Logger::getInstance().Log(LogLevel::Debug, "[MeshLoader] Loaded " +
-                                                 std::to_string(meshes.size()) +
-                                                 " meshes from " + path);
+                                                 std::to_string(mesh_data.size()) +
+                                                 " mesh_data from " + path);
 
-  return meshes;
+  return mesh_data;
 }
 
 SceneData MeshLoader::LoadScene(const std::string& path) {
   Assimp::Importer importer;
 
-  // aiProcess_OptimizeGraph and aiProcess_PreTransformVertices omitted to preserve hierarchy
+  std::string base_dir = path.substr(0, path.find_last_of("/\\") + 1);
+  Logger::getInstance().Log(LogLevel::Debug,
+                            "[MeshLoader] Loading from base_dir: " + base_dir);
+
+  // aiProcess_OptimizeGraph and aiProcess_PreTransformVertices omitted to
+  // preserve hierarchy
   const aiScene* scene = importer.ReadFile(
       path, aiProcess_Triangulate | aiProcess_GenSmoothNormals |
-                aiProcess_JoinIdenticalVertices |
-                aiProcess_CalcTangentSpace);
+                aiProcess_JoinIdenticalVertices | aiProcess_CalcTangentSpace);
 
   if (!scene || (scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE) ||
       !scene->mRootNode) {
-    Logger::getInstance().Log(LogLevel::Error,
-                              "[MeshLoader] Failed to load scene: " + path +
-                                  " - " + importer.GetErrorString());
+    Logger::getInstance().Log(
+        LogLevel::Error, "[MeshLoader] Failed to load scene: " + path + " - " +
+                             importer.GetErrorString());
     return {};
   }
 
   SceneData data;
-  data.root = ProcessNodeHierarchy(scene->mRootNode, scene, data.meshes);
+
+  data.root = ProcessNodeHierarchy(scene->mRootNode, scene, data.mesh_data);
 
   Logger::getInstance().Log(LogLevel::Debug,
                             "[MeshLoader] Loaded scene with " +
-                                std::to_string(data.meshes.size()) +
-                                " meshes from " + path);
+                                std::to_string(data.mesh_data.size()) +
+                                " mesh_data from " + path);
 
   return data;
 }
 
 bool MeshLoader::IsSupported(const std::string& path) {
   Assimp::Importer importer;
+
   return importer.IsExtensionSupported(path.substr(path.rfind('.')));
 }
 

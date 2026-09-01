@@ -71,6 +71,7 @@ bool GraphicsRenderer::InitBgfx() {
 
   // Create uniforms
   u_viewPos = bgfx::createUniform("u_viewPos", bgfx::UniformType::Vec4);
+  u_meshColor = bgfx::createUniform("u_meshColor", bgfx::UniformType::Vec4);
 
   ConfigureViews();
 
@@ -114,7 +115,9 @@ void GraphicsRenderer::PrepareFrame() {
   const uint16_t fbw = canvasViewportW ? canvasViewportW : 1;
   const uint16_t fbh = canvasViewportH ? canvasViewportH : 1;
 
-  if (fbw != last_framebuffer_width_ || fbh != last_framebuffer_height_)
+  // Avoid resizing to placeholder dimensions
+  if (fbw > 1 && fbh > 1 &&
+      (fbw != last_framebuffer_width_ || fbh != last_framebuffer_height_))
     CreateFramebuffers(fbw, fbh);
 
   // Common clear for the scene_framebuffer_ (done by the first view using it)
@@ -127,16 +130,17 @@ void GraphicsRenderer::PrepareFrame() {
     bgfx::setViewFrameBuffer(vid, scene_framebuffer_);
   }
 
-  // ViewID::UI_BACKGROUND (ID 0) - Clears the actual window backbuffer
-  bgfx::setViewClear(
-      ViewID::UI_BACKGROUND,
-      BGFX_CLEAR_COLOR /* no depth clear needed if nothing 3D draws here */,
-      0x1e1e1eff, 1.0f, 0);
-  bgfx::setViewRect(ViewID::UI_BACKGROUND, 0, 0, fbw,
-                    fbh);  // Assuming fbw/fbh here match window size
-  bgfx::setViewFrameBuffer(
-      ViewID::UI_BACKGROUND,
-      BGFX_INVALID_HANDLE);  // Ensure it targets default backbuffer
+  // UI and backbuffer views must use drawable size
+  // TODO: avoid global inline state and keep viewport sizes
+  // in a single owner (e.g. GraphicsRenderer or WindowManager) with accessors
+  int win_w, win_h;
+  Platform::GetDrawableSize(window_, &win_w, &win_h);
+
+  bgfx::setViewClear(ViewID::UI_BACKGROUND, BGFX_CLEAR_COLOR, 0x1e1e1eff, 1.0f,
+                     0);
+  bgfx::setViewRect(ViewID::UI_BACKGROUND, 0, 0, static_cast<uint16_t>(win_w),
+                    static_cast<uint16_t>(win_h));
+  bgfx::setViewFrameBuffer(ViewID::UI_BACKGROUND, BGFX_INVALID_HANDLE);
 
   // Separate reflection pass framebuffer
   if (bgfx::isValid(reflection_fb_)) {
@@ -193,13 +197,12 @@ void GraphicsRenderer::CreateFramebuffers(uint16_t w, uint16_t h) {
                                    : "INVALID"));
   Logger::getInstance().Log(LogLevel::Debug, log_buffer);
 
-  // --- REFLECTION framebuffer ---
+  // Reflection framebuffer
   if (bgfx::isValid(reflection_fb_)) {
     bgfx::destroy(reflection_fb_);
-    bgfx::destroy(reflection_color_tex_);
     reflection_fb_ = BGFX_INVALID_HANDLE;
-    reflection_color_tex_ = BGFX_INVALID_HANDLE;
   }
+  reflection_color_tex_ = BGFX_INVALID_HANDLE;
 
   // Create a color-only reflection texture
   reflection_color_tex_ = bgfx::createTexture2D(
@@ -307,35 +310,34 @@ void GraphicsRenderer::ProcessEvents(bool& quit) {
 void GraphicsRenderer::Destroy() {
   Logger::getInstance().Log(LogLevel::Info, "Shutting down GraphicsRenderer");
 
-  // 1. Destroy framebuffer attachments first
-  if (bgfx::isValid(scene_color_texture_)) {
-    bgfx::destroy(scene_color_texture_);
-    scene_color_texture_ = BGFX_INVALID_HANDLE;
-  }
-
-  if (bgfx::isValid(scene_depth_texture_)) {
-    bgfx::destroy(scene_depth_texture_);
-    scene_depth_texture_ = BGFX_INVALID_HANDLE;
-  }
-
-  // 2. Then destroy the framebuffer
+  // Destroy the framebuffer
   if (bgfx::isValid(scene_framebuffer_)) {
+    Logger::getInstance().Log(LogLevel::Debug,
+                              "Destroying old scene_framebuffer_ (handle " +
+                                  std::to_string(scene_framebuffer_.idx) +
+                                  ") and its textures.");
     bgfx::destroy(scene_framebuffer_);
+    Logger::getInstance().Log(LogLevel::Debug,
+                              "Old framebuffer destroyed successfully.");
+
     scene_framebuffer_ = BGFX_INVALID_HANDLE;
   }
+  scene_color_texture_ = BGFX_INVALID_HANDLE;
+  scene_depth_texture_ = BGFX_INVALID_HANDLE;
+
   // Destroy reflection framebuffer and its textures
   if (bgfx::isValid(reflection_fb_)) {
     bgfx::destroy(reflection_fb_);
     reflection_fb_ = BGFX_INVALID_HANDLE;
   }
-  if (bgfx::isValid(reflection_color_tex_)) {
-    bgfx::destroy(reflection_color_tex_);
-    reflection_color_tex_ = BGFX_INVALID_HANDLE;
-  }
+  reflection_color_tex_ = BGFX_INVALID_HANDLE;
 
   // Destroy uniforms
   if (bgfx::isValid(u_viewPos))
     bgfx::destroy(u_viewPos);
+
+  if (bgfx::isValid(u_meshColor))
+    bgfx::destroy(u_meshColor);
 
   // 3. Clear ImGui texture ID before shutdown
   scene_tex_id_ = 0;
